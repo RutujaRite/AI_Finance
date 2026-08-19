@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Page</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="login-card">
+    <h1>Welcome</h1>
+    <p class="subtitle">Please login to continue</p>
+
+    <form action="/login" method="POST">
+      <label>Email</label>
+      <input type="email" name="email" placeholder="Enter email" required>
+
+      <label>Password</label>
+      <input type="password" name="password" placeholder="Enter password" required>
+
+      <button type="submit">Login</button>
+    </form>
+
+    <p class="signup-text">
+      Don't have an account?
+      <a href="/register" class="signup-link">Sign Up</a>
+    </p>
+  </div>
+</body>
+</html>

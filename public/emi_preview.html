@@ -1,0 +1,250 @@
+﻿
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>EMI Calculator</title>
+      <link rel="stylesheet" href="style.css" />
+      <style>
+        /* Small adjustments for sliders and schedule */
+        .range-row { display:flex; gap:12px; align-items:center; }
+        .range-row input[type=range] { flex:1; }
+        .range-value { width:110px; }
+        .summary-cards { display:flex; gap:14px; margin-bottom:18px; }
+        .card { flex:1; background:#fff; border-radius:12px; padding:18px; box-shadow:0 8px 24px rgba(0,0,0,0.06); text-align:center; }
+        .card h4{ margin:0;color:#64748b;font-size:12px;font-weight:700; }
+        .card p{ margin-top:8px;font-size:20px;color:#1e293b;font-weight:800 }
+        .schedule-wrap{ max-height:360px; overflow:auto; border-radius:8px; border:1px solid #e2e8f0; background:#fff; }
+        table.amort { width:100%; border-collapse:collapse; }
+        table.amort th, table.amort td{ padding:10px; border-bottom:1px solid #f1f5f9; text-align:right; font-size:13px; }
+        table.amort th{ text-align:left; background:#f8fafc; position:sticky; top:0; }
+      </style>
+    </head>
+    <body class="home-body">
+      <header class="topbar">
+        <nav class="nav-menu" aria-label="Main navigation">
+          <a href="/home" class="nav-item">🏠 Home</a>
+          <a href="/emi" class="nav-item active">💰 EMI Calculator</a>
+          <div class="nav-item profile-menu">
+            <span class="profile-menu-label">👤 Admin Updated</span>
+            <span class="caret">▾</span>
+            <div class="profile-dropdown">
+              <a href="/profile">Profile</a>
+              <a href="/logout">Logout</a>
+            </div>
+          </div>
+        </nav>
+      </header>
+
+      <main class="blank-home">
+        <section class="emi-wrap">
+          <div class="emi-header" style="margin-bottom:18px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="background:rgba(255,255,255,0.08);padding:10px;border-radius:10px;font-size:18px">📟</div>
+              <div class="title">EMI Calculator</div>
+            </div>
+          </div>
+
+          <div class="emi-grid">
+            <div class="form-box">
+              <h2>📋 Loan Details</h2>
+
+              <div class="form-row">
+                <div class="field-container">
+                  <label class="field-label">Loan Type</label>
+                  <div class="field-inner">
+                    <select id="loanType">
+                      <option>Personal</option>
+                      <option>Home</option>
+                      <option>Auto</option>
+                      <option>Education</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="field-container">
+                  <label class="field-label">Loan Amount (₹)</label>
+                  <div class="field-inner">
+                    <input id="loanAmountRange" type="range" min="10000" max="10000000" step="10000" value="500000">
+                    <div class="value-box"><input id="loanAmount" type="number" value="500000" min="10000" step="10000"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="field-container">
+                  <label class="field-label">Annual Interest Rate (%)</label>
+                  <div class="field-inner">
+                    <input id="rateRange" type="range" min="0" max="25" step="0.01" value="9.5">
+                    <div class="value-box"><input id="rate" type="number" value="9.5" step="0.01"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="field-container">
+                  <label class="field-label">Processing Fee (%)</label>
+                  <div class="field-inner">
+                    <input id="feeRange" type="range" min="0" max="5" step="0.1" value="0.5">
+                    <div class="value-box"><input id="fee" type="number" value="0.5" step="0.1"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="field-container">
+                  <label class="field-label">Loan Term</label>
+                  <div class="field-inner">
+                    <input id="termRange" type="range" min="1" max="360" step="1" value="60">
+                    <div class="value-box"><input id="term" type="number" value="60" step="1"></div>
+                    <div class="value-box small"><select id="monthsOrYears"><option value="months">Months</option><option value="years">Years</option></select></div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:12px;margin-top:18px;align-items:center">
+                <button class="btn-save" id="saveBtn" type="button">💾 Save</button>
+                <button class="btn-print" id="printBtn" type="button">🖨 Print Schedule</button>
+                <button class="btn btn-secondary" id="calcNow" type="button">✓ Calculate</button>
+              </div>
+            </div>
+
+            <div class="result-box">
+              <div class="summary-cards">
+                <div class="card"><h4>MONTHLY EMI</h4><p id="emiValue">₹0</p></div>
+                <div class="card"><h4>TOTAL INTEREST</h4><p id="interestValue">₹0</p></div>
+                <div class="card"><h4>TOTAL PAYMENT</h4><p id="totalValue">₹0</p></div>
+              </div>
+
+              <div style="margin-bottom:12px;"><span class="processing-pill">Processing Fee: <strong id="processingFeeAmount">₹0</strong></span></div>
+
+              <h3 style="margin:6px 0 12px;">📋 Amortization Schedule</h3>
+              <div class="schedule-wrap">
+                <table class="amort">
+                  <thead>
+                    <tr>
+                      <th style="text-align:left">Month</th>
+                      <th>EMI (₹)</th>
+                      <th>Principal (₹)</th>
+                      <th>Interest (₹)</th>
+                      <th>Balance (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="scheduleBody">
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <script>
+        // sync range and numeric inputs
+        function bindRange(rangeId, inputId) {
+          const r = document.getElementById(rangeId);
+          const i = document.getElementById(inputId);
+          r.addEventListener('input', () => { i.value = r.value; computeAndRender(); });
+          i.addEventListener('input', () => { r.value = i.value; computeAndRender(); });
+        }
+
+        bindRange('loanAmountRange', 'loanAmount');
+        bindRange('rateRange', 'rate');
+        bindRange('feeRange', 'fee');
+        bindRange('termRange', 'term');
+
+        document.getElementById('monthsOrYears').addEventListener('change', computeAndRender);
+        document.getElementById('calcNow').addEventListener('click', computeAndRender);
+        document.getElementById('printBtn').addEventListener('click', () => window.print());
+        document.getElementById('saveBtn').addEventListener('click', saveCalculation);
+
+        function computeAndRender() {
+          const loanType = document.getElementById('loanType').value;
+          const principal = Number(document.getElementById('loanAmount').value) || 0;
+          const annualRate = Number(document.getElementById('rate').value) || 0;
+          const feePercent = Number(document.getElementById('fee').value) || 0;
+          let term = Number(document.getElementById('term').value) || 0;
+          const monthsOrYears = document.getElementById('monthsOrYears').value;
+
+          if (monthsOrYears === 'years') term = term * 12;
+
+          const monthlyRate = annualRate / 12 / 100;
+          const emi = monthlyRate > 0
+            ? (principal * monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1)
+            : (term>0? principal/term : 0);
+
+          const totalPayment = emi * term;
+          const totalInterest = totalPayment - principal;
+          const processingFeeAmount = principal * (feePercent/100);
+
+          document.getElementById('emiValue').textContent = '₹' + formatMoney(emi);
+          document.getElementById('interestValue').textContent = '₹' + formatMoney(totalInterest);
+          document.getElementById('totalValue').textContent = '₹' + formatMoney(totalPayment);
+          document.getElementById('processingFeeAmount').textContent = '₹' + formatMoney(processingFeeAmount);
+
+          // build amortization schedule
+          const tbody = document.getElementById('scheduleBody');
+          tbody.innerHTML = '';
+
+          let balance = principal;
+          for (let m = 1; m <= term; m++) {
+            const interest = balance * monthlyRate;
+            const principalPortion = emi - interest;
+            balance = Math.max(0, balance - principalPortion);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td style="text-align:left">' + m + '</td>' +
+                           '<td>₹' + formatMoney(emi) + '</td>' +
+                           '<td>₹' + formatMoney(principalPortion) + '</td>' +
+                           '<td>₹' + formatMoney(interest) + '</td>' +
+                           '<td>₹' + formatMoney(balance) + '</td>';
+            tbody.appendChild(tr);
+          }
+
+          // return computed object for save
+          return {
+            loanType, principal, annualRate, feePercent, termMonths: term, monthsOrYears,
+            emi, totalInterest, totalPayment, processingFeeAmount,
+            schedule: Array.from(tbody.querySelectorAll('tr')).map((row, idx) => {
+              const cols = row.querySelectorAll('td');
+              return {
+                month: Number(cols[0].textContent),
+                emi: cols[1].textContent.replace(/[₹,s]/g, ''),
+                principal: cols[2].textContent.replace(/[₹,s]/g, ''),
+                interest: cols[3].textContent.replace(/[₹,s]/g, ''),
+                balance: cols[4].textContent.replace(/[₹,s]/g, '')
+              };
+            })
+          };
+        }
+
+        function formatMoney(value) {
+          return Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+        }
+
+        function saveCalculation() {
+          const data = computeAndRender();
+          if (!data || !data.termMonths || data.termMonths <= 0) { alert('Please enter a valid term'); return; }
+
+          fetch('/emi/save', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          })
+          .then(r => r.json())
+          .then(j => {
+            if (j.success) alert('Calculation saved'); else alert('Save failed');
+          })
+          .catch(err => { console.error(err); alert('Save failed'); });
+        }
+
+        // initial render
+        computeAndRender();
+      </script>
+    </body>
+    </html>
+  

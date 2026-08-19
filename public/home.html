@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Home</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .welcome-section {
+      max-width: 1100px;
+      margin: 80px auto 0;
+      padding: 60px 40px;
+      text-align: center;
+    }
+
+    .welcome-section h1 {
+      font-size: 3rem;
+      color: #1e293b;
+      margin-bottom: 20px;
+      font-weight: 800;
+    }
+
+    .welcome-section p {
+      font-size: 18px;
+      color: #64748b;
+      margin-bottom: 40px;
+      line-height: 1.6;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 32px;
+      margin-top: 50px;
+    }
+
+    .feature-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+      transition: all 0.3s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+      border-color: #6366f1;
+    }
+
+    .feature-card .icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+    }
+
+    .feature-card h3 {
+      color: #1e293b;
+      font-size: 20px;
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+
+    .feature-card p {
+      color: #64748b;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body class="home-body">
+  <header class="topbar">
+    <nav class="nav-menu" aria-label="Main navigation">
+      <a href="/home" class="nav-item active">🏠 Home</a>
+      <a href="/emi" class="nav-item">💰 EMI Calculator</a>
+      <div class="nav-item profile-menu">
+        <span class="profile-menu-label">👤 Akshada Sagar</span>
+        <span class="caret">▾</span>
+        <div class="profile-dropdown">
+          <a href="/profile">Profile</a>
+          <a href="/logout">Logout</a>
+        </div>
+      </div>
+    </nav>
+  </header>
+  <main class="blank-home">
+    <section class="welcome-section">
+           <h1>Welcome</h1>
+    <p>
+      Your all-in-one solution for smart loan calculations
+      and financial planning
+    </p>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="icon">📊</div>
+          <h3>EMI Calculator</h3>
+          <p>Calculate your monthly EMI with precision. Get detailed breakdowns of interest and principal amounts.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🔒</div>
+          <h3>Secure & Private</h3>
+          <p>Your financial data is safe and secure. No data is stored on our servers.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="icon">⚡</div>
+          <h3>Instant Results</h3>
+          <p>Get instant calculations with real-time updates as you modify your loan parameters.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
