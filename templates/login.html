@@ -15,6 +15,12 @@
       <p>Sign in to access your account and continue your journey</p>
     </div>
 
+    {% if error %}
+    <div class="login-error">
+      Invalid email or password. Please try again.
+    </div>
+    {% endif %}
+
     <form action="/login" method="POST">
       <div class="form-group">
         <label for="email">Email address</label>

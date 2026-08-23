@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -110,8 +110,12 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><path d="M12 12h.01"/></svg>
         EMI Calculator
       </a>
+      <a href="/admin" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        Admin
+      </a>
       <div class="nav-item profile-menu" role="link" tabindex="0" onclick="window.location='/profile'">
-        <span class="profile-menu-label">👤 Admin Updated</span>
+        <span class="profile-menu-label">{{ userName }}</span>
         <span class="caret">▾</span>
         <div class="profile-dropdown">
           <a href="/profile">Profile</a>
@@ -258,9 +262,12 @@
     bindRange('feeRange', 'fee');
     bindRange('termRange', 'term');
 
-    document.getElementById('monthsOrYears').addEventListener('change', computeAndRender);
-    document.getElementById('printBtn').addEventListener('click', () => window.print());
-    document.getElementById('saveBtn').addEventListener('click', saveCalculation);
+    const monthsOrYearsEl = document.getElementById('monthsOrYears');
+    if (monthsOrYearsEl) monthsOrYearsEl.addEventListener('change', computeAndRender);
+    const printBtnEl = document.getElementById('printBtn');
+    if (printBtnEl) printBtnEl.addEventListener('click', printSchedule);
+    const saveBtnEl = document.getElementById('saveBtn');
+    if (saveBtnEl) saveBtnEl.addEventListener('click', saveCalculation);
 
     function computeAndRender() {
       const loanType = document.getElementById('loanType').value;
@@ -322,6 +329,39 @@
 
     function formatMoney(value) {
       return Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[char]);
+    }
+
+    function printSchedule() {
+      const data = computeAndRender();
+      const printWindow = window.open('', 'emi-print-preview', 'width=1100,height=800');
+      if (!printWindow) { alert('Please allow pop-ups to print the schedule.'); return; }
+
+      const details = [
+        ['Loan Amount Disbursed', '₹' + formatMoney(data.principal)],
+        ['Current Interest (%)', Number(data.annualRate).toFixed(2)],
+        ['Moratorium Interest Capitalized', 'NA'],
+        ['Frequency', 'Monthly'],
+        ['Loan Type', data.loanType + ' Loan'],
+        ['Tenure (Months)', data.termMonths]
+      ];
+      const detailMarkup = details.map(item =>
+        '<div class="detail-item"><span class="detail-label">' + escapeHtml(item[0]) + '</span><span class="detail-colon">:</span><span class="detail-value">' + escapeHtml(item[1]) + '</span></div>'
+      ).join('');
+      const scheduleRows = document.getElementById('scheduleBody').innerHTML;
+      const documentHtml = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Loan Amortization Schedule</title><style>' +
+        '@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#3e3e45;font-family:Arial,sans-serif;background:#fff}.print-page{max-width:1120px;margin:0 auto;padding:18px 22px}.print-title{margin:0 0 22px;color:#4F46E5;font-size:25px;font-weight:500;text-align:center}.loan-details{margin-bottom:28px;border:2px solid #4F46E5}.loan-details-heading{margin:-16px auto 12px;width:max-content;padding:0 22px;color:#4F46E5;background:#fff;font-size:20px;text-align:center}.details-grid{display:grid;grid-template-columns:1fr 1fr}.detail-item{display:grid;grid-template-columns:235px 28px 1fr;min-height:72px;padding:16px;border-bottom:2px dotted #777;align-items:start;font-size:18px}.detail-item:nth-child(odd){border-right:2px solid #4F46E5}.detail-item:nth-last-child(-n+2){border-bottom:0}.detail-label{color:#4F46E5;line-height:1.32}.detail-value{font-size:18px;line-height:1.32}.schedule-title{margin:0 0 12px;color:#4F46E5;font-size:22px}.schedule-table{width:100%;border-collapse:collapse;font-size:13px}.schedule-table th{padding:10px;color:#fff;background:#4F46E5;text-align:right}.schedule-table th:first-child,.schedule-table td:first-child{text-align:center}.schedule-table td{padding:9px;border-bottom:1px solid #d9dce7;text-align:right}.schedule-table tbody tr:nth-child(even){background:#f5f3ff}@media print{.print-page{padding:0}.loan-details{break-inside:avoid}.schedule-table thead{display:table-header-group}}</style></head><body><main class="print-page"><h1 class="print-title">Loan Amortization Schedule</h1><section class="loan-details"><div class="loan-details-heading">Loan Details</div><div class="details-grid">' + detailMarkup + '</div></section><h2 class="schedule-title">Amortization Schedule</h2><table class="schedule-table"><thead><tr><th>Month</th><th>EMI (₹)</th><th>Principal (₹)</th><th>Interest (₹)</th><th>Balance (₹)</th></tr></thead><tbody>' + scheduleRows + '</tbody></table></main></body></html>';
+
+      printWindow.document.open();
+      printWindow.document.write(documentHtml);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.onload = () => printWindow.print();
     }
 
     function saveCalculation() {
