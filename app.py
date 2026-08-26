@@ -760,6 +760,164 @@ def download_bank_file(file_id):
         return jsonify({'success': False, 'error': 'Could not download the file'}), 500
 
 
+BANK_MANAGER_UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'public', 'uploads', 'bank-managers')
+BANK_MANAGER_UPLOAD_PREFIX = '/uploads/bank-managers/'
+MAX_BANK_MANAGER_FILE_BYTES = 50 * 1024 * 1024
+
+
+@app.route('/bank-managers')
+@require_login
+def bank_managers_panel():
+    userName = session.get('userName', 'Guest')
+    return render_template('bank_manager/bank_managers.html', userName=userName)
+
+
+@app.route('/api/bank-managers', methods=['GET'])
+@require_login
+def list_bank_managers():
+    try:
+        from bank_service import search_bank_manager
+        result = search_bank_manager()
+        return jsonify({'managers': result.get('managers', [])})
+    except Exception as e:
+        print('List managers error', e)
+        return jsonify({'managers': []})
+
+
+@app.route('/api/bank-managers/search', methods=['GET'])
+def search_bank_managers():
+    bank_name = request.args.get('bank_name', '')
+    location = request.args.get('location', '') or request.args.get('city', '')
+    try:
+        from bank_service import search_bank_manager
+        result = search_bank_manager(bank_name=bank_name, city=location)
+        return jsonify({'managers': result.get('managers', [])})
+    except Exception as e:
+        print('Search managers error', e)
+        return jsonify({'managers': []})
+
+
+@app.route('/api/bank-managers/files', methods=['GET'])
+@require_login
+def list_bank_manager_files():
+    try:
+        with get_db() as cursor:
+            cursor.execute("""
+                SELECT bmf.id, bmf.bank_name, bmf.file_name, bmf.file_path, bmf.file_size, bmf.uploaded_at, u.name as uploaded_by_name
+                FROM bank_manager_files bmf
+                LEFT JOIN users u ON bmf.uploaded_by = u.id
+                ORDER BY bmf.uploaded_at DESC
+            """)
+            files = cursor.fetchall()
+            return jsonify({'files': [dict(f) for f in files]})
+    except Exception as e:
+        print('List files error', e)
+        return jsonify({'files': []})
+
+
+@app.route('/api/bank-managers/upload', methods=['POST'])
+@require_login
+def upload_bank_manager_file():
+    bank_name = request.form.get('bank_name', '').strip()
+    if not bank_name:
+        return jsonify({'success': False, 'error': 'Bank name is required'}), 400
+
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file provided'}), 400
+
+    file = request.files['file']
+    if not file or file.filename == '':
+        return jsonify({'success': False, 'error': 'No file selected'}), 400
+
+    original_name = file.filename
+    ext = os.path.splitext(original_name)[1].lower()
+    if ext not in ('.xlsx', '.xls', '.csv'):
+        return jsonify({'success': False, 'error': 'Only Excel and CSV files are allowed'}), 400
+
+    file.seek(0, 2)
+    file_size = file.tell()
+    file.seek(0)
+
+    if file_size > MAX_BANK_MANAGER_FILE_BYTES:
+        return jsonify({'success': False, 'error': 'File size exceeds 50 MB limit'}), 400
+
+    file_id = uuid.uuid4().hex
+    saved_name = file_id + ext
+    file_path = os.path.join(BANK_MANAGER_UPLOAD_DIR, saved_name)
+    public_path = BANK_MANAGER_UPLOAD_PREFIX + saved_name
+
+    try:
+        os.makedirs(BANK_MANAGER_UPLOAD_DIR, exist_ok=True)
+        file.save(file_path)
+
+        with get_db() as cursor:
+            cursor.execute("""
+                INSERT INTO bank_manager_files (bank_name, file_name, file_path, file_size, uploaded_by)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id
+            """, (bank_name, original_name, public_path, file_size, session.get('userId')))
+            db_file_id = cursor.fetchone()['id']
+
+        try:
+            from import_managers import import_managers_from_file
+            import_managers_from_file(file_path, bank_name)
+        except Exception as import_error:
+            print('Import error', import_error)
+
+        return jsonify({'success': True, 'file_id': db_file_id})
+    except Exception as e:
+        print('Upload error', e)
+        try:
+            os.unlink(file_path)
+        except OSError:
+            pass
+        return jsonify({'success': False, 'error': 'Could not save the file'}), 500
+
+
+@app.route('/api/bank-managers/files/<int:file_id>', methods=['DELETE'])
+@require_login
+def delete_bank_manager_file(file_id):
+    try:
+        with get_db() as cursor:
+            cursor.execute('SELECT file_path, bank_name FROM bank_manager_files WHERE id = %s', (file_id,))
+            result = cursor.fetchone()
+
+            if not result:
+                return jsonify({'success': False, 'error': 'File not found'}), 404
+
+            file_path = result['file_path']
+            bank_name = result['bank_name']
+
+            if file_path and file_path.startswith(BANK_MANAGER_UPLOAD_PREFIX):
+                local_file = file_path.replace(BANK_MANAGER_UPLOAD_PREFIX, '')
+                full_path = os.path.join(BANK_MANAGER_UPLOAD_DIR, local_file)
+                try:
+                    os.unlink(full_path)
+                except OSError:
+                    pass
+
+            cursor.execute('DELETE FROM bank_managers WHERE bank_name = %s', (bank_name,))
+            cursor.execute('DELETE FROM bank_manager_files WHERE id = %s', (file_id,))
+            return jsonify({'success': True})
+    except Exception as e:
+        print('Delete error', e)
+        return jsonify({'success': False, 'error': 'Could not delete the file'}), 500
+
+
+@app.route('/api/bank-managers/recommend', methods=['GET'])
+def recommend_bank_manager():
+    location = request.args.get('location', '')
+    bank_name = request.args.get('bank_name', '')
+    try:
+        from bank_service import search_bank_manager
+        result = search_bank_manager(bank_name=bank_name, city=location)
+        managers = result.get('managers', [])[:5]
+        return jsonify({'managers': managers})
+    except Exception as e:
+        print('Recommend manager error', e)
+        return jsonify({'managers': []})
+
+
 DB_ERROR_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -858,6 +1016,13 @@ def chat_api():
             except Exception as company_error:
                 print('Chat company search error', company_error)
                 reply = 'I tried to search for that company, but the service is unavailable right now. Please try again later.'
+        elif 'bank manager' in lower_message or 'manager details' in lower_message or 'branch manager' in lower_message or ('bank' in lower_message and ('manager' in lower_message or 'managers' in lower_message or 'branch' in lower_message or 'contact' in lower_message or 'details' in lower_message)):
+            try:
+                from ai_agent import run_ai_agent
+                reply = run_ai_agent(message)
+            except Exception as ai_error:
+                print('AI agent error', ai_error)
+                reply = 'I tried to search for bank managers, but the service is unavailable right now. Please try again later.'
         elif 'account' in lower_message or 'profile' in lower_message or 'personal' in lower_message:
             reply = "You can update your profile details, upload a profile photo, and change your password from the Profile page."
         elif 'register' in lower_message or 'signup' in lower_message or 'create account' in lower_message:

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bank Manager - InCraax AI</title>
+  <link rel="stylesheet" href="../style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .page-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 28px; background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: var(--radius-lg); color: white; margin-bottom: 28px;
+      box-shadow: var(--shadow-md);
+    }
+    .page-header h2 { font-size: 22px; font-weight: 800; display: flex; align-items: center; gap: 12px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .summary-item {
+      padding: 20px 16px; border-radius: var(--radius); color: white; text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .summary-item:nth-child(1) { background: linear-gradient(135deg, #6366F1, #8B5CF6); box-shadow: 0 8px 24px rgba(99,102,241,0.3); }
+    .summary-item:nth-child(2) { background: linear-gradient(135deg, #EC4899, #F43F5E); box-shadow: 0 8px 24px rgba(236,72,153,0.3); }
+    .summary-item:nth-child(3) { background: linear-gradient(135deg, #F59E0B, #EF4444); box-shadow: 0 8px 24px rgba(245,158,11,0.3); }
+    .summary-item:nth-child(4) { background: linear-gradient(135deg, #06B6D4, #10B981); box-shadow: 0 8px 24px rgba(6,182,212,0.3); }
+    .summary-label { font-size: 11px; font-weight: 700; opacity: 0.9; margin-bottom: 6px; letter-spacing: 0.5px; text-transform: uppercase; }
+    .summary-value { font-size: 24px; font-weight: 800; position: relative; z-index: 1; }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 24px; box-shadow: var(--shadow-sm); margin-bottom: 28px;
+    }
+    .card-title {
+      font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 20px;
+      padding-bottom: 14px; border-bottom: 1px solid var(--border-light);
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+
+    .table-wrap { max-height: 520px; overflow-y: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th {
+      padding: 14px 16px; background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white; text-align: left; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.5px; text-transform: uppercase; position: sticky; top: 0;
+    }
+    tbody td { padding: 12px 16px; color: var(--text); background: var(--surface); border-bottom: 1px solid var(--border-light); }
+    tbody tr:nth-child(even) { background: var(--border-light); }
+    tbody tr:hover { background: var(--primary-light); }
+
+    .badge {
+      display: inline-block; padding: 4px 10px; border-radius: 999px;
+      font-size: 12px; font-weight: 600;
+    }
+    .badge-active { background: #D1FAE5; color: #065F46; }
+    .badge-inactive { background: #FEE2E2; color: #991B1B; }
+    .badge-rm { background: #DBEAFE; color: #1E40AF; }
+    .badge-rhs { background: #FEF3C7; color: #92400E; }
+    .badge-rh { background: #F3E8FF; color: #6B21A8; }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .empty-state-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+    .empty-state h3 { font-size: 18px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: 0.3px; }
+    .form-input, .form-select {
+      width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--bg); color: var(--text); font-size: 14px; outline: none;
+      transition: var(--transition); font-family: inherit;
+    }
+    .form-input:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); background: var(--surface); }
+
+    .drop-zone {
+      border: 2px dashed var(--border); border-radius: var(--radius); padding: 32px 20px;
+      text-align: center; transition: var(--transition); cursor: pointer;
+      background: var(--bg);
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: var(--primary-light); }
+    .drop-zone-icon { font-size: 40px; margin-bottom: 12px; }
+    .drop-zone h4 { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .drop-zone p { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
+    .drop-zone input[type="file"] { display: none; }
+
+    .upload-progress {
+      margin-top: 16px; padding: 12px 16px; border-radius: var(--radius); font-size: 14px; display: none;
+    }
+    .upload-progress.active { display: block; background: var(--primary-light); color: var(--primary); }
+    .upload-progress.error { background: #FEE2E2; color: #DC2626; }
+    .upload-progress.success { background: #D1FAE5; color: #065F46; }
+
+    .btn {
+      padding: 10px 18px; border-radius: var(--radius); font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: var(--transition); border: 1px solid var(--border);
+      background: var(--primary); color: white; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn:hover { background: var(--primary-hover); }
+    .btn-secondary { background: var(--surface); color: var(--text-secondary); }
+    .btn-secondary:hover { background: var(--border-light); color: var(--text); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-danger { background: #EF4444; border-color: #EF4444; }
+    .btn-danger:hover { background: #DC2626; }
+
+    @media (max-width: 1024px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: 1fr 1fr; }
+      .table-wrap { overflow-x: auto; }
+    }
+    @media (max-width: 768px) {
+      .page-header { flex-direction: column; gap: 12px; text-align: center; }
+      .summary-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="home-body">
+  <header class="topbar app-topbar">
+    <a class="brand" href="/home">
+      <span class="brand-mark">◆</span>
+      <span class="brand-text">InCraax AI</span>
+    </a>
+    <nav class="nav-menu" aria-label="Main navigation">
+      <a href="/home" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Home
+      </a>
+      <a href="/emi" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><path d="M12 12h.01"/></svg>
+        EMI Calculator
+      </a>
+      <a href="/admin" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        Admin
+      </a>
+      <a href="/bank-managers" class="nav-item active">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Bank Manager
+      </a>
+      <div class="nav-item profile-menu" role="link" tabindex="0" onclick="window.location='/profile'">
+        <span class="profile-menu-label">{{ userName }}</span>
+        <span class="caret">▾</span>
+        <div class="profile-dropdown">
+          <a href="/profile">Profile</a>
+          <a href="/logout">Logout</a>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <div class="page-header">
+      <h2>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Bank Manager
+      </h2>
+      <span style="font-size:14px;opacity:0.8;">Upload manager files and browse bank branches</span>
+    </div>
+
+    <div class="summary-grid" id="summaryGrid">
+      <div class="summary-item">
+        <div class="summary-label">Total Managers</div>
+        <div class="summary-value" id="totalManagers">0</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">Banks</div>
+        <div class="summary-value" id="totalBanks">0</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">Locations</div>
+        <div class="summary-value" id="totalLocations">0</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">Active</div>
+        <div class="summary-value" id="activeManagers">0</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload Manager File
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bank Name</label>
+          <input type="text" class="form-input" id="bankNameInput" placeholder="e.g. ICICI Bank, HDFC Bank" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Select File</label>
+          <div class="drop-zone" id="dropZone">
+            <div class="drop-zone-icon">📄</div>
+            <h4>Drag & Drop Excel/CSV Here</h4>
+            <p>or click to browse from your computer</p>
+            <button type="button" class="btn" id="browseBtn" style="display:inline-flex;width:auto;">Choose File</button>
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+          </div>
+          <div class="upload-progress" id="uploadProgress"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Uploaded Files
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Bank</th>
+                <th>File Name</th>
+                <th>Uploaded</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="filesTableBody">
+              <tr><td colspan="4"><div class="empty-state"><div class="empty-state-icon">📁</div><h3>No files uploaded</h3></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Bank Managers
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Bank</th>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Location</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="managersTableBody">
+            <tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">👤</div><h3>No managers found</h3></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    async function api(path, options) {
+      const res = await fetch('/api' + path, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options
+      });
+      return res.json();
+    }
+
+    async function loadManagers() {
+      const data = await api('/bank-managers');
+      const tbody = document.getElementById('managersTableBody');
+      if (!data.managers.length) {
+        tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">👤</div><h3>No managers found</h3></div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.managers.map(m => `
+        <tr>
+          <td>${escapeHtml(m.bank_name || '-')}</td>
+          <td><strong>${escapeHtml(m.manager_name || '-')}</strong></td>
+          <td><span class="badge badge-${(m.designation || m.branch_name || '').toLowerCase()}">${escapeHtml(m.designation || m.branch_name || '-')}</span></td>
+          <td>${escapeHtml(m.email_id || '-')}</td>
+          <td>${escapeHtml(m.mobile_no || '-')}</td>
+          <td>${escapeHtml(m.location_city || '-')}</td>
+          <td><span class="badge badge-active">Active</span></td>
+        </tr>
+      `).join('');
+
+      const banks = new Set(data.managers.map(m => m.bank_name).filter(Boolean));
+      const locations = new Set(data.managers.map(m => m.location_city).filter(Boolean));
+      const active = data.managers.length;
+      document.getElementById('totalManagers').textContent = data.managers.length;
+      document.getElementById('totalBanks').textContent = banks.size;
+      document.getElementById('totalLocations').textContent = locations.size;
+      document.getElementById('activeManagers').textContent = active;
+    }
+
+    async function loadFiles() {
+      const data = await api('/bank-managers/files');
+      const tbody = document.getElementById('filesTableBody');
+      if (!data.files.length) {
+        tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-icon">📁</div><h3>No files uploaded</h3></div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.files.map(f => `
+        <tr>
+          <td>${escapeHtml(f.bank_name || '-')}</td>
+          <td>${escapeHtml(f.file_name)}</td>
+          <td>${f.uploaded_at ? new Date(f.uploaded_at).toLocaleString() : '-'}</td>
+          <td>
+            <button class="btn btn-sm btn-danger" onclick="deleteFile(${f.id})">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('browseBtn').addEventListener('click', () => {
+      document.getElementById('fileInput').click();
+    });
+
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const bankName = document.getElementById('bankNameInput').value.trim();
+      if (!bankName) {
+        alert('Please enter bank name');
+        return;
+      }
+
+      const progress = document.getElementById('uploadProgress');
+      progress.className = 'upload-progress active';
+      progress.textContent = 'Uploading...';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('bank_name', bankName);
+
+      try {
+        const res = await fetch('/api/bank-managers/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+          progress.className = 'upload-progress success';
+          progress.textContent = 'Upload successful! Importing data...';
+          await loadFiles();
+          await loadManagers();
+          document.getElementById('fileInput').value = '';
+        } else {
+          progress.className = 'upload-progress error';
+          progress.textContent = data.error || 'Upload failed';
+        }
+      } catch (err) {
+        progress.className = 'upload-progress error';
+        progress.textContent = 'Upload failed: ' + err.message;
+      }
+    });
+
+    window.deleteFile = async function(fileId) {
+      if (!confirm('Delete this file and all associated manager records?')) return;
+      const res = await api('/bank-managers/files/' + fileId, { method: 'DELETE' });
+      if (res.success) {
+        await loadFiles();
+        await loadManagers();
+      } else {
+        alert(res.error || 'Delete failed');
+      }
+    };
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] || c));
+    }
+
+    async function init() {
+      await loadManagers();
+      await loadFiles();
+    }
+
+    init();
+  </script>
+</body>
+</html>
