@@ -1,3 +1,10 @@
+/**
+ * Profile photo API route.
+ * POST: upload base64 image to disk and update DB path.
+ * DELETE: remove photo from disk and clear DB path.
+ * Uses: lib/db, lib/auth (verifyToken)
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '../../../../lib/db'
 import { verifyToken } from '../../../../lib/auth'

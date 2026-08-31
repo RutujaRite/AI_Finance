@@ -12,9 +12,10 @@ _ENV_PATH = Path(__file__).resolve().parent / ".env"
 load_dotenv(_ENV_PATH)
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
-if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "your_openrouter_api_key_here":
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "liquid/lfm-2.5-embedding-350m:free")
+
+if not OPENROUTER_API_KEY:
     raise RuntimeError("Set OPENROUTER_API_KEY environment variable")
-OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini")
 
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
@@ -62,7 +63,6 @@ def run_ai_agent(user_message: str, model: Optional[str] = None) -> str:
         messages=messages,
         tools=BANK_MANAGER_TOOLS,
         tool_choice="auto",
-        max_tokens=1024,
     )
 
     message = response.choices[0].message
@@ -91,7 +91,6 @@ def run_ai_agent(user_message: str, model: Optional[str] = None) -> str:
             messages=messages,
             tools=BANK_MANAGER_TOOLS,
             tool_choice="auto",
-            max_tokens=1024,
         )
         message = response.choices[0].message
 

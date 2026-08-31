@@ -1,3 +1,9 @@
+/**
+ * Registration API route.
+ * Creates a new user in PostgreSQL and returns JWT cookie.
+ * Uses: lib/db, lib/auth (signToken), bcryptjs
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '../../../../lib/db'
 import bcrypt from 'bcryptjs'

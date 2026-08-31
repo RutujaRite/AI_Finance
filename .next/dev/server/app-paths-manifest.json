@@ -1,0 +1,6 @@
+{
+  "/api/auth/verify/route": "app/api/auth/verify/route.js",
+  "/api/conversations/route": "app/api/conversations/route.js",
+  "/home/page": "app/home/page.js",
+  "/login/page": "app/login/page.js"
+}
