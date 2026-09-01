@@ -1,27 +1,24 @@
 {
-  "name": "creditwise-ai",
+  "name": "node-login-direct",
   "version": "1.0.0",
-  "description": "AI-powered loan assistant platform — Next.js frontend with PostgreSQL backend",
-  "private": true,
+  "description": "Simple Node.js login page for VS Code",
+  "main": "server.js",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "node server.js",
+    "import:companies": "node scripts/import-company-csv.js"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "dotenv": "^16.4.5",
-    "jsonwebtoken": "^9.0.2",
-    "next": "^16.3.3",
+    "cookie-parser": "^1.4.6",
+    "csv-parse": "^7.0.2",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "express-session": "^1.17.3",
+    "mammoth": "^1.12.1",
+    "multer": "^2.2.0",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^4.0.379",
     "pg": "^8.23.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "tesseract.js": "^7.0.0",
     "xlsx": "^0.18.5"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.62.1",
-    "@types/react": "19.2.18",
-    "typescript": "7.0.2"
   }
 }

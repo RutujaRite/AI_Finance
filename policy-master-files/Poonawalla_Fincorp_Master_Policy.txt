@@ -1,0 +1,327 @@
+================================================================================
+POONAWALLA FINCORP PERSONAL LOAN - POLICY RULEBOOK
+Generated: 2026-08-29
+Source Bank: Poonawalla Fincorp (POONAWALLA)
+================================================================================
+
+PURPOSE:
+This is a concise eligibility and pricing rulebook for Poonawalla Fincorp Personal Loan.
+It is derived from all source documents and PostgreSQL policy records.
+Use this for AI decision-making, eligibility checks, and policy validation.
+
+SECTIONS:
+1. PROGRAM OVERVIEW
+2. ELIGIBILITY CRITERIA
+3. COMPANY/EMPLOYER CATEGORIES
+4. PRICING & ROI GRIDS
+5. LOAN PARAMETERS
+6. FOIR & MULTIPLIER RULES
+7. NTH / SALARY REQUIREMENTS
+8. BT / CCBT / APP LOAN RULES
+9. DOCUMENT REQUIREMENTS
+10. EXCEPTIONS & DEVIATIONS
+11. CONFLICTS/REVIEW ITEMS
+
+================================================================================
+1. PROGRAM OVERVIEW
+================================================================================
+
+Active Policy Versions:
+- V3 (Personal)
+- V2 (Personal)
+- V1 (Personal)
+- V1 (Education)
+
+Key Parameters from Database:
+- Minimum Salary: ₹60
+- Maximum Loan Amount: ₹20
+
+Total Policy Versions: 4
+Total Policy Rules: 4
+Total Source Files Extracted: 5
+
+================================================================================
+2. ELIGIBILITY CRITERIA
+================================================================================
+
+Employment Types:
+- Salaried
+
+Source Document Policy Details:
+
+--- From: OSV Aadifidelis Sandesh.jpeg ---
+x epee ream TE BE] Si aemenes Sora 3
+Er | asl i 2 mada
+rE I; ; | == re As reves gms i : address: kn re TH A ! A
+3 i Jui sm pi u —— inf a. pr ls oii em ! fcoL i's us
+. Amy mn Ay igi ttaenship|| i i | i ST ; NENDAL,
+RE Lea] [1 Brora sem
+. PE emme I FE
+i Sim fais Li a.
+5 - i sora] ™ ; wr Hi 6151 HH v EE
+: | Fe] —
+Ce Py =
+FE § 5H NAME - Aadi Fidelis  solubon PFC
+BB Foe coo: ooo ——
+EE Em Lf LL ry = ———— =
+= Bm ot Furvg =
+wo L190 ETE —
+SY ew ® Boa ar =
+hil cw i . we a -
+L i 9 og Ba i wh [+ - i)
+
+--- From: OSV Shourya.jpeg ---
+2) d oi 1 p— 2 p— aa
+Govermmentiorindiammms =~ — | SOE NF.
+fi > URGUEICERTCAtonAUORty ofindia awe
+| g Semol Bsuc sess HE
+Bijay Kumar Sahoo 1], 308 / Zaca00d> BRS: aR, #14 Petr ale” Ve dhe:
+Bv03/DOB: 3 'B Bea 4 RE Arak Aid gos tox
+H be reper is Eee Be RR Eu, § ae dy SEA
+E I Sra ad SEN
+i sy ee SEN aay
+H . E MEE
+H shovsya Fine {| Adress: Ten bias
+Pug Fa Dorp + E Tower 3rd Floor Ro: No 6. Devasandra TICS Ae
+£mHDIS 29 'E Hai Road, Opposts to © 81, K R Puram, gos
+: SE '5665 , AAA BR
+Em ————— k y
+>, B07, > THAD b ETERS L7G
+x a 1947 | EX helpou a
+dal.gov.in | &D www.uidai.gov.in
+
+--- From: Policy 03-08-24.txt ---
+POONAWALLA FINCORP NEW POLICY
+ 
+
+1). 8 BT -- 6 CREDIT CARD MAX
+2). APP LOAN BT We Can Do
+3). OD BT We Can Do With FC Letter
+
+6) Super CAT A ,CAT A, GOVT - Max Capping 50 Lakh (Tenure up to 7 Years)
+ Cat B - 30 Lakh Max Funding  (Tenure Up to 6 Years)
+ CAT C maximum funding 20 Lakhs.
+ CAT D maximum funding 10 Lakhs (750 CIBIL & OWN House Required)
+
+7). CC Pure BT-- 30 Lakh Max Loan Amount
+
+8). FOIR Calculation
+1.5 Lakh Salary --80% FOIR
+57000-1.49 Salary --- 75% FOIR
+50000 Above Salary -- 70% FOIR
+30000---50k -- 60% FOIR
+
+9). CIBIL Enquiries-- Max 6 in 1 month
+Max 9 Enquiries Basis On Profile And Deviation
+
+10). Club Income Allowed (Applicant And Co Applicant)
+
+11). Incentive calculation we can consider
+
+Address Proof - Rent Agreement All (Notary & Register), Gas Bill, Post-paid bill, 
+Wi-Fi bill, Bank Statement, HR Letter, Aadhar, Passport, DL, Voter ID.
+
+--- From: Poonawalla Personal Loans one pager 28-03-25.pdf ---
+---
+--
+r.
+  to  be  considered for assessment purpose (excludin
+  Bank
+Latest months' Salary credit in the
+NORMS
+PARTICULARS
+quarterly/half yearly/yearly variable).
+  salary
+  one
+  and   at least
+  be   taken on record
+of increment, the letter of increment to
+o   In case
+PFl Branches.
+•   80 kms from
+  latest salary to be considered for calculation
+  case
+is credited in Bank Account. In such
+  I   Municipality/ Nager Perished)
+ be   calculated from Munk:ipal offices (Corporation
+  limit to
+ Geo
+ Geo limit
+purpose.
+Income
+  of  
+Assessment
+pa
+as  
+application.
+loan
+21 years at the time of
+Minimum -
+•   Rental Income, Quarterty Bonus/ Incentives credited in bank should be considered
+ n  
+with   proof)
+Age
+loan Maturity (Retirement
+  time   of
+  at   the   25%   of salary
+  60   years   capping of
+  Maximum -   mex
+• of income with
+ to
+Subject
+Norms
+Age
+ tax  deduction
+0  
+Annual Bonus should be considered for monthly income calculation post
+Cat   A
+  A   &  
+Govt.   Super
+  Yr for
+ a. Minimum Experience of 1
+  Yrs for rest employer category
+  2
+Experience of
+b. Mini nun
+applican
+for
+  the same criteria mentioned in policy
+  meets
+  be   considered if
+ income can
+ Spouse
+  of
+Clubbing
+  months
+Mlnlmum-12
+•  
+c~:
+FOi
+  salary. Combined
+  with higher
+category   appUcablewould be as per applicant
+ 
+The   Employer
+AppUcant Salary
+-84 months
+ HllxtmLNn
+ •
+as per  combined income bend.
+to  be
+ 0
+ Spouse
+(Either
+ be  72. months
+will
+For   alt other company category max loan tenure
+Loa
+[...truncated...]
+
+--- From: Rate & PF Chart 02-12-24.jpeg ---
+New Rate Grid. Super CAT A/CAT A/GOVT Ratna ac CATD J
+TU score > 700 | >=730 | >=780 J] 5-700 | 5-730 | 5-750 | >=780 [| 5-700 | 5-730 | >=750 | >=780 [| >=700 | 5-730 | >=750 | >=780 lf >=700 | 5-730 | >=750 | >-780}
+NTH up to 50K 14.50% 14.25% 13.00% J§15.00% 14.75% 14.25% 13.50% | 15.25% 15.00% 14.75% 14.49% Jf 16.49% 15.49% 15.00% 14.75% [1 19.00% 17.99% 17.75% 17.50%
+i Bere er ere Ere re
+NTH375K 13.75% 13.50% 12.50% J 14.25% 14.00% | 13.75% 13.00% J] 14.50% 14.25% 13.75% 13.25% [J 15.00% 14.49% 14.25% 13.99% J] 16.99% 16.49% 16.25% 16.00%
+Tw mas Be be hehe ee Eee on re ee
+NTH >100K 8 LA >= 35 Lakh 12.75% 1250% 11.99%] NA | NA | NA | NA i NA | NA | NA 1275%] NA | NA | NA | NA NA | NA | NA | NA
+— pei (i) = TEE
+sisi ors iki
+rear 0 | bday FOR FOIR >75% 0.50% | 0.50% 12.95% |
+Eerie rao eo
+for GC/ App loan BTupto2 Loos 0.50% 12.00%
+Note: 2 Minimum pis 1999/- for loan amount <2 Lakh for CC/App Loan BT from 3 card to 4 card 2.00% 1.00% 15.00%
+lor Copp oon BT sd card Sale eo
+================================================================================
+3. COMPANY/EMPLOYER CATEGORIES
+================================================================================
+
+================================================================================
+4. PRICING & ROI GRIDS
+================================================================================
+
+ROI Values from Database:
+- Rule 615: ROI Range: N/A% - N/A% (Version: V1)
+- Rule 616: ROI Range: N/A% - N/A% (Version: V1)
+- Rule 617: ROI Range: N/A% - N/A% (Version: V2)
+- Rule 618: ROI Range: N/A% - N/A% (Version: V3)
+[REVIEW] Multiple ROI values exist across versions/rules
+
+================================================================================
+5. LOAN PARAMETERS
+================================================================================
+
+Loan Amount Parameters:
+- Rule 616: Min: N/A, Max: ₹20
+- Rule 618: Min: N/A, Max: ₹2
+
+================================================================================
+6. FOIR & MULTIPLIER RULES
+================================================================================
+
+================================================================================
+7. NTH / SALARY REQUIREMENTS
+================================================================================
+
+Salary Requirements from Database:
+- Rule 615: Min: ₹60, Max: N/A
+- Rule 618: Min: ₹3.75 Lakh, Max: N/A
+[REVIEW] Multiple salary values exist across versions/rules
+
+================================================================================
+8. BT / CCBT / APP LOAN RULES
+================================================================================
+
+Refer to source documents for detailed BT/CCBT/App Loan rules.
+Total policy rules in database: 4
+
+================================================================================
+9. DOCUMENT REQUIREMENTS
+================================================================================
+
+Document requirements found in source files:
+
+--- From: Policy 03-08-24.txt ---
+ CAT D maximum funding 10 Lakhs (750 CIBIL & OWN House Required)
+Address Proof - Rent Agreement All (Notary & Register), Gas Bill, Post-paid bill, 
+Wi-Fi bill, Bank Statement, HR Letter, Aadhar, Passport, DL, Voter ID.
+
+--- From: Poonawalla Personal Loans one pager 28-03-25.pdf ---
+with   proof)
+For   alt other company category max loan tenure
+Cat A. Govt Ratna and Group Company max
+Company
+Company
+  is required for loan application
+companies in Tier
+•   Updated Bank Statement
+•   Permanent Address Proof to be documented.
+
+================================================================================
+10. EXCEPTIONS & DEVIATIONS
+================================================================================
+
+Refer to source documents for detailed exceptions and deviations.
+
+Conflicts detected requiring review:
+- min_salary: values found = 60, 375000 [REVIEW]
+- max_loan_amount: values found = 20, 2 [REVIEW]
+
+================================================================================
+11. CONFLICTS/REVIEW ITEMS
+================================================================================
+
+The following fields have conflicting values across different policy versions:
+
+Field: min_salary
+Values: 60, 375000
+Status: [REVIEW] - Multiple values found, verify against latest policy document
+
+Field: max_loan_amount
+Values: 20, 2
+Status: [REVIEW] - Multiple values found, verify against latest policy document
+
+
+================================================================================
+END OF POLICY RULEBOOK
+================================================================================

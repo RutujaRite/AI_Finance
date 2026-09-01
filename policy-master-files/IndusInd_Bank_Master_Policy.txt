@@ -1,0 +1,354 @@
+================================================================================
+INDUSIND BANK PERSONAL LOAN - POLICY RULEBOOK
+Generated: 2026-08-29
+Source Bank: IndusInd Bank (INDUSIND)
+================================================================================
+
+PURPOSE:
+This is a concise eligibility and pricing rulebook for IndusInd Bank Personal Loan.
+It is derived from all source documents and PostgreSQL policy records.
+Use this for AI decision-making, eligibility checks, and policy validation.
+
+SECTIONS:
+1. PROGRAM OVERVIEW
+2. ELIGIBILITY CRITERIA
+3. COMPANY/EMPLOYER CATEGORIES
+4. PRICING & ROI GRIDS
+5. LOAN PARAMETERS
+6. FOIR & MULTIPLIER RULES
+7. NTH / SALARY REQUIREMENTS
+8. BT / CCBT / APP LOAN RULES
+9. DOCUMENT REQUIREMENTS
+10. EXCEPTIONS & DEVIATIONS
+11. CONFLICTS/REVIEW ITEMS
+
+================================================================================
+1. PROGRAM OVERVIEW
+================================================================================
+
+Active Policy Versions:
+- V2 (Home)
+- V4 (Personal)
+- V3 (Personal)
+- V2 (Personal)
+- V1 (Home)
+- V1 (Personal)
+
+Key Parameters from Database:
+- Minimum Salary: ₹25,000
+- Maximum Loan Amount: ₹45
+- FOIR Limit: 75%
+
+Total Policy Versions: 6
+Total Policy Rules: 6
+Total Source Files Extracted: 11
+
+================================================================================
+2. ELIGIBILITY CRITERIA
+================================================================================
+
+Employment Types:
+- Self-Employed
+
+Source Document Policy Details:
+
+--- From: IMG-2673.jpg ---
+of 7, Ee A
+f 4; } fay 45;
+{ J 3
+: ¥ Wr or 0 ret RA ir
++ : 7
+F r
+. 4 pe /
+[2 2
+£ 7 i s
+# ] m Si
+¥ Ws ITE atl
+sill # RTE {
+J Biter Ll adie) i ii
+VIERA EE gp ars £53
+; 2 2 piles {pte ry dS BAR
+ad g » i PST,
+oad 4 ty ; His i a d:2
+J 14.2 qt yan FE 4
+¥ i Er: Brim ii Fv)
+a 3 red / iw 3 ih ig
+> f ih I od ee £id ?
+i ; ¥ ih . I ys io y
+i 4 J *
+5 7 i 7
+# } ou HL 150 2 1
+F. 7 r Fs 5 Ld 2 §
+4 ” - ; ’ | 5 :
+b al ry J 4 5 ¥ " 5 » 2 7
+’ 4 x i ¥ gor ot) prt ” - iL 3
+or i i # } ‘ ¢
+A ix 3 y 7 % f $514 ¥ n
+; Et p. # 1 ; ¢ Fics rt e F
+J Big a 7 Sse #
+1 p fy ’ id J 5 :
+s iy / HEE ; ¥ 4 igus 2
+: / 7 7 i" ¥ 7 1
+| f bog) $00 T i, Is a BE Re EE ge Fi od
+{ iy ie et SETA et PA Lt 9he 4 Z ¥ : 5 2 ; ;
+J / 5 J % A 1/4 J4 A 4 Z 5 iF cs 2 1 3 i r 7 » ¢ BR - -
+d yi 3 { %1 71 Fs 4 IT Gr Ea ah a uw : 7
+SE | (Lid / i, # 2 I iar be Ah pret e sd fs : AT
+/ : f iF p 2 4 a an 7s, A jo a “27 wy sa
+” / i / / id sia 3 na bly pi - 4 4 434 F, ¢
+= x J 9 4 b 5 4 /
+2 YUBlky] f file : f iit i 4 ;
+: {
+4 fy
+7a if / 2
+FU
+Ea £7 i
+Aimed
+sre Hh ; ;
+Fie
+SRR
+Lig / J /
+2 VL 8 f i ; ;
+aE / y
+bi Lie er ay
+a
+SOT TE ap a fa £
+Lites Fe
+br Re /
+ban Ea EOE IE # 4
+at Lc
+¥ re gy 4
+Fi ern
+Fale Che PEI 2 :
+ST Bd sy £7 :
+CELT A il
+¢ Ey = A fic ip
+AEP | PSPs Ey fh
+AT ve or oi fd
+: 405 Fe of Lil SRY FINS J
+Rl
+CE TE
+in Best. il fas
+oT oF a
+Peg SO
+sEIE BARE wr PE
+MS Yea
+aR &, Flea
+eet
+
+--- From: IMG-2674.jpg ---
+Ro = 0.5 2 # 7
+ERATED ——
+C ENT Hep, i Ty
+1] A e
+. Hare re AA CAT
+$d r 5 3 29. f b £ “© 3 py dr
+g ; : ; 5 ‘ ~ JE ai 1% fig 2%,
+* rd Wd vs Ek
+fp hes = gIBsY zy fosmid : rial) 7
+ey Hr a Ae FE
+4 i ; HL TT ; Fe]
+: / | ¥ °f AL 5 7 7 z 4 gf
+; eds oy pl a
+BB re EEA BA) #5
+2 4» pT Eres ETI :- 55 7 por 5 )
+{ ¢ (8 St A, 7 1 aL
+Z 4 sip fH 7 AH a 7 2
+7 4 jz A Freer ers x p 2 i
+Ga i hs pA a
+7 id £ 8 pr il a A ot 4 Jie
+3 #0] g : LR Cry Ed ’ £
+2 4 2h rE Fi
+i 4 41 BY 5 SZ 7 Fi
+4 J i iy its a / 48 PE ER y AE
+5 ¥ Wor pr / ity a. oo i LE
+¢ ; 7 Fate 4 or gor So) i ee >
+y y 4 i % 7 wh Gd Po andi fo Eo BIN EVEL yo ait {25
+2 DHE ir AT ae
+; ; BEE La a Ji RR en & Ties
+1 : Sr AT >” SG Zig A i
+; 7 { Voie Ss ih 7? Gelli did eet 1s 77, EAT Sy
+/ 1 AC eR Per rr Ae EF ee J
+i) Wp eR HE He Te Sf : i
+; ' 3 {24 be, Jer 2x1 rk Lari A VA Pe l 4rd :
+py : HE a : ia Ee eT a es a
+: : 75 bhi Ai 2 SAAN 7 irtid ep # eal
+4 LT #7 ALSLIE i AE HTS. Ag fe Fiietainy 775% Ek 37 rt ois 7 A mT
+1% TA A Cr eA SG Ash sc 7
+; VY) AA TIAL 6 Vd ET SER fae Fo
+7 / / #3 ¢iies ; (il ies ele Tl Ct Rare at, BEN es
+EAL wn i ar i AE TE) Rr Ci Tk ok get FA
+% / 4 ; EL EE Gr GS FTG Fh
+7 Ar i PE a IA a dA 2 rat
+; 17 IO ile Ena ho A A A TE 4 Yi
+/ ool (ls fp foe A Ed ies 5h i A a LL WS re i er SR 5
+579% g f / rel Sheet Ha EA TE FL ad. Lye Ais ER Fe
+GAGE A pd, SAHA Tr ATE Gr, pr dig
+oii F of 7 £48 WEG dry 5175 77: >A ap Tt tT Fo APT ERO TEE ad A 3
+i Vi NAT] rr Es An IE ig Ean iy SL ss cE 28 se 57K ie esis
+Ede ’ ; Car gE A HL y
+! 7 f ies a Ss EE a eI I
+[...truncated...]
+
+--- From: IMG-2675.jpg ---
+rer
+&
+Ah / D i a A YATE)
+A, YOUR DECLARATION ita pd 5: yh val Rat al oh he
+. loan is being taken for the purpose as stated in the
+(1) No cash / bearer cheque has been collected from you upfront towards processing the loan application. (2) I/We herebyconfirm and duly undertake that the loani ities! illegal activities. (3) am/We are bits
+application form. I/We also confirm that the loan is not being used for investment in stocks and shares, speculative activities or any purposes linked to capital market acy {led at the time of applying for S 2
+beneficial owner/owners of all assets that run through my/our account. (4) I/We will update the Bank in case of any change in my / related party / Beneficial Owner detail prov any unless specifically declared =
+; Personal Loan, which includes address change, change in industry, change in employment etc. (5) I/We confirm that we have not taken any loan from any other BC ir) of Indusind Bank. I/We —
+by me/us. (6) | / We certify that!/We are citizens of India. (7) I/We confirm that I/We are not a director of Indusind Bank or specified near relation (as specified by RBI) of any of the banks or specified near relation Em
+confirm that I/We are not specified near relation (as specified by RBI) of any of the Senior Officer of Indusind Bank. I/We confirm that I/We are not a Director/Senior Officer of other 2 hah Tote meus =
+(as specified by RBI) of any of the directors of other banks. (8) I/We certify that all information furnished by me/us is tru
+[...truncated...]
+
+--- From: IMG-2676.jpg ---
+15 'e de 7
+a 3 se i ] .
+sis 2 Ne | As i b = i & backspace \ock
+esc | L : p | . & * (€ ) o) i —
+ol (s) Cs
+H $ 70 — | 8 9 prem
+2 |
+y hor
+2A ps
+! s A i : -
+tab =i a rach Ag : Other Bank Credit Card imprint, required only in case of Credit Card based surrogate sourcing enter
+; . Latest 3/6/___months Bank Statement (Where salary income is credited) :
+. Latest 2/3/__ salary slips/Salary Certificate/Form 16 (if applicable) ¥  ——
+. Proof of Identity (Specify) 5 | — i
+. Proof of Residence (Specify) :
+. Proof of Qualification (Specify) {
+caps lock L 3 ‘
+c . Loan Account Statement for Balance Transfer/Balance Transfer & Top up/ . A shift
+Repayment/Retention cases .
+¢ . Latest- [TR/Balance Sheet and P&L :
+R: ere
+. Personal Loan Agreement 2 i Pease
+. Signature Verification }
+shift T . ECS/Auto Debit Mandate :
+7 . Cheques : ——— »
+“Indusind Bank Ltd may request for additional documents other than those requested above :
+in connection with the application : p=
+ctrl fn :
+EX
+1 / We Confirm that, :
+a) | know that | will continue to receive the account statement and other important advice, information relating to transactions on the account irrespective gf DNC status, Only phone / mobile no.(s) / email id
+provided will be excluded fromthe marketing lists (if DNC has been requested for). lt may take upto 45 days from the day one submits a request to action a DNC request.
+b) Ihave not made any payment in cash, bearer cheque or kind to any executive / representative of Indusind Bank Ltd in connecti
+[...truncated...]
+
+--- From: NO MAIL ID.pdf ---
+Nayaj Shaikh
+ From:   Hemantkumar Patil <Hemantkumar.Patil@indusind.com>
+ Sent:   Monday, May 09, 2022 6:10 PM
+ To:   Nayaj Shaikh
+ Cc:   Nehil Sharma; Prashant Kumar Devendra; Deepak Singh; Sharad Mahure; Yogesh Sakhare; Nilesh Wankhede
+ Subject:   Re: BLANKET LOGIN APPROVAL FOR NO OFFICE LANDLINE AND NO OFFICE EMAIL ID.
+ Ok
+ Regards,
+ Hemantkumar-RSM-PL-RoMG
+ On 6 May 2022 at 4:45:06 PM IST, Nayaj Shaikh <Nayaj.Shaikh@indusind.com> wrote:
+ Dear Sir,
+ Request your login approval for no landline at office and no official email id.
+ Thanks & Regards ,
+ NAYAJ SHAIKH
+ IndusInd Bank Ltd,
+ 3rd Floor, Suyog Platinum,
+1
+================================================================================
+3. COMPANY/EMPLOYER CATEGORIES
+================================================================================
+
+================================================================================
+4. PRICING & ROI GRIDS
+================================================================================
+
+ROI Values from Database:
+- Rule 596: ROI Range: N/A% - N/A% (Version: V1)
+- Rule 597: ROI Range: N/A% - N/A% (Version: V1)
+- Rule 598: ROI Range: N/A% - N/A% (Version: V2)
+- Rule 601: ROI Range: N/A% - N/A% (Version: V2)
+- Rule 599: ROI Range: N/A% - N/A% (Version: V3)
+- Rule 600: ROI Range: N/A% - N/A% (Version: V4)
+[REVIEW] Multiple ROI values exist across versions/rules
+
+================================================================================
+5. LOAN PARAMETERS
+================================================================================
+
+Loan Amount Parameters:
+- Rule 596: Min: N/A, Max: ₹45
+
+================================================================================
+6. FOIR & MULTIPLIER RULES
+================================================================================
+
+FOIR Limits:
+- Rule 601: 75%
+
+================================================================================
+7. NTH / SALARY REQUIREMENTS
+================================================================================
+
+Salary Requirements from Database:
+- Rule 598: Min: ₹25,000, Max: N/A
+
+================================================================================
+8. BT / CCBT / APP LOAN RULES
+================================================================================
+
+Refer to source documents for detailed BT/CCBT/App Loan rules.
+Total policy rules in database: 6
+
+================================================================================
+9. DOCUMENT REQUIREMENTS
+================================================================================
+
+Document requirements found in source files:
+
+--- From: IMG-2675.jpg ---
+information furnished by me/us in application form(s)/related documents executed in relation to the facilities availed from the Bank, our finance details and repayment information to the fee AnaIystss or for
+privilege of privacy & privity of contract. (9) I/We also authorise the Bank to carry out multiple bureau checks wherever required. (10) | / We confirm having received, read & understood pe hi I/We will be
+Consents: The information including Landline number, Mobile number and E-mail ID as mentioned above (a part from being used for mandatory account verification and maintenance purpose) may also be used
+the applicant and that he/she has filled the application form as enclosed and provided the necessary documents. | declare that | have verified the photocopies, if any, against the original
+: documents. | hereby confirm that the prescribed KYC process has been adhered to and recommend this applicant for credit assessment for the issuance of Personal Loan.
+Application Typ 3 2 New Update KYC No.: an Ui CE | (Mandatory for KYC update request)
+
+--- From: IMG-2676.jpg ---
+tab =i a rach Ag : Other Bank Credit Card imprint, required only in case of Credit Card based surrogate sourcing enter
+; . Latest 3/6/___months Bank Statement (Where salary income is credited) :
+. Latest 2/3/__ salary slips/Salary Certificate/Form 16 (if applicable) ¥  ——
+. Proof of Identity (Specify) 5 | — i
+. Proof of Residence (Specify) :
+. Proof of Qualification (Specify) {
+“Indusind Bank Ltd may request for additional documents other than those requested above :
+d) Discount/ free gift orany other commitment whatsoever which is not documented in the loan agreement by Indusind Bank or any of its authorized representative(S) shall not be entertained
+) Visit www p-comIn/ ota h) Indusind Bank Limited may request for additional documents other than those collected with the application.
+call 1800 200 oo47cr 303063 ] I) Indusind Bank limited reserves the right to retain the photograph and documents submitted along with the application form and shall not return the same to the applicant and may have the same shredded
+t | j) Indusind Bank Limited shall not be liable for loss or delay in the receipt of documents.
+To Extend War al : k) Application processing and loan disbursement will take approximately 10 working days from the time of completion and submission of all relevant loan document as per Bank's criteria.
+Agreement | documents : 7250 (j) Penal Charge : 3150, Per EMI delay beyond 5 days (k) Legal Charges: As per Actuals (1) Stamp Duty: As per State laws (m) CIBIL Report: 50
+
+--- From: Policy 16-07-22.txt ---
+Documents for Address proof:
+Aadhar card 
+
+================================================================================
+10. EXCEPTIONS & DEVIATIONS
+================================================================================
+
+Refer to source documents for detailed exceptions and deviations.
+
+================================================================================
+11. CONFLICTS/REVIEW ITEMS
+================================================================================
+
+No significant conflicts detected in database rules.
+
+================================================================================
+END OF POLICY RULEBOOK
+================================================================================

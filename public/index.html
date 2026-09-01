@@ -3,39 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - AI Assistant</title>
+  <title>Login Page</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="login-page">
+<body>
   <div class="login-card">
-    <div class="login-logo">◆</div>
-    
-    <div class="login-header">
-      <h1>Welcome back</h1>
-      <p>Sign in to access your account and continue your journey</p>
-    </div>
+    <h1>Welcome</h1>
+    <p class="subtitle">Please login to continue</p>
 
     <form action="/login" method="POST">
-      <div class="form-group">
-        <label for="email">Email address</label>
-        <input type="email" id="email" name="email" class="form-input" placeholder="you@example.com" required autofocus>
-      </div>
+      <label>Email</label>
+      <input type="email" name="email" placeholder="Enter email" required>
 
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required>
-      </div>
+      <label>Password</label>
+      <input type="password" name="password" placeholder="Enter password" required>
 
-      <button type="submit" class="btn btn-primary">Sign In</button>
+      <button type="submit">Login</button>
     </form>
 
-    <div class="login-demo">
-      <strong>Demo:</strong> admin@gmail.com / 1234
-    </div>
-
-    <div class="login-footer">
-      Don't have an account? <a href="/register">Create one</a>
-    </div>
+    <p class="signup-text">
+      Don't have an account?
+      <a href="/register" class="signup-link">Sign Up</a>
+    </p>
   </div>
 </body>
 </html>

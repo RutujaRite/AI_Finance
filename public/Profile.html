@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Account</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/home-chat.css">
+  <style>
+    :root {
+      --profile-bg: #F4F8F8;
+      --profile-surface: #FFFFFF;
+      --profile-border: #DCE8E8;
+      --profile-text: #183B3B;
+      --profile-text-secondary: #2a4a4a;
+      --profile-text-muted: #3f5c5c;
+      --profile-primary: #0F4C5C;
+      --profile-primary-hover: #0d3f4d;
+      --profile-primary-light: #e6f2f0;
+      --profile-success: #1F8A70;
+      --profile-success-light: #e6f5ef;
+      --profile-warning: #D97706;
+      --profile-warning-light: #fff7ed;
+      --profile-danger: #DC2626;
+      --profile-danger-light: #fef2f2;
+      --profile-radius: 12px;
+      --profile-radius-sm: 8px;
+      --profile-shadow: 0 1px 2px rgba(15,76,92,.03), 0 4px 16px rgba(15,76,92,.05);
+      --profile-shadow-lg: 0 8px 24px rgba(15,76,92,.07);
+      --gradient-primary: #0F4C5C;
+      --gradient-primary-hover: #0d3f4d;
+    }
+
+    body.profile-body {
+      margin: 0;
+      background: var(--profile-bg);
+      color: var(--profile-text);
+      font-family: var(--font-sans);
+    }
+
+    .home-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px;
+      background: #ffffff;
+      border-right: 1px solid var(--profile-border);
+      padding: 20px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 50;
+      overflow-y: auto;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 4px 14px;
+    }
+
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--gradient-primary);
+      box-shadow: var(--shadow-md);
+    }
+
+    .brand-text {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--profile-text);
+      letter-spacing: -0.02em;
+    }
+
+    .new-chat-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      background: var(--gradient-primary);
+      color: #fff;
+      font-weight: 700;
+      padding: 12px 18px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow-md);
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 150ms ease;
+    }
+
+    .new-chat-btn:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+
+    .search-box {
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    .search-box input {
+      width: 100%;
+      border: 1px solid var(--profile-border);
+      border-radius: 12px;
+      background: var(--profile-surface);
+      padding: 10px 14px 10px 38px;
+      font-size: 14px;
+      color: var(--profile-text);
+      outline: none;
+      transition: all 150ms ease;
+    }
+
+    .search-box input:focus {
+      border-color: var(--profile-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .search-box input::placeholder {
+      color: var(--profile-text-muted);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      color: var(--profile-text-muted);
+      pointer-events: none;
+    }
+
+    .recent-title {
+      font-size: 12px;
+      color: var(--profile-text-muted);
+      margin: 8px 4px 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--profile-surface);
+      border: 1px solid transparent;
+      color: var(--profile-text-secondary);
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+
+    .history-item:hover {
+      background: var(--profile-primary-light);
+      border-color: #dbeafe;
+    }
+
+    .history-item.active {
+      background: var(--profile-primary-light);
+      border-color: #bfdbfe;
+      color: var(--profile-primary);
+      font-weight: 600;
+    }
+
+    .history-item .dot {
+      width: 14px;
+      height: 14px;
+      border: 1.5px solid var(--profile-border);
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: var(--profile-text-muted);
+      flex-shrink: 0;
+    }
+
+    .history-item .time {
+      margin-left: auto;
+      color: var(--profile-text-muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-top: 12px;
+      border-top: 1px solid var(--profile-border);
+    }
+
+    .sidebar-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      color: var(--profile-text-secondary);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 150ms ease;
+    }
+
+    .sidebar-link:hover {
+      background: var(--profile-border);
+      text-decoration: none;
+      color: var(--profile-text);
+    }
+
+    .sidebar-link.logout-link {
+      color: var(--profile-danger);
+    }
+
+    .sidebar-link.logout-link:hover {
+      background: var(--profile-danger-light);
+    }
+
+    /* Main pane */
+    .main-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 100vh;
+      padding: 16px 32px 24px;
+      margin-left: 260px;
+    }
+
+    .top-nav {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 6px 14px;
+      min-height: 48px;
+    }
+
+    .top-nav a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--profile-text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 10px;
+      transition: all 150ms ease;
+    }
+
+    .top-nav a:hover {
+      background: #e2e8f0;
+      text-decoration: none;
+      color: var(--profile-text);
+    }
+
+    .top-nav a.active {
+      color: var(--profile-primary);
+      background: var(--profile-primary-light);
+    }
+
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    /* Profile page */
+    .profile-page {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .profile-container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .page-header {
+      margin-bottom: 2px;
+      text-align: center;
+    }
+
+    .page-header h1 {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--profile-text);
+      margin: 0 0 4px;
+      letter-spacing: -0.02em;
+    }
+
+    .page-header p {
+      margin: 0;
+      color: var(--profile-text-muted);
+      font-size: 14px;
+    }
+
+    .security-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: var(--profile-primary-light);
+      color: var(--profile-primary);
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 10px;
+      border: 1px solid #dbeafe;
+    }
+
+    .security-badge .icon {
+      font-size: 14px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--profile-surface);
+      border: 1px solid var(--profile-border);
+      border-radius: var(--profile-radius);
+      box-shadow: var(--profile-shadow);
+      overflow: hidden;
+    }
+
+    .profile-main-card {
+      background: var(--profile-surface);
+      border: 1px solid var(--profile-border);
+      border-radius: var(--profile-radius);
+      box-shadow: var(--profile-shadow);
+      overflow: hidden;
+    }
+
+    .profile-main-card .profile-header-card {
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .profile-main-card .section-card {
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      border-top: 1px solid var(--profile-border);
+    }
+
+    .profile-main-card .section-title {
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--profile-border);
+      border-radius: 0;
+    }
+
+    .profile-main-card .section-body {
+      padding: 20px 24px;
+    }
+
+    .profile-main-card .profile-hint {
+      margin: 0;
+      border-radius: 0;
+      border-top: 1px solid var(--profile-border);
+      border-left: none;
+      border-right: none;
+      border-bottom: none;
+    }
+
+    .avatar-section {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex: 1 1 280px;
+      min-width: 0;
+    }
+
+    .avatar-circle {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 80px;
+      height: 80px;
+      flex: 0 0 80px;
+      overflow: hidden;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--gradient-primary);
+      font-size: 30px;
+      font-weight: 700;
+      box-shadow: var(--profile-shadow);
+    }
+
+    .profile-photo {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .avatar-initials {
+      display: grid;
+      width: 100%;
+      height: 100%;
+      place-items: center;
+    }
+
+    .avatar-camera {
+      position: absolute;
+      right: -4px;
+      bottom: 4px;
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      background: var(--profile-primary);
+      font-size: 14px;
+      cursor: pointer;
+      z-index: 1;
+      transition: all 150ms ease;
+    }
+
+    .avatar-camera:hover {
+      background: var(--profile-primary-hover);
+    }
+
+    .avatar-camera input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .avatar-remove {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      display: grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--profile-text);
+      font-size: 13px;
+      line-height: 1;
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    .name-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .name {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--profile-text);
+    }
+
+    .role-bubble {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      width: fit-content;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--profile-primary-light);
+      color: var(--profile-primary);
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid #dbeafe;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      color: var(--profile-success);
+      font-weight: 600;
+    }
+
+    .status::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--profile-success);
+      box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.15);
+    }
+
+    .info-blocks {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border: 1px solid var(--profile-border);
+      border-radius: 10px;
+      overflow: hidden;
+      flex: 1 1 440px;
+      min-width: 0;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      padding: 10px 8px;
+      text-align: center;
+      position: relative;
+    }
+
+    .info-item + .info-item::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 15%;
+      height: 70%;
+      width: 1px;
+      background: var(--profile-border);
+    }
+
+    .info-icon {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      margin-bottom: 5px;
+      border-radius: 50%;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .email-icon {
+      color: var(--profile-primary);
+      background: var(--profile-primary-light);
+    }
+
+    .phone-icon {
+      color: #059669;
+      background: #ecfdf5;
+    }
+
+    .role-icon {
+      color: #7c3aed;
+      background: #f5f3ff;
+    }
+
+    .login-icon {
+      color: #d97706;
+      background: var(--profile-warning-light);
+    }
+
+    .info-item .label {
+      color: var(--profile-text-muted);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .info-item .value {
+      max-width: 100%;
+      margin-top: 3px;
+      overflow: hidden;
+      color: var(--profile-text);
+      font-size: 12px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Section card */
+    .section-card {
+      border: 1px solid var(--profile-border);
+      border-radius: var(--profile-radius);
+      background: var(--profile-surface);
+      box-shadow: var(--profile-shadow);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--profile-border);
+    }
+
+    .section-icon {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      color: #fff;
+      background: var(--gradient-primary);
+      font-size: 13px;
+    }
+
+    .section-title h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--profile-text);
+    }
+
+    .section-body {
+      padding: 20px;
+    }
+
+    .profile-fields {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px 16px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field label,
+    .small-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--profile-text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .field input,
+    .field select {
+      height: 38px;
+      padding: 7px 11px;
+      border: 1px solid var(--profile-border);
+      border-radius: var(--profile-radius-sm);
+      background: var(--profile-surface);
+      font-size: 13px;
+      color: var(--profile-text);
+      transition: all 150ms ease;
+      width: 100%;
+    }
+
+    .input-wrapper input {
+      padding-right: 32px;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--profile-primary);
+      box-shadow: 0 0 0 3px rgba(15,76,92,.08);
+      outline: none;
+      background: #fff;
+    }
+
+    .field input::placeholder {
+      color: var(--profile-text-muted);
+    }
+
+    .field input:-webkit-autofill,
+    .field input:-webkit-autofill:hover,
+    .field input:-webkit-autofill:focus {
+      -webkit-text-fill-color: #183B3B;
+      -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+      border-color: var(--profile-border) !important;
+      transition: background-color 5000s ease-in-out 0s;
+    }
+
+    .save-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 150ms ease;
+      text-decoration: none;
+      min-height: 38px;
+    }
+
+    .btn-primary {
+      color: #fff;
+      background: var(--gradient-primary);
+      box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 3px 10px rgba(15,76,92,.2);
+    }
+
+    .btn-primary:hover {
+      background: var(--profile-primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(15,76,92,.25);
+    }
+
+    .btn-secondary {
+      background: #fff;
+      color: var(--profile-text);
+      border: 1px solid var(--profile-border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--profile-bg);
+    }
+
+    .password-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px 18px;
+      align-items: end;
+    }
+
+    .password-toggle {
+      position: relative;
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    .input-wrapper .toggle-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      color: var(--profile-text-muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+    }
+
+    .input-wrapper .toggle-btn:hover {
+      color: var(--profile-text);
+    }
+
+    .profile-hint {
+      margin-top: 16px;
+      padding: 12px 16px;
+      color: var(--profile-primary);
+      background: var(--profile-primary-light);
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      border-radius: var(--profile-radius-sm);
+      border: 1px solid #dbeafe;
+    }
+
+    .status-message {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: var(--profile-radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      display: none;
+    }
+
+    .status-message.success {
+      display: block;
+      color: #14532d;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+    }
+
+    .status-message.error {
+      display: block;
+      color: #7f1d1d;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+    }
+
+    /* Responsive */
+    @media (max-width: 1050px) {
+      .sidebar {
+        width: 240px;
+      }
+      .main-pane {
+        margin-left: 240px;
+        padding: 12px 24px 24px;
+      }
+      .profile-main-card .profile-header-card {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .info-blocks {
+        border-top: 1px solid var(--profile-border);
+      }
+      .info-item + .info-item::before {
+        display: none;
+      }
+      .info-item + .info-item {
+        border-top: 1px solid var(--profile-border);
+      }
+      .profile-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .sidebar {
+        width: 100%;
+        position: relative;
+        border-right: none;
+        border-bottom: 1px solid var(--profile-border);
+        height: auto;
+      }
+      .main-pane {
+        margin-left: 0;
+        padding: 12px 16px 16px;
+      }
+      .top-nav {
+        justify-content: flex-start;
+      }
+      .profile-fields {
+        grid-template-columns: 1fr;
+      }
+      .password-row {
+        grid-template-columns: 1fr;
+      }
+      .info-blocks {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .save-row {
+        justify-content: stretch;
+      }
+      .save-row .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body class="profile-body">
+  <div class="home-layout">
+    <aside class="sidebar" aria-label="Assistant sidebar">
+      <div class="brand-row">
+        <div class="brand-icon" aria-hidden="true"></div>
+        <div class="brand-text">AI Assistant</div>
+      </div>
+
+      <button class="new-chat-btn" type="button">＋ New Chat</button>
+
+      <div class="search-box">
+        <span class="search-icon">⌕</span>
+        <input id="conversationSearch" type="text" placeholder="Search conversations..." aria-label="Search conversations" />
+      </div>
+
+      <div class="recent-title">Recent Conversations</div>
+      <div class="history-list" id="historyList"></div>
+
+      <div class="sidebar-footer">
+        <a href="/profile" class="sidebar-link profile-link">◔ Profile</a>
+        <a href="/logout" class="sidebar-link logout-link">↩ Logout</a>
+      </div>
+    </aside>
+
+    <main class="main-pane">
+      <nav class="top-nav" aria-label="Top navigation">
+        <a href="/home" class="home-link">⌂ Home</a>
+        <a href="/emi" class="emi-link">▣ EMI Calculator</a>
+      </nav>
+
+      <div class="content">
+        <main class="profile-page">
+          <div class="profile-container">
+            <div class="page-header">
+              <h1>My Profile</h1>
+              <p>Manage your personal information, account settings, and security preferences.</p>
+              <div class="security-badge">
+                <span class="icon">🛡️</span>
+                Your data is secure and encrypted
+              </div>
+            </div>
+
+            <div class="profile-main-card">
+              <section class="profile-header-card">
+                <div class="avatar-section">
+                  <div class="avatar-circle" id="profileAvatar">
+                    <span class="avatar-initials" id="avatarInitials">U</span>
+                    <label class="avatar-camera" for="profilePhotoInput" title="Change profile photo">
+                      <input id="profilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp">
+                      <span>⌑</span>
+                    </label>
+                  </div>
+                  <div class="name-block">
+                    <div class="name" id="profileDisplayName">User</div>
+                    <span class="role-bubble" id="profileRoleBubble">User</span>
+                    <div class="status">Active Account</div>
+                  </div>
+                </div>
+
+                <div class="info-blocks">
+                  <div class="info-item">
+                    <div class="info-icon email-icon">✉</div>
+                    <div class="label">Email</div>
+                    <div class="value" id="profileEmailValue">-</div>
+                  </div>
+                  <div class="info-item">
+                    <div class="info-icon phone-icon">⌕</div>
+                    <div class="label">Mobile</div>
+                    <div class="value" id="profileMobileValue">-</div>
+                  </div>
+                  <div class="info-item">
+                    <div class="info-icon role-icon">♧</div>
+                    <div class="label">Role</div>
+                    <div class="value" id="profileRoleValue">User</div>
+                  </div>
+                  <div class="info-item">
+                    <div class="info-icon login-icon">□</div>
+                    <div class="label">Last Login</div>
+                    <div class="value" id="profileLastLoginValue">Never</div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="section-card">
+                <div class="section-title">
+                  <span class="section-icon">♟</span>
+                  <h3>Personal Information</h3>
+                </div>
+                <div class="section-body">
+                  <div class="profile-fields">
+                    <div class="field">
+                      <label class="small-label" for="name">Full Name</label>
+                      <input type="text" id="name" placeholder="Enter full name" />
+                    </div>
+                    <div class="field">
+                      <label class="small-label" for="email">Email</label>
+                      <input type="email" id="email" placeholder="you@example.com" />
+                    </div>
+                    <div class="field">
+                      <label class="small-label" for="mobile">Mobile Number</label>
+                      <input type="text" id="mobile" placeholder="+91 98765 43210" />
+                    </div>
+                    <div class="field">
+                      <label class="small-label" for="dob">Date of Birth</label>
+                      <input type="date" id="dob" />
+                    </div>
+                    <div class="field">
+                      <label class="small-label" for="gender">Gender</label>
+                      <select id="gender">
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label class="small-label" for="maritalStatus">Marital Status</label>
+                      <select id="maritalStatus">
+                        <option value="">Select</option>
+                        <option value="Single">Single</option>
+                        <option value="Married">Married</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label class="small-label" for="occupation">Occupation</label>
+                      <input type="text" id="occupation" placeholder="e.g. Software Engineer" />
+                    </div>
+                    <div class="field">
+                      <label class="small-label" for="monthlyIncome">Monthly Income (₹)</label>
+                      <input type="number" id="monthlyIncome" placeholder="e.g. 75000" />
+                    </div>
+                    <div class="field">
+                      <label class="small-label" for="employmentType">Employment Type</label>
+                      <select id="employmentType">
+                        <option value="">Select</option>
+                        <option value="Salaried">Salaried</option>
+                        <option value="Self-Employed">Self-Employed</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label class="small-label" for="residenceType">Residence Type</label>
+                      <select id="residenceType">
+                        <option value="">Select</option>
+                        <option value="Owned">Owned</option>
+                        <option value="Rented">Rented</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label class="small-label" for="pan">PAN</label>
+                      <input type="text" id="pan" placeholder="ABCDE1234F" />
+                    </div>
+                    <div class="field">
+                      <label class="small-label" for="aadhar">Aadhaar</label>
+                      <input type="text" id="aadhar" placeholder="1234 5678 9012" />
+                    </div>
+                    <div class="field" style="grid-column: span 2">
+                      <label class="small-label" for="address">Address</label>
+                      <input type="text" id="address" placeholder="Full address" />
+                    </div>
+                    <div class="field">
+                      <label class="small-label" for="city">City</label>
+                      <input type="text" id="city" placeholder="City" />
+                    </div>
+                    <div class="field">
+                      <label class="small-label" for="pincode">Pincode</label>
+                      <input type="text" id="pincode" placeholder="400001" />
+                    </div>
+                  </div>
+                  <div class="save-row">
+                    <button class="btn btn-primary" id="saveProfileBtn" type="button">
+                      <span>💾</span> Save Changes
+                    </button>
+                  </div>
+                  <div id="profileStatus" class="status-message" role="status" aria-live="polite"></div>
+                </div>
+              </section>
+
+              <section class="section-card">
+                <div class="section-title">
+                  <span class="section-icon">🔒</span>
+                  <h3>Security</h3>
+                </div>
+                <div class="section-body">
+                  <div class="profile-fields">
+                    <div class="field password-toggle">
+                      <label class="small-label" for="currentPassword">Current Password</label>
+                      <div class="input-wrapper">
+                        <input type="password" id="currentPassword" placeholder="Enter current password" />
+                        <button type="button" class="toggle-btn" data-target="currentPassword" aria-label="Toggle password visibility">👁️</button>
+                      </div>
+                    </div>
+                    <div class="field password-toggle">
+                      <label class="small-label" for="newPassword">New Password</label>
+                      <div class="input-wrapper">
+                        <input type="password" id="newPassword" placeholder="Enter new password" />
+                        <button type="button" class="toggle-btn" data-target="newPassword" aria-label="Toggle password visibility">👁️</button>
+                      </div>
+                    </div>
+                    <div class="field password-toggle">
+                      <label class="small-label" for="confirmPassword">Confirm New Password</label>
+                      <div class="input-wrapper">
+                        <input type="password" id="confirmPassword" placeholder="Confirm new password" />
+                        <button type="button" class="toggle-btn" data-target="confirmPassword" aria-label="Toggle password visibility">👁️</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="save-row">
+                    <button class="btn btn-primary" id="changePasswordBtn" type="button">
+                      <span>🔒</span> Update Password
+                    </button>
+                  </div>
+                  <div id="passwordStatus" class="status-message" role="status" aria-live="polite"></div>
+                </div>
+              </section>
+
+              <div class="profile-hint">
+                Profile information is used to personalize your experience and prefill loan applications.
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    window.AI_ASSISTANT_USER = 'Guest';
+  </script>
+  <script src="home-chat.js"></script>
+  <script>
+    (function() {
+      var profileAvatar = document.getElementById('profileAvatar');
+      var avatarInitials = document.getElementById('avatarInitials');
+      var profilePhotoInput = document.getElementById('profilePhotoInput');
+      var profileDisplayName = document.getElementById('profileDisplayName');
+      var profileRoleBubble = document.getElementById('profileRoleBubble');
+      var profileEmailValue = document.getElementById('profileEmailValue');
+      var profileMobileValue = document.getElementById('profileMobileValue');
+      var profileRoleValue = document.getElementById('profileRoleValue');
+      var profileLastLoginValue = document.getElementById('profileLastLoginValue');
+
+      var nameInput = document.getElementById('name');
+      var emailInput = document.getElementById('email');
+      var mobileInput = document.getElementById('mobile');
+      var dobInput = document.getElementById('dob');
+      var genderInput = document.getElementById('gender');
+      var maritalStatusInput = document.getElementById('maritalStatus');
+      var occupationInput = document.getElementById('occupation');
+      var monthlyIncomeInput = document.getElementById('monthlyIncome');
+      var employmentTypeInput = document.getElementById('employmentType');
+      var residenceTypeInput = document.getElementById('residenceType');
+      var panInput = document.getElementById('pan');
+      var aadharInput = document.getElementById('aadhar');
+      var addressInput = document.getElementById('address');
+      var cityInput = document.getElementById('city');
+      var pincodeInput = document.getElementById('pincode');
+
+      var saveProfileBtn = document.getElementById('saveProfileBtn');
+      var changePasswordBtn = document.getElementById('changePasswordBtn');
+      var currentPasswordInput = document.getElementById('currentPassword');
+      var newPasswordInput = document.getElementById('newPassword');
+      var confirmPasswordInput = document.getElementById('confirmPassword');
+      var profileStatus = document.getElementById('profileStatus');
+      var passwordStatus = document.getElementById('passwordStatus');
+
+      function getInitials(name) {
+        if (!name) return 'U';
+        var parts = name.trim().split(/\s+/);
+        if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        return name.substring(0, 2).toUpperCase();
+      }
+
+      function updateAvatar() {
+        var name = profileDisplayName ? profileDisplayName.textContent : 'User';
+        if (avatarInitials) avatarInitials.textContent = getInitials(name);
+      }
+
+      async function loadProfile() {
+        try {
+          var res = await fetch('/api/profile', { credentials: 'same-origin' });
+          if (!res.ok) throw new Error('Failed to load profile');
+          var data = await res.json();
+
+          if (profileDisplayName && data.name) profileDisplayName.textContent = data.name;
+          if (profileRoleBubble && data.role) profileRoleBubble.textContent = data.role;
+          if (profileEmailValue && data.email) profileEmailValue.textContent = data.email;
+          if (profileMobileValue && data.mobile) profileMobileValue.textContent = data.mobile;
+          if (profileRoleValue && data.role) profileRoleValue.textContent = data.role;
+          if (profileLastLoginValue && data.last_login_display) profileLastLoginValue.textContent = data.last_login_display;
+
+          if (nameInput && data.name) nameInput.value = data.name;
+          if (emailInput && data.email) emailInput.value = data.email;
+          if (mobileInput && data.mobile) mobileInput.value = data.mobile;
+          if (dobInput && data.dob) dobInput.value = data.dob;
+          if (genderInput && data.gender) genderInput.value = data.gender;
+          if (maritalStatusInput && data.marital_status) maritalStatusInput.value = data.marital_status;
+          if (occupationInput && data.occupation) occupationInput.value = data.occupation;
+          if (monthlyIncomeInput && data.monthly_income) monthlyIncomeInput.value = data.monthly_income;
+          if (employmentTypeInput && data.employment_type) employmentTypeInput.value = data.employment_type;
+          if (residenceTypeInput && data.residence_type) residenceTypeInput.value = data.residence_type;
+          if (panInput && data.pan) panInput.value = data.pan;
+          if (aadharInput && data.aadhar) aadharInput.value = data.aadhar;
+          if (addressInput && data.address) addressInput.value = data.address;
+          if (cityInput && data.city) cityInput.value = data.city;
+          if (pincodeInput && data.pincode) pincodeInput.value = data.pincode;
+
+          updateAvatar();
+        } catch (e) {
+          console.error('Failed to load profile', e);
+        }
+      }
+
+      async function saveProfile() {
+        var payload = {
+          name: nameInput ? nameInput.value : '',
+          email: emailInput ? emailInput.value : '',
+          mobile: mobileInput ? mobileInput.value : '',
+          dob: dobInput ? dobInput.value : '',
+          gender: genderInput ? genderInput.value : '',
+          address: addressInput ? addressInput.value : '',
+          city: cityInput ? cityInput.value : '',
+          pincode: pincodeInput ? pincodeInput.value : '',
+          occupation: occupationInput ? occupationInput.value : '',
+          employment_type: employmentTypeInput ? employmentTypeInput.value : '',
+          monthly_income: monthlyIncomeInput ? monthlyIncomeInput.value : '',
+          marital_status: maritalStatusInput ? maritalStatusInput.value : '',
+          residence_type: residenceTypeInput ? residenceTypeInput.value : '',
+          pan: panInput ? panInput.value : '',
+          aadhar: aadharInput ? aadharInput.value : ''
+        };
+
+        try {
+          var res = await fetch('/api/profile/update', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          var data = await res.json();
+          if (data.success) {
+            if (profileStatus) {
+              profileStatus.textContent = 'Profile updated successfully';
+              profileStatus.className = 'status-message success';
+            }
+            loadProfile();
+          } else {
+            if (profileStatus) {
+              profileStatus.textContent = data.error || 'Failed to update profile';
+              profileStatus.className = 'status-message error';
+            }
+          }
+        } catch (e) {
+          console.error('Update failed', e);
+          if (profileStatus) {
+            profileStatus.textContent = 'Failed to update profile';
+            profileStatus.className = 'status-message error';
+          }
+        }
+      }
+
+      async function uploadPhoto(file) {
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = async function(e) {
+          try {
+            var res = await fetch('/api/profile/photo', {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image: e.target.result })
+            });
+            var data = await res.json();
+            if (data.success && data.photoPath) {
+              if (profileAvatar) {
+                profileAvatar.innerHTML = '<img src="' + data.photoPath + '" class="profile-photo" alt="Profile photo"><span class="avatar-remove" title="Remove photo">×</span>';
+                var removeBtn = profileAvatar.querySelector('.avatar-remove');
+                if (removeBtn) {
+                  removeBtn.addEventListener('click', removePhoto);
+                }
+              }
+            } else {
+              alert(data.error || 'Failed to upload photo');
+            }
+          } catch (err) {
+            console.error('Photo upload failed', err);
+            alert('Failed to upload photo');
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+
+      async function removePhoto() {
+        try {
+          var res = await fetch('/api/profile/photo', { method: 'DELETE', credentials: 'same-origin' });
+          var data = await res.json();
+          if (data.success) {
+            if (profileAvatar) {
+              profileAvatar.innerHTML = '<span class="avatar-initials" id="avatarInitials">' + getInitials(profileDisplayName ? profileDisplayName.textContent : 'User') + '</span><label class="avatar-camera" for="profilePhotoInput" title="Change profile photo"><input id="profilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp"><span>⌑</span></label>';
+              avatarInitials = document.getElementById('avatarInitials');
+              var newInput = document.getElementById('profilePhotoInput');
+              if (newInput) {
+                newInput.addEventListener('change', function(e) {
+                  uploadPhoto(e.target.files[0]);
+                });
+              }
+            }
+          } else {
+            alert(data.error || 'Failed to remove photo');
+          }
+        } catch (err) {
+          console.error('Photo remove failed', err);
+          alert('Failed to remove photo');
+        }
+      }
+
+      async function changePassword() {
+        var current = currentPasswordInput ? currentPasswordInput.value : '';
+        var newPass = newPasswordInput ? newPasswordInput.value : '';
+        var confirm = confirmPasswordInput ? confirmPasswordInput.value : '';
+        if (!current || !newPass || !confirm) {
+          if (passwordStatus) {
+            passwordStatus.textContent = 'Please fill in all password fields';
+            passwordStatus.className = 'status-message error';
+          }
+          return;
+        }
+        if (newPass !== confirm) {
+          if (passwordStatus) {
+            passwordStatus.textContent = 'New passwords do not match';
+            passwordStatus.className = 'status-message error';
+          }
+          return;
+        }
+        if (newPass.length < 4) {
+          if (passwordStatus) {
+            passwordStatus.textContent = 'Password must be at least 4 characters';
+            passwordStatus.className = 'status-message error';
+          }
+          return;
+        }
+        try {
+          var res = await fetch('/api/profile/change-password', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ newPassword: newPass })
+          });
+          var data = await res.json();
+          if (data.success) {
+            if (passwordStatus) {
+              passwordStatus.textContent = 'Password updated successfully';
+              passwordStatus.className = 'status-message success';
+            }
+            if (currentPasswordInput) currentPasswordInput.value = '';
+            if (newPasswordInput) newPasswordInput.value = '';
+            if (confirmPasswordInput) confirmPasswordInput.value = '';
+          } else {
+            if (passwordStatus) {
+              passwordStatus.textContent = data.error || 'Failed to change password';
+              passwordStatus.className = 'status-message error';
+            }
+          }
+        } catch (e) {
+          console.error('Password change failed', e);
+          if (passwordStatus) {
+            passwordStatus.textContent = 'Failed to change password';
+            passwordStatus.className = 'status-message error';
+          }
+        }
+      }
+
+      function setupPasswordToggle() {
+        document.querySelectorAll('.toggle-btn').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var targetId = this.getAttribute('data-target');
+            var input = document.getElementById(targetId);
+            if (!input) return;
+            if (input.type === 'password') {
+              input.type = 'text';
+              this.textContent = '🙈';
+            } else {
+              input.type = 'password';
+              this.textContent = '👁️';
+            }
+          });
+        });
+      }
+
+      if (profilePhotoInput) {
+        profilePhotoInput.addEventListener('change', function(e) {
+          uploadPhoto(e.target.files[0]);
+        });
+      }
+
+      if (saveProfileBtn) saveProfileBtn.addEventListener('click', saveProfile);
+      if (changePasswordBtn) changePasswordBtn.addEventListener('click', changePassword);
+
+      setupPasswordToggle();
+      loadProfile();
+    })();
+  </script>
+</body>
+</html>

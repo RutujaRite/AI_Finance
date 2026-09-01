@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Assistant</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="home-chat.css" />
+  <style>
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      border-radius: 6px;
+      color: #4d3ed5;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .icon-btn:hover {
+      background: #e2e8f0;
+      border-color: #cbd5e1;
+    }
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 32px;
+      background: #fff;
+      border: 1px solid #e4e8f0;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(59,49,99,.12);
+      min-width: 150px;
+      z-index: 10;
+      overflow: hidden;
+    }
+    .dropdown-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 9px 14px;
+      border: none;
+      background: transparent;
+      color: #1d2947;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .dropdown-item:hover {
+      background: rgba(95,101,231,.08);
+    }
+  </style>
+</head>
+<body class="home-body">
+  <div class="home-layout">
+    <aside class="sidebar" aria-label="Assistant sidebar">
+      <div class="brand-row">
+        <div class="brand-icon" aria-hidden="true"></div>
+        <div class="brand-text">AI Assistant</div>
+      </div>
+
+      <button class="new-chat-btn" type="button">＋ New Chat</button>
+
+      <div class="search-box">
+        <span class="search-icon">⌕</span>
+        <input id="conversationSearch" type="text" placeholder="Search conversations..." aria-label="Search conversations" />
+      </div>
+
+      <div class="recent-title">Recent Conversations</div>
+      <div class="history-list" id="historyList"></div>
+
+      <div class="sidebar-footer">
+        <a href="/profile" class="sidebar-link profile-link">◔ Profile</a>
+        <a href="/logout" class="sidebar-link logout-link">↩ Logout</a>
+      </div>
+    </aside>
+
+    <main class="main-pane">
+      <nav class="top-nav" aria-label="Top navigation">
+        <a href="javascript:void(0)" class="active home-link">⌂ Home</a>
+        <a href="javascript:void(0)" class="emi-link">▣ EMI Calculator</a>
+        <a href="javascript:void(0)" class="policy-link">📋 Policies</a><!--ADMIN_LINK-->
+      </nav>
+
+      <div class="content">
+        <div id="aiView" class="welcome-block">
+          <div class="assistant-panel" aria-live="polite">
+              <div class="assistant-messages" id="assistantMessages"></div>
+              <div class="assistant-status" id="assistantStatus">Ready</div>
+              <form class="assistant-form" id="assistantForm">
+                <textarea id="assistantInput" rows="1" placeholder="Message AI Assistant..." aria-label="Assistant input"></textarea>
+                <button type="submit" id="assistantSubmit">Send</button>
+              </form>
+            </div>
+        </div>
+
+        <div id="emiView" style="display:none;">
+          <section class="emi-wrap">
+            <div class="emi-header" style="margin-bottom:12px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="background:rgba(255,255,255,0.08);padding:8px;border-radius:8px;font-size:16px">📟</div>
+                <div class="title">EMI Calculator</div>
+              </div>
+            </div>
+
+            <div class="emi-grid">
+              <div class="form-box">
+                <div class="form-row">
+                  <div class="field-container">
+                    <label class="field-label">Loan Type</label>
+                    <div class="field-inner">
+                      <select id="loanType">
+                        <option>Personal</option>
+                        <option>Home</option>
+                        <option>Auto</option>
+                        <option>Education</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="field-container">
+                    <label class="field-label">Loan Amount (₹)</label>
+                    <div class="field-inner">
+                      <input id="loanAmountRange" type="range" min="10000" max="10000000" step="10000" value="500000">
+                      <div class="value-box"><input id="loanAmount" type="number" value="500000" min="10000" step="10000"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="field-container">
+                    <label class="field-label">Annual Interest Rate (%)</label>
+                    <div class="field-inner">
+                      <input id="rateRange" type="range" min="0" max="25" step="0.01" value="9.5">
+                      <div class="value-box"><input id="rate" type="number" value="9.5" step="0.01"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="field-container">
+                    <label class="field-label">Processing Fee (%)</label>
+                    <div class="field-inner">
+                      <input id="feeRange" type="range" min="0" max="5" step="0.1" value="0.5">
+                      <div class="value-box"><input id="fee" type="number" value="0.5" step="0.1"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="field-container">
+                    <label class="field-label">Loan Term</label>
+                    <div class="field-inner">
+                      <input id="termRange" type="range" min="1" max="360" step="1" value="60">
+                      <div class="value-box"><input id="term" type="number" value="60" step="1"></div>
+                      <div class="value-box small"><select id="monthsOrYears"><option value="months">Months</option><option value="years">Years</option></select></div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="result-box">
+                <div class="summary-cards">
+                  <div class="card"><h4>MONTHLY EMI</h4><p id="emiValue">₹0</p></div>
+                  <div class="card"><h4>TOTAL INTEREST</h4><p id="interestValue">₹0</p></div>
+                  <div class="card"><h4>TOTAL PAYMENT</h4><p id="totalValue">₹0</p></div>
+                </div>
+
+                <div class="processing-actions">
+                  <span class="processing-pill">Processing Fee: <strong id="processingFeeAmount">₹0</strong></span>
+                  <div style="display:flex;gap:8px;align-items:center;margin-left:8px">
+                    <button class="btn-save" id="saveBtn" type="button">Save</button>
+                    <button class="btn-print" id="printBtn" type="button">Print Schedule</button>
+                  </div>
+                </div>
+
+                <h3 style="margin:8px 0 8px;">Amortization Schedule</h3>
+
+                <div class="schedule-wrap">
+                  <table class="amort">
+                    <thead>
+                      <tr>
+                        <th style="text-align:left; width:60px">Month</th>
+                        <th style="width:120px">EMI (₹)</th>
+                        <th style="width:140px">Principal (₹)</th>
+                        <th style="width:120px">Interest (₹)</th>
+                        <th style="width:140px">Balance (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody id="scheduleBody">
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <script>
+            // sync range and numeric inputs
+            function setRangeBackground(r) {
+              // fill portion with blue and remainder with gray
+              const min = Number(r.min) || 0;
+              const max = Number(r.max) || 100;
+              const val = Number(r.value) || 0;
+              const pct = Math.round(((val - min) / (max - min)) * 100);
+              r.style.background = 'linear-gradient(90deg,#1366ff ' + pct + '%, #e6edf5 ' + pct + '%)';
+            }
+
+            function bindRange(rangeId, inputId) {
+              const r = document.getElementById(rangeId);
+              const i = document.getElementById(inputId);
+              // sync both ways
+              r.addEventListener('input', () => { i.value = r.value; setRangeBackground(r); computeAndRender(); });
+              i.addEventListener('input', () => { r.value = i.value; setRangeBackground(r); computeAndRender(); });
+              // initialize background
+              setRangeBackground(r);
+            }
+
+            bindRange('loanAmountRange', 'loanAmount');
+            bindRange('rateRange', 'rate');
+            bindRange('feeRange', 'fee');
+            bindRange('termRange', 'term');
+
+            const monthsOrYearsEl = document.getElementById('monthsOrYears');
+            if (monthsOrYearsEl) monthsOrYearsEl.addEventListener('change', computeAndRender);
+            const calcNowEl = document.getElementById('calcNow');
+            if (calcNowEl) calcNowEl.addEventListener('click', computeAndRender);
+            const printBtnEl = document.getElementById('printBtn');
+            if (printBtnEl) printBtnEl.addEventListener('click', printSchedule);
+            const saveBtnEl = document.getElementById('saveBtn');
+            if (saveBtnEl) saveBtnEl.addEventListener('click', saveCalculation);
+
+            function computeAndRender() {
+              const loanType = document.getElementById('loanType').value;
+              const principal = Number(document.getElementById('loanAmount').value) || 0;
+              const annualRate = Number(document.getElementById('rate').value) || 0;
+              const feePercent = Number(document.getElementById('fee').value) || 0;
+              let term = Number(document.getElementById('term').value) || 0;
+              const monthsOrYears = document.getElementById('monthsOrYears').value;
+
+              if (monthsOrYears === 'years') term = term * 12;
+
+              const monthlyRate = annualRate / 12 / 100;
+              const emi = monthlyRate > 0
+                ? (principal * monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1)
+                : (term>0? principal/term : 0);
+
+              const totalPayment = emi * term;
+              const totalInterest = totalPayment - principal;
+              const processingFeeAmount = principal * (feePercent/100);
+
+              document.getElementById('emiValue').textContent = '₹' + formatMoney(emi);
+              document.getElementById('interestValue').textContent = '₹' + formatMoney(totalInterest);
+              document.getElementById('totalValue').textContent = '₹' + formatMoney(totalPayment);
+              document.getElementById('processingFeeAmount').textContent = '₹' + formatMoney(processingFeeAmount);
+
+              // build amortization schedule
+              const tbody = document.getElementById('scheduleBody');
+              tbody.innerHTML = '';
+
+              let balance = principal;
+              for (let m = 1; m <= term; m++) {
+                const interest = balance * monthlyRate;
+                const principalPortion = emi - interest;
+                balance = Math.max(0, balance - principalPortion);
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td style="text-align:left">' + m + '</td>' +
+                               '<td>₹' + formatMoney(emi) + '</td>' +
+                               '<td>₹' + formatMoney(principalPortion) + '</td>' +
+                               '<td>₹' + formatMoney(interest) + '</td>' +
+                               '<td>₹' + formatMoney(balance) + '</td>';
+                tbody.appendChild(tr);
+              }
+
+              // return computed object for save
+              return {
+                loanType, principal, annualRate, feePercent, termMonths: term, monthsOrYears,
+                emi, totalInterest, totalPayment, processingFeeAmount,
+                schedule: Array.from(tbody.querySelectorAll('tr')).map((row, idx) => {
+                  const cols = row.querySelectorAll('td');
+                  return {
+                    month: Number(cols[0].textContent),
+                    emi: cols[1].textContent.replace(/[₹,\s]/g, ''),
+                    principal: cols[2].textContent.replace(/[₹,\s]/g, ''),
+                    interest: cols[3].textContent.replace(/[₹,\s]/g, ''),
+                    balance: cols[4].textContent.replace(/[₹,\s]/g, '')
+                  };
+                })
+              };
+            }
+
+            function formatMoney(value) {
+              return Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+            }
+
+            function escapeHtml(value) {
+              return String(value).replace(/[&<>"']/g, char => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+              })[char]);
+            }
+
+            function printSchedule() {
+              const data = computeAndRender();
+              const printWindow = window.open('', 'emi-print-preview', 'width=1100,height=800');
+              if (!printWindow) {
+                alert('Please allow pop-ups to print the schedule.');
+                return;
+              }
+
+              const details = [
+                ['Loan Type', data.loanType + ' Loan'],
+                ['Loan Amount (₹)', '₹' + formatMoney(data.principal)],
+                ['Annual Interest Rate (%)', Number(data.annualRate).toFixed(2) + '%'],
+                ['Processing Fee (%)', Number(data.feePercent).toFixed(2) + '%'],
+                ['Processing Fee (₹)', '₹' + formatMoney(data.processingFeeAmount)],
+                ['Tenure (Months)', data.termMonths],
+                ['Monthly EMI (₹)', '₹' + formatMoney(data.emi)],
+                ['Total Interest (₹)', '₹' + formatMoney(data.totalInterest)],
+                ['Total Payment (₹)', '₹' + formatMoney(data.totalPayment)]
+              ];
+              const detailMarkup = details.map(item =>
+                '<div class="detail-item"><span class="detail-label">' + escapeHtml(item[0]) + '</span><span class="detail-colon">:</span><span class="detail-value">' + escapeHtml(item[1]) + '</span></div>'
+              ).join('');
+              const scheduleRows = document.getElementById('scheduleBody').innerHTML;
+              const documentHtml = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Loan Amortization Schedule</title><style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{margin:0;color:#1f2937;font-family:Arial,Helvetica,sans-serif;background:#fff}.print-page{max-width:1100px;margin:0 auto;padding:16px}.print-title{margin:0 0 18px;color:#7541a1;font-size:22px;font-weight:700;text-align:center}.loan-details{margin-bottom:22px;padding:16px;border:1px solid #7541a1;border-radius:8px}.loan-details-heading{margin:-28px auto 14px;width:max-content;padding:4px 18px;color:#7541a1;background:#fff;font-size:16px;font-weight:700;text-align:center}.details-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.detail-item{display:grid;grid-template-columns:1fr auto 1fr;padding:8px 0;border-bottom:1px dotted #c7c2d8;font-size:13px;align-items:start}.detail-item:nth-last-child(-n+3){border-bottom:0}.detail-label{color:#6b7280;font-weight:600}.detail-colon{color:#7541a1;padding:0 8px}.detail-value{color:#111827;font-weight:700;text-align:right}.schedule-title{margin:0 0 10px;color:#7541a1;font-size:18px;font-weight:700}.schedule-table{width:100%;border-collapse:collapse;font-size:12px}.schedule-table th{padding:8px 10px;color:#fff;background:#4862eb;text-align:right;font-weight:600}.schedule-table th:first-child,.schedule-table td:first-child{text-align:center}.schedule-table td{padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:right}.schedule-table tbody tr:nth-child(even){background:#f9fafb}@media print{.print-page{padding:10px}.loan-details{break-inside:avoid}.schedule-table thead{display:table-header-group}}</style></head><body><main class="print-page"><h1 class="print-title">Loan Amortization Schedule</h1><section class="loan-details"><div class="loan-details-heading">Loan Details</div><div class="details-grid">' + detailMarkup + '</div></section><h2 class="schedule-title">Amortization Schedule</h2><table class="schedule-table"><thead><tr><th>Month</th><th>EMI (₹)</th><th>Principal (₹)</th><th>Interest (₹)</th><th>Balance (₹)</th></tr></thead><tbody>' + scheduleRows + '</tbody></table></main></body></html>';
+
+              printWindow.document.open();
+              printWindow.document.write(documentHtml);
+              printWindow.document.close();
+              printWindow.focus();
+              printWindow.onload = () => printWindow.print();
+            }
+
+            function saveCalculation() {
+              const data = computeAndRender();
+              if (!data || !data.termMonths || data.termMonths <= 0) { alert('Please enter a valid term'); return; }
+
+              fetch('/emi/save', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+              })
+              .then(r => r.json())
+              .then(j => {
+                if (j.success) alert('Calculation saved'); else alert('Save failed');
+              })
+              .catch(err => { console.error(err); alert('Save failed'); });
+            }
+
+            // initial render
+            computeAndRender();
+          </script>
+        </div>
+
+        <div id="policyView" style="display:none;">
+          <section class="emi-wrap policy-wrap">
+            <div class="emi-header" style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="background:rgba(255,255,255,0.12);padding:10px;border-radius:12px;font-size:20px">🏦</div>
+                <div>
+                  <div class="title" style="font-size:20px;font-weight:700">Bank Policy Management</div>
+                  <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:2px">Configure loan eligibility rules, versions (V1, V2...), and review imported bank policies.</div>
+                </div>
+              </div>
+              <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn-save" id="policyImportBtn" type="button" style="background:#0F4C5C;box-shadow:0 4px 14px rgba(15,76,92,.2)">📥 Import Policies</button>
+                <button class="btn-save" id="policyAddBtn" type="button">+ Add Rule</button>
+              </div>
+            </div>
+
+            <!-- Table -->
+            <div style="overflow-x:auto;background:#fff;border-radius:16px;border:1px solid #DCE8E8;box-shadow:0 4px 20px rgba(15,76,92,.04)">
+              <table class="amort" style="width:100%;border-collapse:collapse">
+                <thead>
+                  <tr style="background:#F4F8F8;border-bottom:2px solid #DCE8E8">
+                    <th style="text-align:left;padding:12px 14px">Bank Name</th>
+                    <th style="text-align:left;padding:12px 14px">Loan Type</th>
+                    <th style="text-align:left;padding:12px 14px">Policy Status</th>
+                    <th style="text-align:left;padding:12px 14px">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="policyTableBody">
+                  <tr><td colspan="4" style="text-align:center;padding:24px;color:#3f5c5c">Loading active policies...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+
+          <!-- Document Viewer Modal -->
+          <div id="documentViewerModal" style="display:none;position:fixed;inset:0;background:rgba(15,59,59,.45);z-index:10003;align-items:center;justify-content:center">
+            <div style="background:#fff;border-radius:18px;padding:22px 24px;width:min(960px,94vw);max-height:92vh;overflow:auto;border:1px solid #DCE8E8;box-shadow:0 25px 60px rgba(15,76,92,.2)">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;border-bottom:1px solid #DCE8E8;padding-bottom:12px">
+                <h2 id="documentViewerTitle" style="margin:0;font-size:19px;color:#183B3B">Documents</h2>
+                <button id="documentViewerClose" type="button" style="background:none;border:none;font-size:24px;color:#3f5c5c;cursor:pointer;line-height:1">×</button>
+              </div>
+              <div id="documentViewerBody"></div>
+            </div>
+          </div>
+
+          <!-- Right-side file preview panel -->
+          <div id="filePreviewPanel" style="display:none;position:fixed;top:0;right:0;width:min(520px,92vw);height:100vh;background:#fff;border-left:1px solid #DCE8E8;box-shadow:-10px 0 30px rgba(15,76,92,.12);z-index:10004;flex-direction:column">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #DCE8E8">
+              <div style="display:flex;align-items:center;gap:10px;overflow:hidden;flex:1;min-width:0">
+                <span id="filePreviewIcon" style="font-size:18px;flex-shrink:0">📄</span>
+                <div style="overflow:hidden">
+                  <div id="filePreviewTitle" style="font-size:13px;font-weight:700;color:#183B3B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Preview</div>
+                  <div id="filePreviewSubtitle" style="font-size:11px;color:#3f5c5c">Policy document</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;flex-shrink:0">
+                <a id="filePreviewDownload" href="#" download style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;color:#0F4C5C;text-decoration:none;border:1px solid #0F4C5C;background:#fff">Download</a>
+                <button id="filePreviewClose" type="button" style="background:none;border:none;font-size:22px;color:#3f5c5c;cursor:pointer;line-height:1">×</button>
+              </div>
+            </div>
+            <div id="filePreviewContent" style="flex:1;overflow:auto;padding:12px;background:#F4F8F8"></div>
+          </div>
+
+          <!-- Import Policies Modal -->
+          <div id="policyImportModal" style="display:none;position:fixed;inset:0;background:rgba(15,59,59,.45);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(3px)">
+            <div style="background:#fff;border-radius:18px;padding:26px;width:min(720px,94vw);max-height:90vh;overflow:auto;border:1px solid #DCE8E8;box-shadow:0 25px 60px rgba(15,76,92,.2)">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid #DCE8E8;padding-bottom:12px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="background:#e6f2f0;color:#0F4C5C;padding:8px 12px;border-radius:10px;font-size:20px">📥</div>
+                  <div>
+                    <h2 style="margin:0;font-size:19px;color:#183B3B">Import Bank Policy Documents</h2>
+                    <div style="font-size:13px;color:#3f5c5c;margin-top:2px">Scans extracted policy documents from <code>Policy-files</code> folder</div>
+                  </div>
+                </div>
+                <button id="policyImportModalClose" type="button" style="background:none;border:none;font-size:24px;color:#3f5c5c;cursor:pointer;line-height:1">×</button>
+              </div>
+
+              <div style="background:#F4F8F8;border:1px solid #DCE8E8;border-radius:12px;padding:14px 16px;margin-bottom:18px">
+                <div style="display:flex;align-items:flex-start;gap:10px">
+                  <span style="font-size:18px">🛡️</span>
+                  <div style="font-size:13px;color:#183B3B;line-height:1.5">
+                    <strong>Safe Import Policy:</strong> All imported policies will be saved as <strong>DRAFT / REVIEW</strong> with sequential versions (<code>V1, V2, V3...</code>).
+                    <div style="margin-top:4px;color:#D97706">No policy will be activated automatically. Admins must review, edit, and click <strong>Activate</strong>.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="importStatsOverview" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:12px;margin-bottom:18px">
+                <div style="background:#F4F8F8;border:1px solid #DCE8E8;border-radius:12px;padding:12px;text-align:center">
+                  <div style="font-size:12px;color:#3f5c5c;font-weight:600">Banks in System</div>
+                  <div id="statBanksCount" style="font-size:22px;font-weight:800;color:#183B3B;margin-top:4px">-</div>
+                </div>
+                <div style="background:#F4F8F8;border:1px solid #DCE8E8;border-radius:12px;padding:12px;text-align:center">
+                  <div style="font-size:12px;color:#3f5c5c;font-weight:600">Rules in Review</div>
+                  <div id="statReviewCount" style="font-size:22px;font-weight:800;color:#D97706;margin-top:4px">-</div>
+                </div>
+                <div style="background:#F4F8F8;border:1px solid #DCE8E8;border-radius:12px;padding:12px;text-align:center">
+                  <div style="font-size:12px;color:#3f5c5c;font-weight:600">Active Rules</div>
+                  <div id="statActiveCount" style="font-size:22px;font-weight:800;color:#1F8A70;margin-top:4px">-</div>
+                </div>
+              </div>
+
+              <!-- Import Action & Progress -->
+              <div id="importProgressBox" style="display:none;padding:14px;background:#e6f5ef;border:1px solid #bbf7d0;border-radius:12px;margin-bottom:18px">
+                <div style="display:flex;align-items:center;gap:10px;color:#166534;font-weight:700;font-size:14px">
+                  <span id="importSpinner" style="display:inline-block">⏳</span>
+                  <span id="importProgressText">Importing policies from folder...</span>
+                </div>
+              </div>
+
+              <div id="importResultsBox" style="display:none;margin-bottom:18px">
+                <h3 style="font-size:15px;margin:0 0 10px;color:#183B3B">Import Summary</h3>
+                <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;margin-bottom:12px">
+                  <div style="background:#e6f2f0;border:1px solid #DCE8E8;border-radius:10px;padding:10px;text-align:center">
+                    <div style="font-size:11px;color:#0F4C5C;font-weight:600">Files Scanned</div>
+                    <div id="resFilesScanned" style="font-size:18px;font-weight:800;color:#0F4C5C">-</div>
+                  </div>
+                  <div style="background:#e6f2f0;border:1px solid #DCE8E8;border-radius:10px;padding:10px;text-align:center">
+                    <div style="font-size:11px;color:#0F4C5C;font-weight:600">Banks Detected</div>
+                    <div id="resBanksDetected" style="font-size:18px;font-weight:800;color:#0F4C5C">-</div>
+                  </div>
+                  <div style="background:#fff7ed;border:1px solid #fde68a;border-radius:10px;padding:10px;text-align:center">
+                    <div style="font-size:11px;color:#D97706;font-weight:600">Rules Extracted</div>
+                    <div id="resRulesExtracted" style="font-size:18px;font-weight:800;color:#D97706">-</div>
+                  </div>
+                  <div style="background:#e6f5ef;border:1px solid #bbf7d0;border-radius:10px;padding:10px;text-align:center">
+                    <div style="font-size:11px;color:#1F8A70;font-weight:600">Docs Linked</div>
+                    <div id="resDocsLinked" style="font-size:18px;font-weight:800;color:#1F8A70">-</div>
+                  </div>
+                </div>
+                <div id="importDetailsList" style="max-height:180px;overflow:auto;border:1px solid #DCE8E8;border-radius:10px;padding:8px 12px;font-size:12px;background:#F4F8F8">
+                </div>
+              </div>
+
+              <div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #DCE8E8;padding-top:16px">
+                <button type="button" id="policyImportModalCancel" style="background:#F4F8F8;color:#183B3B;border:1px solid #DCE8E8;padding:10px 18px;border-radius:10px;font-weight:700;cursor:pointer">Close</button>
+                <button type="button" id="policyStartImportBtn" style="background:#0F4C5C;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(15,76,92,.2)">🚀 Start Policy Import</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="policyModal" style="display:none;position:fixed;inset:0;background:rgba(15,59,59,.45);z-index:999;align-items:center;justify-content:center">
+            <div style="background:#fff;border-radius:16px;padding:22px;width:min(960px,92vw);max-height:92vh;overflow:auto;border:1px solid #DCE8E8;box-shadow:0 20px 60px rgba(15,76,92,.15)">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                <h2 style="margin:0;font-size:20px;color:#183B3B">Policy Rule</h2>
+                <button id="policyModalClose" type="button" style="background:none;border:none;font-size:22px;color:#3f5c5c;cursor:pointer">×</button>
+              </div>
+              <form id="policyForm">
+                <input type="hidden" id="policyId">
+                <div class="emi-grid" style="grid-template-columns:1fr 1fr">
+                  <div class="form-box">
+                    <div class="form-row">
+                      <div class="field-container">
+                        <label class="field-label">Bank</label>
+                        <div class="field-inner">
+                          <select id="policyBank" required><option value="">Select bank</option></select>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="field-container">
+                        <label class="field-label">Policy Version</label>
+                        <div class="field-inner">
+                          <select id="policyVersion"><option value="">Select version</option></select>
+                           <button type="button" id="policyNewVersionBtn" style="background:#e6f2f0;color:#0F4C5C;border:none;padding:8px 12px;border-radius:10px;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap">+ New Version</button>
+                        </div>
+                        <div id="policyVersionForm" style="display:none;margin-top:8px">
+                           <div class="field-container" style="padding:10px 12px;border:1px solid #DCE8E8;border-radius:12px;background:#F4F8F8">
+                            <label class="field-label" style="font-size:12px;margin-bottom:4px">Version Label</label>
+                            <div class="field-inner" style="gap:8px">
+                               <input id="newVersionLabel" type="text" value="V1" style="flex:1;padding:8px 10px;border:1px solid #DCE8E8;border-radius:8px;font-size:14px">
+                               <select id="newVersionStatus" style="padding:8px 10px;border:1px solid #DCE8E8;border-radius:8px;font-size:14px">
+                                <option value="active">Active</option>
+                                <option value="draft">Draft</option>
+                              </select>
+                               <button type="button" id="policyCreateVersionBtn" style="background:#0F4C5C;color:#fff;border:none;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px">Create</button>
+                               <button type="button" id="policyCancelVersionBtn" style="background:#e6f2f0;color:#183B3B;border:none;padding:8px 12px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px">Cancel</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="field-container">
+                        <label class="field-label">Loan Type</label>
+                        <div class="field-inner">
+                         <select id="policyLoanType" required>
+                           <option value="Personal">Personal</option>
+                         </select>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="field-container">
+                        <label class="field-label">Employment</label>
+                        <div class="field-inner">
+                         <select id="policyEmployment">
+                             <option value="Salaried">Salaried</option>
+                           </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-box">
+                    <div class="form-row">
+                      <div class="field-container">
+                        <label class="field-label">CIBIL Range</label>
+                        <div class="field-inner">
+                           <div class="value-box"><input id="policyMinCibil" type="number" placeholder="Min" style="width:100%"></div>
+                           <span style="color:#3f5c5c">to</span>
+                           <div class="value-box"><input id="policyMaxCibil" type="number" placeholder="Max" style="width:100%"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="field-container">
+                        <label class="field-label">Salary Range (₹)</label>
+                        <div class="field-inner">
+                           <div class="value-box"><input id="policyMinSalary" type="number" placeholder="Min" style="width:100%"></div>
+                           <span style="color:#3f5c5c">to</span>
+                           <div class="value-box"><input id="policyMaxSalary" type="number" placeholder="Max" style="width:100%"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="field-container">
+                        <label class="field-label">Age Range</label>
+                        <div class="field-inner">
+                           <div class="value-box"><input id="policyMinAge" type="number" placeholder="Min" style="width:100%"></div>
+                           <span style="color:#3f5c5c">to</span>
+                           <div class="value-box"><input id="policyMaxAge" type="number" placeholder="Max" style="width:100%"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="field-container">
+                        <label class="field-label">Loan Amount (₹)</label>
+                        <div class="field-inner">
+                           <div class="value-box"><input id="policyMinAmount" type="number" placeholder="Min" style="width:100%"></div>
+                           <span style="color:#3f5c5c">to</span>
+                           <div class="value-box"><input id="policyMaxAmount" type="number" placeholder="Max" style="width:100%"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="field-container">
+                        <label class="field-label">Tenure (months)</label>
+                        <div class="field-inner">
+                           <div class="value-box"><input id="policyMinTenure" type="number" placeholder="Min" style="width:100%"></div>
+                           <span style="color:#3f5c5c">to</span>
+                           <div class="value-box"><input id="policyMaxTenure" type="number" placeholder="Max" style="width:100%"></div>
+                        </div>
+                      </div>
+                    </div>
+                     <div class="form-row">
+                       <div class="field-container">
+                         <label class="field-label">FOIR (%) / ROI (%) / Processing Fee (%)</label>
+                         <div class="field-inner">
+                           <div class="value-box"><input id="policyFoir" type="number" step="0.01" placeholder="FOIR" style="width:100%"></div>
+                           <div class="value-box"><input id="policyRoi" type="number" step="0.01" placeholder="ROI" style="width:100%"></div>
+                           <div class="value-box"><input id="policyFee" type="number" step="0.01" placeholder="Fee%" style="width:100%"></div>
+                         </div>
+                       </div>
+                     </div>
+                      <div id="policyFoirContext" style="display:none;margin-top:8px;padding:10px 12px;border:1px solid #DCE8E8;border-radius:10px;background:#F4F8F8;font-size:13px;color:#183B3B">
+                       <div style="font-weight:700;margin-bottom:4px">FOIR Context</div>
+                       <div id="policyFoirContextText"></div>
+                     </div>
+                      <div id="policySourceDocuments" style="display:none;margin-top:10px;padding:10px 12px;border:1px solid #DCE8E8;border-radius:10px;background:#F4F8F8">
+                        <div style="font-weight:700;margin-bottom:6px;font-size:13px;color:#183B3B">Source Documents</div>
+                       <div id="policySourceDocumentsList"></div>
+                     </div>
+                    <div class="form-row">
+                      <div class="field-container">
+                        <label class="field-label">Status</label>
+                        <div class="field-inner">
+                          <select id="policyStatus">
+                            <option value="active">Active</option>
+                            <option value="draft">Draft</option>
+                            <option value="review">Review</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-row">
+                      <div class="field-container">
+                        <label class="field-label">Attach Original Policy File</label>
+                        <div class="field-inner" style="flex-wrap:wrap;gap:8px">
+                           <input id="policyFile" type="file" accept=".pdf,.xlsx,.xls,.txt,.csv,.png,.jpg,.jpeg,.gif,.webp,.bmp" style="flex:1;min-width:220px;padding:8px 10px;border:1px solid #DCE8E8;border-radius:10px;font-size:14px">
+                           <button type="button" id="policyUploadBtn" style="background:#0F4C5C;color:#fff;border:none;padding:10px 16px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px">Upload</button>
+                        </div>
+                         <div id="policyAttachmentPreview" style="display:none;margin-top:10px;padding:10px;border:1px solid #DCE8E8;border-radius:12px;background:#F4F8F8">
+                          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                             <span id="policyAttachmentName" style="font-size:13px;font-weight:700;color:#183B3B"></span>
+                             <button type="button" id="policyRemoveAttachment" style="background:none;border:none;color:#DC2626;font-weight:700;cursor:pointer;font-size:13px">Remove</button>
+                          </div>
+                           <textarea id="policyExtractedText" rows="5" placeholder="Extracted candidate policy information will appear here. Review and edit before saving." style="width:100%;padding:10px;border:1px solid #DCE8E8;border-radius:10px;font-size:13px;resize:vertical"></textarea>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+                   <button type="submit" id="policySaveBtn" style="background:#0F4C5C;color:#fff;border:none;padding:11px 20px;border-radius:12px;font-weight:700;cursor:pointer">Save Rule</button>
+                   <button type="button" id="policyApproveBtn" style="display:none;background:#1F8A70;color:#fff;border:none;padding:11px 20px;border-radius:12px;font-weight:700;cursor:pointer">✓ Approve / Activate</button>
+                   <button type="button" id="policyModalCancel" style="background:#e6f2f0;color:#183B3B;border:1px solid #DCE8E8;padding:11px 20px;border-radius:12px;font-weight:700;cursor:pointer">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+   <!-- FOIR Slabs Modal -->
+    <div id="foirSlabsModal" style="display:none;position:fixed;inset:0;background:rgba(15,59,59,.45);z-index:10001;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:18px;padding:22px 24px;width:min(960px,92vw);max-height:92vh;overflow:auto;border:1px solid #DCE8E8;box-shadow:0 25px 60px rgba(15,76,92,.2)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;border-bottom:1px solid #DCE8E8;padding-bottom:12px">
+          <h2 id="foirSlabsTitle" style="margin:0;font-size:19px;color:#183B3B">FOIR Slabs</h2>
+          <button id="foirSlabsClose" type="button" style="background:none;border:none;font-size:24px;color:#3f5c5c;cursor:pointer;line-height:1">×</button>
+        </div>
+       <div id="foirSlabsBody"></div>
+     </div>
+   </div>
+
+   <script>
+    window.AI_ASSISTANT_USER = 'Guest';
+  </script>
+  <script src="home-chat.js"></script>
+  <script>
+    var homeLink = document.querySelector('.home-link');
+    var emiLink = document.querySelector('.emi-link');
+    var policyLink = document.querySelector('.policy-link');
+    var aiView = document.getElementById('aiView');
+    var emiView = document.getElementById('emiView');
+    var policyView = document.getElementById('policyView');
+    var sidebar = document.querySelector('.sidebar');
+    var contentEl = document.querySelector('.content');
+
+    function showAiView() {
+      if (aiView) aiView.style.display = 'flex';
+      if (emiView) emiView.style.display = 'none';
+      if (policyView) policyView.style.display = 'none';
+      if (sidebar) sidebar.style.display = 'flex';
+      if (contentEl) contentEl.classList.remove('policy-active');
+      if (homeLink) homeLink.classList.add('active');
+      if (emiLink) emiLink.classList.remove('active');
+      if (policyLink) policyLink.classList.remove('active');
+    }
+
+    function showEmiView() {
+      if (aiView) aiView.style.display = 'none';
+      if (emiView) emiView.style.display = 'block';
+      if (policyView) policyView.style.display = 'none';
+      if (sidebar) sidebar.style.display = 'none';
+      if (contentEl) contentEl.classList.remove('policy-active');
+      if (homeLink) homeLink.classList.remove('active');
+      if (emiLink) emiLink.classList.add('active');
+      if (policyLink) policyLink.classList.remove('active');
+    }
+
+    function showPolicyView() {
+      if (aiView) aiView.style.display = 'none';
+      if (emiView) emiView.style.display = 'none';
+      if (policyView) policyView.style.display = 'block';
+      if (sidebar) sidebar.style.display = 'none';
+      if (contentEl) contentEl.classList.add('policy-active');
+      if (homeLink) homeLink.classList.remove('active');
+      if (emiLink) emiLink.classList.remove('active');
+      if (policyLink) policyLink.classList.add('active');
+      loadPolicies();
+    }
+
+    if (homeLink) {
+      homeLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        showAiView();
+      });
+    }
+
+    if (emiLink) {
+      emiLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        showEmiView();
+      });
+    }
+
+    if (policyLink) {
+      policyLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        showPolicyView();
+      });
+    }
+
+    if (window.START_VIEW === 'emi') {
+      showEmiView();
+    }
+
+    // Policy view logic
+    var policyTableBody = document.getElementById('policyTableBody');
+    var policyModal = document.getElementById('policyModal');
+    var policyForm = document.getElementById('policyForm');
+    var policyAddBtn = document.getElementById('policyAddBtn');
+    var policyModalClose = document.getElementById('policyModalClose');
+    var policyModalCancel = document.getElementById('policyModalCancel');
+
+    function formatPolicyMoney(v) {
+      if (v === null || v === undefined || v === '') return '-';
+      return '₹' + Number(v).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+    }
+
+    function openPolicyModal() {
+      policyForm.reset();
+      document.getElementById('policyId').value = '';
+      policyAttachmentId = null;
+      clearPolicyAttachment();
+      var statusEl = document.getElementById('policyStatus');
+      var approveBtn = document.getElementById('policyApproveBtn');
+      if (statusEl) {
+        statusEl.value = 'active';
+        statusEl.disabled = false;
+      }
+      if (approveBtn) approveBtn.style.display = 'none';
+      if (policyModal) policyModal.style.display = 'flex';
+      refreshPolicyDropdowns();
+    }
+
+    function closePolicyModal() {
+      if (policyModal) policyModal.style.display = 'none';
+    }
+
+    async function refreshPolicyDropdowns() {
+      var bankSelect = document.getElementById('policyBank');
+      var versionSelect = document.getElementById('policyVersion');
+      var newVersionForm = document.getElementById('policyVersionForm');
+      if (!bankSelect || !versionSelect) return;
+
+      try {
+        var bankRes = await fetch('/api/banks');
+        var banks = await bankRes.json();
+        var currentBankId = bankSelect.value;
+        bankSelect.innerHTML = '<option value="">Select bank</option>' + banks.map(function(b) {
+          return '<option value="' + b.id + '">' + (b.code ? b.code + ' - ' : '') + escapeHtml(b.name) + '</option>';
+        }).join('');
+        if (currentBankId) bankSelect.value = currentBankId;
+
+        var loanType = document.getElementById('policyLoanType') ? document.getElementById('policyLoanType').value : '';
+        var verRes = await fetch('/api/policy-versions?bank_id=' + encodeURIComponent(currentBankId || '') + '&loan_type=' + encodeURIComponent(loanType || ''));
+        var versions = await verRes.json();
+        versionSelect.innerHTML = '<option value="">Select version</option>' + versions.map(function(v) {
+          return '<option value="' + v.id + '">' + escapeHtml(v.version) + ' (' + escapeHtml(v.bank_name || '') + ')</option>';
+        }).join('');
+
+        if (newVersionForm) {
+          if (!currentBankId || !loanType || versions.length === 0) {
+            newVersionForm.style.display = 'block';
+          } else {
+            newVersionForm.style.display = 'none';
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load dropdowns', e);
+      }
+    }
+
+    async function createPolicyVersion() {
+      var bankSelect = document.getElementById('policyBank');
+      var loanTypeSelect = document.getElementById('policyLoanType');
+      var labelInput = document.getElementById('newVersionLabel');
+      var statusSelect = document.getElementById('newVersionStatus');
+      var versionSelect = document.getElementById('policyVersion');
+      var newVersionForm = document.getElementById('policyVersionForm');
+
+      var bankId = bankSelect ? bankSelect.value : '';
+      var loanType = loanTypeSelect ? loanTypeSelect.value : '';
+      var version = labelInput ? labelInput.value.trim() : '';
+      var status = statusSelect ? statusSelect.value : 'active';
+
+      if (!bankId || !loanType || !version) {
+        alert('Please select a bank, choose a loan type, and enter a version label.');
+        return;
+      }
+
+      try {
+        var res = await fetch('/api/policy-versions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bank_id: bankId, loan_type: loanType, version: version, status: status }),
+          credentials: 'same-origin'
+        });
+        if (res.ok) {
+          var data = await res.json();
+          await refreshPolicyDropdowns();
+          if (versionSelect && data && data.id) {
+            versionSelect.value = data.id;
+          }
+          if (newVersionForm) newVersionForm.style.display = 'none';
+        } else {
+          var err = await res.json().catch(function() { return {}; });
+          alert(err.error || 'Failed to create version');
+        }
+      } catch (e) {
+        console.error('Failed to create version', e);
+        alert('Failed to create version');
+      }
+    }
+
+    function autoVersionLabel() {
+      var bankSelect = document.getElementById('policyBank');
+      var loanTypeSelect = document.getElementById('policyLoanType');
+      var labelInput = document.getElementById('newVersionLabel');
+      if (!bankSelect || !loanTypeSelect || !labelInput) return;
+      if (!bankSelect.value || !loanTypeSelect.value) return;
+      labelInput.value = 'V1';
+    }
+
+    if (policyAddBtn) {
+      policyAddBtn.addEventListener('click', function() {
+        openPolicyModal();
+        var bankSelect = document.getElementById('policyBank');
+        var loanTypeSelect = document.getElementById('policyLoanType');
+        var labelInput = document.getElementById('newVersionLabel');
+        if (bankSelect) bankSelect.value = '';
+        if (loanTypeSelect) loanTypeSelect.value = 'Personal';
+        if (labelInput) labelInput.value = 'V1';
+        refreshPolicyDropdowns();
+      });
+    }
+
+    if (policyModalCancel) policyModalCancel.addEventListener('click', closePolicyModal);
+
+    if (policyModalClose) policyModalClose.addEventListener('click', closePolicyModal);
+
+    var policyBank = document.getElementById('policyBank');
+    var policyLoanType = document.getElementById('policyLoanType');
+    var policyNewVersionBtn = document.getElementById('policyNewVersionBtn');
+    var policyCreateVersionBtn = document.getElementById('policyCreateVersionBtn');
+    var policyCancelVersionBtn = document.getElementById('policyCancelVersionBtn');
+
+    if (policyBank) {
+      policyBank.addEventListener('change', function() {
+        refreshPolicyDropdowns();
+        autoVersionLabel();
+      });
+    }
+
+    if (policyLoanType) {
+      policyLoanType.addEventListener('change', function() {
+        refreshPolicyDropdowns();
+        autoVersionLabel();
+      });
+    }
+
+    if (policyNewVersionBtn) {
+      policyNewVersionBtn.addEventListener('click', function() {
+        var newVersionForm = document.getElementById('policyVersionForm');
+        if (newVersionForm) newVersionForm.style.display = 'block';
+        autoVersionLabel();
+      });
+    }
+
+    if (policyCreateVersionBtn) {
+      policyCreateVersionBtn.addEventListener('click', createPolicyVersion);
+    }
+
+    if (policyCancelVersionBtn) {
+      policyCancelVersionBtn.addEventListener('click', function() {
+        var newVersionForm = document.getElementById('policyVersionForm');
+        if (newVersionForm) newVersionForm.style.display = 'none';
+      });
+    }
+
+    var policyAttachmentId = null;
+
+    function clearPolicyAttachment() {
+      policyAttachmentId = null;
+      var fileInput = document.getElementById('policyFile');
+      var preview = document.getElementById('policyAttachmentPreview');
+      var nameEl = document.getElementById('policyAttachmentName');
+      var textEl = document.getElementById('policyExtractedText');
+      var statusEl = document.getElementById('policyStatus');
+      var approveBtn = document.getElementById('policyApproveBtn');
+      if (fileInput) fileInput.value = '';
+      if (preview) preview.style.display = 'none';
+      if (nameEl) nameEl.textContent = '';
+      if (textEl) textEl.value = '';
+      if (statusEl) {
+        statusEl.value = 'active';
+        statusEl.disabled = false;
+      }
+      if (approveBtn) approveBtn.style.display = 'none';
+    }
+
+    async function uploadPolicyAttachment() {
+      var fileInput = document.getElementById('policyFile');
+      var preview = document.getElementById('policyAttachmentPreview');
+      var nameEl = document.getElementById('policyAttachmentName');
+      var textEl = document.getElementById('policyExtractedText');
+      var statusEl = document.getElementById('policyStatus');
+      var approveBtn = document.getElementById('policyApproveBtn');
+      if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+        alert('Please select a file to upload.');
+        return;
+      }
+
+      var formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      try {
+        var res = await fetch('/api/policies/upload', {
+          method: 'POST',
+          credentials: 'same-origin',
+          body: formData
+        });
+        if (res.ok) {
+          var data = await res.json();
+          policyAttachmentId = data.id;
+          if (nameEl) nameEl.textContent = data.file_name;
+          if (textEl) textEl.value = data.extracted_text || '';
+          if (preview) preview.style.display = 'block';
+          if (statusEl) {
+            statusEl.value = 'review';
+            statusEl.disabled = true;
+          }
+          if (approveBtn) approveBtn.style.display = 'inline-block';
+          if (data.extracted_text) {
+            parseExtractedPolicyText(data.extracted_text);
+          }
+        } else {
+          var err = await res.json().catch(function() { return {}; });
+          alert(err.error || 'Upload failed');
+        }
+      } catch (e) {
+        console.error('Upload failed', e);
+        alert('Upload failed');
+      }
+    }
+
+    function removePolicyAttachment() {
+      policyAttachmentId = null;
+      var fileInput = document.getElementById('policyFile');
+      var preview = document.getElementById('policyAttachmentPreview');
+      var nameEl = document.getElementById('policyAttachmentName');
+      var textEl = document.getElementById('policyExtractedText');
+      var statusEl = document.getElementById('policyStatus');
+      var approveBtn = document.getElementById('policyApproveBtn');
+      if (fileInput) fileInput.value = '';
+      if (preview) preview.style.display = 'none';
+      if (nameEl) nameEl.textContent = '';
+      if (textEl) textEl.value = '';
+      if (statusEl) {
+        statusEl.value = 'active';
+        statusEl.disabled = false;
+      }
+      if (approveBtn) approveBtn.style.display = 'none';
+    }
+
+    function parseExtractedPolicyText(text) {
+      if (!text) return;
+      var roi = text.match(/(\d+(?:\.\d+)?)\s*%/);
+      if (roi) {
+        var roiEl = document.getElementById('policyRoi');
+        if (roiEl && !roiEl.value) roiEl.value = roi[1];
+      }
+
+      var fee = text.match(/processing\s*fee\s*(?:\w*\s*)?(\d+(?:\.\d+)?)\s*%/i);
+      if (fee) {
+        var feeEl = document.getElementById('policyFee');
+        if (feeEl && !feeEl.value) feeEl.value = fee[1];
+      }
+
+      var cibil = text.match(/cibil\s*(?:score\s*)?(?:\w*\s*)?(\d{3})\s*(?:to|-|–)\s*(\d{3})/i);
+      if (cibil) {
+        var minCibilEl = document.getElementById('policyMinCibil');
+        var maxCibilEl = document.getElementById('policyMaxCibil');
+        if (minCibilEl && !minCibilEl.value) minCibilEl.value = cibil[1];
+        if (maxCibilEl && !maxCibilEl.value) maxCibilEl.value = cibil[2];
+      }
+
+      var salary = text.match(/salary\s*(?:range\s*)?(?:\w*\s*)?(?:₹\s*)?([\d,]+)\s*(?:to|-|–)\s*(?:₹\s*)?([\d,]+)/i);
+      if (salary) {
+        var minSalaryEl = document.getElementById('policyMinSalary');
+        var maxSalaryEl = document.getElementById('policyMaxSalary');
+        if (minSalaryEl && !minSalaryEl.value) minSalaryEl.value = salary[1].replace(/,/g, '');
+        if (maxSalaryEl && !maxSalaryEl.value) maxSalaryEl.value = salary[2].replace(/,/g, '');
+      }
+
+      var amount = text.match(/loan\s*amount\s*(?:range\s*)?(?:\w*\s*)?(?:₹\s*)?([\d,]+)\s*(?:to|-|–)\s*(?:₹\s*)?([\d,]+)/i);
+      if (amount) {
+        var minAmountEl = document.getElementById('policyMinAmount');
+        var maxAmountEl = document.getElementById('policyMaxAmount');
+        if (minAmountEl && !minAmountEl.value) minAmountEl.value = amount[1].replace(/,/g, '');
+        if (maxAmountEl && !maxAmountEl.value) maxAmountEl.value = amount[2].replace(/,/g, '');
+      }
+
+      var tenure = text.match(/tenure\s*(?:range\s*)?(?:\w*\s*)?(\d+)\s*(?:to|-|–)\s*(\d+)\s*(?:months?|years?)/i);
+      if (tenure) {
+        var minTenureEl = document.getElementById('policyMinTenure');
+        var maxTenureEl = document.getElementById('policyMaxTenure');
+        if (minTenureEl && !minTenureEl.value) minTenureEl.value = tenure[1];
+        if (maxTenureEl && !maxTenureEl.value) maxTenureEl.value = tenure[2];
+      }
+
+      var age = text.match(/age\s*(?:range\s*)?(?:\w*\s*)?(\d+)\s*(?:to|-|–)\s*(\d+)\s*(?:years?|yrs?)/i);
+      if (age) {
+        var minAgeEl = document.getElementById('policyMinAge');
+        var maxAgeEl = document.getElementById('policyMaxAge');
+        if (minAgeEl && !minAgeEl.value) minAgeEl.value = age[1];
+        if (maxAgeEl && !maxAgeEl.value) maxAgeEl.value = age[2];
+      }
+
+      var employment = text.match(/employment\s*type\s*[:\-]?\s*(salaried|self-employed)/i);
+      if (employment) {
+        var empEl = document.getElementById('policyEmployment');
+        if (empEl) empEl.value = employment[1].charAt(0).toUpperCase() + employment[1].slice(1).toLowerCase();
+      }
+
+      var foir = text.match(/foir\s*(?:percentage\s*)?(?:\w*\s*)?(\d+(?:\.\d+)?)\s*%/i);
+      if (foir) {
+        var foirEl = document.getElementById('policyFoir');
+        if (foirEl && !foirEl.value) foirEl.value = foir[1];
+      }
+    }
+
+    var policyUploadBtn = document.getElementById('policyUploadBtn');
+    var policyRemoveAttachment = document.getElementById('policyRemoveAttachment');
+
+    if (policyUploadBtn) {
+      policyUploadBtn.addEventListener('click', uploadPolicyAttachment);
+    }
+
+    if (policyRemoveAttachment) {
+      policyRemoveAttachment.addEventListener('click', removePolicyAttachment);
+    }
+
+    function formatPolicyList(obj, key) {
+      if (!obj) return '-';
+      var arr = obj[key];
+      if (!Array.isArray(arr) || !arr.length) return '-';
+      return escapeHtml(arr.join(', '));
+    }
+
+    async function loadPolicies() {
+      if (!policyTableBody) return;
+      policyTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#8a8fb3">Loading bank policies...</td></tr>';
+      try {
+        var res = await fetch('/api/policies');
+        var allRows = await res.json();
+        var rows = allRows.filter(function(r) { return r.status === 'active' || r.status === 'review'; });
+        if (!rows.length) {
+          policyTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#8a8fb3">No policy rules found. Import or add policy rules to see eligibility criteria here.</td></tr>';
+          return;
+        }
+
+        var bankMap = {};
+        for (var i = 0; i < rows.length; i++) {
+          var r = rows[i];
+          var bankKey = String(r.bank_id);
+          if (!bankMap[bankKey]) {
+            bankMap[bankKey] = {
+              bank_id: r.bank_id,
+              bank_name: r.bank_name,
+              bank_code: r.bank_code,
+              status: r.status,
+              rules: [],
+              attachments: []
+            };
+          }
+          bankMap[bankKey].rules.push(r);
+          if (r.attachment_id) {
+            var existing = bankMap[bankKey].attachments.find(function(a) { return a && a.id === r.attachment_id; });
+            if (!existing) {
+              bankMap[bankKey].attachments.push({
+                id: r.attachment_id,
+                file_name: r.attachment_file_name,
+                file_path: r.attachment_file_path,
+                file_type: r.attachment_file_type || r.file_type || 'application/octet-stream'
+              });
+            }
+          }
+        }
+
+        var banks = Object.values(bankMap);
+        policyTableBody.innerHTML = banks.map(function(b) {
+           var statusBadge = b.status === 'active'
+             ? '<span style="color:#1F8A70;font-weight:700">Active</span>'
+             : b.status === 'review' ? '<span style="color:#D97706;font-weight:700">Review</span>' : escapeHtml(b.status || '—');
+          return '<tr>' +
+            '<td style="text-align:left">' + escapeHtml(b.bank_name + (b.bank_code ? ' (' + b.bank_code + ')' : '')) + '</td>' +
+            '<td style="text-align:left">Personal Loan</td>' +
+            '<td style="text-align:left">' + statusBadge + '</td>' +
+            '<td style="text-align:left;white-space:nowrap">' +
+              '<button class="icon-btn" data-action="view" data-id="' + b.bank_id + '" title="View Documents">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
+              '</button> ' +
+              '<button class="icon-btn" data-action="edit" data-id="' + b.bank_id + '" title="Edit">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+              '</button> ' +
+              '<span class="dropdown" style="position:relative;display:inline-flex">' +
+                '<button class="icon-btn" data-action="more" data-id="' + b.bank_id + '" title="More">' +
+                  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>' +
+                '</button>' +
+                '<span class="dropdown-menu" style="display:none;position:absolute;right:0;top:32px;background:#fff;border:1px solid #e4e8f0;border-radius:10px;box-shadow:0 10px 30px rgba(59,49,99,.12);min-width:150px;z-index:10;overflow:hidden">' +
+                  '<button class="dropdown-item" data-action="archive" data-id="' + b.bank_id + '" style="display:block;width:100%;text-align:left;padding:9px 14px;border:none;background:transparent;color:#1d2947;font-size:13px;font-weight:700;cursor:pointer">Archive</button>' +
+                  '<button class="dropdown-item" data-action="delete" data-id="' + b.bank_id + '" style="display:block;width:100%;text-align:left;padding:9px 14px;border:none;background:transparent;color:#d64a56;font-size:13px;font-weight:700;cursor:pointer">Delete</button>' +
+                '</span>' +
+              '</span>' +
+            '</td>' +
+          '</tr>';
+        }).join('');
+
+        var bankData = banks;
+        policyTableBody.querySelectorAll('[data-action="view"]').forEach(function(btn) {
+          btn.addEventListener('click', async function() {
+            var bankId = btn.getAttribute('data-id');
+            var bank = bankData.find(function(b) { return String(b.bank_id) === String(bankId); });
+            if (!bank) return;
+            await openDocumentsModal(bank.bank_id, bank.bank_name, bank.attachments);
+          });
+        });
+        policyTableBody.querySelectorAll('[data-action="edit"]').forEach(function(btn) {
+          btn.addEventListener('click', async function() {
+            var bankId = btn.getAttribute('data-id');
+            var bank = bankData.find(function(b) { return String(b.bank_id) === String(bankId); });
+            if (!bank || !bank.rules.length) return;
+            var activeRule = bank.rules.find(function(r) { return r.status === 'active'; }) || bank.rules[0];
+            populatePolicyModal(activeRule);
+            await refreshPolicyDropdowns();
+            var verSel = document.getElementById('policyVersion');
+            if (verSel) verSel.value = activeRule.policy_version_id;
+            if (policyModal) policyModal.style.display = 'flex';
+          });
+        });
+        policyTableBody.querySelectorAll('[data-action="more"]').forEach(function(btn) {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var menu = btn.nextElementSibling;
+            if (menu) {
+              var isOpen = menu.style.display === 'block';
+              policyTableBody.querySelectorAll('.dropdown-menu').forEach(function(m) { m.style.display = 'none'; });
+              menu.style.display = isOpen ? 'none' : 'block';
+            }
+          });
+        });
+        policyTableBody.querySelectorAll('[data-action="archive"]').forEach(function(btn) {
+          btn.addEventListener('click', async function() {
+            var bankId = btn.getAttribute('data-id');
+            if (!confirm('Archive all policy rules for this bank?')) return;
+            await fetch('/api/policies?bank_id=' + encodeURIComponent(bankId) + '&status=active').then(function(r) { return r.json(); }).then(function(activeRules) {
+              return Promise.all(activeRules.map(function(rule) {
+                return fetch('/api/policies/' + rule.id + '/archive', { method: 'POST', credentials: 'same-origin' });
+              }));
+            });
+            loadPolicies();
+          });
+        });
+        policyTableBody.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
+          btn.addEventListener('click', async function() {
+            var bankId = btn.getAttribute('data-id');
+            if (!confirm('Delete all policy rules for this bank? This cannot be undone.')) return;
+            await fetch('/api/policies?bank_id=' + encodeURIComponent(bankId)).then(function(r) { return r.json(); }).then(function(rules) {
+              return Promise.all(rules.map(function(rule) {
+                return fetch('/api/policies/' + rule.id, { method: 'DELETE', credentials: 'same-origin' });
+              }));
+            });
+            loadPolicies();
+          });
+        });
+      } catch (e) {
+        console.error('Failed to load policies', e);
+        policyTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#d64a56">Failed to load policies.</td></tr>';
+      }
+    }
+
+
+    async function openDocumentsModal(bankId, bankName, attachments) {
+      var modal = document.getElementById('documentViewerModal');
+      var titleEl = document.getElementById('documentViewerTitle');
+      var bodyEl = document.getElementById('documentViewerBody');
+      if (titleEl) titleEl.textContent = 'Documents - ' + (bankName || '');
+      if (bodyEl) bodyEl.innerHTML = '<div style="padding:20px;color:#8a8fb3">Loading documents...</div>';
+      if (modal) modal.style.display = 'flex';
+
+      try {
+        if (!attachments || !attachments.length) {
+          if (bodyEl) bodyEl.innerHTML = '<div style="padding:20px;color:#8a8fb3">No policy documents linked to this bank.</div>';
+          return;
+        }
+
+        // Deduplicate by file name + file type
+        var seen = {};
+        var unique = [];
+        for (var i = 0; i < attachments.length; i++) {
+          var att = attachments[i];
+          var key = (att.file_name || '') + '|' + (att.file_type || '');
+          if (!seen[key]) {
+            seen[key] = true;
+            unique.push(att);
+          }
+        }
+
+        var html = '<div style="display:grid;gap:8px">';
+        unique.forEach(function(att) {
+          var viewUrl = '/api/policy-files/' + att.id + '/view';
+          var downloadUrl = '/api/policy-files/' + att.id + '/download';
+          var name = att.file_name || 'Unknown';
+          var type = att.file_type || 'File';
+          var ext = name.split('.').pop().toLowerCase();
+          var icon = '📄';
+          var previewLabel = 'Preview';
+          if (['pdf'].indexOf(ext) !== -1) { icon = '📕'; previewLabel = 'Preview PDF'; }
+          else if (['xlsx','xls','xlsb','csv'].indexOf(ext) !== -1) { icon = '📊'; previewLabel = 'Preview'; }
+          else if (['txt','doc','docx'].indexOf(ext) !== -1) { icon = '📝'; previewLabel = 'Preview'; }
+          else if (['jpg','jpeg','png','gif','bmp','webp'].indexOf(ext) !== -1) { icon = '🖼️'; previewLabel = 'Preview Image'; }
+          html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid #e4e8f0;border-radius:10px;background:#fff">' +
+            '<div style="display:flex;align-items:center;gap:10px;overflow:hidden">' +
+              '<span style="font-size:18px">' + icon + '</span>' +
+              '<div style="overflow:hidden">' +
+                '<div style="font-size:13px;font-weight:700;color:#29354b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</div>' +
+                '<div style="font-size:11px;color:#64748b">' + escapeHtml(type) + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="display:flex;gap:6px">' +
+              '<button class="icon-btn preview-btn" data-url="' + viewUrl + '" data-name="' + escapeHtml(name) + '" data-ext="' + ext + '" title="Preview" style="display:inline-flex;align-items:center;justify-content:center;width:auto;padding:6px 10px;font-size:12px;font-weight:700;gap:4px">' +
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
+                '<span>' + previewLabel + '</span>' +
+              '</button>' +
+              '<a href="' + downloadUrl + '" download style="display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:6px;font-size:12px;font-weight:700;color:#2563eb;text-decoration:none;border:1px solid #2563eb;background:#fff;gap:4px">' +
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
+                '<span>Download</span>' +
+              '</a>' +
+            '</div>' +
+          '</div>';
+        });
+        html += '</div>';
+
+        if (bodyEl) bodyEl.innerHTML = html;
+
+        // Wire preview buttons
+        bodyEl.querySelectorAll('.preview-btn').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var previewUrl = btn.getAttribute('data-url');
+            var previewName = btn.getAttribute('data-name');
+            var previewExt = btn.getAttribute('data-ext');
+            openFilePreview(previewUrl, previewName, previewExt);
+          });
+        });
+      } catch (e) {
+        if (bodyEl) bodyEl.innerHTML = '<div style="padding:20px;color:#d64a56">Failed to load documents.</div>';
+      }
+    }
+
+    function openFilePreview(url, name, ext) {
+      var panel = document.getElementById('filePreviewPanel');
+      var titleEl = document.getElementById('filePreviewTitle');
+      var subtitleEl = document.getElementById('filePreviewSubtitle');
+      var contentEl = document.getElementById('filePreviewContent');
+      var downloadEl = document.getElementById('filePreviewDownload');
+      var iconEl = document.getElementById('filePreviewIcon');
+      if (!panel || !contentEl) return;
+
+      if (titleEl) titleEl.textContent = name || 'Preview';
+      if (subtitleEl) subtitleEl.textContent = 'Policy document';
+      if (downloadEl) downloadEl.href = url;
+      if (iconEl) {
+        var normalizedExt = (ext || '').toLowerCase();
+        if (['pdf'].indexOf(normalizedExt) !== -1) iconEl.textContent = '📕';
+        else if (['jpg','jpeg','png','gif','bmp','webp'].indexOf(normalizedExt) !== -1) iconEl.textContent = '🖼️';
+        else if (['xlsx','xls','xlsb','csv'].indexOf(normalizedExt) !== -1) iconEl.textContent = '📊';
+        else if (['txt','doc','docx'].indexOf(normalizedExt) !== -1) iconEl.textContent = '📝';
+        else iconEl.textContent = '📄';
+      }
+
+      panel.style.display = 'flex';
+      contentEl.innerHTML = '<div style="padding:20px;color:#8a8fb3">Loading preview...</div>';
+
+      var urlParts = url.split('/');
+      var fileId = urlParts[urlParts.length - 2];
+      var downloadUrl = '/api/policy-files/' + fileId + '/download';
+      if (downloadEl) downloadEl.href = downloadUrl;
+
+      fetch('/api/policy-files/' + fileId + '/preview-html', { credentials: 'same-origin' })
+        .then(function(res) {
+          if (!res.ok) {
+            return res.text().then(function(text) {
+              throw new Error('HTTP ' + res.status + ': ' + text);
+            });
+          }
+          return res.text();
+        })
+        .then(function(html) {
+          contentEl.innerHTML = html;
+        })
+        .catch(function(err) {
+          contentEl.innerHTML = '<div style="padding:20px;color:#d64a56">Failed to load preview: ' + escapeHtml(err.message) + '</div>';
+        });
+    }
+
+    function populatePolicyModal(row) {
+      document.getElementById('policyId').value = row.id;
+      document.getElementById('policyBank').value = row.bank_id;
+      document.getElementById('policyLoanType').value = row.loan_type;
+      document.getElementById('policyMinCibil').value = row.min_cibil === null ? '' : row.min_cibil;
+      document.getElementById('policyMaxCibil').value = row.max_cibil === null ? '' : row.max_cibil;
+      document.getElementById('policyMinSalary').value = row.min_salary === null ? '' : row.min_salary;
+      document.getElementById('policyMaxSalary').value = row.max_salary === null ? '' : row.max_salary;
+      document.getElementById('policyEmployment').value = row.employment_type || '';
+      document.getElementById('policyMinAge').value = row.min_age === null ? '' : row.min_age;
+      document.getElementById('policyMaxAge').value = row.max_age === null ? '' : row.max_age;
+      document.getElementById('policyMinAmount').value = row.min_loan_amount === null ? '' : row.min_loan_amount;
+      document.getElementById('policyMaxAmount').value = row.max_loan_amount === null ? '' : row.max_loan_amount;
+      document.getElementById('policyMinTenure').value = row.min_tenure_months === null ? '' : row.min_tenure_months;
+      document.getElementById('policyMaxTenure').value = row.max_tenure_months === null ? '' : row.max_tenure_months;
+      document.getElementById('policyFoir').value = row.foir_percent === null ? '' : row.foir_percent;
+      document.getElementById('policyRoi').value = row.roi === null ? '' : row.roi;
+      document.getElementById('policyFee').value = row.processing_fee_percent === null ? '' : row.processing_fee_percent;
+      var foirContextEl = document.getElementById('policyFoirContext');
+      var foirContextText = document.getElementById('policyFoirContextText');
+      if (foirContextEl && foirContextText) {
+        var parts = [];
+        var program = row.category || row.loan_type || '';
+        var employment = row.employment_type || '';
+        var salary = '';
+        if (row.min_salary !== null && row.min_salary !== undefined) {
+          salary = formatPolicyMoney(row.min_salary);
+          if (row.max_salary !== null && row.max_salary !== undefined) {
+            salary += ' - ' + formatPolicyMoney(row.max_salary);
+          }
+        } else if (row.max_salary !== null && row.max_salary !== undefined) {
+          salary = 'Up to ' + formatPolicyMoney(row.max_salary);
+        }
+        if (program) parts.push(program);
+        if (employment) parts.push(employment);
+        if (salary) parts.push('Salary: ' + salary);
+        var foirVal = row.foir_percent;
+        if (foirVal !== null && foirVal !== undefined) {
+          parts.push('FOIR: ' + Number(foirVal).toFixed(2) + '%');
+          if (parts.length > 0) {
+            foirContextText.textContent = parts.join(' | ');
+            foirContextEl.style.display = 'block';
+          } else {
+            foirContextEl.style.display = 'none';
+          }
+        } else {
+          foirContextEl.style.display = 'none';
+        }
+      }
+      var statusEl = document.getElementById('policyStatus');
+      var approveBtn = document.getElementById('policyApproveBtn');
+      if (statusEl) statusEl.value = row.status || 'active';
+      if (approveBtn) approveBtn.style.display = (row.status === 'review') ? 'inline-block' : 'none';
+
+      var sourceDocsEl = document.getElementById('policySourceDocuments');
+      var sourceDocsList = document.getElementById('policySourceDocumentsList');
+      if (sourceDocsEl && sourceDocsList) {
+        var attachments = row.attachments || [];
+        if (attachments.length > 0) {
+          var items = attachments.map(function(att) {
+            var url = '/api/policy-files/' + att.id + '/view';
+            var name = att.file_name || 'Unknown';
+            var type = att.file_type || 'File';
+            var ext = name.split('.').pop().toLowerCase();
+            var icon = '📄';
+            var actionLabel = 'View / Open';
+            var actionTarget = '_blank';
+            if (['pdf'].indexOf(ext) !== -1) {
+              icon = '📕';
+              actionLabel = 'Open PDF';
+            } else if (['xlsx','xls','xlsb','csv'].indexOf(ext) !== -1) {
+              icon = '📊';
+              actionLabel = 'Download / Open';
+            } else if (['txt','doc','docx'].indexOf(ext) !== -1) {
+              icon = '📝';
+              actionLabel = 'Download / Open';
+            } else if (['jpg','jpeg','png','gif','bmp','webp'].indexOf(ext) !== -1) {
+              icon = '🖼️';
+              actionLabel = 'View Image';
+            }
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border:1px solid #e4e8f0;border-radius:8px;background:#fff;margin-bottom:6px">' +
+              '<div style="display:flex;align-items:center;gap:8px;overflow:hidden">' +
+                '<span style="font-size:16px">' + icon + '</span>' +
+                '<div style="overflow:hidden">' +
+                  '<div style="font-size:13px;font-weight:700;color:#29354b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</div>' +
+                  '<div style="font-size:11px;color:#64748b">' + escapeHtml(type) + '</div>' +
+                '</div>' +
+              '</div>' +
+              '<a href="' + url + '" target="' + actionTarget + '" rel="noopener" style="font-size:12px;font-weight:700;color:#2563eb;text-decoration:none;padding:4px 10px;border:1px solid #2563eb;border-radius:6px;white-space:nowrap">' + actionLabel + '</a>' +
+            '</div>';
+          }).join('');
+          sourceDocsList.innerHTML = items;
+          sourceDocsEl.style.display = 'block';
+        } else {
+          sourceDocsEl.style.display = 'none';
+        }
+      }
+    }
+
+    async function openFoirSlabsModal(ruleId) {
+      var modal = document.getElementById('foirSlabsModal');
+      var titleEl = document.getElementById('foirSlabsTitle');
+      var bodyEl = document.getElementById('foirSlabsBody');
+      if (titleEl) titleEl.textContent = 'FOIR Slabs';
+      if (bodyEl) bodyEl.innerHTML = '<div style="padding:20px;color:#8a8fb3">Loading FOIR details...</div>';
+      if (modal) modal.style.display = 'flex';
+      try {
+        var res = await fetch('/api/policies/' + encodeURIComponent(ruleId));
+        if (!res.ok) {
+          var err = await res.json().catch(function() { return {}; });
+          if (bodyEl) bodyEl.innerHTML = '<div style="padding:20px;color:#d64a56">' + escapeHtml(err.error || 'Failed to load FOIR details') + '</div>';
+          return;
+        }
+        var rule = await res.json();
+        if (!rule) {
+          if (bodyEl) bodyEl.innerHTML = '<div style="padding:20px;color:#d64a56">Policy rule not found.</div>';
+          return;
+        }
+
+        var foirVal = rule.foir_percent !== null ? Number(rule.foir_percent) : null;
+        var html = '<div style="margin-bottom:14px;font-size:13px;color:#64748b">FOIR is stored as a single value per rule in the current schema. Salary-wise / program-wise FOIR slabs require schema and extraction changes.</div>';
+
+        if (foirVal !== null) {
+          html += '<table class="amort" style="width:100%;border-collapse:collapse">' +
+            '<thead><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">' +
+              '<th style="padding:10px 12px;text-align:left">Min Salary (₹)</th>' +
+              '<th style="padding:10px 12px;text-align:left">Max Salary (₹)</th>' +
+              '<th style="padding:10px 12px;text-align:left">FOIR %</th>' +
+              '<th style="padding:10px 12px;text-align:left">Program / Profile / Condition</th>' +
+              '<th style="padding:10px 12px;text-align:left">Source Document</th>' +
+            '</tr></thead><tbody>' +
+            '<tr style="border-bottom:1px solid #e8edf2">' +
+              '<td style="padding:10px 12px">' + (rule.min_salary !== null ? '₹' + Number(rule.min_salary).toLocaleString('en-IN') : '—') + '</td>' +
+              '<td style="padding:10px 12px">' + (rule.max_salary !== null ? '₹' + Number(rule.max_salary).toLocaleString('en-IN') : '—') + '</td>' +
+              '<td style="padding:10px 12px">' + foirVal.toFixed(2) + '%</td>' +
+              '<td style="padding:10px 12px">' + escapeHtml(rule.employment_type || rule.loan_type || '—') + '</td>' +
+              '<td style="padding:10px 12px">' + (rule.attachments && rule.attachments.length ? rule.attachments.map(function(a) { return escapeHtml(a.file_name || 'Unknown'); }).join('<br>') : 'No source document linked') + '</td>' +
+            '</tr>' +
+          '</tbody></table>';
+        } else {
+          html += '<div style="padding:14px;color:#8a8fb3">No FOIR value stored for this rule.</div>';
+        }
+
+        if (bodyEl) bodyEl.innerHTML = html;
+      } catch (e) {
+        if (bodyEl) bodyEl.innerHTML = '<div style="padding:20px;color:#d64a56">Failed to load FOIR details.</div>';
+      }
+    }
+
+    if (policyAddBtn) policyAddBtn.addEventListener('click', openPolicyModal);
+    if (policyModalClose) policyModalClose.addEventListener('click', closePolicyModal);
+    if (policyModalCancel) policyModalCancel.addEventListener('click', closePolicyModal);
+    if (policyModal) {
+      policyModal.addEventListener('click', function(e) {
+        if (e.target === policyModal) closePolicyModal();
+      });
+    }
+
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.dropdown')) {
+        document.querySelectorAll('.dropdown-menu').forEach(function(m) { m.style.display = 'none'; });
+      }
+    });
+
+    if (policyForm) {
+      policyForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var id = document.getElementById('policyId').value;
+        var payload = {
+          bank_id: document.getElementById('policyBank').value,
+          loan_type: 'Personal',
+          min_cibil: document.getElementById('policyMinCibil').value || null,
+          max_cibil: document.getElementById('policyMaxCibil').value || null,
+          min_salary: document.getElementById('policyMinSalary').value || null,
+          max_salary: document.getElementById('policyMaxSalary').value || null,
+          employment_type: 'Salaried',
+          min_age: document.getElementById('policyMinAge').value || null,
+          max_age: document.getElementById('policyMaxAge').value || null,
+          min_loan_amount: document.getElementById('policyMinAmount').value || null,
+          max_loan_amount: document.getElementById('policyMaxAmount').value || null,
+          min_tenure_months: document.getElementById('policyMinTenure').value || null,
+          max_tenure_months: document.getElementById('policyMaxTenure').value || null,
+          foir_percent: document.getElementById('policyFoir').value || null,
+          roi: document.getElementById('policyRoi').value || null,
+          processing_fee_percent: document.getElementById('policyFee').value || null,
+          status: document.getElementById('policyStatus').value,
+          attachment_id: policyAttachmentId
+        };
+        var url = id ? '/api/policies/' + id : '/api/policies';
+        var method = id ? 'PUT' : 'POST';
+        var res = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          credentials: 'same-origin'
+        });
+        if (res.ok) {
+          closePolicyModal();
+          loadPolicies();
+        } else {
+          alert('Save failed');
+        }
+      });
+    }
+
+    var policyApproveBtn = document.getElementById('policyApproveBtn');
+    if (policyApproveBtn) {
+      policyApproveBtn.addEventListener('click', async function() {
+        var id = document.getElementById('policyId').value;
+        if (!id) {
+          alert('Please save the rule first before activating.');
+          return;
+        }
+        var payload = {
+          bank_id: document.getElementById('policyBank').value,
+          loan_type: 'Personal',
+          min_cibil: document.getElementById('policyMinCibil').value || null,
+          max_cibil: document.getElementById('policyMaxCibil').value || null,
+          min_salary: document.getElementById('policyMinSalary').value || null,
+          max_salary: document.getElementById('policyMaxSalary').value || null,
+          employment_type: 'Salaried',
+          min_age: document.getElementById('policyMinAge').value || null,
+          max_age: document.getElementById('policyMaxAge').value || null,
+          min_loan_amount: document.getElementById('policyMinAmount').value || null,
+          max_loan_amount: document.getElementById('policyMaxAmount').value || null,
+          min_tenure_months: document.getElementById('policyMinTenure').value || null,
+          max_tenure_months: document.getElementById('policyMaxTenure').value || null,
+          foir_percent: document.getElementById('policyFoir').value || null,
+          roi: document.getElementById('policyRoi').value || null,
+          processing_fee_percent: document.getElementById('policyFee').value || null,
+          status: 'active',
+          attachment_id: policyAttachmentId
+        };
+        var res = await fetch('/api/policies/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          credentials: 'same-origin'
+        });
+        if (res.ok) {
+          closePolicyModal();
+          loadPolicies();
+        } else {
+          alert('Activation failed');
+        }
+      });
+    }
+
+    var policyImportBtn = document.getElementById('policyImportBtn');
+    var policyImportModal = document.getElementById('policyImportModal');
+    var policyImportModalClose = document.getElementById('policyImportModalClose');
+    var policyImportModalCancel = document.getElementById('policyImportModalCancel');
+    var policyStartImportBtn = document.getElementById('policyStartImportBtn');
+
+    function openImportModal() {
+      if (policyImportModal) policyImportModal.style.display = 'flex';
+      loadImportStats();
+    }
+
+    function closeImportModal() {
+      if (policyImportModal) policyImportModal.style.display = 'none';
+    }
+
+    async function loadImportStats() {
+      var statBanksCount = document.getElementById('statBanksCount');
+      var statReviewCount = document.getElementById('statReviewCount');
+      var statActiveCount = document.getElementById('statActiveCount');
+      if (statBanksCount) statBanksCount.textContent = '-';
+      if (statReviewCount) statReviewCount.textContent = '-';
+      if (statActiveCount) statActiveCount.textContent = '-';
+      try {
+        var res = await fetch('/api/admin/policy-files');
+        if (!res.ok) throw new Error('Failed to load stats');
+        var data = await res.json();
+        if (statBanksCount) statBanksCount.textContent = data.banksDetected || 0;
+        if (statReviewCount) statReviewCount.textContent = data.rulesInReview || 0;
+        if (statActiveCount) statActiveCount.textContent = data.activeRules || 0;
+      } catch (e) {
+        console.error('Failed to load import stats', e);
+      }
+    }
+
+    if (policyImportBtn) {
+      policyImportBtn.addEventListener('click', function() {
+        openImportModal();
+      });
+    }
+
+    if (policyImportModalClose) {
+      policyImportModalClose.addEventListener('click', closeImportModal);
+    }
+
+    if (policyImportModalCancel) {
+      policyImportModalCancel.addEventListener('click', closeImportModal);
+    }
+
+    if (policyStartImportBtn) {
+      policyStartImportBtn.addEventListener('click', async function() {
+        var progressBox = document.getElementById('importProgressBox');
+        var progressText = document.getElementById('importProgressText');
+        var resultsBox = document.getElementById('importResultsBox');
+        if (progressBox) progressBox.style.display = 'block';
+        if (resultsBox) resultsBox.style.display = 'none';
+        if (progressText) progressText.textContent = 'Importing policies from folder...';
+        policyStartImportBtn.disabled = true;
+
+        try {
+          var res = await fetch('/api/admin/policies/import', {
+            method: 'POST',
+            credentials: 'same-origin'
+          });
+          if (res.ok) {
+            var data = await res.json();
+            if (progressText) progressText.textContent = 'Import completed successfully!';
+            if (resultsBox) {
+              resultsBox.style.display = 'block';
+              var filesScanned = document.getElementById('resFilesScanned');
+              var banksDetected = document.getElementById('resBanksDetected');
+              var rulesExtracted = document.getElementById('resRulesExtracted');
+              var docsLinked = document.getElementById('resDocsLinked');
+              if (filesScanned) filesScanned.textContent = data.stats && data.stats.totalFilesScanned ? data.stats.totalFilesScanned : '-';
+              if (banksDetected) banksDetected.textContent = data.stats && data.stats.banksDetected ? data.stats.banksDetected : '-';
+              if (rulesExtracted) rulesExtracted.textContent = data.stats && data.stats.rulesExtracted ? data.stats.rulesExtracted : '-';
+              if (docsLinked) docsLinked.textContent = data.stats && data.stats.attachmentsLinked ? data.stats.attachmentsLinked : '-';
+            }
+            loadPolicies();
+          } else {
+            var err = await res.json().catch(function() { return {}; });
+            if (progressText) progressText.textContent = 'Import failed: ' + (err.error || 'Unknown error');
+          }
+        } catch (e) {
+          console.error('Import failed', e);
+          if (progressText) progressText.textContent = 'Import failed: ' + e.message;
+        } finally {
+          policyStartImportBtn.disabled = false;
+        }
+      });
+    }
+
+    if (policyImportModal) {
+      policyImportModal.addEventListener('click', function(e) {
+        if (e.target === policyImportModal) closeImportModal();
+      });
+    }
+
+    var documentViewerModal = document.getElementById('documentViewerModal');
+    var documentViewerClose = document.getElementById('documentViewerClose');
+    if (documentViewerClose) {
+      documentViewerClose.addEventListener('click', function() {
+        if (documentViewerModal) documentViewerModal.style.display = 'none';
+      });
+    }
+    if (documentViewerModal) {
+      documentViewerModal.addEventListener('click', function(e) {
+        if (e.target === documentViewerModal) documentViewerModal.style.display = 'none';
+      });
+    }
+
+    var foirSlabsModal = document.getElementById('foirSlabsModal');
+    var foirSlabsClose = document.getElementById('foirSlabsClose');
+    if (foirSlabsClose) {
+      foirSlabsClose.addEventListener('click', function() {
+        if (foirSlabsModal) foirSlabsModal.style.display = 'none';
+      });
+    }
+    if (foirSlabsModal) {
+      foirSlabsModal.addEventListener('click', function(e) {
+        if (e.target === foirSlabsModal) foirSlabsModal.style.display = 'none';
+      });
+    }
+
+    var filePreviewPanel = document.getElementById('filePreviewPanel');
+    var filePreviewClose = document.getElementById('filePreviewClose');
+    if (filePreviewClose) {
+      filePreviewClose.addEventListener('click', function() {
+        if (filePreviewPanel) filePreviewPanel.style.display = 'none';
+      });
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        if (filePreviewPanel && filePreviewPanel.style.display === 'flex') {
+          filePreviewPanel.style.display = 'none';
+        }
+        if (documentViewerModal && documentViewerModal.style.display === 'flex') {
+          documentViewerModal.style.display = 'none';
+        }
+        if (foirSlabsModal && foirSlabsModal.style.display === 'flex') {
+          foirSlabsModal.style.display = 'none';
+        }
+        if (policyModal && policyModal.style.display === 'flex') {
+          policyModal.style.display = 'none';
+        }
+        if (policyImportModal && policyImportModal.style.display === 'flex') {
+          policyImportModal.style.display = 'none';
+        }
+      }
+    });
+
+    if (window.START_VIEW === 'emi') {
+      showEmiView();
+    }
+  </script>
+</body>
+</html>
