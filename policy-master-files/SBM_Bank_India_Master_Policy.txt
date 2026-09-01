@@ -1,0 +1,309 @@
+================================================================================
+SBM BANK INDIA PERSONAL LOAN - POLICY RULEBOOK
+Generated: 2026-08-29
+Source Bank: SBM Bank India (SBM)
+================================================================================
+
+PURPOSE:
+This is a concise eligibility and pricing rulebook for SBM Bank India Personal Loan.
+It is derived from all source documents and PostgreSQL policy records.
+Use this for AI decision-making, eligibility checks, and policy validation.
+
+SECTIONS:
+1. PROGRAM OVERVIEW
+2. ELIGIBILITY CRITERIA
+3. COMPANY/EMPLOYER CATEGORIES
+4. PRICING & ROI GRIDS
+5. LOAN PARAMETERS
+6. FOIR & MULTIPLIER RULES
+7. NTH / SALARY REQUIREMENTS
+8. BT / CCBT / APP LOAN RULES
+9. DOCUMENT REQUIREMENTS
+10. EXCEPTIONS & DEVIATIONS
+11. CONFLICTS/REVIEW ITEMS
+
+================================================================================
+1. PROGRAM OVERVIEW
+================================================================================
+
+Active Policy Versions:
+- V1 (Home)
+- V2 (Personal)
+- V1 (Personal)
+
+Key Parameters from Database:
+- Minimum Salary: ₹30,000
+- Maximum Salary: ₹50,000
+- Maximum Loan Amount: ₹30
+
+Total Policy Versions: 3
+Total Policy Rules: 3
+Total Source Files Extracted: 4
+
+================================================================================
+2. ELIGIBILITY CRITERIA
+================================================================================
+
+Employment Types:
+- Salaried
+- Self-Employed
+
+Source Document Policy Details:
+
+--- From: SBM Bank PL Policy - 01-08-24.txt ---
+💫 🌟 SBM Bank PL Policy 🌟 💫 
+
+📌Minimum Salary: 
+
+⏭️ 30K- Listed Company
+⏭️ 50K- Non-Listed Company
+
+📌Age: 
+
+⏭️ Minimum - 23Year 
+⏭️ Maximum - 58Years
+
+
+📌Loan Amount: Minimum :
+
+⏭️ Min - 2Lac 
+⏭️ Max - 30Lac 
+⏭️ 5Lacs in case of (-1/0) CIBIL
+
+📌Tenure: Minimum :
+
+⏭️ Min - 6 Months 
+⏭️ Maximum- 60 Months
+
+📌PF Deduction: 
+
+Mandatory, to be checked in Pay slip or EPFO statement.
+
+📌CIBIL:
+
+⏭️ (-1/0): Allowed to be capped at 5 Lacs. 
+⏭️ Non-listed company not allowed)
+
+📌FOIR :
+
+⏭️ Salary - 30k to 50k ---- 50%
+⏭️ Salary - 50k to 100k ---- 60%
+⏭️ Salary above 100k ----65%
+
+📌Credit Card Obligation:
+
+⏭️ Salary Above 50K --- CC O/s within 5 Times of Salary -- NIL
+
+⏭️Salary Above 50K --- CC O/s More than 5 Times of Salary ---- 5% of Total O/s
+
+📌Loan Amount Capping:
+
+⏭️ Listed, SBM group and Govt. ---- 30Lacs.
+
+⏭️Non - Listed ---- 20Lacs.
+
+📌Balance Transfer: 
+⏭️Allowed, (PL, CC, OD, Jumbo Loan & App Loans)
+
+📌Part-Payment: 
+
+⏭️ Not Allowed.
+
+📌Foreclosure: 
+
+⏭️ Allowed after 12EMIs with closure charges of 4% plus taxes
+
+⏭️ ROl, Processing Fess and Insurance
+
+📌Rate of Interest :
+
+⏭️ 13.5% - 16%
+
+📌Processing Fees : 
+
+⏭️ 2% 
+
+📌Insurance : 
+
+⏭️ Mandatory
+
+📌Documents accepted as Address proof: 
+
+⏭️All Govt. ID's, utility Bill, Employer letter head.
+
+⏭️ But Rent agreement and Bank Statement are not accepted as Address proof.
+
+
+📌Mandatory Documents:
+
+	•	﻿﻿KYC Documents 
+(Signed by customer)
+
+
+[...truncated...]
+
+--- From: SBM NEW PRICING GRID 06 May 2025.jpeg ---
+| Grid1 |>100000 | ms% [| a1sox | 1225% |
+[Gridz [>75000-<<to0000 | 1300 | 1a00x | 1s00% |
+[Grids [>s0000-<75000 | 1350% | 1as0x | 1ss0x |
+“Above rates are linked to current EBLR and may vary with variations in EBLR
+Hllustration: ROI (As per current EBLR)
+For customers having net monthly income of more than 75,000 and CIBIL score of above 750 will be charged @ 13.00% ROI p.a.
+Grid 1 Pricing Applicability: Only for customer having monthly Net Salary of above One Lakh and if below criterias are met:
+- Loan amount of more than or equal to 10 Lacs
+- No App loan & Credit Card BT
+- Employed with Listed Companies (Private/Partnership are excluded)
+- Employer Turnover more than 250 Crores.
+- Not more than 6 Cibil enquiries in last 30 days from the date of login
+- Self-owned house
+- 5 yrs stability in the same city
+
+--- From: SBM PL ONE PAGER 12-03-25.pdf ---
+SBM Bank --- PL Policy
+ Minimum Salary : 50K- Listed Company & Non-Listed Company (Company approval to be taken prior to login)
+ Age : Minimum – 25Year // Maximum – 60Years
+ Loan Amount : Minimum- 5Lac /// Maximum- 30Lac /// 5Lacs in case of (-1/0) CIBIL
+ Tenure : Minimum- 12 Months // Maximum- 60 Months
+ PF Deduction : Mandatory, to be checked in Pay slip or EPFO statement.
+ CIBIL (-1/0) : Allowed to be capped at 5Lacs. (Non-listed company allowed)
+ CIBIL SCORE   – 720+
+ Foir :
+ Salary – 30k to 50k ---- 50%
+ Salary – 50k to 100k ---- 60%
+ Salary above 100k ----65%
+ Credit Card Obligation :
+ Salary Below 1L --- CC O/s within 3 Times of Salary ---- NIL (Above 3 time consider as 5% obligations)
+ Salary Above 1L --- CC O/s Within 5 Times of Salary ---- NIL (Above 5 time consider as 5% obligations)
+ Loan Amount Capping :
+ Listed, SBM group and Govt. ---- 30Lacs.
+ Non – Listed ---- 30Lacs.
+    Balance Transfer : Allowed, (PL, CC, OD, Jumbo Loan & App Loans) (allowed Only 5 tradeline including app loans,
+ CC, PL, OD)
+    Part-Payment : Allowed after 12M With pre closure charges of 4% plus taxes
+    Foreclosure : Allowed after 12EMIs with closure charges of 4% plus taxes
+    ROI, Processing Fess and Insurance
+ o   Rate of Interest –   14% – 18%,   Processing Fees   – 2%,   Insurance –   Mandatory
+ Documents   accepted as Address proof:   All Govt. ID’s, utility Bill, Employer letter head, acknowledgment slip accepted
+ for login.   (Rent agreement and Bank Statement are not accep
+[...truncated...]
+
+--- From: SBM policy 07-03-24.pdf ---
+   SBM Bank PL Policy
+    Minimum Salary:   30K -   Listed Company// 50K -   Non - Listed Company
+    Age:   Minimum   -   23Year // Maximum   -   58Years
+    Loan Amount:   Minimum -   2Lac /// Maximum -   30Lac /// 5Lacs in case of ( - 1/0) CIBIL
+    Tenure:   Minimum -   6 Months /// Maximum -   60 Months
+    PF Deduction:   Mandatory, to be checked in Pay slip or EPFO statement.
+    CIBIL ( - 1/0):   Allowed to be capped at 5 Lacs. (Non - listed company not   allowed)
+    Foir:
+ Salary   -   30k to 50k   ----   50%
+ Salary   -   50k to 100k   ----   60%
+ Salary above 100k   ---- 65%
+    Credit Card Obligation:
+ Salary Above 50K   ---   CC O/s within 5 Times of Salar y   --   NIL
+ Salary Above 50K   ---   CC O/s More than 5 Times of Salary   ----   5% of Total O/s
+    Loan Amount Capping:
+ Listed, SBM group and Govt.   ----   30Lacs.
+ Non   -   Listed   ----   20Lacs.
+ Balance Transfer: Allowed, (PL, CC, OD, Jumbo Loan & App Loans)
+    Part - Payment:   Not Allowed.
+    Foreclosure:   Allowed after 12EMIs with closure charges of 4% plus taxes
+ ROl, Processing Fess and Insurance
+    Rate o f Interest   -   13.5%   -   16%, Processing Fees   -   2%, Insurance   --   Mandatory
+ Documents accepted as Address proof: All Govt. ID's, utility Bill, Employer letter head,
+ But Rent agreement and Bank Statement are not accepted as Address p roof.
+    Mandatory Documents:
+    KYC Documents (Signed by customer)
+    Duly filled application form
+    Valid Address Proof (
+[...truncated...]
+================================================================================
+3. COMPANY/EMPLOYER CATEGORIES
+================================================================================
+
+================================================================================
+4. PRICING & ROI GRIDS
+================================================================================
+
+ROI Values from Database:
+- Rule 619: ROI Range: N/A% - N/A% (Version: V1)
+- Rule 621: ROI Range: N/A% - N/A% (Version: V1)
+- Rule 620: ROI Range: N/A% - N/A% (Version: V2)
+[REVIEW] Multiple ROI values exist across versions/rules
+
+================================================================================
+5. LOAN PARAMETERS
+================================================================================
+
+Loan Amount Parameters:
+- Rule 619: Min: N/A, Max: ₹30
+
+================================================================================
+6. FOIR & MULTIPLIER RULES
+================================================================================
+
+================================================================================
+7. NTH / SALARY REQUIREMENTS
+================================================================================
+
+Salary Requirements from Database:
+- Rule 619: Min: ₹30,000, Max: ₹50,000
+
+================================================================================
+8. BT / CCBT / APP LOAN RULES
+================================================================================
+
+Refer to source documents for detailed BT/CCBT/App Loan rules.
+Total policy rules in database: 3
+
+================================================================================
+9. DOCUMENT REQUIREMENTS
+================================================================================
+
+Document requirements found in source files:
+
+--- From: SBM Bank PL Policy - 01-08-24.txt ---
+⏭️ 30K- Listed Company
+⏭️ 50K- Non-Listed Company
+Mandatory, to be checked in Pay slip or EPFO statement.
+⏭️ Non-listed company not allowed)
+⏭️ Mandatory
+📌Documents accepted as Address proof: 
+⏭️ But Rent agreement and Bank Statement are not accepted as Address proof.
+📌Mandatory Documents:
+	•	﻿﻿KYC Documents 
+	•	﻿﻿Valid Address Proof 
+	•	﻿﻿Bank Statement 6 Months (Salary Account)
+	•	﻿﻿Form 16
+
+--- From: SBM NEW PRICING GRID 06 May 2025.jpeg ---
+- Employed with Listed Companies (Private/Partnership are excluded)
+
+--- From: SBM PL ONE PAGER 12-03-25.pdf ---
+ Minimum Salary : 50K- Listed Company & Non-Listed Company (Company approval to be taken prior to login)
+ PF Deduction : Mandatory, to be checked in Pay slip or EPFO statement.
+ CIBIL (-1/0) : Allowed to be capped at 5Lacs. (Non-listed company allowed)
+ o   Rate of Interest –   14% – 18%,   Processing Fees   – 2%,   Insurance –   Mandatory
+ Documents   accepted as Address proof:   All Govt. ID’s, utility Bill, Employer letter head, acknowledgment slip accepted
+ for login.   (Rent agreement and Bank Statement are not accepted as Address proof.)
+ Mandatory Documents :
+    KYC Documents (Signed by customer)
+    Valid Address Proof (As mentioned in policy)
+    Bank Statement 6 Months (Salary Account)
+    Form 16
+
+================================================================================
+10. EXCEPTIONS & DEVIATIONS
+================================================================================
+
+Refer to source documents for detailed exceptions and deviations.
+
+================================================================================
+11. CONFLICTS/REVIEW ITEMS
+================================================================================
+
+No significant conflicts detected in database rules.
+
+================================================================================
+END OF POLICY RULEBOOK
+================================================================================

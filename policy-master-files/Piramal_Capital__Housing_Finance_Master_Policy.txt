@@ -1,0 +1,300 @@
+================================================================================
+PIRAMAL CAPITAL & HOUSING FINANCE PERSONAL LOAN - POLICY RULEBOOK
+Generated: 2026-08-29
+Source Bank: Piramal Capital & Housing Finance (PIRAMAL)
+================================================================================
+
+PURPOSE:
+This is a concise eligibility and pricing rulebook for Piramal Capital & Housing Finance Personal Loan.
+It is derived from all source documents and PostgreSQL policy records.
+Use this for AI decision-making, eligibility checks, and policy validation.
+
+SECTIONS:
+1. PROGRAM OVERVIEW
+2. ELIGIBILITY CRITERIA
+3. COMPANY/EMPLOYER CATEGORIES
+4. PRICING & ROI GRIDS
+5. LOAN PARAMETERS
+6. FOIR & MULTIPLIER RULES
+7. NTH / SALARY REQUIREMENTS
+8. BT / CCBT / APP LOAN RULES
+9. DOCUMENT REQUIREMENTS
+10. EXCEPTIONS & DEVIATIONS
+11. CONFLICTS/REVIEW ITEMS
+
+================================================================================
+1. PROGRAM OVERVIEW
+================================================================================
+
+Active Policy Versions:
+- V3 (Personal)
+- V2 (Personal)
+- V1 (Business)
+- V1 (Personal)
+
+Key Parameters from Database:
+- Minimum Salary: ₹0
+- Minimum Age: 21 years
+- Maximum Age: 61 years
+- Maximum Loan Amount: ₹70,000
+- FOIR Limit: 75%
+
+Total Policy Versions: 4
+Total Policy Rules: 4
+Total Source Files Extracted: 7
+
+================================================================================
+2. ELIGIBILITY CRITERIA
+================================================================================
+
+Age Requirements:
+- Minimum Age: 21 years
+- Maximum Age: 61 years
+
+Employment Types:
+- Self-Employed
+
+Source Document Policy Details:
+
+--- From: Minus 1 Cibil Rate of interest 04-06-25.jpeg ---
+Pricing grid for NTC Customers for PL Business
+Salary (NTH p.m.) Lt ol |
+Upto Rs. 30000 25.99
+| From Rs. 30001 upto Rs. 22.99 23.99
+50000 |
+From Rs. 50001 & Above | 20.49 21.49
+
+--- From: Piramal FOIR & Multiplier Chart 20-09-24.jpeg ---
+an eligibility calculation except Vistaar, Army NCO & Doctor profile minimum of A % 8 f
+[= —= Maximum | ==
+= FOR Net | — =
+= | = | B. Maximum loan amount eap {in = lakhs) =" =
+Ventile | Monthly =F
+band | Income {inX} | = |
+
+| | | | Govt. with NI I ji
+Bs cc |
+=~ | | « a.
+sv | 2 — =
+
+--- From: Piramal_1.jpeg ---
+@ Piramal
+Finance
+Your Dreams, Our Support:
+F Ao Avail Personal Loan now up to
+aa 25 Lacs!
+CS 2
+i» E25) [Starting 12.99%
+I] I" Te Zh |
+a © \ 1.5% onwards
+| Tenure
+Up to 72 months
+wz
+£4 - a << :
+SR Lo
+©
+For select segment only
+
+--- From: Policy 20-09-24.txt ---
+Location : -Pune -27500 k salary requirement 
+
+Low rate Interest
+Loan Amount : 1 lac to 25 lac
+Rate of Interest : 12.99 to 23.99% Reducing 
+Processing Fees : 1.5 to 2 % + GST
+
+Tenure : 12 to 72Month
+
+0 %part payment preclosing 
+Min Age : 21 
+Max Age : 61
+For Govt Max Age : 63
+All Pvt LTD, 
+
+For Partnership and proprietor salary required 30000 Own house required
+
+
+Max FOIR : 75% 
+
+For -1 CIBIL 50% FOIR can do Cibil 650 can do
+
+Approval Based on Score Card
+
+
+
+
+
+
+PIRAMAL FINNACE POLICY
+
+GEO LIMIT upto 70 KM
+
+Loan Amount : 1 lac to 20 lac
+Rate of Interest : 12.99 to 23.99% Reducing 
+Processing Fees : 1.5 to 2 % + GST
+Tenure : 12 to 60 Month 
+Part payment or Foreclose free
+* Salary: 20000*
+Approval TAT :- SAME DAY
+Min Age : 21 
+Max Age : 61
+For Govt Max Age : 63
+All Pvt LTD, 
+For Partnership and proprietor salary required 22000/- Own house required
+PF Deduction Mandatory for all 
+Max FOIR : 70 % 
+For -1 CIBIL 50% FOIR can do
+Approval Based on Score Card
+* External Balance transfer Personal loan
+1)Minimum 9 emi done
+2)Foreclosure letter
+
+
+
+⭐⭐⭐PIRAMAL FINANCE POLICY ⭐⭐⭐
+
+✨ Dear All 🙏
+
+🎤 Uniqueness of this product 👈
+
+👌 No locking period
+👌 ZERO partial payment / Foreclosure charges
+👌 Govt employees upto 63 years of age.
+👌 Employees of partnership & proprietorship is allowed.
+👌 Funding NGO, SOCIETY, TRUST
+👌 Eligibility based on only FOIR & FOIR UPTO 75%
+👌 CIBIL 0/ -1 allowed.
+👌 Gold loan not obligated
+👌 8 
+[...truncated...]
+
+--- From: WhatsApp Image 2026-03-20 at 12.20.36.jpeg ---
+pre. a
+og JFM - Revised Polic
+-
+® 1
+irama £
+> 1 ES i
+; » id
+! Fl Finance _
+be SE Bul wes 25
+5 43 “ pa IE = dP 41
+_=—(& . Login to Disbursement Digital Platform . » j=
+GG Ticket Size ©) Es p= & *,
+a ecial Benefits + )
+|| ® 21,00,000 - 3,00,0000/- E 4
+Nil Fore Closure Charges &
+| (©) Tenure 12 m-84 m - Part-payment Charges.
+| © Rates Starting 11.99% to 27.99%  Cibil-1- We can fund upto 75 lakhs. y
+© PF 1.5% to 2.5% ( We can fund upto 20 lakhs
+i ; Govt employee - Fresh & 24 lakhs for BT. 1
+HE ed Voava0 (J EMI Deduction Facility 2n¢, 5% 10"
+3 = No Multiplier Calculation |
+: Q Less Documentation & EEO Allowed Upto 75% E:
+= Special Benefits ~ Gold Loan - No obligation =
+i Nit Fore Closure ch 2 (+ Grade 4 & Partnership firms profiles l=
+© yd ed well till Do up to 10 Lakhs with T&C
+3 : We can do APP Loans (Navy,
+ Cibil-1 - We can fund upto 75 lakhs. | Moneyview, Credit Bee) BT & CC BT
+© We can fund upto 20 lakhs We can do for LIC Agents
+- aha 2a tits BIT. + Account against home pending pending F
+d EMI Deduction Facility 2d,5*& 10th EMI Not obligate
+yi2rd, r
+g (v] No Multiplier Calculation [V] Staying Own house- Verifications waived off Ee
+© FOIR Allowed Upto 75% Account aggregator for FCU Waived Off
+- & ( CC 5% OUT standing will Obligation ”
+pig
+(2) AKSHAY MANKAR pe E
+2 Contact No.- 9967791633 : La | dis
+Email ID - akshay.mankar2@piramal.com - EEE we lO,
+ee)
+en ae
+= . g
+dll — - Pe
+. j = . - A
+— a? SERRE SR aa —— :
+================================================================================
+3. COMPANY/EMPLOYER CATEGORIES
+================================================================================
+
+================================================================================
+4. PRICING & ROI GRIDS
+================================================================================
+
+ROI Values from Database:
+- Rule 611: ROI Range: N/A% - N/A% (Version: V1)
+- Rule 612: ROI Range: N/A% - N/A% (Version: V1)
+- Rule 613: ROI Range: N/A% - N/A% (Version: V2)
+- Rule 614: ROI Range: N/A% - N/A% (Version: V3)
+[REVIEW] Multiple ROI values exist across versions/rules
+
+================================================================================
+5. LOAN PARAMETERS
+================================================================================
+
+Loan Amount Parameters:
+- Rule 611: Min: N/A, Max: ₹70,000
+- Rule 613: Min: N/A, Max: ₹15
+
+================================================================================
+6. FOIR & MULTIPLIER RULES
+================================================================================
+
+FOIR Limits:
+- Rule 611: 75%
+
+================================================================================
+7. NTH / SALARY REQUIREMENTS
+================================================================================
+
+Salary Requirements from Database:
+- Rule 611: Min: ₹0, Max: N/A
+
+================================================================================
+8. BT / CCBT / APP LOAN RULES
+================================================================================
+
+Refer to source documents for detailed BT/CCBT/App Loan rules.
+Total policy rules in database: 4
+
+================================================================================
+9. DOCUMENT REQUIREMENTS
+================================================================================
+
+Document requirements found in source files:
+
+--- From: Policy 20-09-24.txt ---
+For Partnership and proprietor salary required 30000 Own house required
+For Partnership and proprietor salary required 22000/- Own house required
+PF Deduction Mandatory for all 
+👉 2 year old company with minimum 30 employees
+*27500/- Monthly ( PF DEDUCTION MANDATORY IF NO PF DEDUCTION FORM 26AS MANDATORY)*
+👉 Insurance: *Mandatory*
+👉 Documents Required :  
+
+--- From: WhatsApp Image 2026-03-20 at 12.20.36.jpeg ---
+: Q Less Documentation & EEO Allowed Upto 75% E:
+
+================================================================================
+10. EXCEPTIONS & DEVIATIONS
+================================================================================
+
+Refer to source documents for detailed exceptions and deviations.
+
+Conflicts detected requiring review:
+- max_loan_amount: values found = 70000, 15 [REVIEW]
+
+================================================================================
+11. CONFLICTS/REVIEW ITEMS
+================================================================================
+
+The following fields have conflicting values across different policy versions:
+
+Field: max_loan_amount
+Values: 70000, 15
+Status: [REVIEW] - Multiple values found, verify against latest policy document
+
+
+================================================================================
+END OF POLICY RULEBOOK
+================================================================================

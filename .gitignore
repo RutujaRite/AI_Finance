@@ -1,53 +1,20 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-.venv/
-*.egg-info/
-dist/
-build/
-
-# Flask
-flask_session/
-instance/
-.webassets-cache
-
-# Node
 node_modules/
-npm-debug.log*
-
-# Environment
+.env
+uploads/
+node_modules/
+.next/
 .env
 .env.*
+.kilo/
+cookies.txt
+ICICI_old_db_policy_backup.txt
+REVISED_IMPLEMENTATION_PLAN.md
+eng.traineddata
+public/uploads/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Logs
-*.log
-logs/
-
-# Uploads
-public/uploads/*
-!public/uploads/.gitkeep
-
-echo ".next/" >> .gitignore
-echo "tsconfig.tsbuildinfo" >> .gitignore.next/
-tsconfig.tsbuildinfo
+debug_*.js
+check_*.js
+fix_*.js
+test_*.js
+scripts/tmp-check-*.js
+scripts/_inspect.js

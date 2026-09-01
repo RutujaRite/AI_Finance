@@ -1,0 +1,267 @@
+================================================================================
+KOTAK MAHINDRA BANK PERSONAL LOAN - POLICY RULEBOOK
+Generated: 2026-08-29
+Source Bank: Kotak Mahindra Bank (KOTAK)
+================================================================================
+
+PURPOSE:
+This is a concise eligibility and pricing rulebook for Kotak Mahindra Bank Personal Loan.
+It is derived from all source documents and PostgreSQL policy records.
+Use this for AI decision-making, eligibility checks, and policy validation.
+
+SECTIONS:
+1. PROGRAM OVERVIEW
+2. ELIGIBILITY CRITERIA
+3. COMPANY/EMPLOYER CATEGORIES
+4. PRICING & ROI GRIDS
+5. LOAN PARAMETERS
+6. FOIR & MULTIPLIER RULES
+7. NTH / SALARY REQUIREMENTS
+8. BT / CCBT / APP LOAN RULES
+9. DOCUMENT REQUIREMENTS
+10. EXCEPTIONS & DEVIATIONS
+11. CONFLICTS/REVIEW ITEMS
+
+================================================================================
+1. PROGRAM OVERVIEW
+================================================================================
+
+Active Policy Versions:
+- V5 (Personal)
+- V4 (Personal)
+- V3 (Personal)
+- V2 (Personal)
+- V1 (Personal)
+
+Key Parameters from Database:
+- Minimum Salary: ₹25,000
+- Maximum Salary: ₹75,000
+- Maximum Loan Amount: ₹10.00 Lakh
+
+Total Policy Versions: 5
+Total Policy Rules: 5
+Total Source Files Extracted: 7
+
+================================================================================
+2. ELIGIBILITY CRITERIA
+================================================================================
+
+Employment Types:
+- Salaried
+- Self-Employed
+
+Source Document Policy Details:
+
+--- From: Acceptable Present address proofs List 28-10-24.jpeg ---
+ank or lak card statement (not more than 2 months old) . Ta
+
+gy loan account statement (not more than 2 months old and should be an active loa
+
+* Utility Bills Fe ible / DTH Bill / Landline / Broadband Bill — not more than 2 months ol
+
+* Latest Water tax or Corporation Tax receipt. EF -
+
+» Registered Purchase Deed FE
+
+* Registered Rent Agreement (Notarized agreement is not accepted) : FE
+
+» Insurance Policy -.
+
+id oo.
+R C Copy of the two / four wheeler owned FE
+me J
+
+--- From: KMBL PL POLICY 24-06-24.pdf ---
+Age   Min   21   Yrs   -   Max   60   Yrs
+ Loan   Amount   1   Lakh - 35 Lakhs   ( Sal >1 Lakh   required   for   loan   amount above 20 Lakh )
+ CAT   AA,   A   &   B   -   25,000/ -   (Kotak   salary   &   Non   Salary   A/c)
+ For   Govt.   &   Army   25,000/ -   (Kotak   or   Non - Kotak   salary   A/c)
+ CAT   C   -   3 0 ,000/ -   (CAT   E,   F,   H,   J   -   3 0 ,000/ -   (Kotak   salary   &   Non - Kotak   Salary   a/c)
+ Salary Norms
+ CAT   D   - 30 ,000/ -   (Kotak,   Non - Kotak   salary   a/c,   KPO   &   BPO   –   35k   )
+ *For Insurance profile NTH>= 50K
+ Cibil   Norms   >70 0   Cibil   Score   (V3)
+ Cibil   Enquiry   <   3   USL   enquiry   in   1   Month
+ Regular   fixed   incentive   will   be   considered   50%   of   NTH.
+ 10% of   Variance   in   salary to   be   average it.
+ If   fluctuating,   average   out   and   50%   of   average   amount   will   be   considered.
+ 50%   Bonus   can   be   considered   (50%   of   last   2   year   Avg   Bonus   can   be   considered   which   should   not   be   >50%   of
+ Other   Income
+ NTH)   70%   of   Rental   Income   (6   months   rental   credit   banking,   ownership   proof   &   Rent   agreement   reqd.)
+ Tenure   1 to   5 years
+ Tenure Norms
+ For CIBIL 0/ - 1 Max tenure 3 years
+ For Tenure to be 6 years below mitigates to be   met:
+ CIBIL > 750 ,Only Green Score card , Live or Closed AL HL track in CIBIL , No PL to be taken in recent 6 month.
+ Note : For 6 years Loan tenure eligibility   calculation is on t
+[...truncated...]
+
+--- From: KOTAK One Pager Updated Policy 12-03-25.pdf ---
+KOTAK MAHINDRA BANK
+ PERSONAL LOAN   UPDATED   POLICY
+ Bank Name   Kotak Mahindra   Bank
+ Applicable to   Salaried Employees
+ Min NTH   25K   (CAT   AA,   A,   B, Govt . ) and 35K for others .
+ L oan   A mount   offer   1L to   3 5 L .
+ Tenure   1   Y r s .   to 6 Yrs .   F or   selective   customers.
+ Age criteria   Min 21 Yrs to max 60 yrs .
+ Fresh loan upto 10L for CAT   AA , A , B , C   & Govt .   with
+ Cibil 0   /   - 1  conditions.
+ Bachelor   Accom modatio n   Allowed .
+ PG   Accommodation   Allowed .
+ Listed /   Not listed companies   Allowed   Positive MCA Checks .
+ Work from Home Profiles   Allowed .
+ Current Employment   1 Month / O ffer letter Based sourcing .
+ Lock in Period   No Lock in Peri od, customer can close after 1 EMI .
+ Balance Transfer   Allowed .
+ FC after 1 month   with charges / Part payment allowed
+ Fore closure / Partial Payment  once in a year .
+ BT Sourcing   Allowed post 6 MOB   for selectiv e customers .
+    Conditional 4 Hrs approval TAT for all cases .
+    75% FOIR allowed with HL t racks Live .
+    70%   FOIR   allowed   with sta ying in Owned House in Base location .
+    70%   FOIR   a llowed with staying   in Rented House in base   (If   live or   Closed HL >10L
+ exists in C IBIL ).
+    6 Yrs Flexible Loan tenure   basis   profile .
+    Work   f rom Home profiles are allowed for sourcing .
+    Special Govt policy is allow ed for 6 Yrs .   tenure,   f resh funding as per policy .
+    Special Promo offer 10.99% for LA 15 Lacs and ab
+[...truncated...]
+
+--- From: NO ADDRESS PROOF 01-08-24.pdf ---
+--- Page 1 ---
+--- Page 2 ---
+
+--- From: OD AGREEMENT Version 1.4.pdf ---
+HYBRID OD   BOOKLET NO.   VERSION 1. 4
+ PERSONAL LOAN   HYBRID
+ OVERDRAFT
+ ACCOUNT OPENING KIT
+ BRANCH:   _______________________________ ______
+ DMA NAME: _____________________________ ______
+ DMA STAMP: ___________   PHONE NO.   _______ _____
+
+Account Opening Request
+ Please open a Personal Loan   Hybrid   Overdraft Account with the following details for me:
+ Name:   _________________________________________________________________ __________________
+ CRN:   ____________________________________________________________ ________________________
+ Mode of Operation:   Singly   Sc heme Code: ODHYB   scheme   Branch Code:
+ Credit Facilities
+    I declare that I do not enjoy credit facilities   with other bank(s)
+    I enjoy credit facility/have current account with other bank(s)
+ Projected annual turnover ____________________________
+ NOMINATION (FORM DA1)
+ YES   NO
+ Nomination under section 45ZA of the banking   regulations act, 1949, and the rule 2(1) of the banking companies (nomination) rules,
+ 1985, in respect of bank deposits
+ I____________________________________________________________________________________________________ _________
+ My address_______________ ____________________________________________________________________________ _________
+ _____________________________________________________________________________________________________ ________
+ nominate the following person to whom in the event of my dea th the amount of the deposit, particulars whereof are
+[...truncated...]
+================================================================================
+3. COMPANY/EMPLOYER CATEGORIES
+================================================================================
+
+================================================================================
+4. PRICING & ROI GRIDS
+================================================================================
+
+ROI Values from Database:
+- Rule 602: ROI Range: N/A% - N/A% (Version: V1)
+- Rule 603: ROI Range: N/A% - N/A% (Version: V2)
+- Rule 604: ROI Range: N/A% - N/A% (Version: V3)
+- Rule 605: ROI Range: N/A% - N/A% (Version: V4)
+- Rule 606: ROI Range: N/A% - N/A% (Version: V5)
+[REVIEW] Multiple ROI values exist across versions/rules
+
+================================================================================
+5. LOAN PARAMETERS
+================================================================================
+
+Loan Amount Parameters:
+- Rule 604: Min: N/A, Max: ₹10.00 Lakh
+
+================================================================================
+6. FOIR & MULTIPLIER RULES
+================================================================================
+
+================================================================================
+7. NTH / SALARY REQUIREMENTS
+================================================================================
+
+Salary Requirements from Database:
+- Rule 603: Min: ₹50,000, Max: ₹75,000
+- Rule 604: Min: ₹25,000, Max: N/A
+[REVIEW] Multiple salary values exist across versions/rules
+
+================================================================================
+8. BT / CCBT / APP LOAN RULES
+================================================================================
+
+Refer to source documents for detailed BT/CCBT/App Loan rules.
+Total policy rules in database: 5
+
+================================================================================
+9. DOCUMENT REQUIREMENTS
+================================================================================
+
+Document requirements found in source files:
+
+--- From: KMBL PL POLICY 24-06-24.pdf ---
+ Loan   Amount   1   Lakh - 35 Lakhs   ( Sal >1 Lakh   required   for   loan   amount above 20 Lakh )
+ NTH)   70%   of   Rental   Income   (6   months   rental   credit   banking,   ownership   proof   &   Rent   agreement   reqd.)
+ LIVE/CLOSED HL or Staying in owned House ( OHP required )
+ Continuous   Discharge   Certificate   (CDC) of   last   3   Years   required.
+ Last   3   Contract   copies   required,   Owned   House   Mandatory
+
+--- From: KOTAK One Pager Updated Policy 12-03-25.pdf ---
+ Listed /   Not listed companies   Allowed   Positive MCA Checks .
+    Unlisted Companies are allowed sourcing Max LA 10L .
+This is an Internal document.
+
+--- From: OD AGREEMENT Version 1.4.pdf ---
+ Nomination under section 45ZA of the banking   regulations act, 1949, and the rule 2(1) of the banking companies (nomination) rules,
+ This Agreement is made at the place mentioned in Item No. I of Schedule A and on the date specified in Item No. II of the Sch edule A between Kotak Mahindra Bank Limited, a banking company
+ company, its   successors in title, where the party concerned is an unincorporated body, all the members of such body and their respective s uccessors, where the concerned party is the Governing
+ (a)   with ref erence to an individual any relative of such individual or any partnership firm where such individual or relative of the indi vidual is a partner or any company where the individual
+ or his relative is a [director/ in control of the company];
+ (b)   with reference   to a company a person that directly, or indirectly through one or more intermediaries, controls, is controlled by, or is unde r common control with, such company;
+ (c)   with reference to a partnership firm, any partner of such partnership firm or any company in w hich such partner is a director;
+ d)   "Credit   Information" means all information, documents, representations, particulars of operations and business, financial information , representations on future business prospects and
+ assigns in case of Company its   successors or permitted assigns and in case of Partnership Firm the partner(s) from time to time of the firm, the survivor(s)   of them and the heirs,
+ documents considered relevant by   the Bank. To enable such Review the Borrower shall furnish to the Bank al l such details and particulars as may be required by the Bank at least
+ and/ or any other factors and/ or   documents considered relevant by the Bank. The Bank shall, after such monitoring, be entitled, in its sole discretion, to eit her discontinue the
+ another   type of interest rate, or otherwise, the Borrower may do so if so permitted by the Bank at such time and on   execution of such supplemental documents as may be required by the
+ (d)   If the Borrower at any time during the period of the Overdraft Facility, wishes to replace an inchoate cheque with another th en the Borrower will be required to pay Swap Charges of an
+ document executed pursuant to   this Agreement shall apply mutatis mutandis to the manner of disposal and appropriation under this Article.
+ (e)   Evidence for Utilisation of Disbursement: The Bank should be satisfied at the time of making any disbursement that the same i s required for the purpose as mentioned in Schedule A
+ (g)   Guarantees/Securities etc.: The Borrower shall have provided and executed such Guarantee/s, necessary documents, writings and   hand over inchoate Cheques, as may be required
+ may be   required for borrowing.
+ entitled to the benefit of   all such policies. Such policies shall be taken with insurance company or companies of repute ap proved by the Bank in writing. The Borrower shall deposit the
+ insurance policies and all cover   notes premia receipts etc. with the Bank along with such letters, writings as required by the Bank. The Borrower shall make p unctual payment of all
+ (e)   The Borrower shall whenever required by the Bank submit statements of annual incom e certified and audited by a practicing Chartered Accountant (with his registration number
+
+================================================================================
+10. EXCEPTIONS & DEVIATIONS
+================================================================================
+
+Refer to source documents for detailed exceptions and deviations.
+
+Conflicts detected requiring review:
+- min_salary: values found = 50000, 25000 [REVIEW]
+
+================================================================================
+11. CONFLICTS/REVIEW ITEMS
+================================================================================
+
+The following fields have conflicting values across different policy versions:
+
+Field: min_salary
+Values: 50000, 25000
+Status: [REVIEW] - Multiple values found, verify against latest policy document
+
+
+================================================================================
+END OF POLICY RULEBOOK
+================================================================================
