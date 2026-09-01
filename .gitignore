@@ -49,4 +49,5 @@ public/uploads/*
 !public/uploads/.gitkeep
 
 echo ".next/" >> .gitignore
-echo "tsconfig.tsbuildinfo" >> .gitignore
+echo "tsconfig.tsbuildinfo" >> .gitignore.next/
+tsconfig.tsbuildinfo
