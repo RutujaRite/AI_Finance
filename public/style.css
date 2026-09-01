@@ -1262,6 +1262,130 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: var(--shadow-sm);
 }
 
+.disambiguation-candidates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.disambiguation-candidate {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.disambiguation-candidate:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.company-tables {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.company-table-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.company-table-title {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text);
+  background: rgba(99, 102, 241, 0.12);
+  border-bottom: 1px solid var(--border);
+}
+
+.company-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.company-table tbody tr {
+  border-bottom: 1px solid var(--border);
+}
+
+.company-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.company-table-label {
+  padding: 10px 14px;
+  color: var(--chat-text-muted);
+  font-weight: 600;
+  width: 160px;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.company-table-value {
+  padding: 10px 14px;
+  color: var(--chat-text);
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.company-table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.company-table-bank {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.company-table-bank thead tr {
+  background: rgba(99, 102, 241, 0.25);
+}
+
+.company-table-bank th {
+  text-align: left;
+  padding: 10px 14px;
+  color: var(--chat-text);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.company-table-bank td {
+  padding: 10px 14px;
+  color: var(--chat-text-secondary);
+  border-bottom: 1px solid var(--border);
+  word-break: break-word;
+}
+
+.company-table-bank tbody tr.even {
+  background: transparent;
+}
+
+.company-table-bank tbody tr.odd {
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .chat-composer {
   display: flex;
   gap: 12px;
@@ -1979,7 +2103,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .chat-sidebar {
-  width: 280px;
+  width: 320px;
   background: #ffffff;
   border-right: 1px solid #e2e8f0;
   display: flex;

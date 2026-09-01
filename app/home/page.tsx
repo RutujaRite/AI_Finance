@@ -132,10 +132,33 @@ export default function HomePage() {
 
   async function sendMessage(text: string) {
     if (!text.trim() || loading) return
+
+    let resolvedText = text.trim()
+
+    const lastAiMessage = [...messages].reverse().find((m) => m.role === "ai")
+    if (lastAiMessage) {
+      const lastAiData = lastAiMessage.company_data
+      if (lastAiData && lastAiData.needs_disambiguation && Array.isArray(lastAiData.candidates)) {
+        const candidates = lastAiData.candidates.filter(Boolean)
+        const userInput = text.trim()
+        if (/^\d+$/.test(userInput)) {
+          const index = parseInt(userInput, 10) - 1
+          if (index >= 0 && index < candidates.length) {
+            resolvedText = candidates[index]
+          }
+        } else {
+          const partialMatch = candidates.find((c) => c.toLowerCase().includes(userInput.toLowerCase()))
+          if (partialMatch) {
+            resolvedText = partialMatch
+          }
+        }
+      }
+    }
+
     const userMessage = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
       role: "user" as const,
-      content: text.trim(),
+      content: resolvedText,
       timestamp: new Date().toISOString(),
     }
     setMessages((prev) => [...prev, userMessage])
@@ -146,7 +169,7 @@ export default function HomePage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, conversation_id: activeConversationId, model: selectedModel }),
+        body: JSON.stringify({ message: resolvedText, conversation_id: activeConversationId, model: selectedModel }),
         credentials: "include",
       })
       const data = await res.json()
@@ -179,7 +202,7 @@ export default function HomePage() {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         role: "ai" as const,
         content: "Error: " + (error instanceof Error ? error.message : "Please try again."),
-        retry_content: text.trim(),
+        retry_content: resolvedText,
         timestamp: new Date().toISOString(),
       }
       setMessages((prev) => [...prev, errorMessage])
@@ -396,70 +419,89 @@ export default function HomePage() {
     return html
   }
 
-  function renderCompanyCard(data: any, query: string) {
-    if (!data && !query) return ""
-    const safeData = data && typeof data === "object" ? data : {}
-    const basic = safeData.basic_info && typeof safeData.basic_info === "object" ? safeData.basic_info : null
-    const financial = safeData.financial_info && typeof safeData.financial_info === "object" ? safeData.financial_info : null
-    const bankRecords = Array.isArray(safeData.bank_records) ? safeData.bank_records : []
-    const seen = new Set<string>()
-    const uniqueBankRecords = bankRecords.filter((r: any) => {
-      const key = String(r?.bank_name || "").trim().toLowerCase()
-      if (!key || seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
-
-    let html = `<div class="result-card">`
-    if (query) {
-      html += `<div class="result-card-header">🏢 ${escapeHtml(String(query))}</div>`
+   function renderMessageContent(message: any) {
+    const isUser = message.role === "user"
+    if (isUser) {
+      return escapeHtml(message.content)
     }
 
-    html += `<div style="padding: 16px 18px; line-height: 1.6; font-size: 14px; color: var(--chat-text-secondary); border-bottom: 1px solid var(--chat-border);">`
-    html += renderMarkdown(safeData.overview || "Company information retrieved from our records.")
-    html += `</div>`
+    let html = renderMarkdown(message.content)
 
-    html += `<div style="padding: 16px 18px;">`
-    html += `<div style="font-weight: 700; color: var(--chat-text); margin-bottom: 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Basic Information</div>`
-    html += `<table style="width: 100%; border-collapse: collapse; font-size: 13px;">`
-    html += `<tbody>`
-    html += `<tr><td style="padding: 8px 12px; color: var(--chat-text-muted); font-weight: 600; width: 160px; vertical-align: top;">CIN</td><td style="padding: 8px 12px; color: var(--chat-text);">${escapeHtml(basic?.cin || "-")}</td></tr>`
-    html += `<tr><td style="padding: 8px 12px; color: var(--chat-text-muted); font-weight: 600; width: 160px; vertical-align: top;">Incorporation Date</td><td style="padding: 8px 12px; color: var(--chat-text);">${escapeHtml(basic?.incorporation_date || "-")}</td></tr>`
-    html += `<tr><td style="padding: 8px 12px; color: var(--chat-text-muted); font-weight: 600; width: 160px; vertical-align: top;">Listing Status</td><td style="padding: 8px 12px; color: var(--chat-text);">${escapeHtml(basic?.listing_status || "-")}</td></tr>`
-    html += `<tr><td style="padding: 8px 12px; color: var(--chat-text-muted); font-weight: 600; width: 160px; vertical-align: top;">Country</td><td style="padding: 8px 12px; color: var(--chat-text);">${escapeHtml(basic?.country || "-")}</td></tr>`
-    html += `<tr><td style="padding: 8px 12px; color: var(--chat-text-muted); font-weight: 600; width: 160px; vertical-align: top;">Address</td><td style="padding: 8px 12px; color: var(--chat-text);">${escapeHtml(basic?.address || "-")}</td></tr>`
-    html += `<tr><td style="padding: 8px 12px; color: var(--chat-text-muted); font-weight: 600; width: 160px; vertical-align: top;">Website</td><td style="padding: 8px 12px; color: var(--chat-text);">${basic?.website ? `<a href="${escapeHtml(basic.website)}" target="_blank" rel="noreferrer" style="color: #6366f1; text-decoration: none;">${escapeHtml(basic.website)}</a>` : "-"}</td></tr>`
+    const companyData = message.company_data
+    if (companyData && companyData.needs_disambiguation && Array.isArray(companyData.candidates)) {
+      const candidates = companyData.candidates.filter(Boolean)
+      if (candidates.length > 0) {
+        html += `<div class="disambiguation-candidates">`
+        candidates.forEach((candidate: string, index: number) => {
+          const escapedCandidate = escapeHtml(candidate)
+          html += `<button class="disambiguation-candidate" data-candidate="${escapedCandidate}">${escapedCandidate}</button>`
+        })
+        html += `</div>`
+      }
+    }
+
+    if (companyData && !companyData.needs_disambiguation) {
+      html += renderCompanyTables(companyData)
+    }
+
+    const bankData = message.bank_data
+    if (bankData) {
+      html += renderBankManagerCard(bankData)
+    }
+
+    return html
+  }
+
+  function renderCompanyTables(companyData: any) {
+    const basic = companyData.basic_info && typeof companyData.basic_info === "object" ? companyData.basic_info : {}
+    const financial = companyData.financial_info && typeof companyData.financial_info === "object" ? companyData.financial_info : {}
+    const bankRecords = Array.isArray(companyData.bank_records) ? companyData.bank_records : []
+
+    let html = `<div class="company-tables">`
+
+    html += `<div class="company-table-section">`
+    html += `<div class="company-table-title">Basic Information</div>`
+    html += `<table class="company-table"><tbody>`
+    html += renderTableRow("Company Name", companyData.company_name || "-")
+    html += renderTableRow("Industry", basic.industry || "-")
+    html += renderTableRow("Country", basic.country || "-")
+    html += renderTableRow("Incorporation Date", basic.incorporation_date || "-")
+    html += renderTableRow("Listing Status", basic.listing_status || "-")
+    html += renderTableRow("CIN", basic.cin || "-")
+    html += renderTableRow("Address", basic.address || "-")
+    html += renderTableRow("Website", basic.website || "-")
     html += `</tbody></table></div>`
 
-    html += `<div style="padding: 0 18px 16px;">`
-    html += `<div style="font-weight: 700; color: var(--chat-text); margin-bottom: 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Financial Information</div>`
-    html += `<table style="width: 100%; border-collapse: collapse; font-size: 13px;">`
-    html += `<tbody>`
-    html += `<tr><td style="padding: 8px 12px; color: var(--chat-text-muted); font-weight: 600; width: 180px; vertical-align: top;">Employees</td><td style="padding: 8px 12px; color: var(--chat-text);">${escapeHtml(financial?.employees || "-")}</td></tr>`
-    html += `<tr><td style="padding: 8px 12px; color: var(--chat-text-muted); font-weight: 600; width: 180px; vertical-align: top;">Last Annual Meeting</td><td style="padding: 8px 12px; color: var(--chat-text);">${escapeHtml(financial?.last_agm || "-")}</td></tr>`
-    html += `<tr><td style="padding: 8px 12px; color: var(--chat-text-muted); font-weight: 600; width: 180px; vertical-align: top;">Turnover</td><td style="padding: 8px 12px; color: var(--chat-text);">${escapeHtml(financial?.turnover || "-")}</td></tr>`
-    html += `<tr><td style="padding: 8px 12px; color: var(--chat-text-muted); font-weight: 600; width: 180px; vertical-align: top;">Profit Status</td><td style="padding: 8px 12px; color: var(--chat-text);">${escapeHtml(financial?.profit_status || "-")}</td></tr>`
-    html += `<tr><td style="padding: 8px 12px; color: var(--chat-text-muted); font-weight: 600; width: 180px; vertical-align: top;">Profitability Track Record</td><td style="padding: 8px 12px; color: var(--chat-text);">${escapeHtml(financial?.profit_history || "-")}</td></tr>`
+    html += `<div class="company-table-section">`
+    html += `<div class="company-table-title">Financial Information</div>`
+    html += `<table class="company-table"><tbody>`
+    html += renderTableRow("Employees", financial.employees || "-")
+    html += renderTableRow("Turnover", financial.turnover || "-")
+    html += renderTableRow("Profit Status", financial.profit_status || "-")
+    html += renderTableRow("Last AGM", financial.last_agm || "-")
+    html += renderTableRow("Profit History", financial.profit_history || "-")
     html += `</tbody></table></div>`
 
-    if (bankRecords.length) {
-      html += `<div style="padding: 0 18px 16px;">`
-      html += `<div style="font-weight: 700; color: var(--chat-text); margin-bottom: 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Bank Records</div>`
-      html += `<div style="overflow-x: auto; border-radius: 10px; border: 1px solid var(--chat-border); overflow: hidden;">`
-      html += `<table style="width: 100%; border-collapse: collapse; font-size: 13px;">`
-      html += `<thead><tr>`
-      html += `<th style="text-align: left; padding: 10px 12px; background: rgba(99, 102, 241, 0.25); color: var(--chat-text); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--chat-border);">Bank</th>`
-      html += `<th style="text-align: left; padding: 10px 12px; background: rgba(99, 102, 241, 0.25); color: var(--chat-text); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--chat-border);">Sr No</th>`
-      html += `<th style="text-align: left; padding: 10px 12px; background: rgba(99, 102, 241, 0.25); color: var(--chat-text); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--chat-border);">Category</th>`
-      html += `<th style="text-align: left; padding: 10px 12px; background: rgba(99, 102, 241, 0.25); color: var(--chat-text); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--chat-border);">Info</th>`
-      html += `</tr></thead><tbody>`
-      uniqueBankRecords.forEach((r: any, idx: number) => {
-        const bgColor = idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.03)"
-        html += `<tr style="background: ${bgColor};">`
-        html += `<td style="padding: 10px 12px; color: var(--chat-text); border-bottom: 1px solid var(--chat-border); font-weight: 600;">${escapeHtml(r.bank_name || "-")}</td>`
-        html += `<td style="padding: 10px 12px; color: var(--chat-text-secondary); border-bottom: 1px solid var(--chat-border);">${escapeHtml(r.sr_no || "-")}</td>`
-        html += `<td style="padding: 10px 12px; color: var(--chat-text-secondary); border-bottom: 1px solid var(--chat-border);">${escapeHtml(r.company_category || "-")}</td>`
-        html += `<td style="padding: 10px 12px; color: var(--chat-text-secondary); border-bottom: 1px solid var(--chat-border);">${escapeHtml(r.other_info || "-")}</td>`
+    if (bankRecords.length > 0) {
+      const seen = new Set<string>()
+      const uniqueRecords = bankRecords.filter((r: any) => {
+        const key = String(r?.bank_name || "").trim().toLowerCase()
+        if (!key || seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+
+      html += `<div class="company-table-section">`
+      html += `<div class="company-table-title">Bank Records</div>`
+      html += `<div class="company-table-wrapper"><table class="company-table company-table-bank">`
+      html += `<thead><tr><th>Bank Name</th><th>Sr No</th><th>Category</th><th>Other Info</th></tr></thead><tbody>`
+      uniqueRecords.forEach((r: any, idx: number) => {
+        const bgClass = idx % 2 === 0 ? "even" : "odd"
+        html += `<tr class="${bgClass}">`
+        html += `<td>${escapeHtml(r.bank_name || "-")}</td>`
+        html += `<td>${escapeHtml(r.sr_no || "-")}</td>`
+        html += `<td>${escapeHtml(r.company_category || "-")}</td>`
+        html += `<td>${escapeHtml(r.other_info || "-")}</td>`
         html += `</tr>`
       })
       html += `</tbody></table></div></div>`
@@ -469,29 +511,9 @@ export default function HomePage() {
     return html
   }
 
-  function renderMessageContent(message: any) {
-    const isUser = message.role === "user"
-    if (isUser) {
-      return escapeHtml(message.content)
-    }
-
-    let html = renderMarkdown(message.content)
-
-    const companyData = message.company_data
-    const companyQuery = message.company_query
-    if (companyData || companyQuery) {
-      const cardHtml = renderCompanyCard(companyData, companyQuery)
-      if (cardHtml) {
-        html += cardHtml
-      }
-    }
-
-    const bankData = message.bank_data
-    if (bankData) {
-      html += renderBankManagerCard(bankData)
-    }
-
-    return html
+  function renderTableRow(label: string, value: string) {
+    const escapedValue = escapeHtml(value)
+    return `<tr><td class="company-table-label">${escapeHtml(label)}</td><td class="company-table-value">${escapedValue}</td></tr>`
   }
 
   function renderMessageActions(message: any) {
@@ -687,7 +709,20 @@ export default function HomePage() {
         </aside>
 
         <main className="chat-main">
-          <div className="chat-messages" id="chatMessages">
+          <div
+            className="chat-messages"
+            id="chatMessages"
+            onClick={(e) => {
+              const target = e.target as HTMLElement | null
+              if (!target) return
+              const candidateBtn = target.closest(".disambiguation-candidate")
+              if (!candidateBtn) return
+              const candidate = candidateBtn.getAttribute("data-candidate")
+              if (candidate) {
+                sendMessage(candidate)
+              }
+            }}
+          >
             <div id="chatMessagesInner">
               {messages.length === 0 ? (
                 <div className="chat-welcome" id="chatWelcomeMessage">

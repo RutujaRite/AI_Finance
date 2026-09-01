@@ -47,3 +47,6 @@ logs/
 # Uploads
 public/uploads/*
 !public/uploads/.gitkeep
+
+echo ".next/" >> .gitignore
+echo "tsconfig.tsbuildinfo" >> .gitignore

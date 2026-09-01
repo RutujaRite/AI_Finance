@@ -11,6 +11,7 @@ export interface CompanyRecord {
   sr_no: string;
   company_category: string;
   other_info: string;
+  company_name: string;
 }
 
 export interface CompanyBasicInfo {
@@ -40,6 +41,8 @@ export interface CompanySearchResult {
   basicInfo: CompanyBasicInfo | null;
   financialInfo: CompanyFinancialInfo | null;
   bankRecords: CompanyRecord[];
+  candidates: string[];
+  needsDisambiguation: boolean;
 }
 
 function buildOverview(info: CompanyBasicInfo | null, financial: CompanyFinancialInfo | null): string {
@@ -65,11 +68,11 @@ export async function searchCompany(companyName: string): Promise<CompanySearchR
 
     const [bankRes, basicRes, financialRes] = await Promise.all([
       client.query(
-        `SELECT bcd.bank_name, bcd.sr_no, bcd.company_category, bcd.other_info
-         FROM bank_company_data bcd
-         WHERE LOWER(bcd.company_name) LIKE LOWER($1)
-         ORDER BY bcd.company_name, bcd.bank_name, bcd.sr_no
-         LIMIT 200`,
+        `SELECT bcd.bank_name, bcd.sr_no, bcd.company_category, bcd.other_info, bcd.company_name
+          FROM bank_company_data bcd
+          WHERE LOWER(bcd.company_name) LIKE LOWER($1)
+          ORDER BY bcd.company_name, bcd.bank_name, bcd.sr_no
+          LIMIT 200`,
         [pattern]
       ),
       client.query(
@@ -88,22 +91,43 @@ export async function searchCompany(companyName: string): Promise<CompanySearchR
       ),
     ]);
 
-    const bankRecords: CompanyRecord[] = bankRes.rows.map((r) => ({
+    const bankRecords: CompanyRecord[] = bankRes.rows.map((r: any) => ({
       bank_name: r.bank_name,
       sr_no: r.sr_no,
       company_category: r.company_category,
       other_info: r.other_info,
+      company_name: r.company_name,
     }));
 
     const basicInfo: CompanyBasicInfo | null = basicRes.rowCount > 0 ? basicRes.rows[0] : null;
     const financialInfo: CompanyFinancialInfo | null = financialRes.rowCount > 0 ? financialRes.rows[0] : null;
 
-    const names = Array.from(new Set(bankRecords.map((r) => r.bank_name).filter(Boolean)));
-    names.sort();
-    const primaryName = basicInfo?.company_name || companyName || names[0] || companyName;
+    const candidateMap = new Map<string, string>();
+    bankRecords.forEach((r) => {
+      const name = String(r.company_name || "").trim()
+      if (name) {
+        const key = name.toLowerCase()
+        if (!candidateMap.has(key)) {
+          candidateMap.set(key, name)
+        }
+      }
+    })
+    if (basicInfo?.company_name && String(basicInfo.company_name).trim()) {
+      const name = String(basicInfo.company_name).trim()
+      const key = name.toLowerCase()
+      if (!candidateMap.has(key)) {
+        candidateMap.set(key, name)
+      }
+    }
+
+    const candidates = Array.from(candidateMap.values())
+    candidates.sort();
+
+    const needsDisambiguation = candidates.length > 1;
+    const primaryName = basicInfo?.company_name || companyName || candidates[0] || companyName;
 
     if (bankRecords.length === 0 && !basicInfo && !financialInfo) {
-      return { found: false, primaryName: companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [] };
+      return { found: false, primaryName: companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], candidates: [], needsDisambiguation: false };
     }
 
     const overview = buildOverview(basicInfo, financialInfo);
@@ -115,6 +139,8 @@ export async function searchCompany(companyName: string): Promise<CompanySearchR
       basicInfo,
       financialInfo,
       bankRecords,
+      candidates,
+      needsDisambiguation,
     };
   } finally {
     client.release();

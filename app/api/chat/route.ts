@@ -56,11 +56,12 @@ async function searchCompanyOnline(companyName: string): Promise<{ basic_info: a
     const extractValue = (patterns: string[], text: string): string | null => {
       for (const pattern of patterns) {
         const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const regex = new RegExp(`${escaped}\\s*[:\\-]?\\s*([^\\n\\r]{3,120})`, "i");
+        const regex = new RegExp(`${escaped}\\s*[:\\-]?\\s*([^\\n\\r]{3,80})`, "i");
         const match = text.match(regex);
         if (match) {
-          const value = match[1].trim();
-          if (value && !/not available|unknown|n\.?a\.?|www\\.|http/i.test(value)) {
+          let value = match[1].trim();
+          value = value.replace(/\s*\(.*$/, "").replace(/\s*\.\s*.*$/, "").trim();
+          if (value && !/not available|unknown|n\.?a\.?|www\.|http/i.test(value)) {
             return value;
           }
         }
@@ -97,6 +98,33 @@ async function searchCompanyOnline(companyName: string): Promise<{ basic_info: a
     console.error("Online company search failed", e);
     return null;
   }
+}
+
+function buildCompanyReply(name: string, basic: any, financial: any, bankRecords: any[]) {
+  const industry = basic?.industry || "-"
+  const country = basic?.country || "-"
+  const incorporation = basic?.incorporation_date || "-"
+  const listing = basic?.listing_status || "-"
+  const employees = financial?.employees || "-"
+  const turnover = financial?.turnover || "-"
+  const profit = financial?.profit_status || "-"
+  const lastAGM = financial?.last_agm || "-"
+
+  const summaryParts = [
+    industry && industry !== "-" ? `operates in the **${industry}** sector` : null,
+    country && country !== "-" ? `is based in **${country}**` : null,
+    incorporation && incorporation !== "-" ? `was incorporated on **${incorporation}**` : null,
+    listing && listing !== "-" ? `has a **${listing}** listing status` : null,
+    employees && employees !== "-" ? `employs approximately **${employees}** people` : null,
+    turnover && turnover !== "-" ? `reports a turnover of **${turnover}**` : null,
+    profit && profit !== "-" ? `and is currently **${profit}**` : null,
+  ].filter(Boolean)
+
+  const summaryParagraph = summaryParts.length > 0
+    ? `**${name}** ${summaryParts.join(", ")}.`
+    : `**${name}**`
+
+  return summaryParagraph
 }
 
 export async function POST(req: NextRequest) {
@@ -163,67 +191,70 @@ export async function POST(req: NextRequest) {
 
       if (companySearchResult?.found) {
         companyQuery = companySearchQuery;
-        const records = companySearchResult.bankRecords || []
-        let basic = companySearchResult.basicInfo
-        let financial = companySearchResult.financialInfo
 
-        if (!basic || !financial) {
-          const structuredResult = await fetchCompanyFromStructuredAPI(companySearchResult.primaryName || companySearchQuery)
-          if (structuredResult) {
-            basic = basic || structuredResult.basic_info || null
-            financial = financial || structuredResult.financial_info || null
-          }
+        if (companySearchResult.needsDisambiguation && companySearchResult.candidates.length > 1) {
+          reply = `I found multiple companies related to ${companySearchQuery}.\n\nPlease select the specific company you want to view.`;
+          companyData = {
+            company_name: companySearchQuery,
+            overview: reply,
+            basic_info: null,
+            financial_info: null,
+            bank_records: [],
+            candidates: companySearchResult.candidates,
+            needs_disambiguation: true,
+          };
+        } else {
+          const records = companySearchResult.bankRecords || []
+          let basic = companySearchResult.basicInfo
+          let financial = companySearchResult.financialInfo
 
-          if (!basic || !financial) {
-            const onlineResult = await searchCompanyOnline(companySearchResult.primaryName || companySearchQuery)
-            if (onlineResult) {
-              basic = basic || onlineResult.basic_info || null
-              financial = financial || onlineResult.financial_info || null
+          const hasBasicData = basic && Object.entries(basic).some(([key, v]) => key !== "company_name" && v && String(v).trim() !== "")
+          const hasFinancialData = financial && Object.entries(financial).some(([key, v]) => key !== "company_name" && v && String(v).trim() !== "")
+
+          if (!hasBasicData || !hasFinancialData) {
+            const structuredResult = await fetchCompanyFromStructuredAPI(companySearchResult.primaryName || companySearchQuery)
+            if (structuredResult) {
+              basic = basic || structuredResult.basic_info || null
+              financial = financial || structuredResult.financial_info || null
+            }
+
+            const stillNeedBasic = !basic || !Object.values(basic).some((v: any) => v && String(v).trim() !== "")
+            const stillNeedFinancial = !financial || !Object.values(financial).some((v: any) => v && String(v).trim() !== "")
+
+            if (stillNeedBasic || stillNeedFinancial) {
+              const onlineResult = await searchCompanyOnline(companySearchResult.primaryName || companySearchQuery)
+              if (onlineResult) {
+                basic = basic || onlineResult.basic_info || null
+                financial = financial || onlineResult.financial_info || null
+              }
+            }
+
+            if (basic || financial) {
+              saveCompanyInfo(companySearchResult.primaryName || companySearchQuery, basic, financial).catch((e) => {
+                console.error("Failed to save company info", e)
+              })
             }
           }
 
-          if (basic || financial) {
-            saveCompanyInfo(companySearchResult.primaryName || companySearchQuery, basic, financial).catch((e) => {
-              console.error("Failed to save company info", e)
-            })
-          }
+          const seen = new Set<string>()
+          const uniqueRecords = records.filter((r: any) => {
+            const key = String(r?.bank_name || "").trim().toLowerCase()
+            if (!key || seen.has(key)) return false
+            seen.add(key)
+            return true
+          })
+
+          const name = basic?.company_name || companySearchResult.primaryName
+
+          reply = buildCompanyReply(name, basic, financial, uniqueRecords)
+          companyData = {
+            company_name: companySearchResult.primaryName,
+            overview: companySearchResult.overview || reply,
+            basic_info: basic,
+            financial_info: financial,
+            bank_records: uniqueRecords,
+          };
         }
-
-        const seen = new Set<string>()
-        const uniqueRecords = records.filter((r: any) => {
-          const key = String(r?.bank_name || "").trim().toLowerCase()
-          if (!key || seen.has(key)) return false
-          seen.add(key)
-          return true
-        })
-
-        const name = basic?.company_name || companySearchResult.primaryName
-        const industry = basic?.industry || "-"
-        const country = basic?.country || "-"
-        const incorporation = basic?.incorporation_date || "-"
-        const listing = basic?.listing_status || "-"
-        const employees = financial?.employees || "-"
-        const turnover = financial?.turnover || "-"
-        const profit = financial?.profit_status || "-"
-        const lastAGM = financial?.last_agm || "-"
-
-        const sentences = [
-          `**${name}** operates in the **${industry}** sector, is headquartered in **${country}**, was incorporated on **${incorporation}**, and has a **${listing}** listing status.`,
-          `The company has approximately **${employees}** employees, reports a turnover of **${turnover}**, and is currently **${profit}**.`,
-          `The last annual meeting was held in **${lastAGM}**.`,
-          uniqueRecords.length
-            ? `Our records show **${uniqueRecords.length}** bank record(s) associated with this company.`
-            : `No associated bank records were found for this company in our existing partners.`,
-        ]
-
-        reply = sentences.join("\n\n")
-        companyData = {
-          company_name: companySearchResult.primaryName,
-          overview: companySearchResult.overview || reply,
-          basic_info: basic,
-          financial_info: financial,
-          bank_records: uniqueRecords,
-        };
       } else {
         let fallbackBasic: any = null
         let fallbackFinancial: any = null
@@ -248,16 +279,8 @@ export async function POST(req: NextRequest) {
           })
 
           const name = fallbackBasic?.company_name || companySearchQuery
-          const industry = fallbackBasic?.industry || "-"
-          const country = fallbackBasic?.country || "-"
-          const incorporation = fallbackBasic?.incorporation_date || "-"
-          const listing = fallbackBasic?.listing_status || "-"
-          const employees = fallbackFinancial?.employees || "-"
-          const turnover = fallbackFinancial?.turnover || "-"
-          const profit = fallbackFinancial?.profit_status || "-"
-          const lastAGM = fallbackFinancial?.last_agm || "-"
 
-          reply = `**${name}** operates in the **${industry}** sector, is headquartered in **${country}**, was incorporated on **${incorporation}**, and has a **${listing}** listing status.\n\nThe company has approximately **${employees}** employees, reports a turnover of **${turnover}**, and is currently **${profit}**.\n\nThe last annual meeting was held in **${lastAGM}**.`
+          reply = buildCompanyReply(name, fallbackBasic, fallbackFinancial, [])
 
           companyData = {
             company_name: name,
