@@ -1,500 +1,346 @@
-// Company Search Assistant
-// 
-// This component provides a dedicated company search interface
-// that uses the existing company selection service and company search API
-// to help users find detailed information about companies including:
-// - Industry and sector information
-// - Country of origin
-// - Incorporation date
-// - Listing status
-// - Corporate Identification Number (CIN)
-// - Registered address
-// - Website information
-// - Employee count
-// - Financial information (turnover, profit status)
-// - Latest AGM details
-// 
-// Features:
-// - Fuzzy search for companies (partial name matching)
-// - Multiple company disambiguation when needed
-// - Detailed company information display
-// - Navigation to bank relationships
-// - Integration with existing AI assistant system
-// 
-// Dependencies:
-// - React hooks for state management
-// - Company selection service functions
-// - Company search API integration
-// - Existing CSS styling
-// 
-// Usage:
-// Users can search for any company to get comprehensive information
-// about the company, including financial details and banking relationships
+/**
+ * Bank Manager Files Management Page
+ * Allows users to upload bank manager spreadsheet files (Excel/CSV)
+ * and view, download, or delete uploaded files.
+ */
 
 "use client"
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 
-export default function CompanySearch() {
-  const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [selectedCompany, setSelectedCompany] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [showResults, setShowResults] = useState(false);
-  const searchInputRef = useRef(null);
+export default function BankManagerFilesPage() {
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [bankName, setBankName] = useState("")
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadMsg, setUploadMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [files, setFiles] = useState<any[]>([])
+  const [isLoadingFiles, setIsLoadingFiles] = useState(true)
 
-  // Auto-focus search input on component mount
   useEffect(() => {
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, []);
+    checkAuth()
+    fetchFiles()
+  }, [])
 
-  // Handle search submission
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      setSelectedCompany(null);
-      setShowResults(false);
-      return;
+  async function checkAuth() {
+    try {
+      const res = await fetch("/api/auth/verify")
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success) setUser(data.user)
+      } else {
+        router.replace("/login")
+      }
+    } catch (e) {
+      router.replace("/login")
+    }
+  }
+
+  async function fetchFiles() {
+    setIsLoadingFiles(true)
+    try {
+      const res = await fetch("/api/bank-managers/files")
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data.files)) {
+          setFiles(data.files)
+        }
+      }
+    } catch (e) {
+      console.error("Error fetching files", e)
+    } finally {
+      setIsLoadingFiles(false)
+    }
+  }
+
+  const handleUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!bankName.trim()) {
+      setUploadMsg({ type: "error", text: "Please enter the Bank Name." })
+      return
+    }
+    if (!selectedFile) {
+      setUploadMsg({ type: "error", text: "Please select an Excel (.xlsx, .xls) or CSV (.csv) file." })
+      return
     }
 
-    setIsLoading(true);
-    setError(null);
-    setShowResults(true);
+    setIsUploading(true)
+    setUploadMsg(null)
 
     try {
-      const response = await fetch('/api/company/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ company_name: searchQuery })
-      });
+      const formData = new FormData()
+      formData.append("bank_name", bankName.trim())
+      formData.append("file", selectedFile)
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const res = await fetch("/api/bank-managers/files", {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        setUploadMsg({ type: "success", text: `File "${selectedFile.name}" uploaded successfully!` })
+        setBankName("")
+        setSelectedFile(null)
+        // Reset file input element
+        const fileInput = document.getElementById("bankFileInput") as HTMLInputElement
+        if (fileInput) fileInput.value = ""
+        fetchFiles()
+      } else {
+        setUploadMsg({ type: "error", text: data.error || "File upload failed." })
       }
-
-      const data = await response.json();
-
-      if (!data.success) {
-        setError(data.error || 'Search failed');
-        return;
-      }
-
-      // Handle company selection required (multiple matches)
-      if (data.selection_required && data.candidates && data.candidates.length > 0) {
-        setSearchResults([]);
-        setSelectedCompany(null);
-        // Show candidates for user selection
-        setSearchResults(data.candidates);
-        return;
-      }
-
-      // Single company found
-      if (data.company_data) {
-        setSelectedCompany(data.company_data);
-        setSearchResults([]);
-      }
-
     } catch (err) {
-      console.error('Search error:', err);
-      setError('Unable to complete search. Please try again.');
+      setUploadMsg({ type: "error", text: "Error uploading file." })
     } finally {
-      setIsLoading(false);
+      setIsUploading(false)
     }
-  };
+  }
 
-  // Handle company selection from candidates
-  const selectCompany = (company) => {
-    setSelectedCompany(company);
-    setSearchResults([]);
-    setSearchQuery(company.name || company.company_name || '');
-    setShowResults(false);
-  };
-
-  // Format company data for display
-  const formatCompanyData = (company) => {
-    if (!company) return null;
-
-    return {
-      // Basic Information
-      name: company.company_name || company.name || 'Unknown Company',
-      cin: company.cin || company.cin_number || 'Not Available',
-      website: company.website || company.url || 'Not Available',
-      industry: company.industry || company.sector || 'Not Specified',
-      country: company.country || 'Not Specified',
-      incorporation_date: company.incorporation_date || company.incorporated_on || 'Not Available',
-      listing_status: company.listing_status || company.stock_exchange || 'Not Available',
-
-      // Location and Contact
-      registered_address: company.registered_address || company.address || 'Not Available',
-      main_branch: company.main_branch || company.headquarters || 'Not Available',
-      contact_phone: company.phone || company.contact_number || 'Not Available',
-      email: company.email || company.contact_email || 'Not Available',
-
-      // Personnel
-      employees: company.employees || company.employee_count || company.staff_count || 'Not Available',
-      key_personnel: company.key_personnel || company.directors || [],
-
-      // Financial Information
-      turnover: company.turnover || company.annual_revenue || 'Not Available',
-      profit_status: company.profit_status || company.profit_loss || 'Not Available',
-      net_worth: company.net_worth || company.equity || 'Not Available',
-      revenue_currency: company.revenue_currency || company.currency || 'USD',
-
-      // Corporate Information
-      registration_number: company.registration_number || company.registration_no || 'Not Available',
-      roc_code: company.roc_code || 'Not Available',
-      category: company.category || company.company_category || 'Not Available',
-      sub_category: company.sub_category || company.subcategory || 'Not Available',
-
-      // Events and Milestones
-      last_agm_date: company.last_agm_date || company.latest_agm || 'Not Available',
-      next_agm_date: company.next_agm_date || company.scheduled_agm || 'Not Available',
-      year_end: company.year_end || 'Not Available',
-
-      // Additional Details
-      sibling_companies: company.sibling_companies || [],
-      subsidiaries: company.subsidiaries || [],
-      joint_ventures: company.joint_ventures || [],
-      notes: company.notes || company.description || company.summary || 'No additional information available.',
-
-      // Data Source
-      data_source: company.data_source || company.source || 'Company Database',
-      last_updated: company.last_updated || company.updated_at || new Date().toISOString(),
-    };
-  };
-
-  // Get status color for listing
-  const getListingStatusColor = (status) => {
-    const statusLower = status?.toLowerCase() || '';
-    if (statusLower.includes('listed') || statusLower.includes('public')) {
-      return 'bg-green-100 text-green-800 border-green-300';
-    } else if (statusLower.includes('unlisted') || statusLower.includes('private')) {
-      return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-    } else {
-      return 'bg-gray-100 text-gray-800 border-gray-300';
+  const handleDeleteFile = async (id: number, fileName: string) => {
+    if (!confirm(`Are you sure you want to delete "${fileName}"?`)) return
+    try {
+      const res = await fetch(`/api/bank-managers/files?id=${id}`, { method: "DELETE" })
+      const data = await res.json()
+      if (data.success) {
+        fetchFiles()
+      } else {
+        alert(data.error || "Delete failed.")
+      }
+    } catch (e) {
+      alert("Error deleting file.")
     }
-  };
+  }
 
-  // Get status color for industry
-  const getIndustryColor = (industry) => {
-    const industryLower = industry?.toLowerCase() || '';
-    if (industryLower.includes('technology') || industryLower.includes('software') || industryLower.includes('it')) {
-      return 'bg-blue-100 text-blue-800';
-    } else if (industryLower.includes('manufacturing') || industryLower.includes('industrial')) {
-      return 'bg-orange-100 text-orange-800';
-    } else if (industryLower.includes('finance') || industryLower.includes('banking') || industryLower.includes('financial')) {
-      return 'bg-purple-100 text-purple-800';
-    } else if (industryLower.includes('services') || industryLower.includes('consulting')) {
-      return 'bg-teal-100 text-teal-800';
-    } else if (industryLower.includes('retail') || industryLower.includes('trade')) {
-      return 'bg-red-100 text-red-800';
-    } else {
-      return 'bg-gray-100 text-gray-800';
-    }
-  };
+  function formatFileSize(bytes: number) {
+    if (!bytes || bytes === 0) return "0 B"
+    const k = 1024
+    const sizes = ["B", "KB", "MB", "GB"]
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+  }
+
+  if (!user) return <main style={{ padding: 24, textAlign: "center" }}>Loading...</main>
 
   return (
-    <div className="company-search-container">
-      {/* Search Section */}
-      <div className="search-section">
-        <div className="search-header">
-          <div className="search-icon">🔍</div>
-          <h2 classn="search-title">Company Search</h2>
-          <p className="search-subtitle">
-            Find detailed information about any company, including industry, financial data, and banking relationships.
-          </p>
+    <main className="home-body">
+      {/* App Topbar */}
+      <header className="topbar app-topbar">
+        <a className="brand" href="/home">
+          <span className="brand-mark">◆</span>
+          <span className="brand-text">AI ASSISTANT</span>
+        </a>
+        <nav className="nav-menu" aria-label="Main navigation">
+          <a href="/home" className="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Home
+          </a>
+          <a href="/emi" className="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><path d="M12 12h.01"/></svg>
+            EMI Calculator
+          </a>
+          <a href="/admin" className="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            Admin
+          </a>
+          <a href="/bank-managers" className="nav-item active">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a2 2 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Bank Manager Files
+          </a>
+          <a href="/policies" className="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Policies
+          </a>
+          <div className="nav-item profile-menu" role="link" tabIndex={0} onClick={() => router.push("/profile")}>
+            <span className="profile-menu-label">{user.name || user.email}</span>
+            <span className="caret">▾</span>
+            <div className="profile-dropdown">
+              <a href="/profile">Profile</a>
+              <a href="/logout">Logout</a>
+            </div>
+          </div>
+        </nav>
+      </header>
+
+      {/* Main Page Body */}
+      <main className="bm-page animate-fade-in" style={{ maxWidth: 1040 }}>
+        {/* Title Header */}
+        <div className="bm-header">
+          <div>
+            <h2 className="bm-title">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#bmFileGradient)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <defs>
+                  <linearGradient id="bmFileGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#6366f1" />
+                    <stop offset="100%" stopColor="#a5b4fc" />
+                  </linearGradient>
+                </defs>
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              Bank Manager Files
+            </h2>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: 4 }}>
+              Upload Excel/CSV spreadsheet files containing bank manager contacts and location details.
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleSearch} className="search-form">
-          <div className="search-input-wrapper">
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Enter company name (e.g., Tata Consultancy Services, Reliance Industries, Infosys...)"
-              className="search-input"
-              disabled={isLoading}
-            />
+        {/* Section 1: File Upload Form Card */}
+        <div className="glass-card" style={{ padding: 32, marginBottom: 32 }}>
+          <h3 className="card-title" style={{ fontSize: "1.2rem", color: "#fff", marginBottom: 20 }}>
+            📁 Upload Bank Manager Spreadsheet File
+          </h3>
+
+          {uploadMsg && (
+            <div
+              className={uploadMsg.type === "success" ? "badge-tag success" : "alert-error"}
+              style={{ width: "100%", padding: 12, marginBottom: 20, fontSize: "0.9rem" }}
+            >
+              {uploadMsg.type === "success" ? `✓ ${uploadMsg.text}` : `⚠️ ${uploadMsg.text}`}
+            </div>
+          )}
+
+          <form onSubmit={handleUploadSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="field-label">Bank Name *</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. State Bank of India, HDFC Bank, ICICI Bank, Axis Bank..."
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                disabled={isUploading}
+                required
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="field-label">Spreadsheet File (.xlsx, .xls, .csv) *</label>
+              <input
+                id="bankFileInput"
+                type="file"
+                className="form-input"
+                accept=".xlsx, .xls, .csv"
+                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                disabled={isUploading}
+                required
+              />
+              <span style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginTop: 6, display: "block" }}>
+                Accepted formats: Microsoft Excel (.xlsx, .xls) or Comma Separated Values (.csv). Max file size: 50MB.
+              </span>
+            </div>
+
             <button
               type="submit"
-              className="search-button"
-              disabled={isLoading || !searchQuery.trim()}
+              className="btn btn-gradient"
+              style={{ width: "100%", padding: 14, fontSize: "1rem", marginTop: 8 }}
+              disabled={isUploading || !bankName.trim() || !selectedFile}
             >
-              {isLoading ? 'Searching...' : 'Search'}
+              {isUploading ? "Uploading & Processing..." : "Upload File"}
             </button>
-          </div>
-        </form>
-
-        {error && (
-          <div className="error-message">
-            <div className="error-icon">⚠️</div>
-            <span>{error}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Loading State */}
-      {isLoading && (
-        <div className="loading-section">
-          <div className="loading-spinner">
-            <div className="spinner"></div>
-          </div>
-          <p className="loading-text">Searching for companies...</p>
+          </form>
         </div>
-      )}
 
-      {/* Company Selection Results */}
-      {showResults && searchResults.length > 0 && (
-        <div className="results-section">
-          <h3 className="results-title">Select Company</h3>
-          <p className="results-subtitle">
-            Multiple companies found. Please select the one you're looking for:
-          </p>
-
-          <div className="company-list">
-            {searchResults.map((company, index) => (
-              <div
-                key={company.id || index}
-                className="company-card"
-                onClick={() => selectCompany(company)}
-              >
-                <div className="company-info">
-                  <div className="company-name">{company.name || company.company_name || 'Unknown Company'}</div>
-                  <div className="company-details">
-                    {company.industry && (
-                      <span className={`company-industry ${getIndustryColor(company.industry)}`}>
-                        {company.industry}
-                      </span>
-                    )}
-                    {company.country && (
-                      <span className="company-country">
-                        🌍 {company.country}
-                      </span>
-                    )}
-                    {company.listing_status && (
-                      <span className={`company-listing ${getListingStatusColor(company.listing_status)}`}>
-                        📊 {company.listing_status}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="company-selection-icon">→</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Company Details Display */}
-      {selectedCompany && (
-        <div className="company-details-section">
-          <div className="details-header">
-            <h3 className="details-title">Company Details</h3>
-            <button
-              className="back-button"
-              onClick={() => {
-                setSelectedCompany(null);
-                setSearchQuery('');
-              }}
-            >
-              ← Back to Search
-            </button>
+        {/* Section 2: Uploaded Files Directory List */}
+        <div className="glass-card" style={{ padding: 32 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <h3 className="card-title" style={{ fontSize: "1.2rem", color: "#fff", margin: 0, border: "none" }}>
+              📋 Uploaded Manager Files Directory
+            </h3>
+            <span className="badge-tag">{files.length} Files</span>
           </div>
 
-          <div className="company-profile">
-            {/* Basic Information Card */}
-            <div className="info-card">
-              <h4 className="card-title">Basic Information</h4>
-              <div className="info-grid">
-                <div className="info-item">
-                  <label>Company Name:</label>
-                  <span>{selectedCompany.name}</span>
-                </div>
-                <div className="info-item">
-                  <label>Industry:</label>
-                  <span>{selectedCompany.industry || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Country:</label>
-                  <span>{selectedCompany.country || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label> incorporation Date:</label>
-                  <span>{selectedCompany.incorporation_date || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Listing Status:</label>
-                  <span className={`status-badge ${getListingStatusColor(selectedCompany.listing_status)}`},
-                    >{selectedCompany.listing_status || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>CIN:</label>
-                  <span>{selectedCompany.cin || 'Not Available'}</span>
-                </div>
-                <div className="info-item full-width">
-                  <label>Website:</label>
-                  <a
-                    href={selectedCompany.website.startsWith('http') ? selectedCompany.website : `https://${selectedCompany.website}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="website-link"
-                  >
-                    {selectedCompany.website || 'Not Available'}
-                  </a>
-                </div>
-              </div>
+          {isLoadingFiles ? (
+            <div style={{ padding: 32, textAlign: "center", color: "var(--text-muted)" }}>
+              Loading uploaded files...
             </div>
-
-            {/* Contact Information Card */}
-            <div className="info-card">
-              <h4 className="card-title">Contact & Location</h4>
-              <div className="info-grid">
-                <div className="info-item full-width">
-                  <label>Registered Address:</label>
-                  <span>{selectedCompany.registered_address || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Main Branch:</label>
-                  <span>{selectedCompany.main_branch || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Phone:</label>
-                  <span>{selectedCompany.contact_phone || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Email:</label>
-                  <span>{selectedCompany.email || 'Not Available'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Personnel Card */}
-            <div className="info-card">
-              <h4 className="card-title">Personnel</h4>
-              <div className="info-grid">
-                <div className="info-item">
-                  <label>Employees:</label>
-                  <span>{selectedCompany.employees || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Key Personnel:</label>
-                  <span>
-                    {selectedCompany.key_personnel && selectedCompany.key_personnel.length > 0
-                      ? selectedCompany.key_personnel.join(', ')
-                      : 'Not Available'
-                    }
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Financial Information Card */}
-            <div className="info-card">
-              <h4 className="card-title">Financial Information</h4>
-              <div className="info-grid">
-                <div className="info-item">
-                  <label>Annual Turnover:</label>
-                  <span>{selectedCompany.turnover || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Profit Status:</label>
-                  <span>{selectedCompany.profit_status || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Net Worth:</label>
-                  <span>{selectedCompany.net_worth || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Revenue Currency:</label>
-                  <span>{selectedCompany.revenue_currency || 'USD'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Corporate Information Card */}
-            <div className="info-card">
-              <h4 className="card-title">Corporate Information</h4>
-              <div className="info-grid">
-                <div className="info-item">
-                  <label>Registration Number:</label>
-                  <span>{selectedCompany.registration_number || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>RoC Code:</label>
-                  <span>{selectedCompany.roc_code || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Category:</label>
-                  <span>{selectedCompany.category || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Sub Category:</label>
-                  <span>{selectedCompany.sub_category || 'Not Available'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* AGM Information Card */}
-            <div className="info-card">
-              <h4 className="card-title">General Meetings</h4>
-              <div className="info-grid">
-                <div className="info-item">
-                  <label>Last AGM Date:</label>
-                  <span>{selectedCompany.last_agm_date || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Next AGM Date:</label>
-                  <span>{selectedCompany.next_agm_date || 'Not Available'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Year End:</label>
-                  <span>{selectedCompany.year_end || 'Not Available'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Additional Information Card */}
-            <div className="info-card">
-              <h4 className="card-title">Additional Information</h4>
-              <div className="info-content">
-                <p className="info-description">
-                  {selectedCompany.notes || 'No additional information available.'}
-                </p>
-
-                {selectedCompany.sibling_companies && selectedCompany.sibling_companies.length > 0 && (
-                  <div className="related-companies">
-                    <h5>Sibling Companies:</h5>
-                    <div className="related-list">
-                      {selectedCompany.sibling_companies.map((sibling, index) => (
-                        <span key={index} className="related-tag">
-                          {sibling}
-                        </span>
-                      ))}
+          ) : files.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {files.map((file) => (
+                <div
+                  key={file.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    background: "rgba(255, 255, 255, 0.03)",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "var(--radius-md)",
+                    padding: "16px 20px",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: "var(--radius-md)",
+                        background: "rgba(99, 102, 241, 0.15)",
+                        border: "1px solid var(--border-highlight)",
+                        color: "#a5b4fc",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "1.2rem",
+                        flexShrink: 0,
+                      }}
+                    >
+                      📄
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, color: "#fff", fontSize: "1rem" }}>{file.file_name}</div>
+                      <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: 4 }}>
+                        Bank: <strong style={{ color: "#a5b4fc" }}>{file.bank_name}</strong> | Size: {formatFileSize(file.file_size)} | Uploaded: {new Date(file.uploaded_at).toLocaleDateString()} {file.uploaded_by_name ? `by ${file.uploaded_by_name}` : ""}
+                      </div>
                     </div>
                   </div>
-                )}
 
-                <div className="data-source-info">
-                  <small>
-                    Data Source: {selectedCompany.data_source || 'Company Database'} | 
-                    Last Updated: {new Date(selectedCompany.last_updated).toLocaleDateString()}
-                  </small>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {file.file_path && (
+                      <a
+                        href={file.file_path}
+                        download
+                        className="btn btn-secondary"
+                        style={{ padding: "8px 14px", fontSize: "0.8rem", textDecoration: "none" }}
+                      >
+                        ⬇ Download
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteFile(file.id, file.file_name)}
+                      style={{
+                        background: "rgba(239, 68, 68, 0.15)",
+                        border: "1px solid rgba(239, 68, 68, 0.35)",
+                        color: "#fca5a5",
+                        padding: "8px 14px",
+                        borderRadius: "var(--radius-md)",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      🗑 Delete
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
-          </div>
+          ) : (
+            <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-muted)" }}>
+              <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>📁</div>
+              <h4 style={{ color: "#fff", fontSize: "1.1rem", marginBottom: 6 }}>No Files Uploaded Yet</h4>
+              <p style={{ fontSize: "0.85rem" }}>
+                Use the upload form above to attach an Excel or CSV file containing bank manager details.
+              </p>
+            </div>
+          )}
         </div>
-      )}
-    </div>
-  );
+      </main>
+    </main>
+  )
 }

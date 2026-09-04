@@ -1,5 +1,5 @@
 const assert = require("assert");
-const pool = require("../db");
+const pool = require("../lib/db");
 const {
   buildPolicyChecks,
   evaluateApplicantAgainstPolicies,

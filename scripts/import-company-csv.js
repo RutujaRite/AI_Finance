@@ -1,3 +1,7 @@
+/**
+ * PURPOSE: Bulk imports corporate company approval lists from CSV files into bank_company_data.
+ * USAGE: node scripts/import-company-csv.js
+ */
 const fs = require('fs');
 const path = require('path');
 const { parse } = require('csv-parse/sync');

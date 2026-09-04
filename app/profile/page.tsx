@@ -169,11 +169,12 @@ export default function ProfilePage() {
         const eyeOffSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.97 10.97 0 0 1 12 19c-6 0-10-7-10-7 .9-1.55 2.22-3.33 3.8-4.8"/><path d="M1 1l22 22"/></svg>`
         btn.innerHTML = eyeSvg
         btn.addEventListener("click", () => {
-          if (inp.type === "password") {
-            inp.type = "text"
+          const inputEl = inp as HTMLInputElement
+          if (inputEl.type === "password") {
+            inputEl.type = "text"
             btn.innerHTML = eyeOffSvg
           } else {
-            inp.type = "password"
+            inputEl.type = "password"
             btn.innerHTML = eyeSvg
           }
         })
@@ -218,8 +219,16 @@ export default function ProfilePage() {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
             Admin
           </a>
-          <div className="nav-item profile-menu active">
-            <span className="profile-menu-label">♙ My Account</span>
+          <a href="/bank-managers" className="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a2 2 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Bank Manager
+          </a>
+          <a href="/policies" className="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Policies
+          </a>
+          <div className="nav-item profile-menu active" role="link" tabIndex={0} onClick={() => router.push("/profile")}>
+            <span className="profile-menu-label">{profile.name || profile.email}</span>
             <span className="caret">▾</span>
             <div className="profile-dropdown">
               <a href="/profile">Profile</a>

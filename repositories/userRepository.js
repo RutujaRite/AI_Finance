@@ -1,4 +1,4 @@
-const pool = require("../db");
+const pool = require("../lib/db");
 
 async function findByEmailAndPassword(email, password) {
   const result = await pool.query(

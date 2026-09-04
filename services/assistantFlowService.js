@@ -147,6 +147,11 @@ function collectEligibilityField(message, existingApplicant = {}, expectedField 
         if (val !== null) applicant.existingEmi = val;
       }
       return applicant;
+    case "preferredLocation": {
+      const cleanLoc = normalized.replace(/^(location|city|in|at|living in)\s+/i, "").trim();
+      if (cleanLoc) applicant.preferredLocation = cleanLoc;
+      return applicant;
+    }
     default:
       return applicant;
   }
@@ -227,124 +232,82 @@ function formatEligibilityResult(applicant, evaluations) {
   // ---------------- ELIGIBLE ----------------
 
   if (eligibleList.length > 0) {
-    lines.push(`ELIGIBLE BANKS (${eligibleList.length})`);
+    lines.push(`### ✅ ELIGIBLE BANKS (${eligibleList.length})`);
     lines.push("");
 
     eligibleList.forEach((ev, index) => {
       const checks = safeChecks(ev);
       const terms = ev.offered_terms || {};
 
-      const program =
-        ev.program ||
-        ev.matched_program ||
-        ev.program_name ||
-        null;
+      const program = ev.program || ev.matched_program || ev.program_name || null;
+      const category = ev.category || ev.matched_category || null;
 
-      const category =
-        ev.category ||
-        ev.matched_category ||
-        null;
+      lines.push(`**${index + 1}. 🏦 ${ev.bank || ev.bank_name || "Bank"}**`);
 
-      lines.push(`${index + 1}. ${ev.bank || ev.bank_name || "Bank"}`);
+      if (program) lines.push(`• **Program**: ${program}`);
+      if (category) lines.push(`• **Category**: ${category}`);
+      if (ev.matched_rule) lines.push(`• **Policy Rule**: ${ev.matched_rule}`);
 
-      if (program) {
-        lines.push(`Program: ${program}`);
-      }
-
-      if (category) {
-        lines.push(`Category: ${category}`);
-      }
-
-      if (ev.matched_rule) {
-        lines.push(`Matched Rule: ${ev.matched_rule}`);
-      }
-
-      if (ev.policy_version) {
-        lines.push(`Policy Version: ${ev.policy_version}`);
-      }
-
-      const passedChecks = checks.filter(
-        c => checkStatus(c) === "pass"
-      );
-
+      const passedChecks = checks.filter(c => checkStatus(c) === "pass");
       if (passedChecks.length > 0) {
-        lines.push("Why you are eligible:");
-
+        lines.push("• **Verified Conditions**:");
         passedChecks.forEach(check => {
-          const criterion =
-            check.criterion ||
-            check.field ||
-            "Policy criterion";
-
-          const actual =
-            check.actual != null
-              ? String(check.actual)
-              : "Not specified";
-
-          const required =
-            check.required != null
-              ? String(check.required)
-              : "Not specified";
-
-          lines.push(
-            `✓ ${criterion}: Your value ${actual} meets required ${required}`
-          );
+          const criterion = check.criterion || check.field || "Policy criterion";
+          const actual = check.actual != null ? String(check.actual) : "Not specified";
+          const required = check.required != null ? String(check.required) : "Not specified";
+          lines.push(`  - ✓ **${criterion}**: ${actual} (Required: ${required})`);
         });
-      } else {
-        lines.push(
-          "Eligibility passed based on the applicable policy criteria."
-        );
       }
 
-      if (terms.roi != null) {
-        lines.push(`ROI: ${terms.roi}% p.a.`);
-      }
-
-      if (terms.processing_fee_percent != null) {
-        lines.push(
-          `Processing Fee: ${terms.processing_fee_percent}%`
-        );
-      } else if (terms.processing_fee_flat != null) {
-        lines.push(
-          `Processing Fee: ${formatMoney(
-            terms.processing_fee_flat
-          )}`
-        );
-      }
-
-      if (terms.max_loan_amount != null) {
-        lines.push(
-          `Maximum Loan Amount: ${formatMoney(
-            terms.max_loan_amount
-          )}`
-        );
-      }
-
-      if (terms.max_tenure_months != null) {
-        lines.push(
-          `Maximum Tenure: ${terms.max_tenure_months} months`
-        );
-      }
-
-      if (terms.foir_percent != null) {
-        lines.push(
-          `FOIR Limit: ${terms.foir_percent}%`
-        );
-      }
-
-      if (ev.source_file) {
-        lines.push(`Source: ${ev.source_file}`);
-      }
-
+      if (terms.roi != null) lines.push(`• **Interest Rate (ROI)**: ${terms.roi}% p.a.`);
+      if (terms.processing_fee_percent != null) lines.push(`• **Processing Fee**: ${terms.processing_fee_percent}%`);
+      else if (terms.processing_fee_flat != null) lines.push(`• **Processing Fee**: ${formatMoney(terms.processing_fee_flat)}`);
+      if (terms.max_loan_amount != null) lines.push(`• **Max Loan Amount**: ${formatMoney(terms.max_loan_amount)}`);
+      if (terms.max_tenure_months != null) lines.push(`• **Max Tenure**: ${terms.max_tenure_months} months`);
+      if (terms.foir_percent != null) lines.push(`• **FOIR Limit**: ${terms.foir_percent}%`);
       lines.push("");
     });
-  } else {
+  }
+
+  // ---------------- CONDITIONAL / UNDER REVIEW ----------------
+  if (reviewList.length > 0) {
+    lines.push(`### ⚠️ CONDITIONAL / UNDER REVIEW BANKS (${reviewList.length})`);
+    lines.push("");
+
+    reviewList.forEach((ev, index) => {
+      const reviewReasons = safeReviewReasons(ev);
+      lines.push(`**${index + 1}. 🏦 ${ev.bank || ev.bank_name || "Bank"}**`);
+      lines.push(`• **Status**: ⚠️ **Conditional Approval / Document Verification Needed**`);
+      if (reviewReasons.length > 0) {
+        lines.push(`• **Pending Items / Reasons**:`);
+        reviewReasons.forEach(r => lines.push(`  - ${r}`));
+      }
+      lines.push("");
+    });
+  }
+
+  // ---------------- INELIGIBLE BANKS ----------------
+  if (notEligibleList.length > 0) {
+    lines.push(`### ❌ INELIGIBLE BANKS (${notEligibleList.length})`);
+    lines.push("");
+
+    notEligibleList.forEach((ev, index) => {
+      const failReasons = safeFailureReasons(ev);
+      lines.push(`**${index + 1}. 🏦 ${ev.bank || ev.bank_name || "Bank"}**`);
+      lines.push(`• **Status**: ❌ **Not Eligible**`);
+      if (failReasons.length > 0) {
+        lines.push(`• **Failure Reasons**:`);
+        failReasons.forEach(f => lines.push(`  - ${f}`));
+      }
+      lines.push("");
+    });
+  }
+
+  if (eligibleList.length === 0 && reviewList.length === 0) {
     lines.push("No banks matched as eligible based on the active policy rules for the resolved category.");
   }
 
-  lines.push(
-    "Eligibility is determined only from the applicable bank policy, program and category rules. Missing or unresolved policy information is not guessed."
-  );
+  lines.push("*(Note: Eligibility is determined strictly from active bank policy rules stored in PostgreSQL database. Missing or unresolved values are not guessed.)*");
 
   return lines.join("\n").trim();
 }

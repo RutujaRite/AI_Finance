@@ -1,3 +1,7 @@
+/**
+ * PURPOSE: Links extracted master policy text files to their corresponding bank IDs in PostgreSQL.
+ * USAGE: node scripts/_fix_master_linkage.js
+ */
 const pool = require('../db');
 
 async function main() {

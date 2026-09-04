@@ -5,10 +5,11 @@
 
 import type { Metadata } from "next";
 import Script from "next/script";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CreditWise AI",
-  description: "AI-powered loan assistant platform",
+  title: "CreditWise AI - Financial & Loan Intelligence Platform",
+  description: "AI-powered loan assistant platform for company verification, EMI calculations, and bank policy guidelines.",
 };
 
 export default function RootLayout({
@@ -19,7 +20,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="stylesheet" href="/style.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css" />
       </head>
       <body>

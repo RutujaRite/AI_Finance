@@ -2,11 +2,13 @@
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 
+declare const marked: any
+declare const hljs: any
+
 const AVAILABLE_MODELS = [
   { id: "liquid/lfm-2.5-embedding-350m:free", name: "LFM 2.5", desc: "Fast & efficient", icon: "⚡" },
   { id: "gpt-4o", name: "GPT-4o", desc: "Most capable", icon: "🧠" },
   { id: "claude-3.5-sonnet", name: "Claude 3.5", desc: "Balanced", icon: "🎯" },
-  { id: "gemini-pro", name: "Gemini Pro", desc: "Google AI", icon: "💎" },
 ]
 
 export default function HomePage() {
@@ -147,7 +149,7 @@ export default function HomePage() {
             resolvedText = candidates[index]
           }
         } else {
-          const partialMatch = candidates.find((c) => c.toLowerCase().includes(userInput.toLowerCase()))
+          const partialMatch = candidates.find((c: any) => c.toLowerCase().includes(userInput.toLowerCase()))
           if (partialMatch) {
             resolvedText = partialMatch
           }
@@ -269,7 +271,7 @@ export default function HomePage() {
     const date = new Date(value)
     if (isNaN(date.getTime())) return ""
     const now = new Date()
-    const diff = now - date
+    const diff = now.getTime() - date.getTime()
     if (diff < 86400000) return "Today"
     if (diff < 172800000) return "Yesterday"
     return date.toLocaleDateString([], { month: "short", day: "numeric" })
@@ -379,28 +381,29 @@ export default function HomePage() {
   }
 
   function renderBankManagerCard(data: any) {
-    if (!data || !Array.isArray(data.managers) || data.managers.length === 0) {
-      return `<div class="no-results">No matching bank manager record was found in our database. Please check the bank name or location and try again.</div>`
+    const managers = Array.isArray(data) ? data : (data && Array.isArray(data.managers) ? data.managers : [])
+    if (!managers || managers.length === 0) {
+      return ""
     }
 
-    const managers = data.managers
-    let html = `<div class="result-card">`
-    html += `<div class="result-card-header">🏦 ${escapeHtml(String(data.count))} Manager${data.count === 1 ? "" : "s"} Found</div>`
+    let html = `<div class="result-card" style="margin-top: 16px;">`
     html += `<div class="result-card-body">`
     html += `<div class="manager-grid">`
     managers.forEach((m: any) => {
-      const name = escapeHtml(m.manager_name || m.name || "Unknown")
-      const bank = escapeHtml(m.bank_name || "-")
-      const designation = escapeHtml(m.designation || m.role || m.branch_name || "-")
-      const phone = escapeHtml(m.mobile_no || m.phone || "-")
-      const email = escapeHtml(m.email_id || m.email || "-")
-      const location = escapeHtml(m.location_city || m.location || "-")
-      const state = escapeHtml(m.state || "-")
-      const isActive = m.status && String(m.status).toLowerCase() === "active"
+      const name = escapeHtml(m.name || m.manager_name || "Manager")
+      const bank = escapeHtml(m.bank_name || "Partner Bank")
+      const designation = escapeHtml(m.role || m.designation || m.branch || "Branch Official")
+      const phone = escapeHtml(m.phone || m.mobile_no || m.mobile_number || "-")
+      const rawEmail = m.email || m.email_id || ""
+      const email = rawEmail && !rawEmail.includes("example.com") ? escapeHtml(rawEmail) : "-"
+      const rawLoc = (m.location || m.location_city || "Branch").replace(/\n/g, ", ")
+      const location = escapeHtml(rawLoc)
+      const state = escapeHtml(m.state || "")
+      const isActive = !m.status || String(m.status).toLowerCase() === "active"
 
       html += `<div class="manager-card">
         <div class="manager-card-header">
-          <div class="manager-avatar">${name.charAt(0)}</div>
+          <div class="manager-avatar">${name.charAt(0).toUpperCase()}</div>
           <div class="manager-info">
             <div class="manager-name">${name}</div>
             <div class="manager-bank">${bank}</div>
@@ -408,10 +411,10 @@ export default function HomePage() {
           ${isActive ? '<span class="result-badge">Active</span>' : ""}
         </div>
         <div class="manager-details">
-          ${designation !== "-" ? `<div class="manager-detail"><span class="detail-icon">💼</span>${designation}</div>` : ""}
-          ${phone !== "-" ? `<div class="manager-detail"><span class="detail-icon">📱</span>${phone}</div>` : ""}
-          ${email !== "-" ? `<div class="manager-detail"><span class="detail-icon">✉️</span>${email}</div>` : ""}
-          ${location !== "-" ? `<div class="manager-detail"><span class="detail-icon">📍</span>${location}${state !== "-" ? ", " + state : ""}</div>` : ""}
+          ${designation !== "-" ? `<div class="manager-detail"><span class="detail-icon">💼</span><strong>Role:</strong> ${designation}</div>` : ""}
+          ${phone !== "-" ? `<div class="manager-detail"><span class="detail-icon">📱</span><strong>Phone:</strong> ${phone}</div>` : ""}
+          ${email !== "-" ? `<div class="manager-detail"><span class="detail-icon">✉️</span><strong>Email:</strong> ${email}</div>` : ""}
+          ${location !== "-" ? `<div class="manager-detail"><span class="detail-icon">📍</span><strong>Location:</strong> ${location}${state && state !== "-" ? ", " + state : ""}</div>` : ""}
         </div>
       </div>`
     })
@@ -419,33 +422,51 @@ export default function HomePage() {
     return html
   }
 
-   function renderMessageContent(message: any) {
+  function renderMessageContent(message: any) {
     const isUser = message.role === "user"
     if (isUser) {
       return escapeHtml(message.content)
     }
 
-    let html = renderMarkdown(message.content)
-
     const companyData = message.company_data
+
+    // Disambiguation step (multiple candidate companies found)
     if (companyData && companyData.needs_disambiguation && Array.isArray(companyData.candidates)) {
+      let html = renderMarkdown(message.content)
       const candidates = companyData.candidates.filter(Boolean)
       if (candidates.length > 0) {
-        html += `<div class="disambiguation-candidates">`
+        html += `<div class="disambiguation-candidates" style="display: flex; flex-direction: column; gap: 8px; margin: 12px 0;">`
         candidates.forEach((candidate: string, index: number) => {
           const escapedCandidate = escapeHtml(candidate)
-          html += `<button class="disambiguation-candidate" data-candidate="${escapedCandidate}">${escapedCandidate}</button>`
+          html += `<button class="disambiguation-candidate" data-candidate="${escapedCandidate}" style="cursor: pointer; text-align: left; padding: 10px 16px; background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 8px; color: #a5b4fc; font-weight: 500; font-size: 0.9rem; transition: all 0.2s ease; width: 100%;"><strong>${index + 1}.</strong> ${escapedCandidate}</button>`
         })
         html += `</div>`
       }
+      return html
     }
 
+    // Single company selected / returned: Render tabular format ONCE
     if (companyData && !companyData.needs_disambiguation) {
-      html += renderCompanyTables(companyData)
+      let html = renderCompanyTables(companyData)
+
+      // If message.content has additional prompt text outside the company markdown block (e.g. wizard confirmation prompt)
+      if (message.content) {
+        const cleanedContent = message.content
+          .replace(/### 🏢 Corporate Intelligence:[\s\S]*?(?=⚠️|✅|$)/gi, "")
+          .trim()
+
+        if (cleanedContent) {
+          html += `<div style="margin-top: 16px;">${renderMarkdown(cleanedContent)}</div>`
+        }
+      }
+
+      return html
     }
+
+    let html = renderMarkdown(message.content)
 
     const bankData = message.bank_data
-    if (bankData) {
+    if (bankData && (!message.content || message.content.trim().length === 0)) {
       html += renderBankManagerCard(bankData)
     }
 
@@ -453,59 +474,84 @@ export default function HomePage() {
   }
 
   function renderCompanyTables(companyData: any) {
-    const basic = companyData.basic_info && typeof companyData.basic_info === "object" ? companyData.basic_info : {}
-    const financial = companyData.financial_info && typeof companyData.financial_info === "object" ? companyData.financial_info : {}
-    const bankRecords = Array.isArray(companyData.bank_records) ? companyData.bank_records : []
+    const basic = (companyData.basic_info || companyData.basicInfo) && typeof (companyData.basic_info || companyData.basicInfo) === "object"
+      ? (companyData.basic_info || companyData.basicInfo) : {}
+    const financial = (companyData.financial_info || companyData.financialInfo) && typeof (companyData.financial_info || companyData.financialInfo) === "object"
+      ? (companyData.financial_info || companyData.financialInfo) : {}
+    const bankRecords = Array.isArray(companyData.bank_records) 
+      ? companyData.bank_records 
+      : (Array.isArray(companyData.bankRecords) ? companyData.bankRecords : [])
+    const compName = companyData.company_name || basic.company_name || "Company"
 
     let html = `<div class="company-tables">`
 
-    html += `<div class="company-table-section">`
-    html += `<div class="company-table-title">Basic Information</div>`
-    html += `<table class="company-table"><tbody>`
-    html += renderTableRow("Company Name", companyData.company_name || "-")
-    html += renderTableRow("Industry", basic.industry || "-")
-    html += renderTableRow("Country", basic.country || "-")
+    // 1. Overview Paragraph Box
+    const rawOverview = typeof companyData.overview === "string" ? companyData.overview : ""
+    const overviewText = rawOverview.replace(/### 🏢 Corporate Intelligence:[\s\S]*?(?=📌|📊|🏦|$)/gi, "").trim()
+
+    if (overviewText) {
+      html += `<div class="company-intro-box" style="margin-bottom: 20px; padding: 16px 20px; background: rgba(59, 130, 246, 0.08); border-left: 4px solid #3b82f6; border-radius: 8px; line-height: 1.6; font-size: 0.95rem; color: #e2e8f0;">`
+      html += `<div style="font-weight: 600; font-size: 1rem; margin-bottom: 6px; color: #60a5fa;">🏢 ${escapeHtml(compName)} — Overview</div>`
+      html += renderMarkdown(overviewText)
+      html += `</div>`
+    }
+
+    // 2. Basic Information Table
+    html += `<div class="company-table-section" style="margin-bottom: 20px;">`
+    html += `<div class="company-table-title" style="font-weight: 600; font-size: 1.05rem; margin-bottom: 10px; color: #f8fafc; display: flex; align-items: center; gap: 8px;">📌 Basic Information</div>`
+    html += `<div class="company-table-wrapper" style="overflow-x: auto; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px;"><table class="company-table" style="width: 100%; border-collapse: collapse;"><tbody>`
+    html += renderTableRow("Corporate Name", compName)
+    html += renderTableRow("CIN Number", basic.cin || "-")
+    html += renderTableRow("Registered Address", basic.address || "-")
+    html += renderTableRow("Official Website", basic.website || "-")
+    html += renderTableRow("Industry / Sector", basic.industry || "-")
+    html += renderTableRow("Country of Incorporation", basic.country || "-")
     html += renderTableRow("Incorporation Date", basic.incorporation_date || "-")
     html += renderTableRow("Listing Status", basic.listing_status || "-")
-    html += renderTableRow("CIN", basic.cin || "-")
-    html += renderTableRow("Address", basic.address || "-")
-    html += renderTableRow("Website", basic.website || "-")
-    html += `</tbody></table></div>`
+    html += `</tbody></table></div></div>`
 
-    html += `<div class="company-table-section">`
-    html += `<div class="company-table-title">Financial Information</div>`
-    html += `<table class="company-table"><tbody>`
-    html += renderTableRow("Employees", financial.employees || "-")
-    html += renderTableRow("Turnover", financial.turnover || "-")
-    html += renderTableRow("Profit Status", financial.profit_status || "-")
-    html += renderTableRow("Last AGM", financial.last_agm || "-")
-    html += renderTableRow("Profit History", financial.profit_history || "-")
-    html += `</tbody></table></div>`
+    // 3. Bank Records Table (UNIQUE BANK NAME DISPLAYED ONLY ONCE)
+    const seenBanks = new Set<string>()
+    const uniqueBankRecords = bankRecords.filter((r: any) => {
+      const bName = String(r?.bank_name || "").trim().toLowerCase()
+      if (!bName || seenBanks.has(bName)) return false
+      seenBanks.add(bName)
+      return true
+    })
 
-    if (bankRecords.length > 0) {
-      const seen = new Set<string>()
-      const uniqueRecords = bankRecords.filter((r: any) => {
-        const key = String(r?.bank_name || "").trim().toLowerCase()
-        if (!key || seen.has(key)) return false
-        seen.add(key)
-        return true
-      })
-
-      html += `<div class="company-table-section">`
-      html += `<div class="company-table-title">Bank Records</div>`
-      html += `<div class="company-table-wrapper"><table class="company-table company-table-bank">`
-      html += `<thead><tr><th>Bank Name</th><th>Sr No</th><th>Category</th><th>Other Info</th></tr></thead><tbody>`
-      uniqueRecords.forEach((r: any, idx: number) => {
-        const bgClass = idx % 2 === 0 ? "even" : "odd"
-        html += `<tr class="${bgClass}">`
-        html += `<td>${escapeHtml(r.bank_name || "-")}</td>`
-        html += `<td>${escapeHtml(r.sr_no || "-")}</td>`
-        html += `<td>${escapeHtml(r.company_category || "-")}</td>`
-        html += `<td>${escapeHtml(r.other_info || "-")}</td>`
+    if (uniqueBankRecords.length > 0) {
+      html += `<div class="company-table-section" style="margin-bottom: 20px;">`
+      html += `<div class="company-table-title" style="font-weight: 600; font-size: 1.05rem; margin-bottom: 10px; color: #f8fafc; display: flex; align-items: center; gap: 8px;">🏦 Master Bank Category Ratings (${uniqueBankRecords.length} Partner Banks)</div>`
+      html += `<div class="company-table-wrapper" style="overflow-x: auto; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px;"><table class="company-table company-table-bank" style="width: 100%; border-collapse: collapse;">`
+      html += `<thead><tr style="background: rgba(255, 255, 255, 0.05); text-align: left;"><th style="padding: 10px 14px; width: 70px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">Sr No</th><th style="padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">Bank Name</th><th style="padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">Category Rating</th><th style="padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">Remarks / Info</th></tr></thead><tbody>`
+      uniqueBankRecords.forEach((r: any, idx: number) => {
+        const bgStyle = idx % 2 === 0 ? "background: rgba(255, 255, 255, 0.02);" : "background: transparent;"
+        html += `<tr style="${bgStyle}">`
+        html += `<td style="padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #94a3b8;">${idx + 1}</td>`
+        html += `<td style="padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.05);"><strong style="color: #60a5fa;">${escapeHtml(r.bank_name || "-")}</strong></td>`
+        html += `<td style="padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.05);"><span class="result-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 3px 10px; border-radius: 4px; font-size: 0.85rem; font-weight: 500;">${escapeHtml(r.company_category || r.category || "Approved")}</span></td>`
+        html += `<td style="padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #cbd5e1;">${escapeHtml(r.other_info || r.remarks || "Corporate Partner")}</td>`
         html += `</tr>`
       })
       html += `</tbody></table></div></div>`
+    } else {
+      html += `<div class="company-table-section" style="margin-bottom: 20px;">`
+      html += `<div class="company-table-title" style="font-weight: 600; font-size: 1.05rem; margin-bottom: 10px; color: #f8fafc;">🏦 Bank Records</div>`
+      html += `<div style="padding: 14px 18px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; color: #fbbf24; font-size: 0.92rem; line-height: 1.5;">`
+      html += `ℹ️ <strong>Bank Listing Note:</strong> <em>${escapeHtml(compName)}</em> is not currently listed in our uploaded partner bank records. Standard corporate loan application rules apply.`
+      html += `</div></div>`
     }
+
+    // 4. Financial Information Table
+    html += `<div class="company-table-section">`
+    html += `<div class="company-table-title" style="font-weight: 600; font-size: 1.05rem; margin-bottom: 10px; color: #f8fafc; display: flex; align-items: center; gap: 8px;">📊 Financial & Operational Profile</div>`
+    html += `<div class="company-table-wrapper" style="overflow-x: auto; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px;"><table class="company-table" style="width: 100%; border-collapse: collapse;"><tbody>`
+    html += renderTableRow("Total Workforce / Employees", financial.employees || "-")
+    html += renderTableRow("Annual Turnover / Revenue", financial.turnover || "-")
+    html += renderTableRow("Net Profit / Loss Status", financial.profit_status || "-")
+    html += renderTableRow("Last AGM Date", financial.last_agm || "-")
+    html += renderTableRow("Profitability History & Trend", financial.profit_history || "-")
+    html += `</tbody></table></div></div>`
 
     html += `</div>`
     return html
@@ -604,6 +650,10 @@ export default function HomePage() {
           <a href="/bank-managers" className="nav-item">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a2 2 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             Bank Manager
+          </a>
+          <a href="/policies" className="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Policies
           </a>
           <div className="nav-item profile-menu" role="link" tabIndex={0} onClick={() => router.push("/profile")}>
             <span className="profile-menu-label">{user.name || user.email}</span>
@@ -840,7 +890,9 @@ export default function HomePage() {
                 )}
               </button>
             </form>
-            <div className="chat-disclaimer">AI can make mistakes. Please verify important information.</div>
+            <div className="chat-disclaimer" style={{ textAlign: "center", fontSize: "0.72rem", color: "rgba(156, 163, 175, 0.65)", marginTop: "8px", width: "100%", display: "block" }}>
+              AI can make mistakes. Please verify important information.
+            </div>
           </div>
         </main>
       </div>

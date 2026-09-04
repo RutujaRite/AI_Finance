@@ -1,3 +1,7 @@
+/**
+ * PURPOSE: Registers and links all master policy text rulebooks to bank records in PostgreSQL.
+ * USAGE: node scripts/_register_all_masters.js
+ */
 const pool = require('../db');
 const fs = require('fs');
 const path = require('path');

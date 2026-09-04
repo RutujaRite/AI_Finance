@@ -41,12 +41,13 @@ function parseAmountValue(value) {
 const RESOLVER_QUESTIONS = [
   { key: "companyName", label: "What is your employer or company name?" },
   { key: "employmentType", label: "Are you salaried or self-employed?" },
-  { key: "cibil", label: "What is your CIBIL score? (Enter 0 if unknown)" },
   { key: "age", label: "What is your age in years?" },
   { key: "monthlyIncome", label: "What is your monthly take-home salary (in ₹)?" },
+  { key: "cibil", label: "What is your CIBIL score? (Enter 0 if unknown)" },
+  { key: "existingEmi", label: "Do you have any existing EMIs? If yes, what is the total amount (in ₹)? If none, say 0." },
   { key: "loanAmount", label: "How much loan amount do you need (in ₹)?" },
   { key: "tenureMonths", label: "What is your preferred tenure in months?" },
-  { key: "existingEmi", label: "Do you have any existing EMIs? If yes, what is the total amount (in ₹)? If none, say 0." }
+  { key: "preferredLocation", label: "What is your current city / location (e.g. Mumbai, Pune, Delhi, Bangalore)?" }
 ];
 
 function getNextResolverQuestion(applicant = {}) {
@@ -128,6 +129,12 @@ function collectResolverField(message, existingApplicant = {}, expectedField = n
         if (val !== null) applicant.existingEmi = val;
       }
       return applicant;
+
+    case "preferredLocation": {
+      const cleanLoc = normalized.replace(/^(location|city|in|at|living in)\s+/i, "").trim();
+      if (cleanLoc) applicant.preferredLocation = cleanLoc;
+      return applicant;
+    }
 
     default:
       return applicant;

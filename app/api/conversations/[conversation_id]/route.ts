@@ -12,11 +12,11 @@ export const dynamic = "force-dynamic";
 // This stub prevents 404s for /api/conversations/:id requests.
 export async function GET(
   req: NextRequest,
-  { params }: { params: { conversation_id: string } }
+  { params }: { params: Promise<{ conversation_id: string }> }
 ) {
-  const id = params.conversation_id;
+  const { conversation_id } = await params;
   return NextResponse.json({
-    id,
+    id: conversation_id,
     title: "New Conversation",
     pinned: false,
     messages: [],
@@ -25,7 +25,8 @@ export async function GET(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { conversation_id: string } }
+  { params }: { params: Promise<{ conversation_id: string }> }
 ) {
-  return NextResponse.json({ success: true });
+  const { conversation_id } = await params;
+  return NextResponse.json({ success: true, conversation_id });
 }

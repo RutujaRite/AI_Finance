@@ -7,9 +7,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import pool from "../../../../lib/db";
-import { verifyToken } from "../../../../lib/auth";
-import fs from "fs";
+import pool from "@/lib/db";
+import { verifyToken } from "@/lib/auth";
+import fs from "fs/promises";
 import path from "path";
 
 export const runtime = "nodejs";
@@ -20,7 +20,7 @@ const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "bank-managers"
 const URL_PREFIX = "/uploads/bank-managers/";
 
 async function ensureUploadDir() {
-  await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
+  await fs.mkdir(UPLOAD_DIR, { recursive: true });
 }
 
 export async function GET(req: NextRequest) {
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
 
       // Import managers from the uploaded file
       try {
-        const { importManagersFromFile } = await import("../../../lib/importManagers");
+        const { importManagersFromFile } = await import("@/lib/importManagers");
         await importManagersFromFile(filePath, bankName);
       } catch (importError) {
         console.error("Import error", importError);

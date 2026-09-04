@@ -11,8 +11,9 @@ export const dynamic = "force-dynamic";
 // Pin conversation route stub.
 export async function POST(
   req: NextRequest,
-  { params }: { params: { conversation_id: string } }
+  { params }: { params: Promise<{ conversation_id: string }> }
 ) {
+  const { conversation_id } = await params;
   const body = await req.json().catch(() => ({}));
-  return NextResponse.json({ success: true, pinned: body.pinned || false });
+  return NextResponse.json({ success: true, pinned: body.pinned || false, conversation_id });
 }

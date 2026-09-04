@@ -5,9 +5,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import pool from '../../../../lib/db'
+import pool from '@/lib/db'
 import bcrypt from 'bcryptjs'
-import { signToken } from '../../../../lib/auth'
+import { signToken } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))

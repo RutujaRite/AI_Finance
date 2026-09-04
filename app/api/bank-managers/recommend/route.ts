@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { searchBankManager } from "../../../../lib/bankSearch";
+import { searchBankManager } from "@/lib/bankSearch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const bank_name = sp.get("bank_name") || "";
   try {
     const result = await searchBankManager({ bank_name, city: location });
-    const managers = result.managers.slice(0, 5);
+    const managers = result.slice(0, 5);
     return NextResponse.json({ managers });
   } catch (err) {
     console.error("Recommend manager error", err);

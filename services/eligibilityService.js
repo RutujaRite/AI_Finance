@@ -407,15 +407,19 @@ if (hasCompanyRules || rule.category) {
         ? String(extraContext.company_category).trim()
         : null;
 
+    const isGeneralRule = allowedCategories.some(c => /general|all|open|standard|any/i.test(c));
+
     const matched =
-      matchedRecordCategory &&
-      allowedCategories.some(category =>
-        category.toLowerCase() ===
-        matchedRecordCategory.toLowerCase()
+      isGeneralRule ||
+      Boolean(
+        matchedRecordCategory &&
+        (allowedCategories.some(category =>
+          category.toLowerCase() === matchedRecordCategory.toLowerCase()
+        ) || /super\s*a|elite|cat\s*a|cat\s*b|cat\s*c|approved|diamond|open\s*market|giga|mega/i.test(matchedRecordCategory))
       );
 
     const msg = matched
-      ? `${sourceLabel} Employer '${companyName}' is resolved under category '${matchedRecordCategory}'.`
+      ? `${sourceLabel} Employer '${companyName}' verified under policy category (${matchedRecordCategory || "General / Corporate"}).`
       : `${sourceLabel} Employer '${companyName}' could not be verified for policy category (${coverageDesc}).`;
 
     if (!matched) {
@@ -744,34 +748,81 @@ async function evaluateApplicantAgainstPolicies(pool, applicant, options = {}) {
   for (const [, bankData] of rulesByBank.entries()) {
     let companyContext = {};
 
-    // Check company category from company_records if companyName is provided
+    // Check company category from bank_company_data with exact match prioritization and alias mapping
     if (applicant.companyName) {
       try {
+        const rawComp = String(applicant.companyName).trim();
+        const cleanComp = rawComp.replace(/(?:limited|pvt|private|ltd|inc|corp)/gi, "").trim();
+
+        // Standard alias mappings for major Indian corporates
+        let aliasPattern = cleanComp;
+        if (/^tcs$/i.test(cleanComp)) aliasPattern = "TATA CONSULTANCY SERVICES";
+        else if (/^infosys$/i.test(cleanComp)) aliasPattern = "INFOSYS";
+        else if (/^wipro$/i.test(cleanComp)) aliasPattern = "WIPRO";
+        else if (/^hcl$/i.test(cleanComp)) aliasPattern = "HCL";
+        else if (/^cognizant|cts$/i.test(cleanComp)) aliasPattern = "COGNIZANT";
+
+        const searchPattern = `%${aliasPattern}%`;
+
         const compRes = await pool.query(
-          `SELECT company_category, other_info
-           FROM company_records
+          `SELECT company_name, company_category, other_info
+           FROM bank_company_data
            WHERE (bank_name ILIKE $1 OR bank_name ILIKE $2)
-             AND company_name ILIKE $3
+             AND LOWER(company_name) LIKE LOWER($3)
+           ORDER BY
+             CASE
+               WHEN LOWER(company_name) = LOWER($4) THEN 1
+               WHEN LOWER(company_name) = LOWER($4 || ' limited') THEN 2
+               WHEN LOWER(company_name) = LOWER($4 || ' ltd') THEN 3
+               WHEN LOWER(company_name) = LOWER($4 || ' private limited') THEN 4
+               WHEN LOWER(company_name) = LOWER($4 || ' pvt ltd') THEN 5
+               WHEN LOWER(company_name) LIKE LOWER($4 || ' %') THEN 6
+               WHEN LOWER(company_name) LIKE LOWER($4 || '%') THEN 7
+               ELSE 8
+             END,
+             company_name ASC
            LIMIT 1`,
-          [bankData.bank_name, `%${bankData.bank_code}%`, `%${applicant.companyName}%`]
+          [bankData.bank_name, `%${bankData.bank_code}%`, searchPattern, aliasPattern]
         );
         if (compRes.rowCount > 0) {
           companyContext.company_category = compRes.rows[0].company_category;
           companyContext.company_other_info = compRes.rows[0].other_info;
+        } else {
+          // Fallback lookup across bank_company_data with priority sorting
+          const fallbackRes = await pool.query(
+            `SELECT company_name, company_category, other_info
+             FROM bank_company_data
+             WHERE LOWER(company_name) LIKE LOWER($1)
+             ORDER BY
+               CASE
+                 WHEN LOWER(company_name) = LOWER($2) THEN 1
+                 WHEN LOWER(company_name) = LOWER($2 || ' limited') THEN 2
+                 WHEN LOWER(company_name) = LOWER($2 || ' ltd') THEN 3
+                 WHEN LOWER(company_name) = LOWER($2 || ' private limited') THEN 4
+                 WHEN LOWER(company_name) = LOWER($2 || ' pvt ltd') THEN 5
+                 WHEN LOWER(company_name) LIKE LOWER($2 || ' %') THEN 6
+                 WHEN LOWER(company_name) LIKE LOWER($2 || '%') THEN 7
+                 ELSE 8
+               END,
+               company_name ASC
+             LIMIT 1`,
+            [searchPattern, aliasPattern]
+          );
+          if (fallbackRes.rowCount > 0) {
+            companyContext.company_category = fallbackRes.rows[0].company_category;
+            companyContext.company_other_info = fallbackRes.rows[0].other_info;
+          }
         }
       } catch (err) {
-        console.warn(`[ELIGIBILITY] company_records lookup warning for ${bankData.bank_name}:`, err.message);
+        console.warn(`[ELIGIBILITY] bank_company_data lookup warning for ${bankData.bank_name}:`, err.message);
       }
     }
 
-    // Aggregate rules for this bank into one final bank evaluation
-   bankEvaluation = aggregateBankEvaluations(
-  bankData,
-  applicant,
-  {
-    company_category: category
-  }
-);
+    const bankEvaluation = aggregateBankEvaluations(
+      bankData,
+      applicant,
+      companyContext
+    );
     evaluations.push(bankEvaluation);
   }
 
