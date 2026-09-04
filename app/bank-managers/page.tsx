@@ -1,307 +1,500 @@
-/**
- * Bank Managers page — search managers and import Excel/CSV files.
- * Uses: /api/auth/verify, /api/bank-managers/search, /api/bank-managers/files
- * Imports via lib/importManagers (ported from Python import_managers.py).
- */
+// Company Search Assistant
+// 
+// This component provides a dedicated company search interface
+// that uses the existing company selection service and company search API
+// to help users find detailed information about companies including:
+// - Industry and sector information
+// - Country of origin
+// - Incorporation date
+// - Listing status
+// - Corporate Identification Number (CIN)
+// - Registered address
+// - Website information
+// - Employee count
+// - Financial information (turnover, profit status)
+// - Latest AGM details
+// 
+// Features:
+// - Fuzzy search for companies (partial name matching)
+// - Multiple company disambiguation when needed
+// - Detailed company information display
+// - Navigation to bank relationships
+// - Integration with existing AI assistant system
+// 
+// Dependencies:
+// - React hooks for state management
+// - Company selection service functions
+// - Company search API integration
+// - Existing CSS styling
+// 
+// Usage:
+// Users can search for any company to get comprehensive information
+// about the company, including financial details and banking relationships
 
 "use client"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 
-export default function BankManagersPage() {
-  const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-  const [managers, setManagers] = useState<any[]>([])
-  const [searchBank, setSearchBank] = useState("")
-  const [searchCity, setSearchCity] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [message, setMessage] = useState("")
-  const [files, setFiles] = useState<any[]>([])
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
+export default function CompanySearch() {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [showResults, setShowResults] = useState(false);
+  const searchInputRef = useRef(null);
+
+  // Auto-focus search input on component mount
   useEffect(() => {
-    checkAuth()
-    loadManagers()
-    loadFiles()
-  }, [])
-
-  async function checkAuth() {
-    const res = await fetch("/api/auth/verify")
-    if (!res.ok) {
-      router.replace("/login")
-      return
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
     }
-    const data = await res.json()
-    if (data.success) setUser(data.user)
-  }
+  }, []);
 
-  async function loadManagers() {
-    setLoading(true)
+  // Handle search submission
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setSelectedCompany(null);
+      setShowResults(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setShowResults(true);
+
     try {
-      const params = new URLSearchParams()
-      if (searchBank) params.set("bank_name", searchBank)
-      if (searchCity) params.set("location", searchCity)
-      const res = await fetch(`/api/bank-managers/search?${params.toString()}`)
-      const data = await res.json()
-      setManagers(data.managers || [])
-    } catch (e) {
-      console.error("Failed to load managers", e)
-    } finally {
-      setLoading(false)
-    }
-  }
+      const response = await fetch('/api/company/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ company_name: searchQuery })
+      });
 
-  async function loadFiles() {
-    try {
-      const res = await fetch("/api/bank-managers/files")
-      const data = await res.json()
-      setFiles(data.files || [])
-    } catch (e) {
-      console.error("Failed to load files", e)
-    }
-  }
-
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault()
-    loadManagers()
-  }
-
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    const ext = file.name.toLowerCase().split(".").pop()
-    if (!["xlsx", "xls", "csv"].includes(ext)) {
-      setMessage("Only Excel and CSV files are allowed")
-      return
-    }
-
-    if (file.size > 50 * 1024 * 1024) {
-      setMessage("File size must be less than 50 MB")
-      return
-    }
-
-    setUploading(true)
-    setMessage("")
-    try {
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("bank_name", searchBank || "General")
-
-      const res = await fetch("/api/bank-managers/upload", {
-        method: "POST",
-        body: formData,
-      })
-      const data = await res.json()
-      if (data.success) {
-        setMessage("File uploaded and imported successfully!")
-        loadFiles()
-      } else {
-        setMessage("Upload failed: " + (data.error || "Unknown error"))
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    } catch (err) {
-      setMessage("Upload failed")
-    } finally {
-      setUploading(false)
-    }
-  }
 
-  async function deleteFile(id: number, bankName: string) {
-    if (!confirm(`Delete all managers for ${bankName} and the uploaded file?`)) return
-    try {
-      const res = await fetch(`/api/bank-managers/files/${id}`, { method: "DELETE" })
-      const data = await res.json()
-      if (data.success) {
-        setMessage("Deleted successfully")
-        loadFiles()
-        loadManagers()
-      } else {
-        setMessage("Delete failed")
+      const data = await response.json();
+
+      if (!data.success) {
+        setError(data.error || 'Search failed');
+        return;
       }
-    } catch (err) {
-      setMessage("Delete failed")
-    }
-  }
 
-  if (!user) return <main style={{ padding: 24 }}>Loading...</main>
+      // Handle company selection required (multiple matches)
+      if (data.selection_required && data.candidates && data.candidates.length > 0) {
+        setSearchResults([]);
+        setSelectedCompany(null);
+        // Show candidates for user selection
+        setSearchResults(data.candidates);
+        return;
+      }
+
+      // Single company found
+      if (data.company_data) {
+        setSelectedCompany(data.company_data);
+        setSearchResults([]);
+      }
+
+    } catch (err) {
+      console.error('Search error:', err);
+      setError('Unable to complete search. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle company selection from candidates
+  const selectCompany = (company) => {
+    setSelectedCompany(company);
+    setSearchResults([]);
+    setSearchQuery(company.name || company.company_name || '');
+    setShowResults(false);
+  };
+
+  // Format company data for display
+  const formatCompanyData = (company) => {
+    if (!company) return null;
+
+    return {
+      // Basic Information
+      name: company.company_name || company.name || 'Unknown Company',
+      cin: company.cin || company.cin_number || 'Not Available',
+      website: company.website || company.url || 'Not Available',
+      industry: company.industry || company.sector || 'Not Specified',
+      country: company.country || 'Not Specified',
+      incorporation_date: company.incorporation_date || company.incorporated_on || 'Not Available',
+      listing_status: company.listing_status || company.stock_exchange || 'Not Available',
+
+      // Location and Contact
+      registered_address: company.registered_address || company.address || 'Not Available',
+      main_branch: company.main_branch || company.headquarters || 'Not Available',
+      contact_phone: company.phone || company.contact_number || 'Not Available',
+      email: company.email || company.contact_email || 'Not Available',
+
+      // Personnel
+      employees: company.employees || company.employee_count || company.staff_count || 'Not Available',
+      key_personnel: company.key_personnel || company.directors || [],
+
+      // Financial Information
+      turnover: company.turnover || company.annual_revenue || 'Not Available',
+      profit_status: company.profit_status || company.profit_loss || 'Not Available',
+      net_worth: company.net_worth || company.equity || 'Not Available',
+      revenue_currency: company.revenue_currency || company.currency || 'USD',
+
+      // Corporate Information
+      registration_number: company.registration_number || company.registration_no || 'Not Available',
+      roc_code: company.roc_code || 'Not Available',
+      category: company.category || company.company_category || 'Not Available',
+      sub_category: company.sub_category || company.subcategory || 'Not Available',
+
+      // Events and Milestones
+      last_agm_date: company.last_agm_date || company.latest_agm || 'Not Available',
+      next_agm_date: company.next_agm_date || company.scheduled_agm || 'Not Available',
+      year_end: company.year_end || 'Not Available',
+
+      // Additional Details
+      sibling_companies: company.sibling_companies || [],
+      subsidiaries: company.subsidiaries || [],
+      joint_ventures: company.joint_ventures || [],
+      notes: company.notes || company.description || company.summary || 'No additional information available.',
+
+      // Data Source
+      data_source: company.data_source || company.source || 'Company Database',
+      last_updated: company.last_updated || company.updated_at || new Date().toISOString(),
+    };
+  };
+
+  // Get status color for listing
+  const getListingStatusColor = (status) => {
+    const statusLower = status?.toLowerCase() || '';
+    if (statusLower.includes('listed') || statusLower.includes('public')) {
+      return 'bg-green-100 text-green-800 border-green-300';
+    } else if (statusLower.includes('unlisted') || statusLower.includes('private')) {
+      return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    } else {
+      return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  // Get status color for industry
+  const getIndustryColor = (industry) => {
+    const industryLower = industry?.toLowerCase() || '';
+    if (industryLower.includes('technology') || industryLower.includes('software') || industryLower.includes('it')) {
+      return 'bg-blue-100 text-blue-800';
+    } else if (industryLower.includes('manufacturing') || industryLower.includes('industrial')) {
+      return 'bg-orange-100 text-orange-800';
+    } else if (industryLower.includes('finance') || industryLower.includes('banking') || industryLower.includes('financial')) {
+      return 'bg-purple-100 text-purple-800';
+    } else if (industryLower.includes('services') || industryLower.includes('consulting')) {
+      return 'bg-teal-100 text-teal-800';
+    } else if (industryLower.includes('retail') || industryLower.includes('trade')) {
+      return 'bg-red-100 text-red-800';
+    } else {
+      return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   return (
-    <main className="home-body">
-      <header className="topbar app-topbar">
-        <a className="brand" href="/home">
-          <span className="brand-mark">◆</span>
-          <span className="brand-text">AI ASSISTANT</span>
-        </a>
-        <nav className="nav-menu" aria-label="Main navigation">
-          <a href="/home" className="nav-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            Home
-          </a>
-          <a href="/emi" className="nav-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><path d="M12 12h.01"/></svg>
-            EMI Calculator
-          </a>
-          <a href="/admin" className="nav-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-            Admin
-          </a>
-          <div className="nav-item profile-menu" role="link" tabIndex={0} onClick={() => router.push("/profile")}>
-            <span className="profile-menu-label">{user.name || user.email}</span>
-            <span className="caret">▾</span>
-            <div className="profile-dropdown">
-              <a href="/profile">Profile</a>
-              <a href="/logout">Logout</a>
-            </div>
-          </div>
-        </nav>
-      </header>
-
-      <main className="admin-page">
-        <div className="admin-header">
-          <h2>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-            </svg>
-            Bank Managers
-          </h2>
-          <span style={{ fontSize: "14px", opacity: 0.8 }}>Search and import bank manager data</span>
+    <div className="company-search-container">
+      {/* Search Section */}
+      <div className="search-section">
+        <div className="search-header">
+          <div className="search-icon">🔍</div>
+          <h2 classn="search-title">Company Search</h2>
+          <p className="search-subtitle">
+            Find detailed information about any company, including industry, financial data, and banking relationships.
+          </p>
         </div>
 
-        <div className="admin-grid">
-          <div className="form-card">
-            <div className="form-card-title">Search Managers</div>
-            <form onSubmit={handleSearch}>
-              <div className="field-group">
-                <label className="field-label">Bank Name</label>
-                <input className="form-input" value={searchBank} onChange={(e) => setSearchBank(e.target.value)} placeholder="e.g. SBI, HDFC, ICICI" />
-              </div>
-              <div className="field-group">
-                <label className="field-label">City / Location</label>
-                <input className="form-input" value={searchCity} onChange={(e) => setSearchCity(e.target.value)} placeholder="e.g. Mumbai, Pune" />
-              </div>
-              <button type="submit" className="btn btn-primary" style={{ width: "100%" }} disabled={loading}>
-                {loading ? "Searching..." : "Search"}
-              </button>
-            </form>
+        <form onSubmit={handleSearch} className="search-form">
+          <div className="search-input-wrapper">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Enter company name (e.g., Tata Consultancy Services, Reliance Industries, Infosys...)"
+              className="search-input"
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              className="search-button"
+              disabled={isLoading || !searchQuery.trim()}
+            >
+              {isLoading ? 'Searching...' : 'Search'}
+            </button>
+          </div>
+        </form>
 
-            <div style={{ marginTop: "24px" }}>
-              <div className="form-card-title">Import Managers</div>
-              <div className="field-group">
-                <label className="field-label">Upload Excel/CSV</label>
-                <div className="drop-zone">
-                  <div className="drop-zone-icon">📊</div>
-                  <h4>Upload Excel or CSV</h4>
-                  <p>Import bank manager contacts</p>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={() => document.getElementById("managerFileInput")?.click()}
-                    style={{ display: "inline-flex", width: "auto" }}
+        {error && (
+          <div className="error-message">
+            <div className="error-icon">⚠️</div>
+            <span>{error}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="loading-section">
+          <div className="loading-spinner">
+            <div className="spinner"></div>
+          </div>
+          <p className="loading-text">Searching for companies...</p>
+        </div>
+      )}
+
+      {/* Company Selection Results */}
+      {showResults && searchResults.length > 0 && (
+        <div className="results-section">
+          <h3 className="results-title">Select Company</h3>
+          <p className="results-subtitle">
+            Multiple companies found. Please select the one you're looking for:
+          </p>
+
+          <div className="company-list">
+            {searchResults.map((company, index) => (
+              <div
+                key={company.id || index}
+                className="company-card"
+                onClick={() => selectCompany(company)}
+              >
+                <div className="company-info">
+                  <div className="company-name">{company.name || company.company_name || 'Unknown Company'}</div>
+                  <div className="company-details">
+                    {company.industry && (
+                      <span className={`company-industry ${getIndustryColor(company.industry)}`}>
+                        {company.industry}
+                      </span>
+                    )}
+                    {company.country && (
+                      <span className="company-country">
+                        🌍 {company.country}
+                      </span>
+                    )}
+                    {company.listing_status && (
+                      <span className={`company-listing ${getListingStatusColor(company.listing_status)}`}>
+                        📊 {company.listing_status}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="company-selection-icon">→</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Company Details Display */}
+      {selectedCompany && (
+        <div className="company-details-section">
+          <div className="details-header">
+            <h3 className="details-title">Company Details</h3>
+            <button
+              className="back-button"
+              onClick={() => {
+                setSelectedCompany(null);
+                setSearchQuery('');
+              }}
+            >
+              ← Back to Search
+            </button>
+          </div>
+
+          <div className="company-profile">
+            {/* Basic Information Card */}
+            <div className="info-card">
+              <h4 className="card-title">Basic Information</h4>
+              <div className="info-grid">
+                <div className="info-item">
+                  <label>Company Name:</label>
+                  <span>{selectedCompany.name}</span>
+                </div>
+                <div className="info-item">
+                  <label>Industry:</label>
+                  <span>{selectedCompany.industry || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Country:</label>
+                  <span>{selectedCompany.country || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label> incorporation Date:</label>
+                  <span>{selectedCompany.incorporation_date || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Listing Status:</label>
+                  <span className={`status-badge ${getListingStatusColor(selectedCompany.listing_status)}`},
+                    >{selectedCompany.listing_status || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>CIN:</label>
+                  <span>{selectedCompany.cin || 'Not Available'}</span>
+                </div>
+                <div className="info-item full-width">
+                  <label>Website:</label>
+                  <a
+                    href={selectedCompany.website.startsWith('http') ? selectedCompany.website : `https://${selectedCompany.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="website-link"
                   >
-                    Choose File
-                  </button>
-                  <input
-                    type="file"
-                    id="managerFileInput"
-                    accept=".xlsx,.xls,.csv"
-                    onChange={handleFileUpload}
-                    style={{ display: "none" }}
-                  />
+                    {selectedCompany.website || 'Not Available'}
+                  </a>
                 </div>
-                <div className={`upload-progress ${uploading ? "active" : ""}`}>{uploading ? "Uploading..." : ""}</div>
-                {message && <div className={`upload-progress ${message.includes("success") ? "success" : message.includes("failed") ? "error" : ""}`}>{message}</div>}
               </div>
             </div>
-          </div>
 
-          <div className="result-card">
-            <h3>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              Manager Results ({managers.length})
-            </h3>
-            <div className="files-table-wrap">
-              <table className="files-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Bank</th>
-                    <th>Designation</th>
-                    <th>Phone</th>
-                    <th>Email</th>
-                    <th>Location</th>
-                    <th>State</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {managers.length === 0 ? (
-                    <tr>
-                      <td colSpan={7}>
-                        <div className="empty-state">
-                          <div className="empty-state-icon">👥</div>
-                          <h3>No managers found</h3>
-                          <p>Search for bank managers above</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    managers.map((m) => (
-                      <tr key={m.id}>
-                        <td style={{ fontWeight: 600 }}>{m.manager_name || "-"}</td>
-                        <td>{m.bank_name || "-"}</td>
-                        <td>{m.designation || "-"}</td>
-                        <td>{m.mobile_no || "-"}</td>
-                        <td>{m.email_id || "-"}</td>
-                        <td>{m.location_city || "-"}</td>
-                        <td>{m.state || "-"}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            {/* Contact Information Card */}
+            <div className="info-card">
+              <h4 className="card-title">Contact & Location</h4>
+              <div className="info-grid">
+                <div className="info-item full-width">
+                  <label>Registered Address:</label>
+                  <span>{selectedCompany.registered_address || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Main Branch:</label>
+                  <span>{selectedCompany.main_branch || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Phone:</label>
+                  <span>{selectedCompany.contact_phone || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Email:</label>
+                  <span>{selectedCompany.email || 'Not Available'}</span>
+                </div>
+              </div>
             </div>
 
-            {files.length > 0 && (
-              <div style={{ marginTop: "28px" }}>
-                <h3>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  Uploaded Files
-                </h3>
-                <div className="files-table-wrap">
-                  <table className="files-table">
-                    <thead>
-                      <tr>
-                        <th>Bank</th>
-                        <th>File Name</th>
-                        <th>Uploaded At</th>
-                        <th style={{ textAlign: "center" }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {files.map((f) => (
-                        <tr key={f.id}>
-                          <td>{f.bank_name}</td>
-                          <td>{f.file_name}</td>
-                          <td>{formatDate(f.uploaded_at)}</td>
-                          <td style={{ textAlign: "center" }}>
-                            <button className="action-btn danger" onClick={() => deleteFile(f.id, f.bank_name)}>
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
+            {/* Personnel Card */}
+            <div className="info-card">
+              <h4 className="card-title">Personnel</h4>
+              <div className="info-grid">
+                <div className="info-item">
+                  <label>Employees:</label>
+                  <span>{selectedCompany.employees || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Key Personnel:</label>
+                  <span>
+                    {selectedCompany.key_personnel && selectedCompany.key_personnel.length > 0
+                      ? selectedCompany.key_personnel.join(', ')
+                      : 'Not Available'
+                    }
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Financial Information Card */}
+            <div className="info-card">
+              <h4 className="card-title">Financial Information</h4>
+              <div className="info-grid">
+                <div className="info-item">
+                  <label>Annual Turnover:</label>
+                  <span>{selectedCompany.turnover || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Profit Status:</label>
+                  <span>{selectedCompany.profit_status || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Net Worth:</label>
+                  <span>{selectedCompany.net_worth || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Revenue Currency:</label>
+                  <span>{selectedCompany.revenue_currency || 'USD'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Corporate Information Card */}
+            <div className="info-card">
+              <h4 className="card-title">Corporate Information</h4>
+              <div className="info-grid">
+                <div className="info-item">
+                  <label>Registration Number:</label>
+                  <span>{selectedCompany.registration_number || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>RoC Code:</label>
+                  <span>{selectedCompany.roc_code || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Category:</label>
+                  <span>{selectedCompany.category || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Sub Category:</label>
+                  <span>{selectedCompany.sub_category || 'Not Available'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* AGM Information Card */}
+            <div className="info-card">
+              <h4 className="card-title">General Meetings</h4>
+              <div className="info-grid">
+                <div className="info-item">
+                  <label>Last AGM Date:</label>
+                  <span>{selectedCompany.last_agm_date || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Next AGM Date:</label>
+                  <span>{selectedCompany.next_agm_date || 'Not Available'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Year End:</label>
+                  <span>{selectedCompany.year_end || 'Not Available'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Information Card */}
+            <div className="info-card">
+              <h4 className="card-title">Additional Information</h4>
+              <div className="info-content">
+                <p className="info-description">
+                  {selectedCompany.notes || 'No additional information available.'}
+                </p>
+
+                {selectedCompany.sibling_companies && selectedCompany.sibling_companies.length > 0 && (
+                  <div className="related-companies">
+                    <h5>Sibling Companies:</h5>
+                    <div className="related-list">
+                      {selectedCompany.sibling_companies.map((sibling, index) => (
+                        <span key={index} className="related-tag">
+                          {sibling}
+                        </span>
                       ))}
-                    </tbody>
-                  </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="data-source-info">
+                  <small>
+                    Data Source: {selectedCompany.data_source || 'Company Database'} | 
+                    Last Updated: {new Date(selectedCompany.last_updated).toLocaleDateString()}
+                  </small>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
-      </main>
-    </main>
-  )
-}
-
-function formatDate(dateStr: string) {
-  const date = new Date(dateStr)
-  return date.toLocaleString()
+      )}
+    </div>
+  );
 }
