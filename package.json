@@ -1,14 +1,11 @@
 {
   "name": "node-login-direct",
   "version": "1.0.0",
-  "description": "Simple Node.js login page for VS Code",
-  "main": "server.js",
+  "description": "AI-powered loan assistant platform",
   "scripts": {
     "dev": "node scripts/kill-port-then-dev.js",
-    "build": "next build",
     "start": "next start",
-    "init-db": "npx tsx scripts/initializeDatabase.ts",
-    "import:companies": "node scripts/import-company-csv.js"
+    "build": "next build"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -18,22 +15,26 @@
     "express": "^5.1.0",
     "express-session": "^1.17.3",
     "jsonwebtoken": "^9.0.3",
-    "mammoth": "^1.12.1",
-    "multer": "^2.2.0",
-    "next": "^16.3.4",
-    "openai": "^7.9.0",
-    "pdf-parse": "^2.4.5",
-    "pdfjs-dist": "^4.0.379",
-    "pg": "^8.23.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "mammoth": "^1.12.2",
+    "next": "^15.3.4",
+    "node-fetch": "^3.3.2",
+    "pg": "^8.14.0",
+    "pg-hstore": "^2.3.0",
     "tesseract.js": "^7.0.0",
+    "ws": "^8.18.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@types/node": "^26.4.1",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.19.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.5.0",
     "@types/pg": "^8.23.1",
     "@types/react": "19.2.18",
-    "typescript": "7.0.2"
+    "@types/ws": "^8.18.1",
+    "playwright": "^1.63.0",
+    "typescript": "^5.0.0"
   }
 }

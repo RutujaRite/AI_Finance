@@ -2,11 +2,12 @@
  * Bank Manager Files Management Page
  * Allows users to upload bank manager spreadsheet files (Excel/CSV)
  * and view, download, or delete uploaded files.
+ * Also displays the Bank Manager Directory in tabular format.
  */
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 
 export default function BankManagerFilesPage() {
@@ -19,9 +20,18 @@ export default function BankManagerFilesPage() {
   const [files, setFiles] = useState<any[]>([])
   const [isLoadingFiles, setIsLoadingFiles] = useState(true)
 
+  // Directory tab state
+  const [activeTab, setActiveTab] = useState<"directory" | "files">("directory")
+  const [managers, setManagers] = useState<any[]>([])
+  const [loadingManagers, setLoadingManagers] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filterBank, setFilterBank] = useState("all")
+  const [filterRole, setFilterRole] = useState("all")
+
   useEffect(() => {
     checkAuth()
     fetchFiles()
+    fetchManagers()
   }, [])
 
   async function checkAuth() {
@@ -54,6 +64,56 @@ export default function BankManagerFilesPage() {
       setIsLoadingFiles(false)
     }
   }
+
+  async function fetchManagers() {
+    setLoadingManagers(true)
+    try {
+      const res = await fetch("/api/bank-managers", { credentials: "include" })
+      const data = await res.json()
+      setManagers(Array.isArray(data.managers) ? data.managers : [])
+    } catch (e) {
+      console.error("Error fetching managers", e)
+      setManagers([])
+    } finally {
+      setLoadingManagers(false)
+    }
+  }
+
+  const bankOptions = useMemo(() => {
+    const set = new Set<string>()
+    managers.forEach((m) => {
+      const b = (m.bank_name || "").trim()
+      if (b) set.add(b)
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [managers])
+
+  const roleOptions = useMemo(() => {
+    const set = new Set<string>()
+    managers.forEach((m) => {
+      const r = (m.role || "").trim()
+      if (r) set.add(r)
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [managers])
+
+  const filteredManagers = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim()
+    return managers.filter((m) => {
+      const matchesBank = filterBank === "all" || (m.bank_name || "").toLowerCase() === filterBank.toLowerCase()
+      const matchesRole = filterRole === "all" || (m.role || "").toLowerCase() === filterRole.toLowerCase()
+      const matchesQuery =
+        !q ||
+        (m.name || "").toLowerCase().includes(q) ||
+        (m.bank_name || "").toLowerCase().includes(q) ||
+        (m.location || "").toLowerCase().includes(q) ||
+        (m.city || "").toLowerCase().includes(q) ||
+        (m.state || "").toLowerCase().includes(q) ||
+        (m.phone || "").toLowerCase().includes(q) ||
+        (m.email || "").toLowerCase().includes(q)
+      return matchesBank && matchesRole && matchesQuery
+    })
+  }, [managers, searchQuery, filterBank, filterRole])
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -179,7 +239,7 @@ export default function BankManagerFilesPage() {
                 <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
                 <polyline points="14 2 14 8 20 8"/>
               </svg>
-              Bank Manager Files
+Bank Manager Directory
             </h2>
             <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: 4 }}>
               Upload Excel/CSV spreadsheet files containing bank manager contacts and location details.
@@ -187,7 +247,26 @@ export default function BankManagerFilesPage() {
           </div>
         </div>
 
+        {/* Tab Switcher */}
+        <div className="tab-bar" style={{ display: "flex", gap: 8, background: "rgba(17, 24, 39, 0.7)", border: "1px solid var(--border-color)", padding: 6, borderRadius: "var(--radius-md)", marginBottom: 28, width: "fit-content" }}>
+          <button
+            type="button"
+            className={`tab-button ${activeTab === "directory" ? "active" : ""}`}
+            onClick={() => setActiveTab("directory")}
+          >
+            📊 Bank Manager Directory
+          </button>
+          <button
+            type="button"
+            className={`tab-button ${activeTab === "files" ? "active" : ""}`}
+            onClick={() => setActiveTab("files")}
+          >
+            📁 Upload &amp; Files
+          </button>
+        </div>
+
         {/* Section 1: File Upload Form Card */}
+        {activeTab === "files" && (
         <div className="glass-card" style={{ padding: 32, marginBottom: 32 }}>
           <h3 className="card-title" style={{ fontSize: "1.2rem", color: "#fff", marginBottom: 20 }}>
             📁 Upload Bank Manager Spreadsheet File
@@ -242,8 +321,10 @@ export default function BankManagerFilesPage() {
             </button>
           </form>
         </div>
+        )}
 
         {/* Section 2: Uploaded Files Directory List */}
+        {activeTab === "files" && (
         <div className="glass-card" style={{ padding: 32 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
             <h3 className="card-title" style={{ fontSize: "1.2rem", color: "#fff", margin: 0, border: "none" }}>
@@ -340,6 +421,7 @@ export default function BankManagerFilesPage() {
             </div>
           )}
         </div>
+        )}
       </main>
     </main>
   )

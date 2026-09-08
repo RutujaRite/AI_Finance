@@ -1,5 +1,5 @@
 /**
- * PURPOSE: Clears any lingering processes on port 3001 before starting Next.js dev server.
+ * PURPOSE: Clears any lingering processes on port 3000 before starting Next.js dev server.
  * USAGE: node scripts/kill-port-then-dev.js
  */
 const { execSync } = require('child_process');
@@ -44,6 +44,7 @@ next.on('error', (err) => {
 process.on('SIGINT', () => {
   next.kill('SIGINT');
 });
+
 process.on('SIGTERM', () => {
   next.kill('SIGTERM');
 });

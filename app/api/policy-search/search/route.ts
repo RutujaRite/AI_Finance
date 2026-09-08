@@ -231,7 +231,7 @@ async function answerPolicyQuestion(bankInfo: any, question: string): Promise<st
     [bank.id, `%${requestedLoanType}%`]
   );
 
-  const rules = rulesResult.rows;
+  const rules: any[] = rulesResult.rows;
 
   if (rules.length === 0) {
     const masterPolicy = await getMasterPolicyForBank(bank.id);

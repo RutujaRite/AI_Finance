@@ -1,143 +1,157 @@
 // lib/openrouter.ts
+
 /**
- * OpenRouter (LLM) integration for AI-powered conversations.
- * Replaces ai_agent.py functionality in Python
+ * OpenRouter LLM Client
+ *
+ * Responsibilities:
+ * - Connect to OpenRouter
+ * - Send messages to the selected model
+ * - Support AI tool/function calling
+ *
+ * IMPORTANT:
+ * This file does NOT contain business logic.
+ * Business tools are handled by lib/ai/tools.ts.
  */
 
-const { OpenAI } = require('openai');
-const { BANK_MANAGER_TOOLS, searchBankManager } = require('./bankSearch');
+const { OpenAI } = require("openai");
 
-const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const OPENROUTER_BASE_URL =
+  "https://openrouter.ai/api/v1";
+
+const OPENROUTER_API_KEY =
+  process.env.OPENROUTER_API_KEY || "";
+
+const OPENROUTER_MODEL =
+  process.env.OPENROUTER_MODEL || "openrouter/free";
 
 const openRouterClient = new OpenAI({
   baseURL: OPENROUTER_BASE_URL,
-  apiKey: process.env.OPENROUTER_API_KEY || '',
+  apiKey: OPENROUTER_API_KEY,
+
+  defaultHeaders: {
+    "HTTP-Referer":
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "http://localhost:3000",
+
+    "X-Title":
+      "InCraax AI Financial Assistant",
+  },
 });
 
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'openrouter/free';
+/* -------------------------------------------------------------------------- */
+/* TYPES                                                                      */
+/* -------------------------------------------------------------------------- */
 
-function OpenRouterTool() {}
-function OpenRouterMessage() {}
-function OpenRouterResponse() {}
+export interface OpenRouterMessage {
+  role:
+    | "system"
+    | "user"
+    | "assistant"
+    | "tool";
 
-/**
- * OpenRouter chat completion with tool support
- */
-async function openRouterChat(
-  messages: any[],
-  tools?: any[],
+  content?: string | null;
+
+  tool_call_id?: string;
+
+  name?: string;
+
+  tool_calls?: any[];
+}
+
+export interface OpenRouterTool {
+  type: "function";
+
+  function: {
+    name: string;
+
+    description: string;
+
+    parameters: Record<string, any>;
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* OPENROUTER CHAT                                                            */
+/* -------------------------------------------------------------------------- */
+
+export async function openRouterChat(
+  messages: OpenRouterMessage[],
+  tools?: OpenRouterTool[],
   model?: string
 ) {
+  if (!OPENROUTER_API_KEY) {
+    throw new Error(
+      "OPENROUTER_API_KEY is not configured."
+    );
+  }
+
   try {
-    const response = await openRouterClient.chat.completions.create({
+    const request: any = {
       model: model || OPENROUTER_MODEL,
+
       messages,
-      tools,
-      tool_choice: 'auto',
-    });
+
+      temperature: 0.1,
+    };
+
+    /*
+     * Only send tools when tools are actually provided.
+     */
+    if (tools && tools.length > 0) {
+      request.tools = tools;
+      request.tool_choice = "auto";
+    }
+
+    const response =
+      await openRouterClient.chat.completions.create(
+        request
+      );
 
     return response;
   } catch (error) {
-    console.error('OpenRouter API error:', error);
-    throw new Error(`OpenRouter chat completion failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error(
+      "[OpenRouter] API error:",
+      error
+    );
+
+    throw new Error(
+      `OpenRouter request failed: ${
+        error instanceof Error
+          ? error.message
+          : "Unknown error"
+      }`
+    );
   }
 }
 
-/**
- * Process user message with system prompt and bank manager tools
- */
-async function processUserMessage(
-  userMessage: string,
-  conversationHistory: any[] = []
+/* -------------------------------------------------------------------------- */
+/* SIMPLE CHAT                                                                 */
+/* -------------------------------------------------------------------------- */
+
+export async function simpleOpenRouterChat(
+  messages: OpenRouterMessage[],
+  model?: string
 ) {
-  const systemPrompt = `You are a banking and loan assistant for InCraax AI.
+  const response = await openRouterChat(
+    messages,
+    undefined,
+    model
+  );
 
-You have access to an internal bank manager database through the search_bank_manager tool.
-
-When the user asks about:
-- bank manager
-- branch manager  
-- manager contact
-- manager mobile number
-- manager email
-- manager in a specific city
-- manager in a specific branch
-- any bank contact details
-
-Use the search_bank_manager tool to find real data.
-
-Never invent manager information.
-
-If the database does not contain the requested manager,
-clearly tell the user that no matching record was found.`;
-
-  const messages = [
-    { role: 'system', content: systemPrompt },
-    ...conversationHistory,
-    { role: 'user', content: userMessage },
-  ];
-
-  const response = await openRouterChat(messages, BANK_MANAGER_TOOLS);
-
-  const assistantMessage = response.choices[0].message;
-  
-  if (assistantMessage.tool_calls?.length) {
-    const toolResults = await handleToolCalls(assistantMessage.tool_calls);
-    return await processToolResults(toolResults, [...messages, assistantMessage]);
-  }
-
-  return assistantMessage.content || "I don't have information about that. Could you please ask something else?";
+  return (
+    response.choices?.[0]?.message?.content ||
+    ""
+  );
 }
 
-/**
- * Handle bank manager tool calls
- */
-async function handleToolCalls(toolCalls: any[]) {
-  const results = [];
-  
-  for (const toolCall of toolCalls) {
-    if (toolCall.function.name === 'search_bank_manager') {
-      const args = JSON.parse(toolCall.function.arguments || '{}');
-      const result = await searchBankManager(args);
-      results.push({
-        tool_call_id: toolCall.id,
-        tool_name: toolCall.function.name,
-        content: JSON.stringify(result, (key, value) => value),
-      });
-    }
-  }
-  
-  return results;
+/* -------------------------------------------------------------------------- */
+/* CONFIGURATION CHECK                                                        */
+/* -------------------------------------------------------------------------- */
+
+export function isOpenRouterConfigured(): boolean {
+  return Boolean(OPENROUTER_API_KEY);
 }
 
-/**
- * Process tool results and continue conversation
- */
-async function processToolResults(toolResults: any[], messages: any[]) {
-  const messagesWithTools = [
-    ...messages,
-    {
-      role: 'assistant',
-      content: null,
-      tool_calls: messages[messages.length - 1].tool_calls,
-    },
-    ...toolResults.map(result => ({
-      role: 'tool',
-      tool_call_id: result.tool_call_id,
-      content: result.content,
-    })),
-  ];
-
-  const response = await openRouterChat(messagesWithTools);
-  return response.choices[0].message.content || "I encountered an issue processing your request.";
+export function getOpenRouterModel(): string {
+  return OPENROUTER_MODEL;
 }
-
-module.exports = {
-  openRouterChat,
-  processUserMessage,
-  handleToolCalls,
-  processToolResults,
-  OpenRouterTool,
-  OpenRouterMessage,
-  OpenRouterResponse,
-};

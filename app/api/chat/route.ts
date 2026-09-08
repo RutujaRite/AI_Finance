@@ -7,6 +7,12 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { searchBankManager, formatManagers } from "@/lib/bankSearch";
 import { searchCompany, formatCompanyResponse } from "@/lib/companySearch";
+import {
+  CREDITWISE_SYSTEM_PROMPT,
+  ELIGIBILITY_REPORT_PROMPT,
+  FALLBACK_GREETING,
+  ELIGIBILITY_MISSING_INPUTS_PROMPT,
+} from "@/lib/ai/prompts";
 import { processEligibilityFlow, isLoanEligibilityIntent, calculateDeterministicEligibility } from "@/lib/eligibilityWizard";
 
 const { getConversationState } = require("@/services/assistantFlowService");
@@ -106,7 +112,7 @@ async function runToolCallingAgent(
 
   // Direct LLM completion for report synthesis when contextData is provided
   if (contextData) {
-    const sysPrompt = customSystemPrompt || "You are CreditWise AI Financial Assistant. Present a clear, executive Loan Eligibility Report based STRICTLY and ONLY on the provided deterministic policy data. Do NOT guess, assume, or fabricate any missing bank policies, interest rates, caps, or eligibility rules.";
+    const sysPrompt = customSystemPrompt || ELIGIBILITY_REPORT_PROMPT;
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -147,6 +153,7 @@ async function runToolCallingAgent(
   const isManagerQuery = /manager|contact|phone|mobile|email|number|\basm\b|\brsm\b|\bzsm\b|\brh\b|\brm\b|branch manager|contact details/i.test(userMessage);
   const isCompanyQuery = /company|employer|category|rating|listing/i.test(userMessage) && !isManagerQuery;
   const isPolicyOrEligibilityQuery = /approval|eligibility|salary|cibil|emi|income|foir|interest|roi|tenure|policy|rate|multiplier|assessment|summary|criteria/i.test(userMessage) && !isManagerQuery && !isCompanyQuery;
+  const isConversationalGreeting = /^(good\s*(morning|afternoon|evening|day)|hello|hi|hey|greetings|how\s+are\s+you|how\s+do\s+you\s+do|what's\s+up|sup|yo|good\s+to\s+see\s+you|nice\s+to\s+meet\s+you|how\s+can\s+you\s+help|what\s+can\s+you\s+do|who\s+are\s+you|are\s+you\s+real|are\s+you\s+ai|are\s+you\s+human)\b/i.test(userMessage.trim());
 
   // Handle Bank Manager Searches Directly
   if (isManagerQuery) {
@@ -154,6 +161,11 @@ async function runToolCallingAgent(
     if (mgrResults && mgrResults.length > 0) {
       return { reply: formatManagers(mgrResults, userMessage), bankData: mgrResults };
     }
+  }
+
+  // Handle Conversational Greetings Directly (never treat as company search)
+  if (isConversationalGreeting) {
+    return { reply: FALLBACK_GREETING };
   }
 
   // Handle Corporate Company Searches Directly (via keywords or direct company search)
@@ -188,18 +200,7 @@ async function runToolCallingAgent(
     return { reply: policyResult };
   }
 
-  const systemContent = `You are CreditWise AI, an autonomous Financial Intelligence Assistant.
-Analyze the user's intent with precision:
-1. BANK POLICY & LOAN ELIGIBILITY: If the user asks about loan approval, eligibility, salary, CIBIL score, FOIR, interest rates, policy rules, or assessment summaries, invoke 'search_bank_policies' or analyze loan eligibility. NEVER return manager contact tables for policy or loan application questions.
-2. CORPORATE COMPANY SEARCH: If the user searches for company loan listing or category rating (e.g. "Is Infosys approved?"), invoke 'search_company_eligibility'.
-3. BANK MANAGER CONTACT DIRECTORY: STRICT RULE: Invoke 'search_bank_managers' ONLY AND EXCLUSIVELY if the user explicitly asks for manager phone numbers, emails, contacts, or branch hierarchy (e.g. "ICICI manager contact Mumbai"). If the user asks to apply for a loan or check eligibility, NEVER call 'search_bank_managers'.
-
-STRICT RULE ON DATA & NO ASSUMPTIONS:
-- Base ALL responses strictly on the verified bank policy files, company records, and database tables.
-- DO NOT guess, assume, or fabricate any interest rates (ROI), loan caps, FOIR limits, or bank rules that are not explicitly present in the retrieved database records.
-- If information is missing or not provided in the policy file, explicitly state that it is not specified in the bank's master policy.
-
-Always format responses in professional Markdown with clear financial structure and emojis.`;
+  const systemContent = customSystemPrompt || CREDITWISE_SYSTEM_PROMPT;
 
   try {
     const controller = new AbortController();
@@ -257,7 +258,7 @@ Always format responses in professional Markdown with clear financial structure 
           companyQuery: compRes.primaryName
         };
       }
-      return { reply: "Hello! I am CreditWise AI, your automated Banking & Financial Intelligence Assistant.\n\nI can help you:\n- **Evaluate Personal & Corporate Loan Eligibility** across 20+ partner banks\n- **Search 339,000+ Employer Listings** & bank category ratings (Cat A, Elite, Diamond)\n- **Check Bank Policy Guidelines** (CIBIL, FOIR, Multipliers & Income rules)\n- **Connect with Official Bank Managers** in your city\n\nHow can I assist you today?" };
+      return { reply: FALLBACK_GREETING };
     }
 
     const data = await res.json();
@@ -339,7 +340,7 @@ Always format responses in professional Markdown with clear financial structure 
       const fallbackResults = await searchBankManager({ query: userMessage });
       return { reply: formatManagers(fallbackResults, userMessage), bankData: fallbackResults };
     }
-    return { reply: "Hello! I am CreditWise AI, your automated Banking & Financial Intelligence Assistant.\n\nI can help you:\n- **Evaluate Personal & Corporate Loan Eligibility** across 20+ partner banks\n- **Search 339,000+ Employer Listings** & bank category ratings (Cat A, Elite, Diamond)\n- **Check Bank Policy Guidelines** (CIBIL, FOIR, Multipliers & Income rules)\n- **Connect with Official Bank Managers** in your city\n\nHow can I assist you today?" };
+    return { reply: FALLBACK_GREETING };
 
   } catch (err) {
     console.error("Tool-Calling Agent error:", err);
@@ -373,7 +374,7 @@ Always format responses in professional Markdown with clear financial structure 
       const fallbackResults = await searchBankManager({ query: userMessage });
       return { reply: formatManagers(fallbackResults, userMessage), bankData: fallbackResults };
     }
-    return { reply: "Hello! I am CreditWise AI, your automated Banking & Financial Intelligence Assistant.\n\nI can help you:\n- **Evaluate Personal & Corporate Loan Eligibility** across 20+ partner banks\n- **Search 339,000+ Employer Listings** & bank category ratings (Cat A, Elite, Diamond)\n- **Check Bank Policy Guidelines** (CIBIL, FOIR, Multipliers & Income rules)\n- **Connect with Official Bank Managers** in your city\n\nHow can I assist you today?" };
+    return { reply: FALLBACK_GREETING };
   }
 }
 
@@ -510,7 +511,7 @@ function formatCalculatorResult(result: any, bankName: string): string {
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const message = String(body.message || "").trim();
-  const conversationId = body.conversation_id || "default_session";
+  const conversationId = body.conversation_id || "session_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
   const requestedModel = body.model;
 
   if (!message) {
@@ -533,9 +534,10 @@ export async function POST(req: NextRequest) {
       if (!extractedParams.cibil) missing.push("CIBIL Score (e.g. 780)");
       if (extractedParams.existing_emi === undefined) missing.push("Existing Monthly EMIs (e.g. ₹15,000 or ₹0)");
 
-      reply = `To calculate your deterministic loan eligibility for **${extractedParams.bank || "the requested bank"}**, please provide the following missing details:\n\n` +
-        missing.map((m) => `• **${m}**`).join("\n") +
-        `\n\n*(Note: Our system uses strict PostgreSQL policy calculations and does not guess missing financial values.)*`;
+      reply = ELIGIBILITY_MISSING_INPUTS_PROMPT(
+        extractedParams.bank || "the requested bank",
+        missing
+      );
     }
     else if (hasFinancialInputs) {
       const calcResult = await calculateDeterministicEligibility({

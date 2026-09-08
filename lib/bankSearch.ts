@@ -219,30 +219,49 @@ export function formatManagers(managers: BankManagerRecord[], userQuery?: string
     return `| ⚠️ Status | Message |\n| :--- | :--- |\n| **No Records Found** | No bank manager records matched your criteria. Please verify bank name or city. |`;
   }
 
-  let table = `| 🏦 Bank Name | 👤 Manager Name & Role | 📞 Mobile Contact | ✉️ Official Email | 📍 Location & CPC Details | 🆔 Emp Code |\n`;
-  table += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+  // Deduplicate by name+phone to avoid showing the same person multiple times
+  const seen = new Set<string>();
+  const unique: BankManagerRecord[] = [];
+  for (const m of managers) {
+    const key = `${(m.name || "").toLowerCase()}|${m.phone || ""}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(m);
+    }
+  }
+  const displayMgrs = unique.slice(0, 25);
 
-  managers.forEach((mgr) => {
+  const queryLabel = userQuery ? ` for "${userQuery}"` : "";
+  let output = `### 🏦 Bank Manager Directory${queryLabel}\n\n`;
+  output += `**${unique.length}** unique manager${unique.length > 1 ? "s" : ""} found` +
+    (unique.length > 25 ? ` (showing top 25)` : "") +
+    `\n\n`;
+
+  let table = `| Sr. No. | 🏦 Bank Name | 👤 Manager Name | 💼 Role | 📞 Mobile | ✉️ Email | 📍 Location | 🆔 Emp Code |\n`;
+  table += `|:---:| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+
+  displayMgrs.forEach((mgr, idx) => {
     const bankName = mgr.bank_name || "Partner Bank";
-    const roleText = mgr.role ? `<br/>*(${mgr.role})*` : "";
-    const nameRole = `**${mgr.name || 'Manager'}**${roleText}`;
-    
-    const phone = (mgr.phone && mgr.phone !== "N/A" && mgr.phone !== "#ERROR!") ? `\`${mgr.phone}\`` : "—";
+    const roleText = mgr.role ? ` (${mgr.role})` : "";
+    const nameRole = `**${mgr.name || "Manager"}**${roleText}`;
+
+    const phone = (mgr.phone && mgr.phone !== "N/A" && mgr.phone !== "#ERROR!") ? mgr.phone : "—";
     const hasValidEmail = mgr.email && !mgr.email.includes("example.com");
-    const email = hasValidEmail ? `\`${mgr.email}\`` : "—";
-    
+    const email = hasValidEmail ? mgr.email : "—";
+
     const cleanLoc = (mgr.location || "General Branch").replace(/\n/g, ", ");
     let extraLoc = "";
     if (mgr.extra_info && typeof mgr.extra_info === "object") {
       const cpc = mgr.extra_info["Sourcing & Processing CPC"] || mgr.extra_info["CPC"] || "";
-      if (cpc) extraLoc = `<br/>*CPC: ${cpc}*`;
+      if (cpc) extraLoc = ` [CPC: ${cpc}]`;
     }
-    const locationCol = `${cleanLoc}${mgr.state ? ` (${mgr.state})` : ""}${extraLoc}`;
-    
-    const empCode = (mgr.employee_code && mgr.employee_code !== "N/A") ? `\`${mgr.employee_code}\`` : "—";
+    const locationCol = `${cleanLoc}${mgr.state ? `, ${mgr.state}` : ""}${extraLoc}`;
 
-    table += `| **${bankName}** | ${nameRole} | ${phone} | ${email} | ${locationCol} | ${empCode} |\n`;
+    const empCode = (mgr.employee_code && mgr.employee_code !== "N/A") ? mgr.employee_code : "—";
+
+    table += `| ${idx + 1} | **${bankName}** | ${nameRole} | ${mgr.role || "—"} | ${phone} | ${email} | ${locationCol} | ${empCode} |\n`;
   });
 
-  return table.trim();
+  output += table.trim();
+  return output;
 }

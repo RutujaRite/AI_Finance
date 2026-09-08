@@ -18,6 +18,7 @@ export default function HomePage() {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [conversations, setConversations] = useState<any[]>([])
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
@@ -25,6 +26,7 @@ export default function HomePage() {
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const [messageActions, setMessageActions] = useState<Record<string, { liked: boolean; disliked: boolean }>>({})
+  const [theme, setTheme] = useState<"light" | "dark">("light")
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const [messagesRef, setMessagesRef] = useState<HTMLDivElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -92,8 +94,17 @@ export default function HomePage() {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (!raw) return
       const parsed = JSON.parse(raw)
+      const seen = new Set<string>()
+      const uniqueConvs = (Array.isArray(parsed.conversations) ? parsed.conversations : [])
+        .filter((c: any) => {
+          if (!c || !c.id) return false
+          if (c.id === "default_session") return false
+          if (seen.has(c.id)) return false
+          seen.add(c.id)
+          return true
+        })
       setMessages(Array.isArray(parsed.messages) ? parsed.messages : [])
-      setConversations(Array.isArray(parsed.conversations) ? parsed.conversations : [])
+      setConversations(uniqueConvs)
       setActiveConversationId(parsed.activeConversationId || null)
       if (parsed.selectedModel) setSelectedModel(parsed.selectedModel)
       if (parsed.messageActions) setMessageActions(parsed.messageActions)
@@ -177,14 +188,18 @@ export default function HomePage() {
       const data = await res.json()
       if (data.success) {
         if (data.title && !activeConversationId) {
+          const newId = data.conversation_id || "conv_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
           const conversation = {
-            id: data.conversation_id || Date.now().toString(36),
+            id: newId,
             title: data.title,
             pinned: false,
             createdAt: new Date().toISOString(),
           }
-          setConversations((prev) => [conversation, ...prev])
-          setActiveConversationId(conversation.id)
+          setConversations((prev) => {
+            if (prev.some((c) => c.id === newId)) return prev
+            return [conversation, ...prev]
+          })
+          setActiveConversationId(newId)
           fetch("/api/conversations", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -597,7 +612,7 @@ export default function HomePage() {
   if (!user) return <main style={{ padding: 24 }}>Loading...</main>
 
   return (
-    <main className="home-body">
+    <main className={`home-body chat-page ${theme === "dark" ? "dark" : ""}`}>
       <header className="topbar app-topbar">
         <button className="chat-sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -606,6 +621,28 @@ export default function HomePage() {
           <span className="brand-mark">◆</span>
           <span className="brand-text">AI ASSISTANT</span>
         </a>
+        <nav className="nav-menu" aria-label="Main navigation">
+          <a href="/home" className="nav-item active">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Home
+          </a>
+          <a href="/emi" className="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><path d="M12 12h.01"/></svg>
+            EMI Calculator
+          </a>
+          <a href="/admin" className="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            Admin Panel
+          </a>
+          <a href="/bank-managers" className="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a2 2 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Bank Manager
+          </a>
+          <a href="/policies" className="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Policies
+          </a>
+        </nav>
         <div className="model-selector-wrapper" ref={modelSelectorRef}>
           <button
             className="model-selector"
@@ -634,36 +671,26 @@ export default function HomePage() {
             ))}
           </div>
         </div>
-        <nav className="nav-menu" aria-label="Main navigation">
-          <a href="/home" className="nav-item active">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            Home
-          </a>
-          <a href="/emi" className="nav-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><path d="M12 12h.01"/></svg>
-            EMI Calculator
-          </a>
-          <a href="/admin" className="nav-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-            Admin
-          </a>
-          <a href="/bank-managers" className="nav-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a2 2 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            Bank Manager
-          </a>
-          <a href="/policies" className="nav-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            Policies
-          </a>
-          <div className="nav-item profile-menu" role="link" tabIndex={0} onClick={() => router.push("/profile")}>
-            <span className="profile-menu-label">{user.name || user.email}</span>
-            <span className="caret">▾</span>
-            <div className="profile-dropdown">
-              <a href="/profile">Profile</a>
-              <a href="/logout">Logout</a>
-            </div>
+        <button
+          className="theme-toggle"
+          onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
+          title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+          aria-label="Toggle theme"
+        >
+          {theme === "light" ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          )}
+        </button>
+        <div className="profile-menu" role="link" tabIndex={0} onClick={() => router.push("/profile")}>
+          <span className="profile-menu-label">{user.name || user.email}</span>
+          <span className="caret">▾</span>
+          <div className="profile-dropdown">
+            <a href="/profile">Profile</a>
+            <a href="/logout">Logout</a>
           </div>
-        </nav>
+        </div>
       </header>
 
       <div className="chat-layout">
@@ -671,11 +698,25 @@ export default function HomePage() {
           className={`chat-sidebar-overlay ${sidebarOpen ? "visible" : ""}`}
           onClick={() => setSidebarOpen(false)}
         />
-        <aside className={`chat-sidebar ${sidebarOpen ? "open" : ""}`} id="chatSidebar">
+        <aside className={`chat-sidebar ${sidebarOpen ? "open" : ""} ${sidebarCollapsed ? "collapsed" : ""}`} id="chatSidebar">
           <div className="chat-sidebar-header">
             <button className="chat-new-chat-btn" id="chatNewConversation" onClick={newConversation}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
               New Chat
+            </button>
+            <button
+              className="chat-sidebar-collapse"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={sidebarCollapsed ? "Expand" : "Collapse"}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {sidebarCollapsed ? (
+                  <><path d="M9 18l6-6-6-6"/></>
+                ) : (
+                  <><path d="M15 9l-6 6 6 6"/></>
+                )}
+              </svg>
             </button>
           </div>
           <div className="chat-search-box">
@@ -742,6 +783,13 @@ export default function HomePage() {
             )}
           </div>
           <div className="chat-sidebar-footer">
+            <div className="chat-sidebar-profile" onClick={() => router.push("/profile")}>
+              <div className="chat-avatar-sm">{(user.name || user.email || "U").charAt(0).toUpperCase()}</div>
+              <div className="chat-sidebar-profile-info">
+                <div className="chat-sidebar-profile-name">{user.name || "User"}</div>
+                <div className="chat-sidebar-profile-email">{user.email || ""}</div>
+              </div>
+            </div>
             <button
               id="clearHistoryBtn"
               onClick={() => {

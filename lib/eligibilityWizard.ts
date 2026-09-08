@@ -1,6 +1,7 @@
 import pool from "@/lib/db";
 import { searchCompany, formatCompanyResponse, formatCompanyCandidateList } from "@/lib/companySearch";
 import { searchBankManager, formatManagers } from "@/lib/bankSearch";
+import { ELIGIBILITY_WIZARD_PROMPT } from "@/lib/ai/prompts";
 
 // @ts-ignore
 import assistantFlowService from "@/services/assistantFlowService";
@@ -316,7 +317,7 @@ export async function processEligibilityFlow(
             userMessage,
             modelOverride,
             finalReport,
-            "You are CreditWise AI Financial Assistant. Present a clear, executive Loan Eligibility Report for the applicant. List Eligible Banks with ROI %, Max Loan Amount, and processing fee. List Conditional/Review Banks and Ineligible Banks with clear explanations. Format cleanly in Markdown with tables and emojis."
+            ELIGIBILITY_WIZARD_PROMPT
           );
           if (
             llmSynthesized &&

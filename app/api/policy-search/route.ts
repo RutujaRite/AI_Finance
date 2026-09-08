@@ -122,7 +122,7 @@ function removeDuplicateResults(items: any[]): any[] {
 
 async function getMasterPolicyForBank(bankId: number) {
   const result = await pool.query(
-    `SELECT id, file_name, extracted_text, metadata FROM bank_policy_files WHERE bank_id = $1 AND (metadata->>'is_master_policy' = 'true' OR metadata->>'is_unified_text' = 'true') ORDER BY id DESC LIMIT 1`,
+    `SELECT id, file_name, extracted_text, metadata FROM bank_policy_files WHERE bank_id = $1 AND metadata->>'document_type' = 'Other' ORDER BY id DESC LIMIT 1`,
     [bankId]
   );
   if (result.rowCount === 0) return null;

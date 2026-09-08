@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
       params
     );
 
-    const bankIds = [...new Set(result.rows.map((row) => row.bank_id).filter(Boolean))];
+    const bankIds = [...new Set(result.rows.map((row: any) => row.bank_id).filter(Boolean))];
 
     let inactiveFiles = new Set<string>();
     if (bankIds.length > 0) {
@@ -82,10 +82,10 @@ export async function GET(req: NextRequest) {
         `SELECT file_name FROM bank_policy_files WHERE bank_id = ANY($1::int[]) AND (metadata->>'is_active')::boolean = false`,
         [bankIds]
       );
-      inactiveFiles = new Set(inactiveRes.rows.map((row) => row.file_name));
+      inactiveFiles = new Set(inactiveRes.rows.map((row: any) => row.file_name));
     }
 
-    const filtered = result.rows.map((row) => {
+    const filtered = result.rows.map((row: any) => {
       if (row.attachment_file_name && inactiveFiles.has(row.attachment_file_name)) {
         const clean = { ...row };
         clean.attachment_id = null;
