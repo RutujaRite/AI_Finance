@@ -1,10 +1,83 @@
 // lib/bankSearch.ts
+
 /**
- * Bank manager search functionality for CreditWise AI Financial Assistant.
- * Queries PostgreSQL `bank_managers` table with strict location and bank filtering.
+ * Bank Manager Search
+ *
+ * Responsibility:
+ * - Search verified bank manager records from PostgreSQL.
+ * - Accept structured filters prepared by the LLM/tool layer.
+ * - Do NOT decide user intent.
+ * - Do NOT maintain hardcoded bank/city/role dictionaries.
+ * - Do NOT calculate loan eligibility.
+ *
+ * Expected flow:
+ *
+ * User
+ *   ↓
+ * LLM understands the request
+ *   ↓
+ * tools.ts creates structured search parameters
+ *   ↓
+ * searchBankManager()
+ *   ↓
+ * PostgreSQL bank_managers table
+ *   ↓
+ * verified records
  */
 
 import pool from "./db";
+
+/* =====================================================
+ * TYPES
+ * ===================================================== */
+
+export interface BankManagerSearchParams {
+  /**
+   * Canonical/normalized bank name supplied by the
+   * agent/tool layer.
+   *
+   * Example:
+   * "ICICI Bank"
+   */
+  bank_name?: string;
+
+  /**
+   * City/location supplied by the LLM.
+   *
+   * Example:
+   * "Pune"
+   */
+  city?: string;
+
+  /**
+   * Branch name supplied by the LLM.
+   */
+  branch_name?: string;
+
+  /**
+   * Exact/partial manager name supplied by the LLM.
+   */
+  manager_name?: string;
+
+  /**
+   * Role supplied by the LLM.
+   *
+   * Example:
+   * "Relationship Manager"
+   * "ASM"
+   * "RSM"
+   */
+  role?: string;
+
+  /**
+   * Optional free-text query.
+   *
+   * This is used only when the agent intentionally
+   * supplies a free-text search and no structured field
+   * is available.
+   */
+  query?: string;
+}
 
 export interface BankManagerRecord {
   id: number;
@@ -21,247 +94,573 @@ export interface BankManagerRecord {
   district?: string | null;
   state?: string | null;
   employee_code?: string | null;
-  extra_info?: any;
+  extra_info?: Record<string, unknown> | null;
 }
 
-const CITY_LIST = [
-  "pune", "mumbai", "delhi", "bangalore", "bengaluru", "hyderabad", "chennai", 
-  "kolkata", "jaipur", "jodhpur", "ahmedabad", "surat", "nagpur", "nashik", 
-  "thane", "ghaziabad", "noida", "gurgaon", "gurugram", "indore", "bhopal", 
-  "lucknow", "kanpur", "patna", "vadodara", "coimbatore", "kochi", "trivandrum", 
-  "chandigarh", "ludhiana", "raipur", "ranchi", "raigad", "wardha", "nagpur"
-];
+/* =====================================================
+ * INTERNAL HELPERS
+ * ===================================================== */
 
-const BANK_LIST = [
-  "icici", "hdfc", "sbi", "axis", "kotak", "indusind", "idfc", "bajaj", 
-  "chola", "fibe", "finnable", "piramal", "poonawalla", "tata", "utkarsh", "yes", "bandhan", "smfg", "incred"
-];
+/**
+ * Converts a value into a trimmed string.
+ *
+ * This is intentionally only normalization.
+ * It does NOT try to understand intent.
+ */
+function normalizeValue(
+  value: unknown
+): string {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-const ROLE_LIST = [
-  { keywords: ["asm", "area sales manager", "area manager"], filter: "area" },
-  { keywords: ["rsm", "regional sales manager", "regional manager"], filter: "regional" },
-  { keywords: ["zsm", "zonal sales manager", "zonal manager"], filter: "zonal" },
-  { keywords: ["rm", "relationship manager"], filter: "relationship" },
-  { keywords: ["sm", "sales manager"], filter: "sales manager" },
-  { keywords: ["rh", "regional head"], filter: "regional head" },
-  { keywords: ["zh", "zone head"], filter: "zone head" },
-  { keywords: ["coordinator", "spoc"], filter: "coordinator" }
-];
+/**
+ * Escape SQL LIKE wildcard characters.
+ *
+ * This prevents user-supplied '%' and '_' from changing
+ * the intended LIKE pattern.
+ */
+function escapeLikeValue(
+  value: string
+): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/%/g, "\\%")
+    .replace(/_/g, "\\_");
+}
 
+/**
+ * Build a LIKE parameter.
+ */
+function likeValue(
+  value: string
+): string {
+  return `%${escapeLikeValue(value)}%`;
+}
+
+/* =====================================================
+ * BANK MANAGER SEARCH
+ * ===================================================== */
+
+/**
+ * Search bank managers using ONLY the structured filters
+ * supplied by the caller.
+ *
+ * The LLM/tool layer is responsible for understanding:
+ *
+ *   "show ICICI RM in Pune"
+ *
+ * and converting it into something like:
+ *
+ * {
+ *   bank_name: "ICICI Bank",
+ *   city: "Pune",
+ *   role: "Relationship Manager"
+ * }
+ *
+ * This function does not maintain a hardcoded list of:
+ * - banks
+ * - cities
+ * - roles
+ */
 export async function searchBankManager(
-  params: Partial<{ bank_name: string; city: string; branch_name: string; manager_name: string; query?: string }>
+  params: BankManagerSearchParams
 ): Promise<BankManagerRecord[]> {
-  const client = await pool.connect();
-  
+  const client =
+    await pool.connect();
+
   try {
-    const rawQuery = (params.query || `${params.bank_name || ""} ${params.city || ""} ${params.branch_name || ""}`).toLowerCase().trim();
-    
-    // 1. Sentence Tokenization & Entity Extraction
-    let targetBank = (params.bank_name || "").toLowerCase().trim();
-    if (!targetBank) {
-      const foundBank = BANK_LIST.find(b => rawQuery.includes(b));
-      if (foundBank) targetBank = foundBank;
-    }
-    // Clean bank token (e.g. "icici bank manager contact" -> "icici")
-    let cleanBank = targetBank;
-    for (const b of BANK_LIST) {
-      if (targetBank.includes(b) || rawQuery.includes(b)) {
-        cleanBank = b;
-        break;
-      }
-    }
-    if (!cleanBank && targetBank) {
-      cleanBank = targetBank.replace(/bank|manager|contact|details|location|branch|officer/gi, "").trim();
+    const bankName =
+      normalizeValue(params.bank_name);
+
+    const city =
+      normalizeValue(params.city);
+
+    const branchName =
+      normalizeValue(params.branch_name);
+
+    const managerName =
+      normalizeValue(params.manager_name);
+
+    const role =
+      normalizeValue(params.role);
+
+    const freeText =
+      normalizeValue(params.query);
+
+    /**
+     * Require at least one meaningful search field.
+     *
+     * This protects the database from accidental
+     * "return every manager" queries.
+     */
+    const hasStructuredFilter =
+      Boolean(
+        bankName ||
+        city ||
+        branchName ||
+        managerName ||
+        role
+      );
+
+    const hasFreeText =
+      Boolean(freeText);
+
+    if (
+      !hasStructuredFilter &&
+      !hasFreeText
+    ) {
+      console.log(
+        "[bankSearch] No search filters supplied."
+      );
+
+      return [];
     }
 
-    // 2. City / Location Token
-    let targetCity = (params.city || "").toLowerCase().trim();
-    if (!targetCity) {
-      const foundCity = CITY_LIST.find(c => rawQuery.includes(c));
-      if (foundCity) targetCity = foundCity;
-    }
-    // Clean city token (e.g. "mumbai location" -> "mumbai")
-    let cleanCity = targetCity;
-    for (const c of CITY_LIST) {
-      if (targetCity.includes(c) || rawQuery.includes(c)) {
-        cleanCity = c;
-        break;
-      }
-    }
-    if (!cleanCity && targetCity) {
-      cleanCity = targetCity.replace(/location|city|branch|area|district|state|manager|contact/gi, "").trim();
-    }
-
-    // Detect Role filter if user requested specific role (ASM, RSM, ZSM, RM, etc.)
-    let targetRoleFilter = "";
-    for (const r of ROLE_LIST) {
-      if (r.keywords.some(k => rawQuery.includes(k))) {
-        targetRoleFilter = r.filter;
-        break;
-      }
-    }
+    /* -------------------------------------------------
+     * BASE QUERY
+     * ------------------------------------------------- */
 
     let query = `
-      SELECT 
+      SELECT
         id,
         COALESCE(bank_name, 'Partner Bank') AS bank_name,
         COALESCE(name, 'Manager') AS name,
-        phone,
-        email,
+        COALESCE(phone, 'N/A') AS phone,
+        COALESCE(email, 'N/A') AS email,
         COALESCE(location, 'General Branch') AS location,
         city,
         district,
         state,
         branch,
+        branch_code,
         role,
         employee_code,
         extra_info,
-        status
+        COALESCE(status, 'active') AS status
       FROM bank_managers
-      WHERE 1=1
+      WHERE 1 = 1
     `;
-    
-    const queryParams: any[] = [];
 
-    // Filter by Bank Name (Clean token e.g. "icici")
-    if (cleanBank) {
-      queryParams.push(`%${cleanBank}%`);
-      query += ` AND LOWER(bank_name) LIKE LOWER($${queryParams.length})`;
-    }
+    const queryParams: string[] = [];
 
-    // Filter by City / Location / District / State (Clean token e.g. "mumbai")
-    if (cleanCity) {
-      queryParams.push(`%${cleanCity}%`);
-      query += ` AND (
-        LOWER(location) LIKE LOWER($${queryParams.length}) OR 
-        LOWER(COALESCE(city, '')) LIKE LOWER($${queryParams.length}) OR 
-        LOWER(COALESCE(district, '')) LIKE LOWER($${queryParams.length}) OR 
-        LOWER(COALESCE(state, '')) LIKE LOWER($${queryParams.length})
-      )`;
-    }
+    /* -------------------------------------------------
+     * BANK FILTER
+     * ------------------------------------------------- */
 
-    console.log("[bankSearch DEBUG] cleanBank:", cleanBank, "| cleanCity:", cleanCity, "| rawQuery:", rawQuery);
-    console.log("[bankSearch DEBUG] SQL:", query);
-    console.log("[bankSearch DEBUG] Params:", queryParams);
-
-    const result = await client.query(query, queryParams);
-    console.log("[bankSearch DEBUG] Query returned rows count:", result.rows.length);
-    if (result.rows.length > 0) {
-      return result.rows;
-    }
-
-    // Progressive Smart Fallback 1: If Bank + City yields 0 records, try Bank match alone
-    if (cleanBank) {
-      const bankOnlyRes = await client.query(
-        `SELECT id, COALESCE(bank_name, 'Partner Bank') AS bank_name, COALESCE(name, 'Manager') AS name, 
-                phone, email, COALESCE(location, 'General Branch') AS location, city, district, state, 
-                branch, role, employee_code, extra_info, status 
-         FROM bank_managers 
-         WHERE LOWER(bank_name) LIKE LOWER($1) 
-         ORDER BY name ASC LIMIT 15`,
-        [`%${cleanBank}%`]
+    if (bankName) {
+      queryParams.push(
+        likeValue(bankName)
       );
-      if (bankOnlyRes.rows.length > 0) {
-        return bankOnlyRes.rows;
-      }
+
+      query += `
+        AND LOWER(COALESCE(bank_name, ''))
+            LIKE LOWER($${queryParams.length}) ESCAPE '\\'
+      `;
     }
 
-    // Progressive Smart Fallback 2: If City match alone
-    if (cleanCity) {
-      const cityOnlyRes = await client.query(
-        `SELECT id, COALESCE(bank_name, 'Partner Bank') AS bank_name, COALESCE(name, 'Manager') AS name, 
-                phone, email, COALESCE(location, 'General Branch') AS location, city, district, state, 
-                branch, role, employee_code, extra_info, status 
-         FROM bank_managers 
-         WHERE (LOWER(location) LIKE LOWER($1) OR LOWER(COALESCE(city, '')) LIKE LOWER($1) OR LOWER(COALESCE(district, '')) LIKE LOWER($1) OR LOWER(COALESCE(state, '')) LIKE LOWER($1))
-         ORDER BY bank_name ASC LIMIT 15`,
-        [`%${cleanCity}%`]
+    /* -------------------------------------------------
+     * CITY / LOCATION FILTER
+     *
+     * Search across:
+     * - location
+     * - city
+     * - district
+     * - state
+     *
+     * The LLM decides what "Pune" means.
+     * This service only searches the DB fields.
+     * ------------------------------------------------- */
+
+    if (city) {
+      queryParams.push(
+        likeValue(city)
       );
-      if (cityOnlyRes.rows.length > 0) {
-        return cityOnlyRes.rows;
-      }
+
+      const parameter =
+        `$${queryParams.length}`;
+
+      query += `
+        AND (
+          LOWER(COALESCE(location, ''))
+              LIKE LOWER(${parameter}) ESCAPE '\\'
+          OR
+          LOWER(COALESCE(city, ''))
+              LIKE LOWER(${parameter}) ESCAPE '\\'
+          OR
+          LOWER(COALESCE(district, ''))
+              LIKE LOWER(${parameter}) ESCAPE '\\'
+          OR
+          LOWER(COALESCE(state, ''))
+              LIKE LOWER(${parameter}) ESCAPE '\\'
+        )
+      `;
     }
 
-    // Fallback 3: Multi-word general text search
-    if (rawQuery.length > 2) {
-      const words = rawQuery
-        .split(/\s+/)
-        .filter(w => w.length > 2 && !["bank", "manager", "details", "contact", "number", "in", "for", "the", "find", "show", "give"].includes(w));
-      
-      if (words.length > 0) {
-        const andConditions = words.map((_, i) => `(LOWER(bank_name) LIKE $${i + 1} OR LOWER(location) LIKE $${i + 1} OR LOWER(name) LIKE $${i + 1} OR LOWER(COALESCE(role, '')) LIKE $${i + 1})`).join(" AND ");
-        const andParams = words.map(w => `%${w}%`);
-        
-        let fallbackSql = `
-          SELECT 
-            id, COALESCE(bank_name, 'Partner Bank') AS bank_name, COALESCE(name, 'Manager') AS name, 
-            phone, email, COALESCE(location, 'General Branch') AS location, city, district, state, 
-            branch, role, employee_code, extra_info, status 
-          FROM bank_managers 
-          WHERE ${andConditions} LIMIT 20
+    /* -------------------------------------------------
+     * BRANCH FILTER
+     * ------------------------------------------------- */
+
+    if (branchName) {
+      queryParams.push(
+        likeValue(branchName)
+      );
+
+      query += `
+        AND (
+          LOWER(COALESCE(branch, ''))
+              LIKE LOWER($${queryParams.length}) ESCAPE '\\'
+          OR
+          LOWER(COALESCE(location, ''))
+              LIKE LOWER($${queryParams.length}) ESCAPE '\\'
+        )
+      `;
+    }
+
+    /* -------------------------------------------------
+     * MANAGER NAME FILTER
+     * ------------------------------------------------- */
+
+    if (managerName) {
+      queryParams.push(
+        likeValue(managerName)
+      );
+
+      query += `
+        AND LOWER(COALESCE(name, ''))
+            LIKE LOWER($${queryParams.length}) ESCAPE '\\'
+      `;
+    }
+
+    /* -------------------------------------------------
+     * ROLE FILTER
+     *
+     * No ROLE_LIST.
+     *
+     * The LLM sends the role.
+     * ------------------------------------------------- */
+
+    if (role) {
+      queryParams.push(
+        likeValue(role)
+      );
+
+      query += `
+        AND LOWER(COALESCE(role, ''))
+            LIKE LOWER($${queryParams.length}) ESCAPE '\\'
+      `;
+    }
+
+    /* -------------------------------------------------
+     * FREE TEXT FILTER
+     *
+     * Used only when the caller explicitly supplies
+     * a query.
+     *
+     * This is NOT used to invent or infer entities.
+     * ------------------------------------------------- */
+
+    if (
+      freeText &&
+      !hasStructuredFilter
+    ) {
+      const words =
+        freeText
+          .split(/\s+/)
+          .map((word) =>
+            word.trim()
+          )
+          .filter(
+            (word) =>
+              word.length > 1
+          )
+          .slice(0, 8);
+
+      for (const word of words) {
+        queryParams.push(
+          likeValue(word)
+        );
+
+        const parameter =
+          `$${queryParams.length}`;
+
+        query += `
+          AND (
+            LOWER(COALESCE(bank_name, ''))
+                LIKE LOWER(${parameter}) ESCAPE '\\'
+            OR
+            LOWER(COALESCE(name, ''))
+                LIKE LOWER(${parameter}) ESCAPE '\\'
+            OR
+            LOWER(COALESCE(location, ''))
+                LIKE LOWER(${parameter}) ESCAPE '\\'
+            OR
+            LOWER(COALESCE(city, ''))
+                LIKE LOWER(${parameter}) ESCAPE '\\'
+            OR
+            LOWER(COALESCE(district, ''))
+                LIKE LOWER(${parameter}) ESCAPE '\\'
+            OR
+            LOWER(COALESCE(state, ''))
+                LIKE LOWER(${parameter}) ESCAPE '\\'
+            OR
+            LOWER(COALESCE(branch, ''))
+                LIKE LOWER(${parameter}) ESCAPE '\\'
+            OR
+            LOWER(COALESCE(role, ''))
+                LIKE LOWER(${parameter}) ESCAPE '\\'
+          )
         `;
-        const fallbackRes = await client.query(fallbackSql, andParams);
-        return fallbackRes.rows;
       }
     }
-    
-    return [];
-  } catch (err) {
-    console.error("searchBankManager error:", err);
+
+    /* -------------------------------------------------
+     * ORDERING
+     * ------------------------------------------------- */
+
+    query += `
+      ORDER BY
+        bank_name ASC,
+        city ASC NULLS LAST,
+        name ASC
+      LIMIT 20
+    `;
+
+    console.log(
+      "[bankSearch] Structured search:",
+      {
+        bank_name: bankName || null,
+        city: city || null,
+        branch_name:
+          branchName || null,
+        manager_name:
+          managerName || null,
+        role: role || null,
+        query: freeText || null
+      }
+    );
+
+    console.log(
+      "[bankSearch] SQL:",
+      query
+    );
+
+    console.log(
+      "[bankSearch] Parameters:",
+      queryParams
+    );
+
+    const result =
+      await client.query<
+        BankManagerRecord
+      >(
+        query,
+        queryParams
+      );
+
+    console.log(
+      "[bankSearch] Rows returned:",
+      result.rows.length
+    );
+
+    return result.rows;
+  } catch (error: unknown) {
+    console.error(
+      "[bankSearch] Search error:",
+      error
+    );
+
     return [];
   } finally {
     client.release();
   }
 }
 
-export function formatManagers(managers: BankManagerRecord[], userQuery?: string): string {
-  if (!managers || managers.length === 0) {
-    return `| ⚠️ Status | Message |\n| :--- | :--- |\n| **No Records Found** | No bank manager records matched your criteria. Please verify bank name or city. |`;
+/* =====================================================
+ * MANAGER FORMATTER
+ * ===================================================== */
+
+/**
+ * Convert verified DB manager records into the existing
+ * markdown table format.
+ *
+ * IMPORTANT:
+ * This function only formats database results.
+ * It does not make search decisions.
+ */
+export function formatManagers(
+  managers: BankManagerRecord[],
+  _userQuery?: string
+): string {
+  if (
+    !managers ||
+    managers.length === 0
+  ) {
+    return (
+      `| ⚠️ Status | Message |\n` +
+      `| :--- | :--- |\n` +
+      `| **No Records Found** | ` +
+      `No bank manager records matched your criteria. ` +
+      `Please verify the bank, city, branch, or manager name. |`
+    );
   }
 
-  // Deduplicate by name+phone to avoid showing the same person multiple times
-  const seen = new Set<string>();
-  const unique: BankManagerRecord[] = [];
-  for (const m of managers) {
-    const key = `${(m.name || "").toLowerCase()}|${m.phone || ""}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      unique.push(m);
+  let table =
+    `| 🏦 Bank Name | 👤 Manager Name & Role | 📞 Mobile Contact | ✉️ Official Email | 📍 Location & Branch Details | 🆔 Emp Code |\n`;
+
+  table +=
+    `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+
+  managers.forEach(
+    (mgr) => {
+      const bankName =
+        mgr.bank_name ||
+        "Partner Bank";
+
+      const managerName =
+        mgr.name ||
+        "Manager";
+
+      const roleText =
+        mgr.role
+          ? `<br/>*(${mgr.role})*`
+          : "";
+
+      const nameRole =
+        `**${managerName}**${roleText}`;
+
+      /* ---------------------------------------------
+       * PHONE
+       * --------------------------------------------- */
+
+      const hasValidPhone =
+        Boolean(
+          mgr.phone &&
+          mgr.phone !== "N/A" &&
+          mgr.phone !== "#ERROR!"
+        );
+
+      const phone =
+        hasValidPhone
+          ? `\`${mgr.phone}\``
+          : "—";
+
+      /* ---------------------------------------------
+       * EMAIL
+       * --------------------------------------------- */
+
+      const hasValidEmail =
+        Boolean(
+          mgr.email &&
+          mgr.email !== "N/A" &&
+          !mgr.email.includes(
+            "example.com"
+          )
+        );
+
+      const email =
+        hasValidEmail
+          ? `\`${mgr.email}\``
+          : "—";
+
+      /* ---------------------------------------------
+       * LOCATION
+       * --------------------------------------------- */
+
+      const cleanLocation =
+        (
+          mgr.location ||
+          "General Branch"
+        )
+          .replace(
+            /\n/g,
+            ", "
+          );
+
+      const locationParts: string[] =
+        [cleanLocation];
+
+      if (mgr.city) {
+        locationParts.push(
+          mgr.city
+        );
+      }
+
+      if (mgr.district) {
+        locationParts.push(
+          mgr.district
+        );
+      }
+
+      if (mgr.state) {
+        locationParts.push(
+          mgr.state
+        );
+      }
+
+      if (mgr.branch) {
+        locationParts.push(
+          `Branch: ${mgr.branch}`
+        );
+      }
+
+      if (mgr.branch_code) {
+        locationParts.push(
+          `Branch Code: ${mgr.branch_code}`
+        );
+      }
+
+      /* ---------------------------------------------
+       * EXTRA INFO / CPC
+       * --------------------------------------------- */
+
+      let extraLocation =
+        "";
+
+      if (
+        mgr.extra_info &&
+        typeof mgr.extra_info ===
+          "object"
+      ) {
+        const cpc =
+          mgr.extra_info[
+            "Sourcing & Processing CPC"
+          ] ??
+          mgr.extra_info["CPC"];
+
+        if (
+          cpc !== undefined &&
+          cpc !== null &&
+          String(cpc).trim()
+        ) {
+          extraLocation =
+            `<br/>*CPC: ${String(cpc)}*`;
+        }
+      }
+
+      const locationCol =
+        `${locationParts.join(", ")}${extraLocation}`;
+
+      /* ---------------------------------------------
+       * EMPLOYEE CODE
+       * --------------------------------------------- */
+
+      const empCode =
+        mgr.employee_code &&
+        mgr.employee_code !== "N/A"
+          ? `\`${mgr.employee_code}\``
+          : "—";
+
+      table +=
+        `| **${bankName}** | ` +
+        `${nameRole} | ` +
+        `${phone} | ` +
+        `${email} | ` +
+        `${locationCol} | ` +
+        `${empCode} |\n`;
     }
-  }
-  const displayMgrs = unique.slice(0, 25);
+  );
 
-  const queryLabel = userQuery ? ` for "${userQuery}"` : "";
-  let output = `### 🏦 Bank Manager Directory${queryLabel}\n\n`;
-  output += `**${unique.length}** unique manager${unique.length > 1 ? "s" : ""} found` +
-    (unique.length > 25 ? ` (showing top 25)` : "") +
-    `\n\n`;
-
-  let table = `| Sr. No. | 🏦 Bank Name | 👤 Manager Name | 💼 Role | 📞 Mobile | ✉️ Email | 📍 Location | 🆔 Emp Code |\n`;
-  table += `|:---:| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n`;
-
-  displayMgrs.forEach((mgr, idx) => {
-    const bankName = mgr.bank_name || "Partner Bank";
-    const roleText = mgr.role ? ` (${mgr.role})` : "";
-    const nameRole = `**${mgr.name || "Manager"}**${roleText}`;
-
-    const phone = (mgr.phone && mgr.phone !== "N/A" && mgr.phone !== "#ERROR!") ? mgr.phone : "—";
-    const hasValidEmail = mgr.email && !mgr.email.includes("example.com");
-    const email = hasValidEmail ? mgr.email : "—";
-
-    const cleanLoc = (mgr.location || "General Branch").replace(/\n/g, ", ");
-    let extraLoc = "";
-    if (mgr.extra_info && typeof mgr.extra_info === "object") {
-      const cpc = mgr.extra_info["Sourcing & Processing CPC"] || mgr.extra_info["CPC"] || "";
-      if (cpc) extraLoc = ` [CPC: ${cpc}]`;
-    }
-    const locationCol = `${cleanLoc}${mgr.state ? `, ${mgr.state}` : ""}${extraLoc}`;
-
-    const empCode = (mgr.employee_code && mgr.employee_code !== "N/A") ? mgr.employee_code : "—";
-
-    table += `| ${idx + 1} | **${bankName}** | ${nameRole} | ${mgr.role || "—"} | ${phone} | ${email} | ${locationCol} | ${empCode} |\n`;
-  });
-
-  output += table.trim();
-  return output;
+  return table.trim();
 }

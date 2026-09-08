@@ -8,31 +8,126 @@ function nowISO() {
   return new Date().toISOString();
 }
 
-function buildCompanyReply(name: string, basic: any, financial: any, bankRecords: any[]) {
-  const industry = basic?.industry || "-"
-  const country = basic?.country || "-"
-  const incorporation = basic?.incorporation_date || "-"
-  const listing = basic?.listing_status || "-"
-  const employees = financial?.employees || "-"
-  const turnover = financial?.turnover || "-"
-  const profit = financial?.profit_status || "-"
-  const lastAGM = financial?.last_agm || "-"
+/**
+ * Build final response for the selected company.
+ *
+ * Sections:
+ * 1. Company Live Information
+ * 2. Basic Information
+ * 3. Bank Records
+ * 4. Financial Information
+ */
+function buildCompanyReply(
+  name: string,
+  overview: string,
+  basic: any,
+  financial: any,
+  bankRecords: any[]
+) {
+  // 1. Live information from Exa/live search
+  const liveSection = overview
+    ? `### Company Live Information\n\n${overview}\n`
+    : "";
 
-  const summaryParts = [
-    industry && industry !== "-" ? `operates in the **${industry}** sector` : null,
-    country && country !== "-" ? `is based in **${country}**` : null,
-    incorporation && incorporation !== "-" ? `was incorporated on **${incorporation}**` : null,
-    listing && listing !== "-" ? `has a **${listing}** listing status` : null,
-    employees && employees !== "-" ? `employs approximately **${employees}** people` : null,
-    turnover && turnover !== "-" ? `reports a turnover of **${turnover}**` : null,
-    profit && profit !== "-" ? `and is currently **${profit}**` : null,
-  ].filter(Boolean)
+  // 2. Basic information
+  const basicRows = [
+    ["Company Name", name],
+    ["Industry", basic?.industry],
+    ["Country", basic?.country],
+    ["Incorporation Date", basic?.incorporation_date],
+    ["Listing Status", basic?.listing_status],
+    ["CIN", basic?.cin],
+    ["Address", basic?.address],
+    ["Website", basic?.website],
+  ]
+    .filter(
+      ([, value]) =>
+        value !== null &&
+        value !== undefined &&
+        String(value).trim() !== ""
+    )
+    .map(([label, value]) => `| ${label} | ${value} |`)
+    .join("\n");
 
-  const summaryParagraph = summaryParts.length > 0
-    ? `**${name}** ${summaryParts.join(", ")}.`
-    : ""
+  const basicSection = `
+### Basic Information
 
-  return summaryParagraph
+| Field | Value |
+| --- | --- |
+${basicRows}
+`;
+
+  // 3. Bank records - remove duplicate bank names
+  const seenBanks = new Set<string>();
+
+  const uniqueBankRecords = (bankRecords || []).filter((record: any) => {
+    const bankName = String(record?.bank_name || "")
+      .trim()
+      .toLowerCase();
+
+    if (!bankName || seenBanks.has(bankName)) {
+      return false;
+    }
+
+    seenBanks.add(bankName);
+    return true;
+  });
+
+  const bankRows = uniqueBankRecords
+    .map(
+      (record: any) =>
+        `| ${record.bank_name || "-"} | ${
+          record.company_category || "-"
+        } | ${record.other_info || "-"} |`
+    )
+    .join("\n");
+
+  const bankSection = uniqueBankRecords.length
+    ? `
+### Bank Records
+
+| Bank Name | Category | Other Info |
+| --- | --- | --- |
+${bankRows}
+`
+    : "";
+
+  // 4. Financial information
+  const financialRows = [
+    ["Employees", financial?.employees],
+    ["Turnover", financial?.turnover],
+    ["Profit Status", financial?.profit_status],
+    ["Last AGM", financial?.last_agm],
+    ["Profit History", financial?.profit_history],
+  ]
+    .filter(
+      ([, value]) =>
+        value !== null &&
+        value !== undefined &&
+        String(value).trim() !== ""
+    )
+    .map(([label, value]) => `| ${label} | ${value} |`)
+    .join("\n");
+
+  const financialSection = financialRows
+    ? `
+### Financial Information
+
+| Field | Value |
+| --- | --- |
+${financialRows}
+`
+    : "";
+
+  // Return sections in the required order
+  return [
+    liveSection,
+    basicSection,
+    bankSection,
+    financialSection,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export async function POST(req: NextRequest) {
@@ -146,25 +241,27 @@ export async function POST(req: NextRequest) {
         .join("\n");
 
       const reply =
-        `I found multiple companies related to ${companyName}.\n\n` +
-        `Please select the specific company you want to view.`;
+        `Your search for **"${companyName}"** matched multiple companies:\n\n` +
+        `${candidateList}\n\n` +
+        `Please select the specific company you want information about.`;
 
       return NextResponse.json({
         success: true,
+
+        // Tell frontend to display company selection
         selection_required: true,
+
         company_name: companyName,
+
+        // List of companies user can select
         candidates,
+
         response: reply,
-        company_data: {
-          company_name: companyName,
-          overview: reply,
-          basic_info: null,
-          financial_info: null,
-          bank_records: [],
-          candidates: candidates.map((c: any) => c.name || c),
-          needs_disambiguation: true,
-        },
+
+        company_data: null,
+
         company_query: companyName,
+
         ai_message: {
           role: "ai",
           content: reply,
@@ -181,6 +278,7 @@ export async function POST(req: NextRequest) {
 
     const reply = buildCompanyReply(
       result.primaryName,
+      result.overview || "",
       result.basicInfo || {},
       result.financialInfo || {},
       result.bankRecords || []
@@ -219,6 +317,7 @@ export async function POST(req: NextRequest) {
 
       ai_message: {
         role: "ai",
+        
         content: reply,
 
         company_data: {

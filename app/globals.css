@@ -758,6 +758,44 @@ body, html {
   margin-top: 2px;
 }
 
+.chat-history-section {
+  margin-top: 8px;
+}
+
+.chat-history-section:first-child {
+  margin-top: 2px;
+}
+
+.chat-history-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+.chat-history-section-count {
+  font-size: 0.68rem;
+  color: #c4b5fd;
+  background: rgba(99, 102, 241, 0.12);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-weight: 600;
+}
+
+.home-body.chat-page.dark .chat-history-section-header {
+  color: #888;
+}
+
+.home-body.chat-page.dark .chat-history-section-count {
+  color: #c7b8ff;
+  background: rgba(129, 140, 248, 0.18);
+}
+
 .chat-sidebar-footer {
   padding: 12px;
   border-top: 1px solid #e5e7eb;

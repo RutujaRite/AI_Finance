@@ -32,6 +32,8 @@ export default function HomePage() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const modelSelectorRef = useRef<HTMLDivElement | null>(null)
   const initializedRef = useRef(false)
+  const messagesByConvRef = useRef<Record<string, any[]>>({})
+  const activeConvIdRef = useRef<string | null>(null)
 
   const STORAGE_KEY = "emi_chat_state_v2"
 
@@ -103,9 +105,20 @@ export default function HomePage() {
           seen.add(c.id)
           return true
         })
-      setMessages(Array.isArray(parsed.messages) ? parsed.messages : [])
+      const savedByConv = parsed.messagesByConv && typeof parsed.messagesByConv === "object"
+        ? parsed.messagesByConv
+        : {}
+      for (const id of Object.keys(savedByConv)) {
+        messagesByConvRef.current[id] = Array.isArray(savedByConv[id]) ? savedByConv[id] : []
+      }
       setConversations(uniqueConvs)
-      setActiveConversationId(parsed.activeConversationId || null)
+      const activeId = parsed.activeConversationId || null
+      setActiveConversationId(activeId)
+      activeConvIdRef.current = activeId
+      const activeMsgs = activeId && messagesByConvRef.current[activeId]
+        ? messagesByConvRef.current[activeId]
+        : (Array.isArray(parsed.messages) ? parsed.messages : [])
+      setMessages(activeMsgs)
       if (parsed.selectedModel) setSelectedModel(parsed.selectedModel)
       if (parsed.messageActions) setMessageActions(parsed.messageActions)
     } catch (e) {
@@ -115,12 +128,17 @@ export default function HomePage() {
 
   function saveState() {
     try {
+      const activeId = activeConvIdRef.current || activeConversationId
+      if (activeId && messagesByConvRef.current[activeId] === undefined) {
+        messagesByConvRef.current[activeId] = messages
+      }
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({
           messages,
+          messagesByConv: messagesByConvRef.current,
           conversations,
-          activeConversationId,
+          activeConversationId: activeId,
           selectedModel,
           messageActions,
         })
@@ -228,9 +246,44 @@ export default function HomePage() {
     }
   }
 
+  async function loadConversationMessages(conversationId: string) {
+    if (!conversationId) return []
+    const cached = messagesByConvRef.current[conversationId]
+    if (cached) return cached
+    try {
+      const res = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}`, {
+        credentials: "include",
+      })
+      const data = await res.json()
+      const msgs = Array.isArray(data.messages) ? data.messages : []
+      messagesByConvRef.current[conversationId] = msgs
+      return msgs
+    } catch (e) {
+      console.error("Failed to load conversation messages", e)
+      return []
+    }
+  }
+
+  async function selectConversation(conversationId: string) {
+    // Persist the currently active conversation's messages before switching.
+    if (activeConvIdRef.current && messagesByConvRef.current[activeConvIdRef.current] === undefined) {
+      messagesByConvRef.current[activeConvIdRef.current] = messages
+    }
+    const msgs = await loadConversationMessages(conversationId)
+    messagesByConvRef.current[conversationId] = msgs
+    activeConvIdRef.current = conversationId
+    setMessages(msgs)
+    setActiveConversationId(conversationId)
+    setSidebarOpen(false)
+  }
+
   async function newConversation() {
+    if (activeConvIdRef.current && messagesByConvRef.current[activeConvIdRef.current] === undefined) {
+      messagesByConvRef.current[activeConvIdRef.current] = messages
+    }
     setMessages([])
     setActiveConversationId(null)
+    activeConvIdRef.current = null
   }
 
   async function deleteConversation(id: string) {
@@ -290,6 +343,34 @@ export default function HomePage() {
     if (diff < 86400000) return "Today"
     if (diff < 172800000) return "Yesterday"
     return date.toLocaleDateString([], { month: "short", day: "numeric" })
+  }
+
+  function getConversationSectionKey(value: string) {
+    const date = new Date(value)
+    if (isNaN(date.getTime())) return "Older"
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+    if (diff < 86400000) return "Today"
+    if (diff < 172800000) return "Yesterday"
+    const startOfYear = new Date(now.getFullYear(), 0, 1).getTime()
+    if (date.getTime() >= startOfYear) return "This Year"
+    return "Older"
+  }
+
+  function groupConversationsBySection(list: any[]) {
+    const sections: { key: string; title: string; items: any[] }[] = []
+    const order = ["Today", "Yesterday", "This Year", "Older"]
+    const map = new Map<string, any[]>()
+    for (const key of order) map.set(key, [])
+    for (const c of list) {
+      const key = getConversationSectionKey(c.createdAt)
+      map.get(key)!.push(c)
+    }
+    for (const key of order) {
+      const items = map.get(key) || []
+      if (items.length > 0) sections.push({ key, title: key, items })
+    }
+    return sections
   }
 
   function escapeHtml(value: string) {
@@ -734,50 +815,57 @@ export default function HomePage() {
                 No conversations yet
               </div>
             ) : (
-              filteredConversations().map((conversation) => (
-                <div
-                  key={conversation.id}
-                  className={`chat-conversation-item ${conversation.id === activeConversationId ? "active" : ""}`}
-                  onClick={() => {
-                    setActiveConversationId(conversation.id)
-                    setSidebarOpen(false)
-                  }}
-                  onContextMenu={(e) => {
-                    e.preventDefault()
-                    setContextMenu({ id: conversation.id, x: e.clientX, y: e.clientY })
-                  }}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="chat-conversation-title">
-                      {conversation.pinned ? "📌 " : ""}
-                      {conversation.title}
+              groupConversationsBySection(filteredConversations()).map((section) => (
+                <div key={section.key} className="chat-history-section">
+                  <div className="chat-history-section-header">
+                    <span className="chat-history-section-title">{section.title}</span>
+                    <span className="chat-history-section-count">{section.items.length}</span>
+                  </div>
+                  {section.items.map((conversation) => (
+                    <div
+                      key={conversation.id}
+                      className={`chat-conversation-item ${conversation.id === activeConversationId ? "active" : ""}`}
+                      onClick={() => {
+                        selectConversation(conversation.id)
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        setContextMenu({ id: conversation.id, x: e.clientX, y: e.clientY })
+                      }}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="chat-conversation-title">
+                          {conversation.pinned ? "📌 " : ""}
+                          {conversation.title}
+                        </div>
+                        <div className="chat-conversation-meta">{formatDate(conversation.createdAt)}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: "4px" }} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            togglePinConversation(conversation.id, !conversation.pinned)
+                          }}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px" }}
+                        >
+                          {conversation.pinned ? "📌" : "📍"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteConversation(conversation.id)
+                          }}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", color: "#ef4444" }}
+                        >
+                          🗑
+                        </button>
+                      </div>
                     </div>
-                    <div className="chat-conversation-meta">{formatDate(conversation.createdAt)}</div>
-                  </div>
-                  <div style={{ display: "flex", gap: "4px" }} onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        togglePinConversation(conversation.id, !conversation.pinned)
-                      }}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px" }}
-                    >
-                      {conversation.pinned ? "📌" : "📍"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        deleteConversation(conversation.id)
-                      }}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", color: "#ef4444" }}
-                    >
-                      🗑
-                    </button>
-                  </div>
+                  ))}
                 </div>
               ))
             )}
