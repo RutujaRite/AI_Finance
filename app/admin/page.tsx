@@ -2,6 +2,7 @@
  * Admin page — bank document management and user list.
  * Uses: /api/auth/verify, /api/bank/files, /api/admin/users
  * Admin-only: upload/download/delete PDFs/CSVs and manage all registered users.
+ * CallNow CRM Design System compliant
  */
 
 "use client"
@@ -160,10 +161,17 @@ export default function AdminPage() {
     String(u.role || "").toLowerCase().includes(userSearch.toLowerCase().trim())
   )
 
-  if (!user) return <main style={{ padding: 24, display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>Loading Admin Workspace...</main>
+  if (!user) {
+    return (
+      <main style={{ padding: 48, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: "100vh", gap: 12 }}>
+        <div className="spinner-border text-primary" style={{ width: 36, height: 36 }} role="status"></div>
+        <p style={{ color: "var(--bs-secondary-color)", fontWeight: 500 }}>Verifying admin authorization...</p>
+      </main>
+    )
+  }
 
   return (
-    <main className="home-body">
+    <div className="app-shell">
       <Topbar
         user={user}
         pathname="/admin"
@@ -171,86 +179,113 @@ export default function AdminPage() {
         onModelChange={setSelectedModel}
       />
 
-      <main className="admin-page" style={{ padding: "24px 36px" }}>
-        <div className="admin-header">
-          <h2>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-            </svg>
-            Admin Workspace & Document Repository
-          </h2>
-          <span style={{ fontSize: "0.95rem", color: "#94a3b8" }}>Upload bank policy documents, inspect file assets, and manage registered system accounts</span>
-        </div>
-
-        {/* Overview Summary Metric Cards */}
-        <div className="summary-grid" id="summaryGrid">
-          <div className="summary-item">
-            <div className="summary-label" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span>📁</span> Total Uploaded Files
+      <main className="content-container" style={{ padding: "28px 32px 56px 32px" }}>
+        {/* Page Header */}
+        <div className="page-header" style={{ marginBottom: "28px" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+              <h1 className="page-title" style={{ margin: 0 }}>Admin Workspace & Document Repository</h1>
+              <span className="badge badge-primary">Admin Only</span>
             </div>
-            <div className="summary-value" style={{ color: "#60a5fa" }}>{files.length}</div>
-          </div>
-          <div className="summary-item">
-            <div className="summary-label" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span>💾</span> Total Storage Used
-            </div>
-            <div className="summary-value" style={{ color: "#34d399" }}>{formatSize(files.reduce((sum, f) => sum + (f.file_size || 0), 0))}</div>
-          </div>
-          <div className="summary-item">
-            <div className="summary-label" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span>🕒</span> Latest Activity
-            </div>
-            <div className="summary-value" style={{ fontSize: "1.1rem", color: "#10a37f" }}>
-              {files.length > 0 ? formatDate(files[0].uploaded_at) : "No uploads yet"}
-            </div>
-          </div>
-          <div className="summary-item">
-            <div className="summary-label" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span>👥</span> Registered Accounts
-            </div>
-            <div className="summary-value" style={{ color: "#f472b6" }}>{users.length}</div>
+            <p className="page-subtitle" style={{ margin: 0 }}>
+              Upload bank policy documents, inspect indexed file assets, and manage registered system accounts
+            </p>
           </div>
         </div>
 
-        {/* Top Grid: Drag & Drop Upload + File Manager */}
-        <div className="admin-grid">
+        {/* Overview Metric Cards */}
+        <div className="stats-row" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "28px" }}>
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: "rgba(94, 106, 210, 0.1)", color: "var(--accent)" }}>
+              <i className="bi bi-file-earmark-text"></i>
+            </div>
+            <div className="stat-content">
+              <span className="stat-label">Total Documents</span>
+              <span className="stat-value">{files.length}</span>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: "rgba(34, 197, 94, 0.1)", color: "var(--bs-success)" }}>
+              <i className="bi bi-hdd-network"></i>
+            </div>
+            <div className="stat-content">
+              <span className="stat-label">Total Storage</span>
+              <span className="stat-value">{formatSize(files.reduce((sum, f) => sum + (f.file_size || 0), 0))}</span>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: "rgba(245, 158, 11, 0.1)", color: "var(--bs-warning)" }}>
+              <i className="bi bi-clock-history"></i>
+            </div>
+            <div className="stat-content">
+              <span className="stat-label">Latest Activity</span>
+              <span className="stat-value" style={{ fontSize: "1rem" }}>
+                {files.length > 0 ? formatDate(files[0].uploaded_at) : "No uploads yet"}
+              </span>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: "rgba(236, 72, 153, 0.1)", color: "#ec4899" }}>
+              <i className="bi bi-people-fill"></i>
+            </div>
+            <div className="stat-content">
+              <span className="stat-label">Registered Accounts</span>
+              <span className="stat-value">{users.length}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Top Section: Upload Card + File Repository Table */}
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(320px, 380px) 1fr", gap: "24px", alignItems: "start", marginBottom: "32px" }}>
           {/* Upload Form Card */}
-          <div className="form-card" style={{ background: "#ffffff", backdropFilter: "blur(16px)", border: "1px solid #e5e7eb", borderRadius: "16px", padding: "24px" }}>
-            <div className="form-card-title" style={{ fontSize: "1.1rem", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Upload Bank Document
+          <div className="card">
+            <div className="card-header">
+              <h2 className="card-title">
+                <i className="bi bi-cloud-arrow-up" style={{ color: "var(--accent)" }}></i>
+                Upload Policy Document
+              </h2>
             </div>
-            <div className="field-group">
-              <label className="field-label" style={{ fontSize: "0.85rem", color: "#94a3b8", marginBottom: "8px", display: "block" }}>Select Bank PDF or Policy CSV</label>
+            <div className="card-body">
+              <label className="form-label">Supported Bank Documents (PDF, CSV)</label>
               <div 
                 className="drop-zone"
                 onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
                 onDragLeave={() => setIsDragOver(false)}
                 onDrop={handleDrop}
                 style={{
-                  border: isDragOver ? "2px dashed #10a37f" : "2px dashed rgba(16, 163, 127, 0.35)",
-                  background: isDragOver ? "rgba(16, 163, 127, 0.12)" : "rgba(16, 163, 127, 0.03)",
-                  borderRadius: "14px",
-                  padding: "36px 20px",
+                  border: isDragOver ? "2px dashed var(--accent)" : "2px dashed var(--bs-border-color)",
+                  background: isDragOver ? "rgba(94, 106, 210, 0.08)" : "var(--bs-tertiary-bg)",
+                  borderRadius: "var(--border-radius-md)",
+                  padding: "32px 20px",
                   textAlign: "center",
-                  transition: "all 0.25s ease",
+                  transition: "var(--transition-fast)",
                   cursor: "pointer",
                 }}
-                onClick={() => document.getElementById("pdfInput")?.click()}
+                onClick={() => document.getElementById("adminFileInput")?.click()}
               >
-                <div className="drop-zone-icon" style={{ fontSize: "3rem", marginBottom: "8px" }}>☁️</div>
-                <h4 style={{ fontSize: "1.05rem", fontWeight: 600, color: "#fff" }}>Drag & Drop PDF/CSV File</h4>
-                <p style={{ fontSize: "0.82rem", color: "#9ca3af", margin: "4px 0 16px 0" }}>Maximum supported file size: 50 MB</p>
+                <div style={{ fontSize: "2.5rem", color: "var(--accent)", marginBottom: "8px" }}>
+                  <i className="bi bi-cloud-arrow-up-fill"></i>
+                </div>
+                <h4 style={{ fontSize: "1rem", fontWeight: 600, color: "var(--bs-heading-color)", margin: "0 0 4px 0" }}>
+                  Drag & Drop PDF or CSV
+                </h4>
+                <p style={{ fontSize: "0.82rem", color: "var(--bs-secondary-color)", margin: "0 0 16px 0" }}>
+                  Maximum file size: 50 MB
+                </p>
                 <button
                   type="button"
                   className="btn btn-primary"
-                  style={{ display: "inline-flex", width: "auto", padding: "10px 20px", borderRadius: "8px", background: "linear-gradient(135deg, #10a37f 0%, #059669 100%)", color: "#fff", fontWeight: 600, border: "none", cursor: "pointer", boxShadow: "0 4px 14px rgba(16, 163, 127, 0.4)" }}
+                  style={{ width: "auto" }}
                 >
-                  📁 Browse Computer
+                  <i className="bi bi-folder2-open"></i>
+                  Browse Local Files
                 </button>
                 <input
                   type="file"
-                  id="pdfInput"
+                  id="adminFileInput"
                   accept=".pdf,.csv,application/pdf,text/csv"
                   onChange={handleFileUpload}
                   style={{ display: "none" }}
@@ -258,85 +293,71 @@ export default function AdminPage() {
               </div>
 
               {uploading && (
-                <div className="upload-progress active" style={{ marginTop: "14px", padding: "10px 14px", borderRadius: "8px", background: "rgba(16, 163, 127, 0.15)", color: "#6ee7b7", fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <div className="chat-typing-dot" style={{ width: 8, height: 8, borderRadius: "50%", background: "#34d399" }}></div>
-                  Uploading file to system repository...
+                <div style={{ marginTop: "14px", padding: "10px 14px", borderRadius: "var(--border-radius-sm)", background: "rgba(94, 106, 210, 0.1)", color: "var(--accent)", fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span className="spinner-border spinner-border-sm" role="status"></span>
+                  Processing and indexing file to knowledge repository...
                 </div>
               )}
 
               {message && (
                 <div 
-                  className="upload-progress" 
-                  style={{
-                    marginTop: "14px",
-                    padding: "10px 14px",
-                    borderRadius: "8px",
-                    fontSize: "0.875rem",
-                    fontWeight: 500,
-                    background: message.toLowerCase().includes("success") ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                    color: message.toLowerCase().includes("success") ? "#34d399" : "#f87171",
-                    border: message.toLowerCase().includes("success") ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(239, 68, 68, 0.3)",
-                  }}
+                  className={`alert ${message.toLowerCase().includes("success") ? "alert-success" : "alert-danger"}`}
+                  style={{ marginTop: "14px", padding: "10px 14px", fontSize: "0.875rem" }}
                 >
-                  {message}
+                  <i className={`bi ${message.toLowerCase().includes("success") ? "bi-check-circle" : "bi-exclamation-triangle"}`}></i>
+                  <span>{message}</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* Uploaded Documents List Card */}
-          <div className="result-card" style={{ background: "#ffffff", backdropFilter: "blur(16px)", border: "1px solid #e5e7eb", borderRadius: "16px", padding: "24px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "10px", margin: 0 }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                Uploaded Documents
-                <span style={{ fontSize: "0.78rem", padding: "2px 10px", borderRadius: "999px", background: "rgba(16, 163, 127, 0.15)", color: "#6ee7b7", border: "1px solid rgba(16, 163, 127, 0.3)" }}>
+          <div className="card">
+            <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <h2 className="card-title" style={{ margin: 0 }}>
+                  <i className="bi bi-file-earmark-richtext" style={{ color: "var(--bs-success)" }}></i>
+                  Uploaded Documents
+                </h2>
+                <span className="badge badge-neutral">
                   {filteredFiles.length} {filteredFiles.length === 1 ? "File" : "Files"}
                 </span>
-              </h3>
+              </div>
 
-              {/* File Search Input */}
+              {/* Search Filter */}
               <div style={{ position: "relative", minWidth: "220px" }}>
+                <i className="bi bi-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--bs-secondary-color)", fontSize: "0.85rem" }}></i>
                 <input
                   type="text"
-                  placeholder="🔍 Search documents..."
+                  className="form-control"
+                  placeholder="Search documents..."
                   value={fileSearch}
                   onChange={(e) => setFileSearch(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px 8px 34px",
-                    background: "rgba(255, 255, 255, 0.05)",
-                    border: "1px solid rgba(255, 255, 255, 0.12)",
-                    borderRadius: "8px",
-                    color: "#fff",
-                    fontSize: "0.85rem",
-                    outline: "none"
-                  }}
+                  style={{ paddingLeft: "34px", fontSize: "0.85rem" }}
                 />
-                <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "14px", opacity: 0.6 }}>🔍</span>
               </div>
             </div>
 
-            <div className="files-table-wrap" style={{ overflowX: "auto", borderRadius: "10px", border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-              <table className="files-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
+            <div className="table-wrapper">
+              <table className="table table-hover">
                 <thead>
-                  <tr style={{ background: "rgba(99, 102, 241, 0.12)", color: "#e2e8f0" }}>
-                    <th style={{ padding: "12px 14px", width: "45px", textAlign: "center" }}>#</th>
-                    <th style={{ padding: "12px 14px", textAlign: "left" }}>File Details</th>
-                    <th style={{ padding: "12px 14px", width: "100px", textAlign: "left" }}>Format</th>
-                    <th style={{ padding: "12px 14px", width: "110px", textAlign: "left" }}>Size</th>
-                    <th style={{ padding: "12px 14px", width: "160px", textAlign: "left" }}>Uploaded At</th>
-                    <th style={{ padding: "12px 14px", width: "160px", textAlign: "center" }}>Actions</th>
+                  <tr>
+                    <th style={{ width: "45px", textAlign: "center" }}>#</th>
+                    <th>File Details</th>
+                    <th style={{ width: "110px" }}>Format</th>
+                    <th style={{ width: "110px" }}>Size</th>
+                    <th style={{ width: "160px" }}>Uploaded</th>
+                    <th style={{ width: "150px", textAlign: "center" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredFiles.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ padding: "32px", textAlign: "center" }}>
-                        <div className="empty-state">
-                          <div className="empty-state-icon" style={{ fontSize: "2.2rem", marginBottom: "8px" }}>📁</div>
-                          <h3 style={{ fontSize: "1rem", color: "#fff" }}>No files match search query</h3>
-                          <p style={{ fontSize: "0.82rem", color: "#94a3b8" }}>Try searching with a different term or upload a new file</p>
+                      <td colSpan={6} style={{ padding: "48px 20px", textAlign: "center" }}>
+                        <div style={{ color: "var(--bs-secondary-color)" }}>
+                          <i className="bi bi-folder-x" style={{ fontSize: "2.4rem", opacity: 0.5, display: "block", marginBottom: "8px" }}></i>
+                          <p style={{ margin: "0 0 4px 0", fontWeight: 600, color: "var(--bs-heading-color)" }}>No files match search query</p>
+                          <small>Try searching with another keyword or drag a new file</small>
                         </div>
                       </td>
                     </tr>
@@ -344,74 +365,42 @@ export default function AdminPage() {
                     filteredFiles.map((file, idx) => {
                       const isCsv = file.file_name.toLowerCase().endsWith(".csv")
                       return (
-                        <tr key={file.id} style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)", transition: "background 0.15s ease" }}>
-                          <td style={{ textAlign: "center", fontWeight: 600, color: "#64748b", padding: "12px 14px" }}>{idx + 1}</td>
-                          <td style={{ padding: "12px 14px" }}>
+                        <tr key={file.id}>
+                          <td style={{ textAlign: "center", color: "var(--bs-secondary-color)", fontWeight: 500 }}>{idx + 1}</td>
+                          <td>
                             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                              <span style={{ fontSize: "22px" }}>{isCsv ? "📊" : "📄"}</span>
-                              <span style={{ fontWeight: 600, color: "#f8fafc" }} title={file.file_name}>{file.file_name}</span>
+                              <i className={`bi ${isCsv ? "bi-filetype-csv" : "bi-file-earmark-pdf"}`} style={{ fontSize: "1.3rem", color: isCsv ? "var(--bs-success)" : "var(--bs-danger)" }}></i>
+                              <span style={{ fontWeight: 600, color: "var(--bs-heading-color)" }} title={file.file_name}>
+                                {file.file_name}
+                              </span>
                             </div>
                           </td>
-                          <td style={{ padding: "12px 14px" }}>
-                            <span 
-                              style={{ 
-                                padding: "3px 8px", 
-                                borderRadius: "6px", 
-                                fontSize: "0.72rem", 
-                                fontWeight: 700, 
-                                background: isCsv ? "rgba(16, 185, 129, 0.15)" : "rgba(244, 63, 94, 0.15)", 
-                                color: isCsv ? "#34d399" : "#fb7185",
-                                border: isCsv ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(244, 63, 94, 0.3)" 
-                              }}
-                            >
+                          <td>
+                            <span className={`badge ${isCsv ? "badge-success" : "badge-danger"}`}>
                               {isCsv ? "CSV DATA" : "PDF DOC"}
                             </span>
                           </td>
-                          <td style={{ padding: "12px 14px", color: "#cbd5e1" }}>{formatSize(file.file_size)}</td>
-                          <td style={{ padding: "12px 14px", color: "#94a3b8", fontSize: "0.82rem" }}>{formatDate(file.uploaded_at)}</td>
-                          <td style={{ padding: "12px 14px", textAlign: "center" }}>
-                            <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                          <td style={{ color: "var(--bs-body-color)" }}>{formatSize(file.file_size)}</td>
+                          <td style={{ color: "var(--bs-secondary-color)", fontSize: "0.82rem" }}>{formatDate(file.uploaded_at)}</td>
+                          <td style={{ textAlign: "center" }}>
+                            <div style={{ display: "inline-flex", gap: "6px" }}>
                               <a 
                                 href={`/api/bank/files/${file.id}/download`} 
-                                className="action-btn" 
+                                className="btn btn-outline-secondary" 
                                 title="Download File" 
                                 target="_blank"
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "6px",
-                                  padding: "6px 12px",
-                                  borderRadius: "6px",
-                                  background: "rgba(16, 163, 127, 0.15)",
-                                  color: "#6ee7b7",
-                                  border: "1px solid rgba(16, 163, 127, 0.3)",
-                                  fontSize: "0.8rem",
-                                  fontWeight: 600,
-                                  textDecoration: "none"
-                                }}
+                                style={{ padding: "4px 10px", fontSize: "0.78rem" }}
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                <i className="bi bi-download"></i>
                                 Download
                               </a>
                               <button 
-                                className="action-btn danger" 
+                                className="btn btn-outline-danger" 
                                 title="Delete File" 
                                 onClick={() => deleteFile(file.id, file.file_name)}
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "6px",
-                                  padding: "6px 12px",
-                                  borderRadius: "6px",
-                                  background: "rgba(239, 68, 68, 0.15)",
-                                  color: "#f87171",
-                                  border: "1px solid rgba(239, 68, 68, 0.3)",
-                                  fontSize: "0.8rem",
-                                  fontWeight: 600,
-                                  cursor: "pointer"
-                                }}
+                                style={{ padding: "4px 10px", fontSize: "0.78rem" }}
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                <i className="bi bi-trash"></i>
                                 Delete
                               </button>
                             </div>
@@ -426,60 +415,54 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Bottom Card: Registered User Management Table */}
-        <div className="result-card" style={{ marginTop: "32px", background: "#ffffff", backdropFilter: "blur(16px)", border: "1px solid #e5e7eb", borderRadius: "16px", padding: "24px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px", flexWrap: "wrap", gap: "12px" }}>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "10px", margin: 0 }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f472b6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              Registered User Accounts
-              <span style={{ fontSize: "0.78rem", padding: "2px 10px", borderRadius: "999px", background: "rgba(244, 114, 182, 0.15)", color: "#f472b6", border: "1px solid rgba(244, 114, 182, 0.3)" }}>
+        {/* Bottom Section: Registered User Management Table */}
+        <div className="card">
+          <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <h2 className="card-title" style={{ margin: 0 }}>
+                <i className="bi bi-people" style={{ color: "var(--accent)" }}></i>
+                Registered User Accounts
+              </h2>
+              <span className="badge badge-neutral">
                 Showing {filteredUsers.length} of {users.length} Users
               </span>
-            </h3>
+            </div>
 
             {/* User Search Input */}
             <div style={{ position: "relative", minWidth: "260px" }}>
+              <i className="bi bi-search" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--bs-secondary-color)", fontSize: "0.85rem" }}></i>
               <input
                 type="text"
-                placeholder="🔍 Search users by name, email or role..."
+                className="form-control"
+                placeholder="Search users by name, email or role..."
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "8px 12px 8px 34px",
-                  background: "rgba(255, 255, 255, 0.05)",
-                  border: "1px solid rgba(255, 255, 255, 0.12)",
-                  borderRadius: "8px",
-                  color: "#fff",
-                  fontSize: "0.85rem",
-                  outline: "none"
-                }}
+                style={{ paddingLeft: "34px", fontSize: "0.85rem" }}
               />
-              <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "14px", opacity: 0.6 }}>🔍</span>
             </div>
           </div>
 
-          <div className="files-table-wrap" style={{ overflowX: "auto", borderRadius: "10px", border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-            <table className="files-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
+          <div className="table-wrapper">
+            <table className="table table-hover">
               <thead>
-                <tr style={{ background: "rgba(244, 114, 182, 0.12)", color: "#f1f5f9" }}>
-                  <th style={{ padding: "12px 14px", width: "50px", textAlign: "center" }}>User ID</th>
-                  <th style={{ padding: "12px 14px", textAlign: "left" }}>Account Name</th>
-                  <th style={{ padding: "12px 14px", textAlign: "left" }}>Email Address</th>
-                  <th style={{ padding: "12px 14px", width: "110px", textAlign: "center" }}>Role</th>
-                  <th style={{ padding: "12px 14px", width: "110px", textAlign: "center" }}>Status</th>
-                  <th style={{ padding: "12px 14px", width: "160px", textAlign: "left" }}>Joined Date</th>
-                  <th style={{ padding: "12px 14px", width: "160px", textAlign: "left" }}>Last Login</th>
+                <tr>
+                  <th style={{ width: "65px", textAlign: "center" }}>User ID</th>
+                  <th>Account Name</th>
+                  <th>Email Address</th>
+                  <th style={{ width: "110px", textAlign: "center" }}>Role</th>
+                  <th style={{ width: "110px", textAlign: "center" }}>Status</th>
+                  <th style={{ width: "160px" }}>Joined Date</th>
+                  <th style={{ width: "160px" }}>Last Login</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ padding: "32px", textAlign: "center" }}>
-                      <div className="empty-state">
-                        <div className="empty-state-icon" style={{ fontSize: "2.2rem", marginBottom: "8px" }}>👥</div>
-                        <h3 style={{ fontSize: "1rem", color: "#fff" }}>No users match search query</h3>
-                        <p style={{ fontSize: "0.82rem", color: "#94a3b8" }}>Try searching with a different name or email</p>
+                    <td colSpan={7} style={{ padding: "48px 20px", textAlign: "center" }}>
+                      <div style={{ color: "var(--bs-secondary-color)" }}>
+                        <i className="bi bi-person-x" style={{ fontSize: "2.4rem", opacity: 0.5, display: "block", marginBottom: "8px" }}></i>
+                        <p style={{ margin: "0 0 4px 0", fontWeight: 600, color: "var(--bs-heading-color)" }}>No accounts match query</p>
+                        <small>Try searching with another name or email</small>
                       </div>
                     </td>
                   </tr>
@@ -490,64 +473,43 @@ export default function AdminPage() {
                     const initials = getUserInitials(u.name, u.email)
 
                     return (
-                      <tr key={u.id} style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)", transition: "background 0.15s ease" }}>
-                        <td style={{ textAlign: "center", fontWeight: 700, color: "#64748b", padding: "12px 14px" }}>#{u.id}</td>
-                        <td style={{ padding: "12px 14px" }}>
+                      <tr key={u.id}>
+                        <td style={{ textAlign: "center", fontWeight: 600, color: "var(--bs-secondary-color)" }}>#{u.id}</td>
+                        <td>
                           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                             <div 
                               style={{ 
                                 width: "32px", 
                                 height: "32px", 
                                 borderRadius: "50%", 
-                                background: isAdmin ? "linear-gradient(135deg, #10a37f 0%, #059669 100%)" : "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)", 
-                                color: "#fff", 
+                                background: isAdmin ? "var(--accent)" : "rgba(94, 106, 210, 0.15)", 
+                                color: isAdmin ? "#fff" : "var(--accent)", 
                                 display: "flex", 
                                 alignItems: "center", 
                                 justifyContent: "center", 
                                 fontWeight: 700, 
                                 fontSize: "0.75rem",
-                                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)"
                               }}
                             >
                               {initials}
                             </div>
-                            <span style={{ fontWeight: 600, color: "#f8fafc" }}>{u.name || "System User"}</span>
+                            <span style={{ fontWeight: 600, color: "var(--bs-heading-color)" }}>{u.name || "System User"}</span>
                           </div>
                         </td>
-                        <td style={{ padding: "12px 14px", color: "#cbd5e1" }}>{u.email}</td>
-                        <td style={{ padding: "12px 14px", textAlign: "center" }}>
-                          <span 
-                            style={{ 
-                              padding: "4px 12px", 
-                              borderRadius: "999px", 
-                              fontSize: "0.75rem", 
-                              fontWeight: 700, 
-                              background: isAdmin ? "rgba(16, 163, 127, 0.2)" : "rgba(148, 163, 184, 0.12)",
-                              color: isAdmin ? "#6ee7b7" : "#cbd5e1",
-                              border: isAdmin ? "1px solid rgba(16, 163, 127, 0.4)" : "1px solid rgba(148, 163, 184, 0.25)"
-                            }}
-                          >
+                        <td style={{ color: "var(--bs-body-color)" }}>{u.email}</td>
+                        <td style={{ textAlign: "center" }}>
+                          <span className={`badge ${isAdmin ? "badge-primary" : "badge-neutral"}`}>
                             {isAdmin ? "👑 ADMIN" : "USER"}
                           </span>
                         </td>
-                        <td style={{ padding: "12px 14px", textAlign: "center" }}>
-                          <span 
-                            style={{ 
-                              padding: "4px 12px", 
-                              borderRadius: "999px", 
-                              fontSize: "0.75rem", 
-                              fontWeight: 700, 
-                              background: isActive ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)", 
-                              color: isActive ? "#34d399" : "#f87171",
-                              border: isActive ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(239, 68, 68, 0.3)"
-                            }}
-                          >
+                        <td style={{ textAlign: "center" }}>
+                          <span className={`badge ${isActive ? "badge-success" : "badge-neutral"}`}>
                             {isActive ? "ACTIVE" : "INACTIVE"}
                           </span>
                         </td>
-                        <td style={{ padding: "12px 14px", color: "#94a3b8", fontSize: "0.82rem" }}>{formatDate(u.created_at)}</td>
-                        <td style={{ padding: "12px 14px", color: "#94a3b8", fontSize: "0.82rem" }}>
-                          {u.last_login ? formatDate(u.last_login) : <span style={{ color: "#64748b" }}>Never</span>}
+                        <td style={{ color: "var(--bs-secondary-color)", fontSize: "0.82rem" }}>{formatDate(u.created_at)}</td>
+                        <td style={{ color: "var(--bs-secondary-color)", fontSize: "0.82rem" }}>
+                          {u.last_login ? formatDate(u.last_login) : <span style={{ color: "var(--bs-secondary-color)", opacity: 0.6 }}>Never</span>}
                         </td>
                       </tr>
                     )
@@ -558,6 +520,6 @@ export default function AdminPage() {
           </div>
         </div>
       </main>
-    </main>
+    </div>
   )
 }

@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllMasterPolicies } from "@/lib/masterPolicies";
+import {
+  getAllMasterPolicies,
+  deleteBankMasterPolicy,
+  updateBankMasterPolicy,
+} from "@/lib/masterPolicies";
+import pool from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +16,24 @@ export async function GET(req: NextRequest) {
     const bank_id = sp.get("bank_id") ? parseInt(sp.get("bank_id")!, 10) : null;
     const search = sp.get("search")?.trim().toLowerCase() || null;
     const loan_type = sp.get("loan_type")?.trim().toLowerCase() || null;
+    const getBanks = sp.get("banks") === "true";
 
+    // If requesting banks list
+    if (getBanks) {
+      try {
+        const banksRes = await pool.query(`SELECT id, name, code FROM banks ORDER BY name ASC`);
+        return NextResponse.json({ success: true, banks: banksRes.rows });
+      } catch {
+        const fallbackBanks = getAllMasterPolicies().map((p) => ({
+          id: p.bank_id,
+          name: p.bank_name,
+          code: p.bank_code,
+        }));
+        return NextResponse.json({ success: true, banks: fallbackBanks });
+      }
+    }
+
+    // Return exactly ONE row per bank with one master text file
     let rows = getAllMasterPolicies();
 
     if (bank_id) {
@@ -34,7 +56,8 @@ export async function GET(req: NextRequest) {
       rows = rows.filter(
         (r) =>
           r.loan_type.toLowerCase().includes(loan_type) ||
-          r.supported_loan_types.some((t: string) => t.toLowerCase().includes(loan_type))
+          (Array.isArray(r.supported_loan_types) &&
+            r.supported_loan_types.some((t: string) => t.toLowerCase().includes(loan_type)))
       );
     }
 
@@ -42,5 +65,25 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     console.error("Failed to load master policies", err);
     return NextResponse.json({ error: "Failed to load master policies" }, { status: 500 });
+  }
+}
+
+// Fallback DELETE /api/policies?id=...&bank_id=...&file_name=...
+export async function DELETE(req: NextRequest) {
+  try {
+    const sp = req.nextUrl.searchParams;
+    const id = sp.get("id");
+    const bankIdParam = sp.get("bank_id");
+    const fileName = sp.get("file_name") || undefined;
+
+    const bankId = parseInt(bankIdParam || id || "", 10);
+    if (!bankId || isNaN(bankId)) {
+      return NextResponse.json({ success: false, error: "Invalid bank or policy ID" }, { status: 400 });
+    }
+
+    const res = await deleteBankMasterPolicy(bankId, fileName);
+    return NextResponse.json(res);
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err?.message || "Delete failed" }, { status: 500 });
   }
 }

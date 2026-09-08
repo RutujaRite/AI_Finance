@@ -195,203 +195,323 @@ export default function BankManagerFilesPage() {
       />
 
       {/* Main Page Body */}
-      <main className="bm-page animate-fade-in" style={{ maxWidth: 1040 }}>
-        {/* Title Header */}
-        <div className="bm-header">
+      <main className="bm-page animate-fade-in">
+        {/* Page Header */}
+        <div className="page-header">
           <div>
-            <h2 className="bm-title">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#bmFileGradient)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <defs>
-                  <linearGradient id="bmFileGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                     <stop offset="0%" stopColor="#10a37f" />
-                     <stop offset="100%" stopColor="#34d399" />
-                  </linearGradient>
-                </defs>
-                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                <polyline points="14 2 14 8 20 8"/>
-              </svg>
-Bank Manager Directory
-            </h2>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: 4 }}>
-              Upload Excel/CSV spreadsheet files containing bank manager contacts and location details.
+            <h1 className="page-header-title">
+              <i className="bi bi-people" style={{ color: "var(--accent)", marginRight: "0.5rem" }} />
+              Bank Manager Directory &amp; Files
+            </h1>
+            <p className="page-header-subtitle">
+              Locate verified bank managers across branches, search by city/bank, or upload manager contact spreadsheets.
             </p>
           </div>
+          <div className="page-header-actions">
+            <span className="badge bg-primary">{managers.length} Managers</span>
+            <span className="badge bg-purple">{files.length} Files</span>
+          </div>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="tab-bar" style={{ display: "flex", gap: 8, background: "#f9fafb", border: "1px solid var(--border-color)", padding: 6, borderRadius: "var(--radius-md)", marginBottom: 28, width: "fit-content" }}>
+        {/* Tab Switcher (CallNow Section 13) */}
+        <div className="nav-tabs" style={{ marginBottom: "1.5rem" }}>
           <button
             type="button"
-            className={`tab-button ${activeTab === "directory" ? "active" : ""}`}
+            className={`nav-link ${activeTab === "directory" ? "active" : ""}`}
             onClick={() => setActiveTab("directory")}
           >
-            📊 Bank Manager Directory
+            <i className="bi bi-person-lines-fill" /> Bank Manager Directory ({managers.length})
           </button>
           <button
             type="button"
-            className={`tab-button ${activeTab === "files" ? "active" : ""}`}
+            className={`nav-link ${activeTab === "files" ? "active" : ""}`}
             onClick={() => setActiveTab("files")}
           >
-            📁 Upload &amp; Files
+            <i className="bi bi-file-earmark-spreadsheet" /> Upload &amp; Files ({files.length})
           </button>
         </div>
 
-        {/* Section 1: File Upload Form Card */}
-        {activeTab === "files" && (
-        <div className="glass-card" style={{ padding: 32, marginBottom: 32 }}>
-          <h3 className="card-title" style={{ fontSize: "1.2rem", color: "#fff", marginBottom: 20 }}>
-            📁 Upload Bank Manager Spreadsheet File
-          </h3>
+        {/* TAB 1: Bank Manager Directory */}
+        {activeTab === "directory" && (
+          <div>
+            {/* Search and Filters Card */}
+            <div className="card" style={{ padding: "1rem 1.25rem", marginBottom: "1.5rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr)) auto", gap: "1rem", alignItems: "flex-end" }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Search Directory</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Search by name, bank, city, phone..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
 
-          {uploadMsg && (
-            <div
-              className={uploadMsg.type === "success" ? "badge-tag success" : "alert-error"}
-              style={{ width: "100%", padding: 12, marginBottom: 20, fontSize: "0.9rem" }}
-            >
-              {uploadMsg.type === "success" ? `✓ ${uploadMsg.text}` : `⚠️ ${uploadMsg.text}`}
-            </div>
-          )}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Filter Bank</label>
+                  <select
+                    className="form-select"
+                    value={filterBank}
+                    onChange={(e) => setFilterBank(e.target.value)}
+                  >
+                    <option value="all">All Partner Banks</option>
+                    {bankOptions.map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                </div>
 
-          <form onSubmit={handleUploadSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="field-label">Bank Name *</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="e.g. State Bank of India, HDFC Bank, ICICI Bank, Axis Bank..."
-                value={bankName}
-                onChange={(e) => setBankName(e.target.value)}
-                disabled={isUploading}
-                required
-              />
-            </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Filter Role</label>
+                  <select
+                    className="form-select"
+                    value={filterRole}
+                    onChange={(e) => setFilterRole(e.target.value)}
+                  >
+                    <option value="all">All Roles</option>
+                    {roleOptions.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="field-label">Spreadsheet File (.xlsx, .xls, .csv) *</label>
-              <input
-                id="bankFileInput"
-                type="file"
-                className="form-input"
-                accept=".xlsx, .xls, .csv"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                disabled={isUploading}
-                required
-              />
-              <span style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginTop: 6, display: "block" }}>
-                Accepted formats: Microsoft Excel (.xlsx, .xls) or Comma Separated Values (.csv). Max file size: 50MB.
-              </span>
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-gradient"
-              style={{ width: "100%", padding: 14, fontSize: "1rem", marginTop: 8 }}
-              disabled={isUploading || !bankName.trim() || !selectedFile}
-            >
-              {isUploading ? "Uploading & Processing..." : "Upload File"}
-            </button>
-          </form>
-        </div>
-        )}
-
-        {/* Section 2: Uploaded Files Directory List */}
-        {activeTab === "files" && (
-        <div className="glass-card" style={{ padding: 32 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <h3 className="card-title" style={{ fontSize: "1.2rem", color: "#fff", margin: 0, border: "none" }}>
-              📋 Uploaded Manager Files Directory
-            </h3>
-            <span className="badge-tag">{files.length} Files</span>
-          </div>
-
-          {isLoadingFiles ? (
-            <div style={{ padding: 32, textAlign: "center", color: "var(--text-muted)" }}>
-              Loading uploaded files...
-            </div>
-          ) : files.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {files.map((file) => (
-                <div
-                  key={file.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    background: "rgba(255, 255, 255, 0.03)",
-                    border: "1px solid var(--border-color)",
-                    borderRadius: "var(--radius-md)",
-                    padding: "16px 20px",
-                    transition: "all 0.2s ease",
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ height: "35px" }}
+                  onClick={() => {
+                    setSearchQuery("")
+                    setFilterBank("all")
+                    setFilterRole("all")
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: "var(--radius-md)",
-                        background: "rgba(99, 102, 241, 0.15)",
-                        border: "1px solid var(--border-highlight)",
-                         color: "#6ee7b7",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "1.2rem",
-                        flexShrink: 0,
-                      }}
-                    >
-                      📄
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, color: "#fff", fontSize: "1rem" }}>{file.file_name}</div>
-                      <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: 4 }}>
-                        Bank: <strong style={{ color: "#10a37f" }}>{file.bank_name}</strong> | Size: {formatFileSize(file.file_size)} | Uploaded: {new Date(file.uploaded_at).toLocaleDateString()} {file.uploaded_by_name ? `by ${file.uploaded_by_name}` : ""}
-                      </div>
-                    </div>
-                  </div>
+                  <i className="bi bi-x-circle" /> Reset
+                </button>
+              </div>
+            </div>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    {file.file_path && (
-                      <a
-                        href={file.file_path}
-                        download
-                        className="btn btn-secondary"
-                        style={{ padding: "8px 14px", fontSize: "0.8rem", textDecoration: "none" }}
-                      >
-                        ⬇ Download
-                      </a>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteFile(file.id, file.file_name)}
-                      style={{
-                        background: "rgba(239, 68, 68, 0.15)",
-                        border: "1px solid rgba(239, 68, 68, 0.35)",
-                        color: "#fca5a5",
-                        padding: "8px 14px",
-                        borderRadius: "var(--radius-md)",
-                        fontSize: "0.8rem",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                      }}
-                    >
-                      🗑 Delete
-                    </button>
-                  </div>
+            {/* Managers Table */}
+            {loadingManagers ? (
+              <div style={{ textAlign: "center", padding: 60, color: "var(--ink-muted)" }}>
+                Loading bank manager directory...
+              </div>
+            ) : filteredManagers.length === 0 ? (
+              <div className="card" style={{ padding: "3rem", textAlign: "center" }}>
+                <i className="bi bi-person-x" style={{ fontSize: "2.5rem", color: "var(--ink-muted)", marginBottom: "0.5rem" }} />
+                <h3 style={{ fontSize: "1.125rem", color: "var(--ink)", marginBottom: "0.25rem" }}>No Managers Found</h3>
+                <p style={{ color: "var(--ink-soft)", fontSize: "0.8125rem" }}>
+                  Try changing your search terms or upload a new manager contact spreadsheet.
+                </p>
+              </div>
+            ) : (
+              <div className="table-wrapper">
+                <table className="table table-hover">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 40 }}>#</th>
+                      <th>Bank Name</th>
+                      <th>Manager Name</th>
+                      <th>Role / Designation</th>
+                      <th>Location / Branch</th>
+                      <th>Phone</th>
+                      <th>Email</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredManagers.map((m: any, idx: number) => (
+                      <tr key={m.id || idx}>
+                        <td style={{ color: "var(--ink-muted)" }}>{idx + 1}</td>
+                        <td>
+                          <span style={{ fontWeight: 600, color: "var(--ink)" }}>
+                            <i className="bi bi-bank" style={{ color: "var(--accent)", marginRight: "0.375rem" }} />
+                            {m.bank_name || "-"}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: 600, color: "var(--ink)" }}>{m.name || "-"}</td>
+                        <td>
+                          <span className="badge bg-purple">{m.role || "Branch Manager"}</span>
+                        </td>
+                        <td style={{ color: "var(--ink-soft)" }}>
+                          <i className="bi bi-geo-alt" style={{ marginRight: "0.25rem", color: "var(--ink-muted)" }} />
+                          {m.city || m.location || m.state || "-"}
+                        </td>
+                        <td>
+                          {m.phone ? (
+                            <a href={`tel:${m.phone}`} style={{ color: "var(--accent)", fontWeight: 500 }}>
+                              <i className="bi bi-telephone" style={{ marginRight: "0.25rem" }} />
+                              {m.phone}
+                            </a>
+                          ) : (
+                            <span style={{ color: "var(--ink-muted)" }}>-</span>
+                          )}
+                        </td>
+                        <td>
+                          {m.email ? (
+                            <a href={`mailto:${m.email}`} style={{ color: "var(--ink-soft)" }}>
+                              <i className="bi bi-envelope" style={{ marginRight: "0.25rem" }} />
+                              {m.email}
+                            </a>
+                          ) : (
+                            <span style={{ color: "var(--ink-muted)" }}>-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: Upload & Files */}
+        {activeTab === "files" && (
+          <div>
+            {/* Section 1: File Upload Form Card */}
+            <div className="card" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
+              <div style={{ fontWeight: 600, fontSize: "1rem", color: "var(--ink)", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <i className="bi bi-cloud-arrow-up" style={{ color: "var(--accent)", fontSize: "1.25rem" }} />
+                Upload Bank Manager Spreadsheet File
+              </div>
+
+              {uploadMsg && (
+                <div
+                  className={`alert ${uploadMsg.type === "success" ? "alert-success" : "alert-danger"}`}
+                  style={{ marginBottom: "1rem" }}
+                >
+                  <i className={`bi ${uploadMsg.type === "success" ? "bi-check-circle" : "bi-exclamation-triangle"}`} style={{ marginRight: "0.375rem" }} />
+                  {uploadMsg.text}
                 </div>
-              ))}
+              )}
+
+              <form onSubmit={handleUploadSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Bank Name *</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g. State Bank of India, HDFC Bank, ICICI Bank, Axis Bank..."
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    disabled={isUploading}
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Spreadsheet File (.xlsx, .xls, .csv) *</label>
+                  <input
+                    id="bankFileInput"
+                    type="file"
+                    className="form-control"
+                    accept=".xlsx, .xls, .csv"
+                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    disabled={isUploading}
+                    required
+                  />
+                  <span style={{ fontSize: "0.75rem", color: "var(--ink-muted)", marginTop: 4, display: "block" }}>
+                    Accepted formats: Microsoft Excel (.xlsx, .xls) or CSV (.csv). Max file size: 50MB.
+                  </span>
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ alignSelf: "flex-start", marginTop: "0.5rem" }}
+                  disabled={isUploading || !bankName.trim() || !selectedFile}
+                >
+                  {isUploading ? (
+                    <>
+                      <span className="spinner-inline" /> Uploading &amp; Processing...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-upload" /> Upload File
+                    </>
+                  )}
+                </button>
+              </form>
             </div>
-          ) : (
-            <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-muted)" }}>
-              <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>📁</div>
-              <h4 style={{ color: "#fff", fontSize: "1.1rem", marginBottom: 6 }}>No Files Uploaded Yet</h4>
-              <p style={{ fontSize: "0.85rem" }}>
-                Use the upload form above to attach an Excel or CSV file containing bank manager details.
-              </p>
+
+            {/* Section 2: Uploaded Files Directory List */}
+            <div className="card" style={{ padding: "1.5rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <div style={{ fontWeight: 600, fontSize: "1rem", color: "var(--ink)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <i className="bi bi-folder2-open" style={{ color: "var(--accent)" }} />
+                  Uploaded Manager Files
+                </div>
+                <span className="badge">{files.length} Files</span>
+              </div>
+
+              {isLoadingFiles ? (
+                <div style={{ padding: 32, textAlign: "center", color: "var(--ink-muted)" }}>
+                  Loading uploaded files...
+                </div>
+              ) : files.length > 0 ? (
+                <div className="table-wrapper">
+                  <table className="table table-hover">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 40 }}>#</th>
+                        <th>Bank Name</th>
+                        <th>File Name</th>
+                        <th>Size</th>
+                        <th>Uploaded Date</th>
+                        <th style={{ textAlign: "right" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {files.map((file, idx) => (
+                        <tr key={file.id}>
+                          <td style={{ color: "var(--ink-muted)" }}>{idx + 1}</td>
+                          <td style={{ fontWeight: 600, color: "var(--ink)" }}>{file.bank_name}</td>
+                          <td style={{ color: "var(--accent)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                            <i className="bi bi-file-earmark-spreadsheet" style={{ marginRight: "0.375rem" }} />
+                            {file.file_name}
+                          </td>
+                          <td>
+                            <span className="badge">{formatFileSize(file.file_size)}</span>
+                          </td>
+                          <td style={{ color: "var(--ink-soft)" }}>
+                            {new Date(file.uploaded_at).toLocaleDateString()}
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            <div style={{ display: "inline-flex", gap: "0.375rem" }}>
+                              {file.file_path && (
+                                <a
+                                  href={file.file_path}
+                                  download
+                                  className="btn btn-secondary btn-sm"
+                                >
+                                  <i className="bi bi-download" /> Download
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                className="btn btn-outline-danger btn-sm"
+                                onClick={() => handleDeleteFile(file.id, file.file_name)}
+                              >
+                                <i className="bi bi-trash3" /> Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--ink-muted)" }}>
+                  <i className="bi bi-folder-x" style={{ fontSize: "2.5rem", marginBottom: "0.5rem", display: "block" }} />
+                  <h4 style={{ color: "var(--ink)", fontSize: "1rem", marginBottom: 4 }}>No Files Uploaded Yet</h4>
+                  <p style={{ fontSize: "0.8125rem", color: "var(--ink-soft)" }}>
+                    Use the upload form above to attach an Excel or CSV file containing bank manager details.
+                  </p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
         )}
       </main>
     </main>

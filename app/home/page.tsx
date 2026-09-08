@@ -83,6 +83,17 @@ export default function HomePage() {
     return () => window.removeEventListener("popstate", handlePopState)
   }, [])
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "s") {
+        e.preventDefault()
+        setSidebarOpen((prev) => !prev)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
   function handleSectionChange(section: DashboardSection) {
     setActiveSection(section)
     if (typeof window !== "undefined") {
@@ -655,16 +666,16 @@ export default function HomePage() {
     const overviewText = rawOverview.replace(/### 🏢 Corporate Intelligence:[\s\S]*?(?=📌|📊|🏦|$)/gi, "").trim()
 
     if (overviewText) {
-      html += `<div class="company-intro-box" style="margin-bottom: 20px; padding: 16px 20px; background: rgba(59, 130, 246, 0.08); border-left: 4px solid #3b82f6; border-radius: 8px; line-height: 1.6; font-size: 0.95rem; color: #e2e8f0;">`
-      html += `<div style="font-weight: 600; font-size: 1rem; margin-bottom: 6px; color: #60a5fa;">🏢 ${escapeHtml(compName)} — Overview</div>`
+      html += `<div class="company-intro-box" style="margin-bottom: 1rem; padding: 1rem 1.25rem; background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: var(--radius); line-height: 1.6; font-size: 0.875rem; color: var(--ink);">`
+      html += `<div style="font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.375rem; color: var(--accent);"><i class="bi bi-building"></i> ${escapeHtml(compName)} — Overview</div>`
       html += renderMarkdown(overviewText)
       html += `</div>`
     }
 
     // 2. Basic Information Table
-    html += `<div class="company-table-section" style="margin-bottom: 20px;">`
-    html += `<div class="company-table-title" style="font-weight: 600; font-size: 1.05rem; margin-bottom: 10px; color: #f8fafc; display: flex; align-items: center; gap: 8px;">📌 Basic Information</div>`
-    html += `<div class="company-table-wrapper" style="overflow-x: auto; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px;"><table class="company-table" style="width: 100%; border-collapse: collapse;"><tbody>`
+    html += `<div class="company-table-section" style="margin-bottom: 1.25rem;">`
+    html += `<div class="company-table-title" style="font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.5rem; color: var(--ink); display: flex; align-items: center; gap: 0.5rem;"><i class="bi bi-info-circle" style="color: var(--accent);"></i> Basic Information</div>`
+    html += `<div class="table-wrapper"><table class="table table-hover"><tbody>`
     html += renderTableRow("Corporate Name", compName)
     html += renderTableRow("CIN Number", basic.cin || "-")
     html += renderTableRow("Registered Address", basic.address || "-")
@@ -675,7 +686,7 @@ export default function HomePage() {
     html += renderTableRow("Listing Status", basic.listing_status || "-")
     html += `</tbody></table></div></div>`
 
-    // 3. Bank Records Table (UNIQUE BANK NAME DISPLAYED ONLY ONCE)
+    // 3. Bank Records Table
     const seenBanks = new Set<string>()
     const uniqueBankRecords = bankRecords.filter((r: any) => {
       const bName = String(r?.bank_name || "").trim().toLowerCase()
@@ -685,32 +696,31 @@ export default function HomePage() {
     })
 
     if (uniqueBankRecords.length > 0) {
-      html += `<div class="company-table-section" style="margin-bottom: 20px;">`
-      html += `<div class="company-table-title" style="font-weight: 600; font-size: 1.05rem; margin-bottom: 10px; color: #f8fafc; display: flex; align-items: center; gap: 8px;">🏦 Master Bank Category Ratings (${uniqueBankRecords.length} Partner Banks)</div>`
-      html += `<div class="company-table-wrapper" style="overflow-x: auto; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px;"><table class="company-table company-table-bank" style="width: 100%; border-collapse: collapse;">`
-      html += `<thead><tr style="background: rgba(255, 255, 255, 0.05); text-align: left;"><th style="padding: 10px 14px; width: 70px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">Sr No</th><th style="padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">Bank Name</th><th style="padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">Category Rating</th><th style="padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">Remarks / Info</th></tr></thead><tbody>`
+      html += `<div class="company-table-section" style="margin-bottom: 1.25rem;">`
+      html += `<div class="company-table-title" style="font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.5rem; color: var(--ink); display: flex; align-items: center; gap: 0.5rem;"><i class="bi bi-bank" style="color: var(--accent);"></i> Master Bank Category Ratings (${uniqueBankRecords.length} Partner Banks)</div>`
+      html += `<div class="table-wrapper"><table class="table table-hover">`
+      html += `<thead><tr><th style="width: 60px;">#</th><th>Bank Name</th><th>Category Rating</th><th>Remarks / Info</th></tr></thead><tbody>`
       uniqueBankRecords.forEach((r: any, idx: number) => {
-        const bgStyle = idx % 2 === 0 ? "background: rgba(255, 255, 255, 0.02);" : "background: transparent;"
-        html += `<tr style="${bgStyle}">`
-        html += `<td style="padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #94a3b8;">${idx + 1}</td>`
-        html += `<td style="padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.05);"><strong style="color: #60a5fa;">${escapeHtml(r.bank_name || "-")}</strong></td>`
-        html += `<td style="padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.05);"><span class="result-badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 3px 10px; border-radius: 4px; font-size: 0.85rem; font-weight: 500;">${escapeHtml(r.company_category || r.category || "Approved")}</span></td>`
-        html += `<td style="padding: 10px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #cbd5e1;">${escapeHtml(r.other_info || r.remarks || "Corporate Partner")}</td>`
+        html += `<tr>`
+        html += `<td style="color: var(--ink-muted);">${idx + 1}</td>`
+        html += `<td><strong>${escapeHtml(r.bank_name || "-")}</strong></td>`
+        html += `<td><span class="badge bg-success">${escapeHtml(r.company_category || r.category || "Approved")}</span></td>`
+        html += `<td style="color: var(--ink-soft);">${escapeHtml(r.other_info || r.remarks || "Corporate Partner")}</td>`
         html += `</tr>`
       })
       html += `</tbody></table></div></div>`
     } else {
-      html += `<div class="company-table-section" style="margin-bottom: 20px;">`
-      html += `<div class="company-table-title" style="font-weight: 600; font-size: 1.05rem; margin-bottom: 10px; color: #f8fafc;">🏦 Bank Records</div>`
-      html += `<div style="padding: 14px 18px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; color: #fbbf24; font-size: 0.92rem; line-height: 1.5;">`
-      html += `ℹ️ <strong>Bank Listing Note:</strong> <em>${escapeHtml(compName)}</em> is not currently listed in our uploaded partner bank records. Standard corporate loan application rules apply.`
+      html += `<div class="company-table-section" style="margin-bottom: 1.25rem;">`
+      html += `<div class="company-table-title" style="font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.5rem; color: var(--ink);"><i class="bi bi-bank"></i> Bank Records</div>`
+      html += `<div class="alert alert-warning" style="margin-bottom: 0;">`
+      html += `<i class="bi bi-exclamation-triangle" style="margin-right: 0.375rem;"></i><strong>Bank Listing Note:</strong> <em>${escapeHtml(compName)}</em> is not currently listed in our uploaded partner bank records. Standard corporate loan application rules apply.`
       html += `</div></div>`
     }
 
     // 4. Financial Information Table
     html += `<div class="company-table-section">`
-    html += `<div class="company-table-title" style="font-weight: 600; font-size: 1.05rem; margin-bottom: 10px; color: #f8fafc; display: flex; align-items: center; gap: 8px;">📊 Financial & Operational Profile</div>`
-    html += `<div class="company-table-wrapper" style="overflow-x: auto; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px;"><table class="company-table" style="width: 100%; border-collapse: collapse;"><tbody>`
+    html += `<div class="company-table-title" style="font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.5rem; color: var(--ink); display: flex; align-items: center; gap: 0.5rem;"><i class="bi bi-bar-chart" style="color: var(--accent);"></i> Financial & Operational Profile</div>`
+    html += `<div class="table-wrapper"><table class="table table-hover"><tbody>`
     html += renderTableRow("Total Workforce / Employees", financial.employees || "-")
     html += renderTableRow("Annual Turnover / Revenue", financial.turnover || "-")
     html += renderTableRow("Net Profit / Loss Status", financial.profit_status || "-")
@@ -724,7 +734,7 @@ export default function HomePage() {
 
   function renderTableRow(label: string, value: string) {
     const escapedValue = escapeHtml(value)
-    return `<tr><td class="company-table-label">${escapeHtml(label)}</td><td class="company-table-value">${escapedValue}</td></tr>`
+    return `<tr><td style="font-weight: 500; color: var(--ink-soft); width: 35%;">${escapeHtml(label)}</td><td style="color: var(--ink); font-weight: 600;">${escapedValue}</td></tr>`
   }
 
   function renderMessageActions(message: any) {
@@ -737,14 +747,14 @@ export default function HomePage() {
           onClick={() => toggleLike(message.id)}
           title="Good response"
         >
-          👍
+          <i className="bi bi-hand-thumbs-up" />
         </button>
         <button
           className={`message-action-btn ${actions.disliked ? "active-dislike" : ""}`}
           onClick={() => toggleDislike(message.id)}
           title="Bad response"
         >
-          👎
+          <i className="bi bi-hand-thumbs-down" />
         </button>
         {isErrorMessage(message) && (
           <button
@@ -752,89 +762,100 @@ export default function HomePage() {
             onClick={() => retryMessage(message.retry_content || message.content.replace(/^Error:\s*/, ""))}
             title="Retry"
           >
-            🔄 Retry
+            <i className="bi bi-arrow-clockwise" /> Retry
           </button>
         )}
       </div>
     )
   }
 
-  if (!user) return <main style={{ padding: 24 }}>Loading...</main>
+  if (!user) return <main style={{ padding: 24, textAlign: "center", color: "var(--ink-soft)" }}>Loading...</main>
 
   return (
     <main className={`home-body ${activeSection === "assistant" ? "chat-page" : ""}`}>
       <Topbar
         user={user}
         pathname="/home"
-        selectedModel={selectedModel}
-        onModelChange={setSelectedModel}
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+        sidebarOpen={sidebarOpen}
       />
 
       {activeSection === "home" && (
         <div className="dashboard-home-view animate-fade-in">
-          <div className="home-hero-banner">
-            <div className="home-hero-badge">✦ Financial & Loan Intelligence Platform</div>
-            <h1 className="home-hero-title">
+          {/* CallNow Hero Banner */}
+          <div className="home-hero-banner hero">
+            <div className="home-hero-badge">
+              <i className="bi bi-stars" /> Financial &amp; Loan Intelligence Platform
+            </div>
+            <h1 className="hero-title">
               Welcome back, {user.name || user.email?.split("@")[0] || "User"}
             </h1>
-            <p className="home-hero-subtitle">
+            <p className="hero-subtitle">
               Your centralized workspace for AI loan evaluation, live bank policy rules, employer verification, and real-time EMI simulations.
             </p>
-            <div className="home-hero-actions">
+            <div className="hero-actions">
               <button
                 type="button"
-                className="home-hero-btn primary"
+                className="btn btn-primary"
                 onClick={() => handleSectionChange("assistant")}
               >
-                💬 Launch AI Assistant
+                <i className="bi bi-chat-dots" /> Launch AI Assistant
               </button>
               <button
                 type="button"
-                className="home-hero-btn secondary"
+                className="btn btn-secondary"
                 onClick={() => handleSectionChange("emi")}
               >
-                🧮 Open EMI Calculator
+                <i className="bi bi-calculator" /> Open EMI Calculator
               </button>
               <button
                 type="button"
-                className="home-hero-btn secondary"
+                className="btn btn-secondary"
                 onClick={() => handleSectionChange("policies")}
               >
-                📋 View Bank Policies
+                <i className="bi bi-file-earmark-text" /> View Bank Policies
               </button>
             </div>
           </div>
 
+          {/* KPI Stat Cards Grid */}
           <div className="home-stats-grid">
-            <div className="home-stat-card">
-              <div className="home-stat-icon">🏦</div>
+            <div className="stat-card">
+              <div className="stat-card-icon">
+                <i className="bi bi-bank" />
+              </div>
               <div>
-                <div className="home-stat-value">20+ Banks</div>
-                <div className="home-stat-label">HDFC, ICICI, SBI, Axis & more</div>
+                <div className="stat-card-value">20+ Banks</div>
+                <div className="stat-card-label">HDFC, ICICI, SBI, Axis &amp; more</div>
               </div>
             </div>
-            <div className="home-stat-card">
-              <div className="home-stat-icon">🏢</div>
+            <div className="stat-card">
+              <div className="stat-card-icon">
+                <i className="bi bi-buildings" />
+              </div>
               <div>
-                <div className="home-stat-value">339K+</div>
-                <div className="home-stat-label">Employer Category Listings</div>
+                <div className="stat-card-value">339K+</div>
+                <div className="stat-card-label">Employer Category Listings</div>
               </div>
             </div>
-            <div className="home-stat-card">
-              <div className="home-stat-icon">📋</div>
+            <div className="stat-card">
+              <div className="stat-card-icon">
+                <i className="bi bi-file-earmark-check" />
+              </div>
               <div>
-                <div className="home-stat-value">Live Policies</div>
-                <div className="home-stat-label">CIBIL, FOIR, Age & Salary rules</div>
+                <div className="stat-card-value">Live Policies</div>
+                <div className="stat-card-label">CIBIL, FOIR, Age &amp; Salary rules</div>
               </div>
             </div>
-            <div className="home-stat-card">
-              <div className="home-stat-icon">⚡</div>
+            <div className="stat-card">
+              <div className="stat-card-icon">
+                <i className="bi bi-lightning-charge" />
+              </div>
               <div>
-                <div className="home-stat-value">Instant Math</div>
-                <div className="home-stat-label">Real-time amortization schedule</div>
+                <div className="stat-card-value">Instant Math</div>
+                <div className="stat-card-label">Real-time amortization schedule</div>
               </div>
             </div>
           </div>
@@ -844,11 +865,13 @@ export default function HomePage() {
           </div>
 
           <div className="home-cards-grid">
-            <div className="home-feature-card">
+            <div className="card home-feature-card">
               <div>
                 <div className="home-feature-card-header">
-                  <div className="home-feature-icon">🤖</div>
-                  <span className="home-feature-tag">AI Powered</span>
+                  <div className="home-feature-icon">
+                    <i className="bi bi-robot" />
+                  </div>
+                  <span className="badge bg-primary">AI Powered</span>
                 </div>
                 <h3 className="home-feature-title">AI Loan Assistant</h3>
                 <p className="home-feature-desc">
@@ -860,117 +883,130 @@ export default function HomePage() {
                     className="home-prompt-chip"
                     onClick={() => handleLaunchPrompt("Calculate EMI for a home loan of 500000 at 9.5% for 60 months")}
                   >
-                    💬 Calculate EMI for 5L home loan at 9.5%
+                    <i className="bi bi-chat-quote" style={{ marginRight: "0.25rem", color: "var(--accent)" }} />
+                    Calculate EMI for 5L home loan at 9.5%
                   </button>
                   <button
                     type="button"
                     className="home-prompt-chip"
                     onClick={() => handleLaunchPrompt("Tell me about loan processing fees")}
                   >
-                    💬 Loan processing fees & charges
+                    <i className="bi bi-chat-quote" style={{ marginRight: "0.25rem", color: "var(--accent)" }} />
+                    Loan processing fees &amp; charges
                   </button>
                   <button
                     type="button"
                     className="home-prompt-chip"
                     onClick={() => handleLaunchPrompt("Check ICICI manager details in Pune")}
                   >
-                    💬 Find ICICI manager details in Pune
+                    <i className="bi bi-chat-quote" style={{ marginRight: "0.25rem", color: "var(--accent)" }} />
+                    Find ICICI manager details in Pune
                   </button>
                 </div>
               </div>
               <button
                 type="button"
-                className="home-feature-btn"
+                className="btn btn-outline-primary"
+                style={{ width: "100%" }}
                 onClick={() => handleSectionChange("assistant")}
               >
-                Chat with Assistant →
+                Chat with Assistant <i className="bi bi-arrow-right" />
               </button>
             </div>
 
-            <div className="home-feature-card">
+            <div className="card home-feature-card">
               <div>
                 <div className="home-feature-card-header">
-                  <div className="home-feature-icon">🧮</div>
-                  <span className="home-feature-tag">Interactive</span>
+                  <div className="home-feature-icon">
+                    <i className="bi bi-calculator" />
+                  </div>
+                  <span className="badge bg-primary">Interactive</span>
                 </div>
                 <h3 className="home-feature-title">EMI Calculator</h3>
                 <p className="home-feature-desc">
                   Calculate accurate monthly EMI, principal vs interest breakdown, and export or print complete amortization tables.
                 </p>
-                <div style={{ background: "#f9fafb", padding: "14px", borderRadius: "10px", marginBottom: "18px", border: "1px solid #e5e7eb" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#6b7280", marginBottom: "6px" }}>
+                <div style={{ background: "var(--surface-2)", padding: "12px 14px", borderRadius: "var(--radius)", marginBottom: "16px", border: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8125rem", color: "var(--ink-soft)", marginBottom: "4px" }}>
                     <span>Default Example</span>
-                    <span style={{ fontWeight: 700, color: "#10a37f" }}>₹10,501 / mo</span>
+                    <span style={{ fontWeight: 700, color: "var(--accent)" }}>₹10,501 / mo</span>
                   </div>
-                  <div style={{ fontSize: "0.78rem", color: "#9ca3af" }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--ink-muted)" }}>
                     ₹5,00,000 at 9.5% for 60 months
                   </div>
                 </div>
               </div>
               <button
                 type="button"
-                className="home-feature-btn"
+                className="btn btn-outline-primary"
+                style={{ width: "100%" }}
                 onClick={() => handleSectionChange("emi")}
               >
-                Open EMI Calculator →
+                Open EMI Calculator <i className="bi bi-arrow-right" />
               </button>
             </div>
 
-            <div className="home-feature-card">
+            <div className="card home-feature-card">
               <div>
                 <div className="home-feature-card-header">
-                  <div className="home-feature-icon">📋</div>
-                  <span className="home-feature-tag">Bank Rules</span>
+                  <div className="home-feature-icon">
+                    <i className="bi bi-file-earmark-text" />
+                  </div>
+                  <span className="badge bg-primary">Bank Rules</span>
                 </div>
                 <h3 className="home-feature-title">Bank Policy Guidelines</h3>
                 <p className="home-feature-desc">
                   Explore underwriting policy guidelines, FOIR multipliers, minimum salary requirements, and view official bank documents.
                 </p>
-                <div style={{ background: "#f9fafb", padding: "14px", borderRadius: "10px", marginBottom: "18px", border: "1px solid #e5e7eb" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#6b7280", marginBottom: "6px" }}>
+                <div style={{ background: "var(--surface-2)", padding: "12px 14px", borderRadius: "var(--radius)", marginBottom: "16px", border: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8125rem", color: "var(--ink-soft)", marginBottom: "4px" }}>
                     <span>Bank Coverage</span>
-                    <span style={{ fontWeight: 700, color: "#10a37f" }}>HDFC, ICICI, SBI, Axis</span>
+                    <span style={{ fontWeight: 700, color: "var(--accent)" }}>HDFC, ICICI, SBI, Axis</span>
                   </div>
-                  <div style={{ fontSize: "0.78rem", color: "#9ca3af" }}>
-                    CIBIL, FOIR, multipliers & policy attachments
+                  <div style={{ fontSize: "0.75rem", color: "var(--ink-muted)" }}>
+                    CIBIL, FOIR, multipliers &amp; policy attachments
                   </div>
                 </div>
               </div>
               <button
                 type="button"
-                className="home-feature-btn"
+                className="btn btn-outline-primary"
+                style={{ width: "100%" }}
                 onClick={() => handleSectionChange("policies")}
               >
-                View Bank Policies →
+                View Bank Policies <i className="bi bi-arrow-right" />
               </button>
             </div>
 
-            <div className="home-feature-card">
+            <div className="card home-feature-card">
               <div>
                 <div className="home-feature-card-header">
-                  <div className="home-feature-icon">🏦</div>
-                  <span className="home-feature-tag">Directory</span>
+                  <div className="home-feature-icon">
+                    <i className="bi bi-people" />
+                  </div>
+                  <span className="badge bg-primary">Directory</span>
                 </div>
                 <h3 className="home-feature-title">Bank Managers</h3>
                 <p className="home-feature-desc">
                   Locate verified branch managers, regional credit officers, and loan executives in your target city.
                 </p>
-                <div style={{ background: "#f9fafb", padding: "14px", borderRadius: "10px", marginBottom: "18px", border: "1px solid #e5e7eb" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#6b7280", marginBottom: "6px" }}>
+                <div style={{ background: "var(--surface-2)", padding: "12px 14px", borderRadius: "var(--radius)", marginBottom: "16px", border: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8125rem", color: "var(--ink-soft)", marginBottom: "4px" }}>
                     <span>City Coverage</span>
-                    <span style={{ fontWeight: 700, color: "#f59e0b" }}>Pan-India</span>
+                    <span style={{ fontWeight: 700, color: "var(--warning)" }}>Pan-India</span>
                   </div>
-                  <div style={{ fontSize: "0.78rem", color: "#9ca3af" }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--ink-muted)" }}>
                     Phone, email, and branch addresses
                   </div>
                 </div>
               </div>
               <button
                 type="button"
-                className="home-feature-btn"
+                className="btn btn-outline-primary"
+                style={{ width: "100%" }}
                 onClick={() => router.push("/bank-managers")}
               >
-                Search Bank Managers →
+                Search Bank Managers <i className="bi bi-arrow-right" />
               </button>
             </div>
           </div>
@@ -985,22 +1021,12 @@ export default function HomePage() {
         <aside className={`chat-sidebar ${sidebarOpen ? "open" : "closed"}`} id="chatSidebar">
           <div className="chat-sidebar-header">
             <button className="chat-new-chat-btn" id="chatNewConversation" onClick={newConversation}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-              New Chat
+              <i className="bi bi-plus-lg" /> New Chat
             </button>
-          </div>
-          <div className="chat-search-box">
-            <input
-              type="text"
-              className="chat-search-input"
-              placeholder="Search conversations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
           </div>
           <div className="chat-list" id="chatConversationList">
             {filteredConversations().length === 0 ? (
-              <div style={{ padding: "20px", textAlign: "center", color: "var(--chat-text-muted)", fontSize: "13px" }}>
+              <div style={{ padding: "20px", textAlign: "center", color: "var(--ink-muted)", fontSize: "12px" }}>
                 No conversations yet
               </div>
             ) : (
@@ -1008,7 +1034,7 @@ export default function HomePage() {
                 <div key={section.key} className="chat-history-section">
                   <div className="chat-history-section-header">
                     <span className="chat-history-section-title">{section.title}</span>
-                    <span className="chat-history-section-count">{section.items.length}</span>
+                    <span className="badge">{section.items.length}</span>
                   </div>
                   {section.items.map((conversation) => (
                     <div
@@ -1026,7 +1052,7 @@ export default function HomePage() {
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div className="chat-conversation-title">
-                          {conversation.pinned ? "📌 " : ""}
+                          {conversation.pinned && <i className="bi bi-pin-fill" style={{ color: "var(--accent)", marginRight: "0.25rem" }} />}
                           {conversation.title}
                         </div>
                         <div className="chat-conversation-meta">{formatDate(conversation.createdAt)}</div>
@@ -1038,9 +1064,10 @@ export default function HomePage() {
                             e.stopPropagation()
                             togglePinConversation(conversation.id, !conversation.pinned)
                           }}
-                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px" }}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", color: "var(--ink-muted)" }}
+                          title={conversation.pinned ? "Unpin" : "Pin"}
                         >
-                          {conversation.pinned ? "📌" : "📍"}
+                          <i className={conversation.pinned ? "bi bi-pin-fill" : "bi bi-pin"} />
                         </button>
                         <button
                           type="button"
@@ -1048,9 +1075,10 @@ export default function HomePage() {
                             e.stopPropagation()
                             deleteConversation(conversation.id)
                           }}
-                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", color: "#ef4444" }}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", color: "var(--danger)" }}
+                          title="Delete"
                         >
-                          🗑
+                          <i className="bi bi-trash3" />
                         </button>
                       </div>
                     </div>
@@ -1058,6 +1086,29 @@ export default function HomePage() {
                 </div>
               ))
             )}
+          </div>
+          <div className="chat-search-box">
+            <div style={{ position: "relative", width: "100%" }}>
+              <i className="bi bi-search" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "0.75rem", color: "var(--ink-muted)" }} />
+              <input
+                type="text"
+                className="chat-search-input"
+                placeholder="Search conversations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ paddingLeft: "28px" }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--ink-muted)", cursor: "pointer", fontSize: "0.75rem", padding: 0 }}
+                  title="Clear search"
+                >
+                  <i className="bi bi-x-circle-fill" />
+                </button>
+              )}
+            </div>
           </div>
           <div className="chat-sidebar-footer">
             <div className="chat-sidebar-profile" onClick={() => router.push("/profile")}>
@@ -1078,7 +1129,7 @@ export default function HomePage() {
                 }
               }}
             >
-              Clear History
+              <i className="bi bi-trash3" style={{ marginRight: "0.25rem" }} /> Clear History
             </button>
           </div>
         </aside>
@@ -1101,29 +1152,39 @@ export default function HomePage() {
             <div id="chatMessagesInner">
               {messages.length === 0 ? (
                 <div className="chat-welcome" id="chatWelcomeMessage">
-                  <div className="chat-welcome-icon">💬</div>
+                  <div className="chat-welcome-icon" style={{ color: "var(--accent)" }}>
+                    <i className="bi bi-chat-dots-fill" />
+                  </div>
                   <h2>Hello! How can I help you today?</h2>
                   <p>Ask me anything about loans, EMI calculations, bank managers, or your account.</p>
                   <div className="chat-welcome-grid">
                     <button className="chat-welcome-card" onClick={() => sendMessage("Calculate EMI for a home loan of 500000 at 9.5% for 60 months")}>
-                      <div className="chat-welcome-card-icon">🧮</div>
+                      <div className="chat-welcome-card-icon" style={{ color: "var(--accent)" }}>
+                        <i className="bi bi-calculator" />
+                      </div>
                       <div className="chat-welcome-card-title">Calculate EMI</div>
                       <div className="chat-welcome-card-desc">Get instant EMI calculations for home, personal, or car loans.</div>
                     </button>
                     <button className="chat-welcome-card" onClick={() => sendMessage("Tell me about loan processing fees")}>
-                      <div className="chat-welcome-card-icon">💰</div>
+                      <div className="chat-welcome-card-icon" style={{ color: "var(--warning)" }}>
+                        <i className="bi bi-cash-coin" />
+                      </div>
                       <div className="chat-welcome-card-title">Processing Fees</div>
-                      <div className="chat-welcome-card-desc">Learn about loan processing fees and charges.</div>
+                      <div className="chat-welcome-card-desc">Learn about loan processing fees and charges across lenders.</div>
                     </button>
                     <button className="chat-welcome-card" onClick={() => sendMessage("How can I update my profile?")}>
-                      <div className="chat-welcome-card-icon">👤</div>
+                      <div className="chat-welcome-card-icon" style={{ color: "var(--info)" }}>
+                        <i className="bi bi-person-gear" />
+                      </div>
                       <div className="chat-welcome-card-title">Profile Help</div>
-                      <div className="chat-welcome-card-desc">Get assistance with profile settings and account management.</div>
+                      <div className="chat-welcome-card-desc">Get assistance with profile settings and personal details.</div>
                     </button>
                     <button className="chat-welcome-card" onClick={() => sendMessage("Give me ICICI manager details in Pune")}>
-                      <div className="chat-welcome-card-icon">🏦</div>
+                      <div className="chat-welcome-card-icon" style={{ color: "var(--success)" }}>
+                        <i className="bi bi-bank2" />
+                      </div>
                       <div className="chat-welcome-card-title">Bank Managers</div>
-                      <div className="chat-welcome-card-desc">Find bank manager contact details by location.</div>
+                      <div className="chat-welcome-card-desc">Find verified bank manager contact details by location.</div>
                     </button>
                   </div>
                 </div>
@@ -1132,8 +1193,8 @@ export default function HomePage() {
                   const isUser = message.role === "user"
                   return (
                     <div key={message.id} className={`chat-message ${message.role}`} data-message-id={message.id}>
-                      <div className="chat-avatar">{isUser ? "U" : "AI"}</div>
-                      <div>
+                      <div className="chat-avatar">{isUser ? "U" : <i className="bi bi-cpu" />}</div>
+                      <div style={{ maxWidth: "85%" }}>
                         <div
                           className="chat-bubble"
                           dangerouslySetInnerHTML={{ __html: renderMessageContent(message) }}
@@ -1152,7 +1213,7 @@ export default function HomePage() {
                                   }
                                 }}
                               >
-                                Copy
+                                <i className="bi bi-copy" /> Copy
                               </button>
                               {renderMessageActions(message)}
                             </>
@@ -1165,7 +1226,7 @@ export default function HomePage() {
               )}
               {loading && (
                 <div className="chat-message ai" id="aiTypingIndicator">
-                  <div className="chat-avatar">AI</div>
+                  <div className="chat-avatar"><i className="bi bi-cpu" /></div>
                   <div className="chat-bubble typing-bubble">
                     <div className="chat-typing-indicator">
                       <div className="chat-typing-dot"></div>
@@ -1182,13 +1243,13 @@ export default function HomePage() {
           <div className="chat-composer">
             <form className="chat-composer-form" onSubmit={(e) => { e.preventDefault(); sendMessage(input) }} autoComplete="off">
               <button type="button" className="chat-attachment-btn" title="Attach file" onClick={() => {}}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                <i className="bi bi-paperclip" style={{ fontSize: "1.125rem" }} />
               </button>
               <div className="chat-input-wrap">
                 <textarea
                   ref={textareaRef}
                   className="chat-input"
-                  placeholder="Message AI ASSISTANT..."
+                  placeholder="Message AI Assistant..."
                   rows={1}
                   value={input}
                   onChange={(e) => { setInput(e.target.value); adjustTextarea() }}
@@ -1208,15 +1269,12 @@ export default function HomePage() {
                     <div className="chat-typing-dot"></div>
                   </div>
                 ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                  </svg>
+                  <i className="bi bi-arrow-up" style={{ fontSize: "1rem" }} />
                 )}
               </button>
             </form>
-            <div className="chat-disclaimer" style={{ textAlign: "center", fontSize: "0.72rem", color: "rgba(156, 163, 175, 0.65)", marginTop: "8px", width: "100%", display: "block" }}>
-              AI can make mistakes. Please verify important information.
+            <div className="chat-disclaimer" style={{ textAlign: "center", fontSize: "0.72rem", color: "var(--ink-muted)", marginTop: "8px", width: "100%", display: "block" }}>
+              AI can make mistakes. Please verify important loan and policy details.
             </div>
           </div>
         </main>

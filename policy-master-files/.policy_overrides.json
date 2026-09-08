@@ -1,0 +1,13 @@
+{
+  "2": {
+    "min_cibil": 700,
+    "max_cibil": 900,
+    "foir_percent": 22
+  },
+  "11": {
+    "min_cibil": 725,
+    "max_cibil": 885,
+    "foir_percent": 24,
+    "status": "active"
+  }
+}

@@ -200,56 +200,49 @@ export default function EmiCalculator({
   const principalRatio = totalPayment > 0 ? (principal / totalPayment) * 100 : 0
   const interestRatio = totalPayment > 0 ? (totalInterest / totalPayment) * 100 : 0
 
-  if (!user) return <main style={{ padding: 24 }}>Loading...</main>
+  if (!user) return <main style={{ padding: 24, textAlign: "center", color: "var(--ink-soft)" }}>Loading...</main>
 
   return (
     <>
-      {!embedded && <Topbar user={user} />}
+      {!embedded && <Topbar user={user} pathname="/home" />}
       <div
         className="emi-page-wrapper animate-fade-in"
-        style={embedded ? { flex: 1, overflow: "auto", height: "calc(100vh - 64px)", width: "100%" } : undefined}
+        style={embedded ? { flex: 1, overflow: "auto", height: "calc(100vh - var(--topbar-height))", width: "100%" } : undefined}
       >
         <div className="emi-fixed-container">
-          {/* Header */}
-          <div className="emi-header">
-            <div className="emi-header-left">
-              <div className="emi-header-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect width="18" height="18" x="3" y="3" rx="3"/>
-                  <line x1="7" y1="7" x2="17" y2="7"/>
-                  <line x1="7" y1="12" x2="9" y2="12"/>
-                  <line x1="12" y1="12" x2="12.01" y2="12"/>
-                  <line x1="15" y1="12" x2="17" y2="12"/>
-                  <line x1="7" y1="16" x2="9" y2="16"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
-                  <line x1="15" y1="16" x2="17" y2="16"/>
-                </svg>
-              </div>
-              <h2>EMI Calculator</h2>
+          {/* Page Header */}
+          <div className="page-header">
+            <div>
+              <h1 className="page-header-title">
+                <i className="bi bi-calculator" style={{ color: "var(--accent)", marginRight: "0.5rem" }} />
+                EMI Calculator
+              </h1>
+              <p className="page-header-subtitle">
+                Interactive loan simulation, principal vs interest distribution, and month-by-month amortization schedule
+              </p>
             </div>
-            <span className="badge-tag">Smart Financial Planning</span>
+            <div className="page-header-actions">
+              <span className="badge bg-primary">Smart Financial Planning</span>
+            </div>
           </div>
 
           {/* Main Grid */}
           <div className="emi-grid">
             {/* Controls Panel (Left) */}
-            <div className="emi-params-card">
+            <div className="card emi-params-card">
               <div className="emi-params-title">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
+                <i className="bi bi-sliders2" style={{ color: "var(--accent)" }} />
                 Loan Parameters
               </div>
 
               {/* Field 1: Loan Type */}
               <div className="emi-field-group">
-                <label className="emi-field-label-row">
-                  <span>Loan Type</span>
+                <label className="form-label" htmlFor="loanType">
+                  Loan Type
                 </label>
                 <select
                   id="loanType"
-                  className="emi-select-input"
+                  className="form-select"
                   value={loanType}
                   onChange={(e) => setLoanType(e.target.value)}
                 >
@@ -264,7 +257,7 @@ export default function EmiCalculator({
               {/* Field 2: Loan Amount */}
               <div className="emi-field-group">
                 <div className="emi-field-label-row">
-                  <span>Loan Amount (₹)</span>
+                  <label className="form-label" htmlFor="loanAmount">Loan Amount (₹)</label>
                   <span className="emi-field-label-value">₹{formatWholeMoney(principal)}</span>
                 </div>
                 <div className="emi-control-row">
@@ -281,7 +274,7 @@ export default function EmiCalculator({
                   <input
                     id="loanAmount"
                     type="number"
-                    className="emi-number-input"
+                    className="form-control emi-number-input"
                     value={principal}
                     min="50000"
                     step="50000"
@@ -305,7 +298,7 @@ export default function EmiCalculator({
               {/* Field 3: Annual Interest Rate */}
               <div className="emi-field-group">
                 <div className="emi-field-label-row">
-                  <span>Annual Interest Rate (%)</span>
+                  <label className="form-label" htmlFor="rate">Annual Interest Rate (%)</label>
                   <span className="emi-field-label-value">{rate}%</span>
                 </div>
                 <div className="emi-control-row">
@@ -322,7 +315,7 @@ export default function EmiCalculator({
                   <input
                     id="rate"
                     type="number"
-                    className="emi-number-input"
+                    className="form-control emi-number-input"
                     value={rate}
                     step="0.25"
                     onChange={(e) => setRate(Number(e.target.value))}
@@ -345,7 +338,7 @@ export default function EmiCalculator({
               {/* Field 4: Loan Tenure */}
               <div className="emi-field-group">
                 <div className="emi-field-label-row">
-                  <span>Loan Tenure</span>
+                  <label className="form-label" htmlFor="term">Loan Tenure</label>
                   <span className="emi-field-label-value">
                     {term} {termUnit}
                   </span>
@@ -364,14 +357,15 @@ export default function EmiCalculator({
                   <input
                     id="term"
                     type="number"
-                    className="emi-number-input"
+                    className="form-control emi-number-input"
                     value={term}
                     step="1"
                     onChange={(e) => setTerm(Number(e.target.value))}
                   />
                   <select
                     id="monthsOrYears"
-                    className="emi-tenure-select"
+                    className="form-select"
+                    style={{ width: "110px" }}
                     value={termUnit}
                     onChange={(e) => {
                       const unit = e.target.value as "months" | "years"
@@ -411,7 +405,7 @@ export default function EmiCalculator({
               {/* Field 5: Processing Fee */}
               <div className="emi-field-group">
                 <div className="emi-field-label-row">
-                  <span>Processing Fee (%)</span>
+                  <label className="form-label" htmlFor="fee">Processing Fee (%)</label>
                   <span className="emi-field-label-value">{fee}%</span>
                 </div>
                 <div className="emi-control-row">
@@ -428,7 +422,7 @@ export default function EmiCalculator({
                   <input
                     id="fee"
                     type="number"
-                    className="emi-number-input"
+                    className="form-control emi-number-input"
                     value={fee}
                     step="0.1"
                     onChange={(e) => setFee(Number(e.target.value))}
@@ -438,84 +432,87 @@ export default function EmiCalculator({
             </div>
 
             {/* Results Dashboard (Right) */}
-            <div className="emi-results-card">
+            <div className="emi-results-column">
               {/* Prominent Monthly EMI Hero Banner */}
-              <div className="emi-hero-banner">
-                <div className="emi-hero-label">Estimated Monthly EMI</div>
-                <div className="emi-hero-value">₹{formatMoney(emi, 2)}</div>
+              <div className="card emi-hero-card">
+                <div>
+                  <div className="emi-hero-label">Estimated Monthly EMI</div>
+                  <div className="emi-hero-amount">₹{formatMoney(emi, 2)}</div>
+                </div>
+                <div className="metric-card-icon" style={{ width: 48, height: 48, fontSize: "1.5rem" }}>
+                  <i className="bi bi-wallet-fill" />
+                </div>
               </div>
 
               {/* Summary Cards Grid */}
-              <div className="emi-summary-grid">
-                <div className="emi-summary-item">
-                  <div className="emi-summary-label">PRINCIPAL AMOUNT</div>
-                  <div className="emi-summary-value">₹{formatWholeMoney(principal)}</div>
+              <div className="emi-kpi-grid">
+                <div className="card emi-kpi-card">
+                  <div className="emi-kpi-label">Principal Amount</div>
+                  <div className="emi-kpi-value">₹{formatWholeMoney(principal)}</div>
                 </div>
-                <div className="emi-summary-item">
-                  <div className="emi-summary-label">TOTAL INTEREST</div>
-                  <div className="emi-summary-value" style={{ color: "#ec4899" }}>
+                <div className="card emi-kpi-card">
+                  <div className="emi-kpi-label">Total Interest</div>
+                  <div className="emi-kpi-value" style={{ color: "var(--purple)" }}>
                     ₹{formatMoney(totalInterest, 2)}
                   </div>
                 </div>
-                <div className="emi-summary-item">
-                  <div className="emi-summary-label">TOTAL PAYABLE</div>
-                  <div className="emi-summary-value" style={{ color: "#10b981" }}>
+                <div className="card emi-kpi-card">
+                  <div className="emi-kpi-label">Total Payable</div>
+                  <div className="emi-kpi-value" style={{ color: "var(--success)" }}>
                     ₹{formatMoney(totalPayment, 2)}
                   </div>
                 </div>
               </div>
 
               {/* Payment Ratio Visual Breakdown Bar */}
-              <div className="emi-ratio-card">
-                <div className="emi-ratio-header">
+              <div className="card emi-breakdown-card">
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8125rem", fontWeight: 600 }}>
                   <span>Payment Distribution Ratio</span>
-                  <span className="emi-ratio-subtext">
+                  <span style={{ color: "var(--ink-soft)", fontWeight: 500, fontSize: "0.75rem" }}>
                     Principal: {principalRatio.toFixed(1)}% | Interest: {interestRatio.toFixed(1)}%
                   </span>
                 </div>
-                <div className="emi-ratio-track">
-                  <div className="emi-ratio-fill-principal" style={{ width: `${principalRatio}%` }} />
-                  <div className="emi-ratio-fill-interest" style={{ width: `${interestRatio}%` }} />
+                <div className="emi-bar-container">
+                  <div className="emi-bar-principal" style={{ width: `${principalRatio}%` }} />
+                  <div className="emi-bar-interest" style={{ width: `${interestRatio}%` }} />
                 </div>
-                <div className="emi-ratio-legend">
-                  <span>
-                    <span className="emi-legend-dot" style={{ background: "#10b981" }} />
-                    Principal Loan (₹{formatWholeMoney(principal)})
-                  </span>
-                  <span>
-                    <span className="emi-legend-dot" style={{ background: "#ec4899" }} />
-                    Total Interest (₹{formatMoney(totalInterest, 2)})
-                  </span>
+                <div className="emi-legend-row">
+                  <div className="emi-legend-item">
+                    <span className="emi-legend-dot" style={{ background: "var(--accent)" }} />
+                    <span>Principal Loan (₹{formatWholeMoney(principal)})</span>
+                  </div>
+                  <div className="emi-legend-item">
+                    <span className="emi-legend-dot" style={{ background: "var(--purple)" }} />
+                    <span>Total Interest (₹{formatMoney(totalInterest, 2)})</span>
+                  </div>
                 </div>
               </div>
 
               {/* Actions Bar */}
-              <div className="emi-actions-row">
-                <span className="emi-fee-text">
-                  Upfront Processing Fee: ₹{formatWholeMoney(processingFee)}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                <span style={{ fontSize: "0.75rem", color: "var(--ink-muted)" }}>
+                  Upfront Processing Fee: <strong>₹{formatWholeMoney(processingFee)}</strong>
                 </span>
-                <div className="emi-btn-group">
-                  <button className="emi-btn-save" type="button" onClick={saveCalculation} disabled={saving}>
-                    {saving ? "Saving..." : "Save Calculation"}
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button className="btn btn-primary btn-sm" type="button" onClick={saveCalculation} disabled={saving}>
+                    {saving ? "Saving..." : <><i className="bi bi-bookmark-check" /> Save Calculation</>}
                   </button>
-                  <button className="emi-btn-print" type="button" onClick={printSchedule}>
-                    Print Schedule
+                  <button className="btn btn-secondary btn-sm" type="button" onClick={printSchedule}>
+                    <i className="bi bi-printer" /> Print Schedule
                   </button>
                 </div>
               </div>
 
               {/* Amortization Schedule Table */}
-              <div className="emi-schedule-box">
-                <div className="emi-schedule-title">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 3h18v18H3z"/>
-                    <path d="M3 9h18"/>
-                    <path d="M9 21V9"/>
-                  </svg>
-                  Amortization Schedule ({schedule.length} Months)
+              <div className="card emi-schedule-card">
+                <div className="emi-schedule-header">
+                  <div style={{ fontWeight: 600, fontSize: "0.9375rem", color: "var(--ink)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <i className="bi bi-calendar3" style={{ color: "var(--accent)" }} />
+                    Amortization Schedule ({schedule.length} Months)
+                  </div>
                 </div>
-                <div className="emi-schedule-scroll">
-                  <table className="emi-table">
+                <div className="table-wrapper" style={{ maxHeight: "360px" }}>
+                  <table className="table table-hover">
                     <thead>
                       <tr>
                         <th style={{ width: "65px" }}>Month</th>
@@ -528,10 +525,10 @@ export default function EmiCalculator({
                     <tbody id="scheduleBody">
                       {schedule.map((row) => (
                         <tr key={row.month}>
-                          <td style={{ fontWeight: 600, color: "#059669" }}>#{row.month}</td>
+                          <td style={{ fontWeight: 600, color: "var(--accent)" }}>#{row.month}</td>
                           <td>₹{formatMoney(row.emi, 2)}</td>
-                          <td style={{ color: "#059669" }}>₹{formatMoney(row.principal, 2)}</td>
-                          <td style={{ color: "#ec4899" }}>₹{formatMoney(row.interest, 2)}</td>
+                          <td style={{ color: "var(--success)" }}>₹{formatMoney(row.principal, 2)}</td>
+                          <td style={{ color: "var(--purple)" }}>₹{formatMoney(row.interest, 2)}</td>
                           <td style={{ fontWeight: 600 }}>₹{formatMoney(row.balance, 2)}</td>
                         </tr>
                       ))}

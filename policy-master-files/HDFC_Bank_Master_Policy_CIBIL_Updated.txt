@@ -14,13 +14,13 @@ SECTIONS:
 2. ELIGIBILITY CRITERIA
 3. COMPANY/EMPLOYER CATEGORIES
 4. PRICING & ROI GRIDS
-5. LOAN PARAMETERS
-6. FOIR & MULTIPLIER RULES
-7. NTH / SALARY REQUIREMENTS
-8. BT / CCBT / APP LOAN RULES
-9. DOCUMENT REQUIREMENTS
-10. EXCEPTIONS & DEVIATIONS
-11. CONFLICTS/REVIEW ITEMS
+6. LOAN PARAMETERS
+7. FOIR & MULTIPLIER RULES
+8. NTH / SALARY REQUIREMENTS
+9. BT / CCBT / APP LOAN RULES
+10. DOCUMENT REQUIREMENTS
+11. EXCEPTIONS & DEVIATIONS
+12. CONFLICTS/REVIEW ITEMS
 
 ===============================================================================
 1. PROGRAM OVERVIEW
@@ -44,9 +44,10 @@ Key Features:
 2. ELIGIBILITY CRITERIA
 ===============================================================================
 
-CIBIL/Bureau Requirements:
-- Minimum CIBIL Score: Not explicitly defined in available sources [REVIEW]
-- CIBIL 0 / -1 doable with Note code updated
+CIBIL/Bureau Requirements (Rate Card dated 07-03-25):
+- CIBIL >730: Rate-card pricing applies under the CIBIL >730 slab.
+- CIBIL <=730 / No Hit: Rate-card pricing applies under the CIBIL <=730 / No Hit slab.
+- The uploaded rate card does not specify a separate minimum CIBIL score threshold.
 - No loan availed or cancelled in last 30/31 days
 - CIC Positive / Hunter match required
 
@@ -69,8 +70,8 @@ Work Experience / Employer Tenure:
 - 3 months salary credit in bank account mandatory
 
 Bureau / Delinquency Norms:
+- CIBIL slabs in the rate card are: CIBIL >730 and CIBIL <=730 / No Hit.
 - No loan availed or cancelled in last 30/31 days
-- CIBIL 0 / -1 doable with Note code updated
 
 ===============================================================================
 3. COMPANY/EMPLOYER CATEGORIES
@@ -141,7 +142,39 @@ Premium Charges:
 - Not applicable
 
 ===============================================================================
-5. LOAN PARAMETERS
+5. CIBIL RATE CARD - 07-03-25
+===============================================================================
+
+Personal Loan - Rack Interest Rate (in %), Effective 5th March 2025:
+
+Customer Profile: CAT SUPER A / CAT A / CAT HDFC
+- Monthly Income >= ₹100,000: CIBIL >730 = 11.15%; CIBIL <=730 / No Hit = 11.40%; Rack PF = ₹6,500
+- Monthly Income >= ₹75,000 to ₹100,000: CIBIL >730 = 11.25%; CIBIL <=730 / No Hit = 11.50%; Rack PF = ₹6,500
+- Monthly Income >= ₹50,000 to ₹75,000: CIBIL >730 = 11.75%; CIBIL <=730 / No Hit = 12.00%; Rack PF = ₹6,500
+- Monthly Income >= ₹35,000 to ₹50,000: CIBIL >730 = 12.00%; CIBIL <=730 / No Hit = 12.25%; Rack PF = ₹3,499
+- Monthly Income < ₹35,000: CIBIL >730 = 13.25%; CIBIL <=730 / No Hit = 13.50%; Rack PF = ₹3,499
+
+Customer Profile: CAT B / CAT C / CAT D / CAT E / CAT EDU / CAT ALPA & BETA / CAT NRI / CAT NEW
+- Monthly Income >= ₹100,000: CIBIL >730 = 11.25%; CIBIL <=730 / No Hit = 11.50%; Rack PF = ₹6,500
+- Monthly Income >= ₹75,000 to ₹100,000: CIBIL >730 = 11.50%; CIBIL <=730 / No Hit = 11.75%; Rack PF = ₹6,500
+- Monthly Income >= ₹50,000 to ₹75,000: CIBIL >730 = 12.00%; CIBIL <=730 / No Hit = 12.25%; Rack PF = ₹6,500
+- Monthly Income >= ₹35,000 to ₹50,000: CIBIL >730 = 12.25%; CIBIL <=730 / No Hit = 12.50%; Rack PF = ₹3,499
+- Monthly Income < ₹35,000: CIBIL >730 = 13.75%; CIBIL <=730 / No Hit = 14.00%; Rack PF = ₹3,499
+
+Customer Profile: CAT GA / CAT GB / CAT GC / CAT RA / CAT RB / CAT RC / CAT GD / CAT GE / CAT GF / CAT GP / CAT PEN
+- Monthly Income >= ₹100,000: CIBIL >730 = 11.50%; CIBIL <=730 / No Hit = 11.75%; Rack PF = ₹6,500
+- Monthly Income >= ₹75,000 to ₹100,000: CIBIL >730 = 12.25%; CIBIL <=730 / No Hit = 12.50%; Rack PF = ₹6,500
+- Monthly Income >= ₹50,000 to ₹75,000: CIBIL >730 = 12.50%; CIBIL <=730 / No Hit = 12.75%; Rack PF = ₹6,500
+- Monthly Income >= ₹35,000 to ₹50,000: CIBIL >730 = 13.50%; CIBIL <=730 / No Hit = 13.75%; Rack PF = ₹3,499
+- Monthly Income < ₹35,000: CIBIL >730 = 14.00%; CIBIL <=730 / No Hit = 14.50%; Rack PF = ₹3,499
+
+Special Pricing - Loan Amount:
+- Loan Amount ₹15 Lakhs+: CIBIL >730 = 11.00%; CIBIL <=730 / No Hit = 11.15%; Rack PF = ₹6,500
+- Loan Amount ₹10 Lakhs to ₹15 Lakhs: CIBIL >730 = 11.15%; CIBIL <=730 / No Hit = 11.40%; Rack PF = ₹6,500
+
+===============================================================================
+===============================================================================
+6. LOAN PARAMETERS
 ===============================================================================
 
 Loan Amount Caps:
@@ -176,7 +209,7 @@ Golden Edge Program:
 - Minimum Net Salary: ₹75,000 (Prime Locations) / ₹50,000 (Emerging Locations)
 
 ===============================================================================
-6. FOIR & MULTIPLIER RULES
+7. FOIR & MULTIPLIER RULES
 ===============================================================================
 
 FOIR Limits:
@@ -205,7 +238,7 @@ FOIR Category-wise (from available sources):
 - CAT GF: 55%
 
 ===============================================================================
-7. NTH / SALARY REQUIREMENTS
+8. NTH / SALARY REQUIREMENTS
 ===============================================================================
 
 Monthly NTH Requirements:
@@ -227,7 +260,7 @@ Salary Considerations:
 - NTH + Additional income => ₹1 Lac (policy clarification required for minimum NTH)
 
 ===============================================================================
-8. BT / CCBT / APP LOAN RULES
+9. BT / CCBT / APP LOAN RULES
 ===============================================================================
 
 Balance Transfer (BT) Rules:
@@ -245,7 +278,7 @@ App Loan Rules:
 - Not explicitly defined in available source documents
 
 ===============================================================================
-9. DOCUMENT REQUIREMENTS
+10. DOCUMENT REQUIREMENTS
 ===============================================================================
 
 Mandatory Documents:
@@ -283,7 +316,7 @@ KYC Requirements:
 - Alternative KYC options available (physical KYC with other OVDs)
 
 ===============================================================================
-10. EXCEPTIONS & DEVIATIONS
+11. EXCEPTIONS & DEVIATIONS
 ===============================================================================
 
 Bounce & Delinquency Norms:
@@ -321,7 +354,7 @@ Rejection Rules:
 - Product cap exceeded
 
 ===============================================================================
-11. CONFLICTS/REVIEW ITEMS
+12. CONFLICTS/REVIEW ITEMS
 ===============================================================================
 
 1. CIBIL: Threshold not explicitly defined in all sources (0/-1 doable, minimum not specified). [REVIEW]

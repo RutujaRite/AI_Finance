@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import pool from "./db";
 
 export interface BankMasterPolicy {
   id: number;
@@ -279,6 +280,73 @@ const BANK_DEFINITIONS: Array<{
   },
 ];
 
+export interface BankMasterPolicyDetail extends BankMasterPolicy {
+  min_cibil?: number;
+  max_cibil?: number;
+  min_salary?: number;
+  max_salary?: number;
+  min_age?: number;
+  max_age?: number;
+  min_loan_amount?: number;
+  max_loan_amount?: number;
+  min_tenure_months?: number;
+  max_tenure_months?: number;
+  foir_percent?: number;
+  roi?: string | number;
+  processing_fee_percent?: number;
+  employment_type?: string;
+  policy_version?: string;
+}
+
+const DELETED_BANKS_FILE = path.join(process.cwd(), "policy-master-files", ".deleted_banks.json");
+const OVERRIDES_FILE = path.join(process.cwd(), "policy-master-files", ".policy_overrides.json");
+
+function getDeletedBankIds(): number[] {
+  try {
+    if (fs.existsSync(DELETED_BANKS_FILE)) {
+      const data = fs.readFileSync(DELETED_BANKS_FILE, "utf-8");
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error("Error reading deleted banks file:", e);
+  }
+  return [];
+}
+
+function saveDeletedBankId(bankId: number) {
+  try {
+    const list = getDeletedBankIds();
+    if (!list.includes(bankId)) {
+      list.push(bankId);
+      fs.writeFileSync(DELETED_BANKS_FILE, JSON.stringify(list, null, 2), "utf-8");
+    }
+  } catch (e) {
+    console.error("Error saving deleted bank id:", e);
+  }
+}
+
+function getPolicyOverrides(): Record<string, any> {
+  try {
+    if (fs.existsSync(OVERRIDES_FILE)) {
+      const data = fs.readFileSync(OVERRIDES_FILE, "utf-8");
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error("Error reading overrides file:", e);
+  }
+  return {};
+}
+
+function savePolicyOverride(bankId: number, data: any) {
+  try {
+    const all = getPolicyOverrides();
+    all[String(bankId)] = { ...(all[String(bankId)] || {}), ...data };
+    fs.writeFileSync(OVERRIDES_FILE, JSON.stringify(all, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Error saving policy override:", e);
+  }
+}
+
 export function getResolvedMasterPolicies(): BankMasterPolicy[] {
   const dirPath = path.join(process.cwd(), "policy-master-files");
   let existingFiles: string[] = [];
@@ -290,23 +358,31 @@ export function getResolvedMasterPolicies(): BankMasterPolicy[] {
     console.error("Error reading policy-master-files directory:", err);
   }
 
-  return BANK_DEFINITIONS.map((def) => {
-    // Find matching file in directory, fallback to default_file_name
-    const matchedFile =
-      existingFiles.find((f) => def.file_pattern.test(f)) || def.default_file_name;
+  const deletedIds = getDeletedBankIds();
+  const overrides = getPolicyOverrides();
 
-    return {
-      id: def.id,
-      bank_id: def.bank_id,
-      file_id: def.file_id,
-      bank_name: def.bank_name,
-      bank_code: def.bank_code,
-      file_name: matchedFile,
-      loan_type: def.loan_type,
-      supported_loan_types: def.supported_loan_types,
-      status: "active",
-    };
-  });
+  return BANK_DEFINITIONS
+    .filter((def) => !deletedIds.includes(def.bank_id) && !deletedIds.includes(def.id))
+    .map((def) => {
+      const ov = overrides[String(def.bank_id)] || overrides[String(def.id)] || {};
+      // Find matching file in directory, fallback to default_file_name
+      const matchedFile =
+        ov.file_name ||
+        existingFiles.find((f) => def.file_pattern.test(f)) ||
+        def.default_file_name;
+
+      return {
+        id: def.id,
+        bank_id: def.bank_id,
+        file_id: def.file_id,
+        bank_name: ov.bank_name || def.bank_name,
+        bank_code: def.bank_code,
+        file_name: matchedFile,
+        loan_type: ov.loan_type || def.loan_type,
+        supported_loan_types: def.supported_loan_types,
+        status: ov.status || "active",
+      };
+    });
 }
 
 export const BANK_MASTER_POLICIES: BankMasterPolicy[] = getResolvedMasterPolicies();
@@ -333,23 +409,181 @@ export function getMasterPolicyText(fileName: string): string {
 
 export function getAllMasterPolicies() {
   const policies = getResolvedMasterPolicies();
+  const overrides = getPolicyOverrides();
+
   return policies.map((b) => {
+    const ov = overrides[String(b.bank_id)] || overrides[String(b.id)] || {};
     const text = getMasterPolicyText(b.file_name);
+
     return {
       id: b.id,
       bank_id: b.bank_id,
       bank_name: b.bank_name,
       bank_code: b.bank_code,
-      loan_type: b.loan_type,
+      loan_type: ov.loan_type || b.loan_type || "Personal Loan",
       supported_loan_types: b.supported_loan_types,
-      status: b.status,
-      version_status: b.status,
+      status: ov.status || b.status || "active",
+      version_status: ov.status || b.status || "active",
       file_name: b.file_name,
       attachment_id: b.file_id,
       attachment_file_name: b.file_name,
       attachment_file_path: `/policy-master-files/${b.file_name}`,
       attachment_extracted_text: text,
       file_size_bytes: Buffer.byteLength(text, "utf-8"),
+
+      // Default/overridden policy rule values matching mockup specifications
+      policy_version: ov.policy_version || "Current Version",
+      employment_type: ov.employment_type || "Salaried",
+      min_cibil: ov.min_cibil !== undefined ? ov.min_cibil : 700,
+      max_cibil: ov.max_cibil !== undefined ? ov.max_cibil : 900,
+      min_salary: ov.min_salary !== undefined ? ov.min_salary : 30000,
+      max_salary: ov.max_salary !== undefined ? ov.max_salary : 600000,
+      min_age: ov.min_age !== undefined ? ov.min_age : 21,
+      max_age: ov.max_age !== undefined ? ov.max_age : 60,
+      min_loan_amount: ov.min_loan_amount !== undefined ? ov.min_loan_amount : 200000,
+      max_loan_amount: ov.max_loan_amount !== undefined ? ov.max_loan_amount : 5000000,
+      min_tenure_months: ov.min_tenure_months !== undefined ? ov.min_tenure_months : 12,
+      max_tenure_months: ov.max_tenure_months !== undefined ? ov.max_tenure_months : 60,
+      foir_percent: ov.foir_percent !== undefined ? ov.foir_percent : 22,
+      roi: ov.roi !== undefined ? ov.roi : "12.5",
+      processing_fee_percent: ov.processing_fee_percent !== undefined ? ov.processing_fee_percent : 1.5,
     };
   });
 }
+
+/**
+ * Deletes a bank master policy and removes its associated text file.
+ */
+export async function deleteBankMasterPolicy(bankId: number, fileName?: string) {
+  // 1. Delete associated text file from policy-master-files directory
+  const filesToDelete = new Set<string>();
+  if (fileName) filesToDelete.add(fileName);
+
+  const def = BANK_DEFINITIONS.find((d) => d.bank_id === bankId || d.id === bankId);
+  if (def) {
+    if (def.default_file_name) filesToDelete.add(def.default_file_name);
+  }
+
+  const dirPath = path.join(process.cwd(), "policy-master-files");
+  for (const f of filesToDelete) {
+    try {
+      const fullPath = path.join(dirPath, f);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+        console.log(`Unlinked master policy text file: ${f}`);
+      }
+      masterTextCache.delete(f);
+    } catch (err) {
+      console.error(`Failed to unlink file ${f}:`, err);
+    }
+  }
+
+  // 2. Persist deletion in deleted banks list
+  saveDeletedBankId(bankId);
+  if (def && def.id !== bankId) {
+    saveDeletedBankId(def.id);
+  }
+
+  // 3. Delete from database if connected
+  try {
+    if (pool) {
+      await pool.query(
+        `DELETE FROM policy_attachments WHERE policy_rule_id IN (
+          SELECT pr.id FROM policy_rules pr
+          JOIN policy_versions pv ON pr.policy_version_id = pv.id
+          WHERE pv.bank_id = $1
+        ) OR file_name = ANY($2::text[])`,
+        [bankId, Array.from(filesToDelete)]
+      );
+      await pool.query(
+        `DELETE FROM policy_rules WHERE policy_version_id IN (
+          SELECT id FROM policy_versions WHERE bank_id = $1
+        )`,
+        [bankId]
+      );
+      await pool.query(`DELETE FROM policy_versions WHERE bank_id = $1`, [bankId]);
+      await pool.query(
+        `DELETE FROM bank_policy_files WHERE bank_id = $1 OR file_name = ANY($2::text[])`,
+        [bankId, Array.from(filesToDelete)]
+      );
+    }
+  } catch (dbErr) {
+    console.warn("DB delete operation skipped or failed:", dbErr);
+  }
+
+  return { success: true, message: `Bank #${bankId} and associated text file deleted successfully` };
+}
+
+/**
+ * Updates a bank master policy record and optionally replaces its file.
+ */
+export async function updateBankMasterPolicy(
+  bankId: number,
+  updates: Record<string, any>,
+  newFile?: { fileName: string; contentBuffer: Buffer }
+) {
+  const dirPath = path.join(process.cwd(), "policy-master-files");
+
+  if (newFile && newFile.fileName && newFile.contentBuffer) {
+    try {
+      const targetPath = path.join(dirPath, newFile.fileName);
+      fs.writeFileSync(targetPath, newFile.contentBuffer);
+      updates.file_name = newFile.fileName;
+      masterTextCache.set(newFile.fileName, newFile.contentBuffer.toString("utf-8"));
+    } catch (err) {
+      console.error("Failed to write new master policy file:", err);
+    }
+  }
+
+  savePolicyOverride(bankId, updates);
+
+  // Also update DB if available
+  try {
+    if (pool) {
+      await pool.query(
+        `UPDATE policy_rules SET
+          min_cibil = COALESCE($1, min_cibil),
+          max_cibil = COALESCE($2, max_cibil),
+          min_salary = COALESCE($3, min_salary),
+          max_salary = COALESCE($4, max_salary),
+          min_age = COALESCE($5, min_age),
+          max_age = COALESCE($6, max_age),
+          min_loan_amount = COALESCE($7, min_loan_amount),
+          max_loan_amount = COALESCE($8, max_loan_amount),
+          min_tenure_months = COALESCE($9, min_tenure_months),
+          max_tenure_months = COALESCE($10, max_tenure_months),
+          foir_percent = COALESCE($11, foir_percent),
+          roi = COALESCE($12, roi),
+          processing_fee_percent = COALESCE($13, processing_fee_percent),
+          status = COALESCE($14, status),
+          loan_type = COALESCE($15, loan_type),
+          employment_type = COALESCE($16, employment_type)
+        WHERE policy_version_id IN (SELECT id FROM policy_versions WHERE bank_id = $17)`,
+        [
+          updates.min_cibil ?? null,
+          updates.max_cibil ?? null,
+          updates.min_salary ?? null,
+          updates.max_salary ?? null,
+          updates.min_age ?? null,
+          updates.max_age ?? null,
+          updates.min_loan_amount ?? null,
+          updates.max_loan_amount ?? null,
+          updates.min_tenure_months ?? null,
+          updates.max_tenure_months ?? null,
+          updates.foir_percent ?? null,
+          updates.roi ? String(updates.roi) : null,
+          updates.processing_fee_percent ?? null,
+          updates.status || null,
+          updates.loan_type || null,
+          updates.employment_type || null,
+          bankId,
+        ]
+      );
+    }
+  } catch (dbErr) {
+    console.warn("DB update operation skipped or failed:", dbErr);
+  }
+
+  return { success: true, message: `Bank #${bankId} policy updated successfully` };
+}
+

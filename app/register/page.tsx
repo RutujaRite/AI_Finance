@@ -1,4 +1,10 @@
+/**
+ * Register page — CallNow CRM Design System
+ * New user registration form.
+ */
+
 "use client"
+
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
@@ -42,32 +48,40 @@ export default function RegisterPage() {
         setError(data.error || "Registration failed")
       }
     } catch (e) {
-      setError("Network error")
+      setError("Network error. Please try again.")
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <main className="register-page">
-      <div className="register-card">
-        <div className="register-logo">◆</div>
-
-        <div className="register-header">
-          <h1>Create Account</h1>
-          <p>Join CreditWise AI to manage your loans</p>
+    <main className="login-shell">
+      <div className="login-card">
+        <div className="login-brand">
+          <span className="brand-mark">
+            <i className="bi bi-wallet2" />
+          </span>
+          <span className="brand-text">CreditWise AI</span>
         </div>
 
-        {error && <div className="alert alert-error">{error}</div>}
+        <h1 className="login-title">Create Account</h1>
+        <p className="login-subtitle">Join CreditWise AI to manage loans, bank policies, and financial intelligence</p>
+
+        {error && (
+          <div className="alert alert-danger" role="alert">
+            <i className="bi bi-exclamation-triangle" style={{ marginRight: "0.375rem" }} />
+            {error}
+          </div>
+        )}
 
         <form onSubmit={submit}>
           <div className="form-group">
-            <label htmlFor="name">Full Name</label>
+            <label className="form-label" htmlFor="name">Full Name</label>
             <input
               id="name"
               type="text"
-              className="form-input"
-              placeholder="Your full name"
+              className="form-control"
+              placeholder="e.g. Rahul Sharma"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -76,12 +90,12 @@ export default function RegisterPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="email">Email address</label>
+            <label className="form-label" htmlFor="email">Email address</label>
             <input
               id="email"
               type="email"
-              className="form-input"
-              placeholder="you@example.com"
+              className="form-control"
+              placeholder="name@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -89,12 +103,12 @@ export default function RegisterPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label className="form-label" htmlFor="password">Password</label>
             <input
               id="password"
               type="password"
-              className="form-input"
-              placeholder="Create a password"
+              className="form-control"
+              placeholder="Create a strong password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -102,11 +116,11 @@ export default function RegisterPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="confirm">Confirm Password</label>
+            <label className="form-label" htmlFor="confirm">Confirm Password</label>
             <input
               id="confirm"
               type="password"
-              className="form-input"
+              className="form-control"
               placeholder="Confirm your password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
@@ -114,12 +128,27 @@ export default function RegisterPage() {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? "Creating Account..." : "Create Account"}
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{ width: "100%", marginTop: "0.5rem" }}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="spinner-inline" />
+                Creating Account...
+              </>
+            ) : (
+              <>
+                <i className="bi bi-person-plus" />
+                Create Account
+              </>
+            )}
           </button>
         </form>
 
-        <div className="register-footer">
+        <div className="auth-footer">
           Already have an account? <a href="/login">Sign in</a>
         </div>
       </div>

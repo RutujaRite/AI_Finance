@@ -1,21 +1,15 @@
 /**
- * Shared application topbar used by every authenticated page.
+ * Shared application topbar styled with the CallNow CRM Design System.
  *
- * Renders the brand, navigation menu (Home, AI Assistant, EMI Calculator,
- * Bank Policy, Bank Manager, and Admin if admin), model selector,
- * and user profile menu.
+ * Renders the brand (AI Assistant), right-aligned navigation menu (Home, AI Assistant,
+ * EMI Calculator, Bank Policy, Bank Manager, and Admin if admin), theme toggle,
+ * and user profile menu with working Logout.
  */
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-
-const AVAILABLE_MODELS = [
-  { id: "liquid/lfm-2.5-embedding-350m:free", name: "LFM 2.5", desc: "Fast & efficient", icon: "⚡" },
-  { id: "gpt-4o", name: "GPT-4o", desc: "Most capable", icon: "🧠" },
-  { id: "claude-3.5-sonnet", name: "Claude 3.5", desc: "Balanced", icon: "🎯" },
-]
 
 export type DashboardSection = "home" | "assistant" | "emi" | "policies"
 
@@ -27,6 +21,7 @@ export default function Topbar({
   activeSection,
   onSectionChange,
   onToggleSidebar,
+  sidebarOpen = true,
 }: {
   user: any
   pathname?: string
@@ -35,13 +30,41 @@ export default function Topbar({
   activeSection?: DashboardSection
   onSectionChange?: (section: DashboardSection) => void
   onToggleSidebar?: () => void
+  sidebarOpen?: boolean
 }) {
   const router = useRouter()
-  const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
+  const [theme, setTheme] = useState<"light" | "dark">("light")
 
-  function getSelectedModelName() {
-    const model = AVAILABLE_MODELS.find((m) => m.id === selectedModel)
-    return model ? model.name : "Model"
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const current = (document.documentElement.getAttribute("data-bs-theme") as "light" | "dark") || "light"
+      setTheme(current)
+    }
+  }, [])
+
+  function toggleTheme() {
+    const nextTheme = theme === "dark" ? "light" : "dark"
+    setTheme(nextTheme)
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-bs-theme", nextTheme)
+      try {
+        localStorage.setItem("theme", nextTheme)
+      } catch (e) {}
+    }
+  }
+
+  async function handleLogout(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" })
+    } catch (err) {
+      console.error("Logout error:", err)
+    }
+    try {
+      localStorage.removeItem("emi_chat_state_v2")
+    } catch (e) {}
+    router.replace("/login")
   }
 
   const navItems: Array<{
@@ -49,7 +72,7 @@ export default function Topbar({
     label: string
     section?: DashboardSection
     href: string
-    icon: React.ReactNode
+    iconClass: string
     adminOnly?: boolean
   }> = [
     {
@@ -57,71 +80,41 @@ export default function Topbar({
       label: "Home",
       section: "home",
       href: "/home",
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
-      ),
+      iconClass: "bi bi-grid-1x2",
     },
     {
       id: "assistant",
       label: "AI Assistant",
       section: "assistant",
       href: "/home?section=assistant",
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
-      ),
+      iconClass: "bi bi-chat-dots",
     },
     {
       id: "emi",
       label: "EMI Calculator",
       section: "emi",
       href: "/home?section=emi",
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect width="16" height="16" x="4" y="4" rx="2" />
-          <path d="M12 12h.01" />
-        </svg>
-      ),
+      iconClass: "bi bi-calculator",
     },
     {
       id: "policies",
       label: "Bank Policy",
       section: "policies",
       href: "/home?section=policies",
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-        </svg>
-      ),
+      iconClass: "bi bi-file-earmark-text",
     },
     {
       id: "bank-managers",
       label: "Bank Manager",
       href: "/bank-managers",
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a2 2 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-      ),
+      iconClass: "bi bi-people",
     },
     {
       id: "admin",
       label: "Admin",
       href: "/admin",
       adminOnly: true,
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-        </svg>
-      ),
+      iconClass: "bi bi-shield-lock",
     },
   ]
 
@@ -130,21 +123,22 @@ export default function Topbar({
     return true
   })
 
+  const userInitial = (user?.name || user?.email || "U").charAt(0).toUpperCase()
+  const displayName = user?.name || user?.email?.split("@")[0] || "Account"
+
   return (
-    <header className="topbar app-topbar">
+    <header className="app-topbar">
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
         {onToggleSidebar && activeSection === "assistant" && (
           <button
-            className="chat-sidebar-toggle"
+            className={`chat-sidebar-toggle ${sidebarOpen ? "open" : "closed"}`}
+            id="chatSidebarToggle"
             onClick={onToggleSidebar}
-            aria-label="Toggle sidebar"
+            aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
             type="button"
+            title={sidebarOpen ? "Close sidebar (Ctrl+Shift+S)" : "Open sidebar (Ctrl+Shift+S)"}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
+            <i className="bi bi-list" style={{ fontSize: "1.25rem", lineHeight: 1 }} />
           </button>
         )}
         <a
@@ -157,8 +151,10 @@ export default function Topbar({
             }
           }}
         >
-          <span className="brand-mark">◆</span>
-          <span className="brand-text">AI ASSISTANT</span>
+          <span className="brand-mark">
+            <i className="bi bi-robot" />
+          </span>
+          <span className="brand-text">AI Assistant</span>
         </a>
       </div>
 
@@ -177,8 +173,8 @@ export default function Topbar({
                 className={`nav-item ${isSectionActive ? "active" : ""}`}
                 onClick={() => onSectionChange(item.section!)}
               >
-                {item.icon}
-                {item.label}
+                <i className={item.iconClass} />
+                <span>{item.label}</span>
               </button>
             )
           }
@@ -189,56 +185,44 @@ export default function Topbar({
               href={item.href}
               className={`nav-item ${isSectionActive ? "active" : ""}`}
             >
-              {item.icon}
-              {item.label}
+              <i className={item.iconClass} />
+              <span>{item.label}</span>
             </a>
           )
         })}
       </nav>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        {selectedModel && onModelChange && (
-          <div className="model-selector-wrapper">
-            <button
-              className="model-selector"
-              type="button"
-              onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-            >
-              <span className="model-selector-icon">◆</span>
-              {getSelectedModelName()}
-              <span className="model-selector-caret">▾</span>
-            </button>
-            <div className={`model-dropdown ${modelDropdownOpen ? "open" : ""}`}>
-              {AVAILABLE_MODELS.map((model) => (
-                <button
-                  key={model.id}
-                  type="button"
-                  className={`model-dropdown-item ${selectedModel === model.id ? "active" : ""}`}
-                  onClick={() => {
-                    onModelChange(model.id)
-                    setModelDropdownOpen(false)
-                  }}
-                >
-                  <span className="model-dropdown-item-icon">{model.icon}</span>
-                  <div className="model-dropdown-item-info">
-                    <div className="model-dropdown-item-name">{model.name}</div>
-                    <div className="model-dropdown-item-desc">{model.desc}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+      <div className="topbar-actions">
+        {/* Dark / Light theme toggle */}
+        <button
+          type="button"
+          className="theme-toggle-btn"
+          onClick={toggleTheme}
+          aria-label="Toggle dark/light theme"
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          <i className={theme === "dark" ? "bi bi-sun-fill" : "bi bi-moon-stars-fill"} />
+        </button>
 
-        <div className="profile-menu" role="link" tabIndex={0} onClick={() => router.push("/profile")}>
-          <span className="profile-menu-label">{user?.name || user?.email || "Account"}</span>
-          <span className="caret">▾</span>
-          <div className="profile-dropdown">
-            <a href="/profile">Profile</a>
-            <a href="/logout">Logout</a>
+        {/* Profile menu */}
+        <div className="profile-menu" role="button" tabIndex={0} onClick={() => router.push("/profile")}>
+          <div className="profile-avatar">{userInitial}</div>
+          <span className="profile-menu-label">{displayName}</span>
+          <i className="bi bi-chevron-down caret" />
+          <div className="profile-dropdown" onClick={(e) => e.stopPropagation()}>
+            <a href="/profile">
+              <i className="bi bi-person" /> Profile
+            </a>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="logout-btn"
+            >
+              <i className="bi bi-box-arrow-right" /> Logout
+            </button>
           </div>
         </div>
       </div>
     </header>
   )
-}
+}
