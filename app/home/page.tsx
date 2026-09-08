@@ -62,6 +62,23 @@ export default function HomePage() {
   }, [messages, conversations, activeConversationId, selectedModel, messageActions, user])
 
   useEffect(() => {
+    if (!initializedRef.current) return
+    if (!user) return
+    const activeId = activeConvIdRef.current || activeConversationId
+    if (activeId && messagesByConvRef.current[activeId] === undefined) {
+      let cancelled = false
+      loadConversationMessages(activeId).then((msgs) => {
+        if (cancelled) return
+        messagesByConvRef.current[activeId] = msgs
+        setMessages(msgs)
+      })
+      return () => {
+        cancelled = true
+      }
+    }
+  }, [activeConversationId, user])
+
+  useEffect(() => {
     if (messagesRef) {
       messagesRef.scrollTop = messagesRef.scrollHeight
       enhanceCodeBlocks(messagesRef)
@@ -186,6 +203,11 @@ export default function HomePage() {
       }
     }
 
+    const currentConvId = activeConvIdRef.current || activeConversationId
+    if (currentConvId && messagesByConvRef.current[currentConvId] === undefined) {
+      messagesByConvRef.current[currentConvId] = messages
+    }
+
     const userMessage = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
       role: "user" as const,
@@ -200,12 +222,12 @@ export default function HomePage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: resolvedText, conversation_id: activeConversationId, model: selectedModel }),
+        body: JSON.stringify({ message: resolvedText, conversation_id: currentConvId, model: selectedModel }),
         credentials: "include",
       })
       const data = await res.json()
       if (data.success) {
-        if (data.title && !activeConversationId) {
+        if (data.title && !currentConvId) {
           const newId = data.conversation_id || "conv_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
           const conversation = {
             id: newId,
@@ -217,6 +239,8 @@ export default function HomePage() {
             if (prev.some((c) => c.id === newId)) return prev
             return [conversation, ...prev]
           })
+          messagesByConvRef.current[newId] = [...messages, userMessage]
+          activeConvIdRef.current = newId
           setActiveConversationId(newId)
           fetch("/api/conversations", {
             method: "POST",
@@ -227,6 +251,10 @@ export default function HomePage() {
         }
         if (data.ai_message) {
           setMessages((prev) => [...prev, data.ai_message])
+        }
+        const activeId = activeConvIdRef.current || currentConvId
+        if (activeId) {
+          messagesByConvRef.current[activeId] = [...messages, userMessage, ...(data.ai_message ? [data.ai_message] : [])]
         }
       } else {
         throw new Error(data.error || "Failed to send message")
