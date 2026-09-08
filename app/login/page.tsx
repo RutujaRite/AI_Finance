@@ -4,7 +4,7 @@
  */
 
 "use client"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 export default function LoginPage() {
@@ -13,14 +13,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    const check = async () => {
-      const res = await fetch("/api/auth/verify", { method: "GET", credentials: "include" })
-      if (res.ok) router.replace("/home")
-    }
-    check()
-  }, [router])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()

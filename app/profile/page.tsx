@@ -10,7 +10,6 @@ export default function ProfilePage() {
   const [message, setMessage] = useState("")
   const [saving, setSaving] = useState(false)
   const [photoUploading, setPhotoUploading] = useState(false)
-  const [theme, setTheme] = useState<"light" | "dark">("dark")
   const [selectedModel, setSelectedModel] = useState("liquid/lfm-2.5-embedding-350m:free")
 
   useEffect(() => {
@@ -209,8 +208,6 @@ export default function ProfilePage() {
         pathname="/profile"
         selectedModel={selectedModel}
         onModelChange={setSelectedModel}
-        theme={theme}
-        onThemeToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
       />
 
       <main className="profile-page">

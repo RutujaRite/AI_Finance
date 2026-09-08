@@ -1,18 +1,24 @@
 ================================================================================
 YES BANK PERSONAL LOAN - POLICY RULEBOOK
-Generated: 2026-08-29
-Source Bank: Yes Bank (YES_BANK)
+Generated: 2026-09-01
+Source Bank: Yes Bank
+Primary Source: Policy.txt, PL Policy 21-06-25.jpeg, PL High Tickit Policy 21-06-25.jpeg, Yes Bank Policy Update 05-02-25.pdf
 ================================================================================
 
 PURPOSE:
-This is a concise eligibility and pricing rulebook for Yes Bank Personal Loan.
-It is derived from all source documents and PostgreSQL policy records.
-Use this for AI decision-making, eligibility checks, and policy validation.
+This is a structured eligibility and pricing rulebook for Yes Bank Personal Loan.
+It follows the same sectioned rulebook style as the supplied bank policy formats.
+
+SOURCE-SAFETY RULES:
+- Use only values explicitly present in the supplied Yes Bank policy documents.
+- Do not invent age, salary/NTH, FOIR, tenure, employment, document, BT/CCBT,
+  or other eligibility values that are not present in the source.
+- Missing mandatory eligibility information must remain NEEDS_REVIEW.
 
 SECTIONS:
 1. PROGRAM OVERVIEW
 2. ELIGIBILITY CRITERIA
-3. COMPANY/EMPLOYER CATEGORIES
+3. COMPANY / CUSTOMER CATEGORIES
 4. PRICING & ROI GRIDS
 5. LOAN PARAMETERS
 6. FOIR & MULTIPLIER RULES
@@ -20,284 +26,176 @@ SECTIONS:
 8. BT / CCBT / APP LOAN RULES
 9. DOCUMENT REQUIREMENTS
 10. EXCEPTIONS & DEVIATIONS
-11. CONFLICTS/REVIEW ITEMS
+11. CONFLICTS / REVIEW ITEMS
 
 ================================================================================
 1. PROGRAM OVERVIEW
 ================================================================================
 
-Active Policy Versions:
-- V1 (Business)
-- V2 (Home)
-- V1 (Home)
-- V1 (Personal)
+Primary Product:
+- Yes Bank Personal Loan
 
-Key Parameters from Database:
-- Minimum Age: 26 years
-- Maximum Age: 35 years
-- Maximum Loan Amount: ₹10.00 Lakh
+Loan Types:
+- FUNDED
+- UNFUNDED (BT/Top-up)
 
-Total Policy Versions: 4
-Total Policy Rules: 4
-Total Source Files Extracted: 12
+Key Features:
+- CIBIL band-based eligibility
+- Company category-based segmentation
+- Pristine segment for high-value profiles
+- FOIR applicable in BT cases (Green band)
 
 ================================================================================
 2. ELIGIBILITY CRITERIA
 ================================================================================
 
-Age Requirements:
-- Minimum Age: 26 years
-- Maximum Age: 35 years
+Minimum CIBIL Score:
+- -1 and above 731
+- Below 731 is not allowed
+- PL enquiries in last 3 months should not be > 6
+- Total unsecured live loans not more than 4 (including Yes Bank)
+- Live loan with Yes Bank > 3 not allowed
 
-Employment Types:
-- Self-Employed
+Minimum Age:
+- 21 years
+
+Maximum Age:
+- 60 years (subject to retirement proof)
+- NTC (New to CIBIL) max age 35 at time of sourcing
+
+Employment Type:
 - Salaried
 
-Source Document Policy Details:
-
---- From: BT Declaration Demo.pdf ---
-I
-For   Individual
-Format     Loan   Takeover  
-for customer declaration In  
--  
- To,
-The  
-Manager
- YES  
-Bark Limite
- (Address)  
-rfU
- Adrq49@
-Madam,
- Dear   Sir/  
-lr1
-residing
- k  
- Mr  
-Ms,
-/  
- presendy   I\.ith
-wo  
-t
- a  
-Dedaranf'
- (     to   as  
-hereinafEr refurred
-firm   na
- company/  
-legat
-her  
-his  
-thereof, includes  
-or   context  
-repugnant   to   the subiect  
- unless   it   be   /  
- which   expression
-under
-and as  
-   conjirm  
-permitted   assigns) do hereby declare
-and  
-utors,   administratoE  
- representatives,  
-ry") from
-PL)   loan ("the said
-facility   availed  
- (nature of   the  
-ava   iled---t-L
-WHEREAS   l/we  
--  
-its
- at  
-(  
-the   financier)  
- (name   of  
-as   on date is
-said   facility  
-in   the  
-outstanding  
- ranch and the  
- PL  
-by   y   of   take
-facility  
-  for   a
-Bank")  
-  YES   BANK Limited ("the
- we   have   applied to
- AND   V\tr.IEREAS
- -
-("Loan").
- 
- from   the   Existing financier
-th€   facili
- over   said  
-herein
-&   con  
- 
-above request subiect to the terms
-the   Dedarants  
- to accede to  
-Banl   has   agreed
-WHEREAS  
-AND  
-requircd
-of  
-Bank   and on   completion  
-cdteda   of the  
-the  etigibility  
-  Declarant   tulfilling  
-  the  
-su  t to
- mentioned and
-YES   Bank   Ltd.
- 
-as stipulations of
- documentation  
- with   the
-&
-confiun  
-agree,  
- 
-  the Declarant hereby irrevocably
-OF   T}IE ABOIE,
-  CONSIDEi{ATION  
- AND IN
- Bank   as   foUows;
-I   confirm
-reference,  
-  under  
-to   the document
-pursuant  
-a
-[...truncated...]
-
---- From: BT Declation.pdf ---
---- Page 1 ---
---- Page 2 ---
---- Page 3 ---
-
---- From: Care Insurance  180000.txt ---
-Care Insurance : 180000
-loan customer information : 540000
-total Sum Insured : 720000 / 3 yrs
-
---- From: INSURANCE Demo.pdf ---
---- Page 1 ---
---- Page 2 ---
---- Page 3 ---
---- Page 4 ---
---- Page 5 ---
---- Page 6 ---
---- Page 7 ---
---- Page 8 ---
---- Page 9 ---
---- Page 10 ---
---- Page 11 ---
---- Page 12 ---
---- Page 13 ---
---- Page 14 ---
---- Page 15 ---
---- Page 16 ---
-
---- From: INSURANCE PLP.pdf ---
---- Page 1 ---
---- Page 2 ---
---- Page 3 ---
---- Page 4 ---
---- Page 5 ---
---- Page 6 ---
---- Page 7 ---
---- Page 8 ---
---- Page 9 ---
---- Page 10 ---
---- Page 11 ---
---- Page 12 ---
---- Page 13 ---
---- Page 14 ---
---- Page 15 ---
 ================================================================================
-3. COMPANY/EMPLOYER CATEGORIES
+3. COMPANY / CUSTOMER CATEGORIES
 ================================================================================
+
+Verified Company/Customer Categories:
+- Pristine Segment: D/Platinum and Gold segments, bureau > 730
+- Green Band: Up to 10 lakhs
+- Silver / Silver Neo
+- Diamond
+- NTC (New to CIBIL)
+
+Category Mapping:
+- Salaried doctor without Form 16: PL Diamond category
+- Age > 35 years: Not treated as bachelor/single accommodation, loan amount capped at 15 lakhs
 
 ================================================================================
 4. PRICING & ROI GRIDS
 ================================================================================
 
-ROI Values from Database:
-- Rule 637: ROI Range: N/A% - N/A% (Version: V1)
-- Rule 638: ROI Range: N/A% - N/A% (Version: V1)
-- Rule 640: ROI Range: N/A% - N/A% (Version: V1)
-- Rule 639: ROI Range: N/A% - N/A% (Version: V2)
-[REVIEW] Multiple ROI values exist across versions/rules
+Note: The source documents do not contain detailed ROI/Pricing grids.
+Rate card information is not explicitly defined in the available policy text.
 
 ================================================================================
 5. LOAN PARAMETERS
 ================================================================================
 
-Loan Amount Parameters:
-- Rule 640: Min: N/A, Max: ₹10.00 Lakh
-- Rule 639: Min: N/A, Max: ₹51
+Loan Amount Capping:
+- Green band: Up to 10 lakhs
+- Pristine segment: Up to 5 lakhs INR or remaining FOIR whichever is lower
+- For age > 35 years: Loan amount capped at 15 lakhs
+
+Minimum Loan Amount:
+- Not explicitly defined [REVIEW]
+
+Maximum Loan Amount:
+- Not explicitly defined [REVIEW]
+
+Tenure:
+- 72 months can be offered where:
+  a) Loan eligibility is > 5 lakhs
+  b) Green band
+  c) NTH is > 50,000
+  d) Company category other than Silver/Silver Neo
+- For others: Maximum 60 months
 
 ================================================================================
 6. FOIR & MULTIPLIER RULES
 ================================================================================
 
+FOIR Rules:
+- Only FOIR applicable in BT cases (Green band)
+- Unsecured FOIR:
+  a) Income less than 50,000 for pristine segment
+  b) 75,000 for non-pristine segment
+
+FOIR Percentage:
+- Not explicitly defined [REVIEW]
+
 ================================================================================
 7. NTH / SALARY REQUIREMENTS
 ================================================================================
+
+Salary Norms:
+- New to CIBIL (NTC): 35,000
+- Other: 25,000
+
+NTH Requirement for 72-month Tenure:
+- NTH > 50,000
 
 ================================================================================
 8. BT / CCBT / APP LOAN RULES
 ================================================================================
 
-Refer to source documents for detailed BT/CCBT/App Loan rules.
-Total policy rules in database: 4
+Balance Transfer (BT):
+- BT allowed after 1 EMI for selected banks:
+  * HDFC, ICICI, Kotak, Axis, IDFC Bank
+- Bajaj Finance & Axis Finance BT allowed after 1 EMI
+- Bajaj & Tata OD BT allowed with FC letter
+- BT allowed after 6 months for all NBFC
+
+BT Enquiry Norms (Pure BT):
+- Last 30 days enquiry norms not applicable
+- More than 4 enquiries in last 31-90 days not allowed
+
+Discontinued Programs:
+- OD BT
+- CC BT
+- Care test program
+
+Bounce Norms (Top-up and BT):
+- One bounce allowed per 12-month repayment period
+- Within 6 months: NIL bounce
 
 ================================================================================
 9. DOCUMENT REQUIREMENTS
 ================================================================================
 
-Document requirements found in source files:
+Office Verification:
+- Form 26AS
+- Official Mail ID
 
---- From: BT Declaration Demo.pdf ---
- company/  
- documentation  
-to   the document
-to the document
-po   documents  
+Address Proof:
+- Not required (OVD & VKYC mandatory)
 
---- From: PL Policy 21-06-25.jpeg ---
-21-60 (60 basis retirement proof)
-| [ownedHowse proof Required for al NTC and bachelor customers |
-BT norms Min 3 month repayment required
-
---- From: Policy.txt ---
-👉Address proof not required (OVD & VKYC mandatory)
-	Max -60(subject to retire proof)
-		d)company cat other then silver/silver neo
-Salaried doctor without form 16 to be done in PL diamond category 
+Current Address:
+- Mandatory
 
 ================================================================================
 10. EXCEPTIONS & DEVIATIONS
 ================================================================================
 
-Refer to source documents for detailed exceptions and deviations.
-
-Conflicts detected requiring review:
-- max_loan_amount: values found = 1000000, 51 [REVIEW]
-
-================================================================================
-11. CONFLICTS/REVIEW ITEMS
-================================================================================
-
-The following fields have conflicting values across different policy versions:
-
-Field: max_loan_amount
-Values: 1000000, 51
-Status: [REVIEW] - Multiple values found, verify against latest policy document
-
+Exceptions:
+- Salaried doctor without Form 16: PL Diamond category
+- Age > 35 years: Not treated as bachelor/single accommodation, loan capped at 15 lakhs
+- NTC (New to CIBIL): Max age 35 at time of sourcing
+- NTC salary norm: 35,000 (higher than regular 25,000)
 
 ================================================================================
-END OF POLICY RULEBOOK
+11. CONFLICTS / REVIEW ITEMS
+================================================================================
+
+1. CIBIL: Minimum score stated as -1 and above 731, but detailed band structure not defined. [REVIEW]
+2. FOIR: Only applicable in BT cases for Green band; exact percentage not defined. [REVIEW]
+3. TENURE: 72 months offered only for specific conditions; 60 months for others. [REVIEW]
+4. SALARY: NTC norm (35k) vs Other norm (25k); threshold for 72-month tenure (50k). [REVIEW]
+5. LOAN AMOUNT: Multiple caps (10L green band, 5L pristine, 15L age>35). [REVIEW]
+6. COMPANY CATEGORIES: Pristine, Green, Silver, Silver Neo, Diamond defined but detailed eligibility mapping not provided. [REVIEW]
+7. PRICING: ROI/Pricing grids not available in source documents. [REVIEW]
+8. MAX TENURE: 72 months conditional; exact conditions and verification not defined. [REVIEW]
+
+================================================================================
+END OF YES BANK PERSONAL LOAN POLICY RULEBOOK
 ================================================================================

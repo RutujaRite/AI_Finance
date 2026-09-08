@@ -17,7 +17,8 @@
 
 import type { Pool } from "pg";
 
-import { BANK_CATALOG } from "./policyImporter";
+import { BANK_CATALOG } from "./bankCatalog";
+import { BANK_MASTER_POLICIES, getMasterPolicyText } from "./masterPolicies";
 
 /* =====================================================
  * TYPES
@@ -347,18 +348,7 @@ export function isPersonalLoanEligibilityIntent(
     return false;
   }
 
-  return /(
-    check eligibility|
-    verify eligibility|
-    am i eligible|
-    eligible for|
-    loan eligibility|
-    personal loan eligibility|
-    apply for personal loan|
-    want to apply|
-    need a loan|
-    check my eligibility
-  )/ix.test(normalized);
+  return /(check eligibility|verify eligibility|am i eligible|eligible for|loan eligibility|personal loan eligibility|apply for personal loan|want to apply|need a loan|check my eligibility)/i.test(normalized);
 }
 
 /* =====================================================
@@ -393,11 +383,25 @@ export async function getMasterPolicyForBank(
       [bankId]
     );
 
-  if (result.rows.length === 0) {
-    return null;
+  if (result.rows.length > 0 && result.rows[0].extracted_text) {
+    return result.rows[0];
   }
 
-  return result.rows[0];
+  // Fallback directly to verified master policy file on disk
+  const matched = BANK_MASTER_POLICIES.find((b) => b.bank_id === bankId || b.id === bankId);
+  if (matched) {
+    const text = getMasterPolicyText(matched.file_name);
+    if (text) {
+      return {
+        id: matched.file_id || matched.id,
+        file_name: matched.file_name,
+        extracted_text: text,
+        metadata: { is_master_policy: "true", bank_name: matched.bank_name },
+      };
+    }
+  }
+
+  return result.rows[0] || null;
 }
 
 /* =====================================================
@@ -682,9 +686,9 @@ function getRuleName(
 /**
  * Remove duplicate name/value combinations.
  */
-function removeDuplicateResults(
-  items: PolicyResultItem[]
-): PolicyResultItem[] {
+function removeDuplicateResults<T extends { name: string; value?: any }>(
+  items: T[]
+): T[] {
   const seen =
     new Set<string>();
 
@@ -958,12 +962,7 @@ export async function answerPolicyQuestion(
           ),
           status: rule.status,
         }))
-        .filter(
-          (
-            item
-          ): item is PolicyResultItem =>
-            Boolean(item.value)
-        );
+        .filter((item) => Boolean(item.value));
 
     results =
       removeDuplicateResults(
@@ -1035,7 +1034,7 @@ export async function answerPolicyQuestion(
         .filter(
           (
             item
-          ): item is PolicyResultItem =>
+          )=>
             Boolean(item.value)
         );
 
@@ -1242,7 +1241,7 @@ export async function answerPolicyQuestion(
         .filter(
           (
             item
-          ): item is PolicyResultItem =>
+          )=>
             Boolean(item.value)
         );
 
@@ -1313,7 +1312,7 @@ export async function answerPolicyQuestion(
         .filter(
           (
             item
-          ): item is PolicyResultItem =>
+          )=>
             Boolean(item.value)
         );
 
@@ -1408,7 +1407,7 @@ export async function answerPolicyQuestion(
         .filter(
           (
             item
-          ): item is PolicyResultItem =>
+          )=>
             Boolean(item.value)
         );
 

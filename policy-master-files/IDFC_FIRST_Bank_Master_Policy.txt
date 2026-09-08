@@ -1,390 +1,995 @@
 ================================================================================
 IDFC FIRST BANK PERSONAL LOAN - POLICY RULEBOOK
-Generated: 2026-08-29
-Source Bank: IDFC FIRST Bank (IDFC)
+Generated: 2026-09-01
+Source Bank: IDFC FIRST Bank
+Product: Personal Loan
 ================================================================================
 
 PURPOSE:
-This is a concise eligibility and pricing rulebook for IDFC FIRST Bank Personal Loan.
-It is derived from all source documents and PostgreSQL policy records.
-Use this for AI decision-making, eligibility checks, and policy validation.
+This is a consolidated policy rulebook for IDFC FIRST Bank Personal Loan.
+It includes only policy-related eligibility, underwriting, pricing, loan amount,
+tenure, banking, bureau, verification, document, BT, deviation, and special
+pricing rules supported by the supplied source files/images.
+
+EXCLUDED:
+- Pincodes / location lists
+- Marketing claims / promotional language
+- Contact/RM messages
+- Non-policy decorative or operational content not required for eligibility,
+  underwriting, pricing, verification, or policy validation
+
+SOURCE-SAFETY RULES:
+1. Use only rules explicitly supported by the supplied IDFC FIRST Bank sources.
+2. Do not invent missing values.
+3. Do not merge Salaried and Self-Employed rules.
+4. Do not move pricing between company categories, NTH bands, schemes, loan
+   amount bands, Fresh/BT cases, Government/Non-Government cases, or channels.
+5. Where supplied sources conflict, preserve both values and mark [REVIEW].
+6. Special pricing is applicable only when the exact scheme, loan amount,
+   sourcing type, category and other stated conditions are satisfied.
+7. If a required rule is unresolved because of a source conflict, return
+   NEEDS_REVIEW rather than guessing.
+
+SOURCE SET:
+- IDFC_Salaried_250823.pdf
+- NTB-PL Pricing - Rack Rate, Deviation Grid April25.pdf
+- PL - Self Employed (Ready Reckoner).pdf
+- PL Special Pricing Offer - Sep'25.pdf
+- Policy 11-01-23.txt
+- SELF EMPLOYED 07-08-25.jpeg
+- Self Employed Policy.jpeg
 
 SECTIONS:
 1. PROGRAM OVERVIEW
 2. ELIGIBILITY CRITERIA
-3. COMPANY/EMPLOYER CATEGORIES
+3. COMPANY / CUSTOMER CATEGORIES
 4. PRICING & ROI GRIDS
 5. LOAN PARAMETERS
-6. FOIR & MULTIPLIER RULES
-7. NTH / SALARY REQUIREMENTS
-8. BT / CCBT / APP LOAN RULES
-9. DOCUMENT REQUIREMENTS
+6. ABB / EMI / MULTIPLIER RULES
+7. NTH / SALARY / INCOME REQUIREMENTS
+8. BT / SPECIAL SCHEME RULES
+9. BANKING / DOCUMENT / VERIFICATION REQUIREMENTS
 10. EXCEPTIONS & DEVIATIONS
-11. CONFLICTS/REVIEW ITEMS
+11. CONFLICTS / REVIEW ITEMS
+12. AI / BACKEND EVALUATION RULES
 
 ================================================================================
 1. PROGRAM OVERVIEW
 ================================================================================
 
-Active Policy Versions:
-- V6 (Personal)
-- V5 (Personal)
-- V4 (Personal)
-- V3 (Personal)
-- V2 (Personal)
-- V1 (Personal)
+Supported Personal Loan profiles found in supplied sources:
+- Salaried
+- Self-Employed
 
-Key Parameters from Database:
-- Minimum CIBIL: 690
-- Minimum Salary: ₹1
-- Maximum Salary: ₹80,000
-- Minimum Age: 23 years
-- Maximum Age: 60 years
-- Maximum Loan Amount: ₹9.00 Lakh
+SALARIED LOAN SEGMENTS:
+- Personal Loan for Salaried: 1 Lac to 15 Lacs
+- Personal Loan for Salaried: 15 Lacs to 1 Crore
+- PL SCORECARD
+- PL - PL HIGHEND TICKET
+- PL SALARIED ST (Small Ticket)
 
-Total Policy Versions: 6
-Total Policy Rules: 6
-Total Source Files Extracted: 7
+SELF-EMPLOYED LOAN SEGMENTS:
+- PL Self-Employed
+- Loan amount generally shown as 1 Lac to 9 Lacs
+- PL SELF-EMPLOYED ST (Small Ticket)
+- Supplied self-employed poster specifically states "Proprietorship Firm Only"
+  for its 1L-9L program.
+- Separate Ready Reckoner lists a Registration Certificate for partnership
+  firms as an acceptable business proof. This scope difference is [REVIEW].
+
+PRICING / SOURCING TYPES:
+- Fresh sourcing
+- Balance Transfer (BT)
+- Government sourcing
+- Corporate Salary
+- Branch Banking
+- Rack Rate
+- Special Pricing Offer
 
 ================================================================================
 2. ELIGIBILITY CRITERIA
 ================================================================================
 
-CIBIL/ICS Requirements:
-- Minimum CIBIL: 690
+--------------------------------------------------------------------------------
+2.1 SALARIED - CORE GATING
+--------------------------------------------------------------------------------
 
-Age Requirements:
-- Minimum Age: 23 years
-- Maximum Age: 60 years
+Minimum Age:
+- 23 years for the general Salaried gating / 1L-15L segment.
 
-Employment Types:
-- Salaried
-- Any
-- Self-Employed
+Maximum Age:
+- 1L-15L: Maximum 60 years OR retirement, whichever comes first at loan maturity.
+- General gating table: 60 years or Retirement Age.
+- 15L-1Cr segment: Maximum age 60 years or retirement age, whichever is later.
+  [REVIEW: wording differs by segment/source.]
 
-Source Document Policy Details:
+Bureau:
+- Salaried CIBIL: 690+
 
---- From: IDFC_Salaried_250823.pdf ---
-Email Classification : Internal   -   Vendor Shareable  
-RESTRICTED
+Cheque Bounce:
+- <= 1 EMI cheque bounce in the last 3 months.
 
- Key Policy Guidelines: Personal Loan for Salaried | 1   -   15 Lacs
- Age Norm   Income Norm & MUE  Tenure  Salary Slip
- NTH >Rs.20,000 per month  12 -   60 Months  Salary Slip to be waived
- Min 23 Years
- in the latest 3 months  where   Perfios   is successful.
- Max   60 years or Retirement
- MUE 40 Lakhs  Wherever   Perfios
- whichever comes first at
- unsuccessful, UW to check
- loan maturity
- Salary Credit in bank
- statement.
-Residence CPV Norm  Max. no. of existing PL  Banking Norms
- Office CPV Norm  
- Residence CPV can be  IDFC FIRST can be the 3rd  1. Latest 3 Months Bank
- Not required if official email
- waived subject to any of the  lender. Not more than 2  Statement not older than 10
- ID verification is successful
- following condition being  existing PL.  days from CPA login date.
- before CPA login for all
- satisfied:  2. Minimum 3 Salary Credits
- segments
- Waived for Platinum & Gold  in Bank Statement
- OR, Employment verification
- For Silver waiver basis
- through EPFO employment
- Bureau Based Norms
- check along with latest
- month salary credit in Bank
- statement
-Email Classification : Internal   -   Vendor Shareable
+Minimum Income:
+- NTH >= Rs. 20,000 per month.
+- Minimum 3 salary credits.
 
- Key Policy Guidelines: Personal Loan for Salaried | 15 Lacs to 1 Cr
- Age Norm   Income Norm & MUE  Tenure  Income Eligibility
- Min 28 years  15 -   25 Lacs Segment:  12 -   60 Months  Eligibility calculations to be based
- Max age of 60 years or  CAT SA, A , B: 75K pm  on Salary Credit in B
-[...truncated...]
+Tenure:
+- 12 to 60 months.
 
---- From: NTB-PL Pricing - Rack Rate, Deviation Grid April25.pdf ---
-Pricing Grid: PL Salaried (Loan Amt > 1 Lac)
- Rack Rate - Simple PL
- Company Category
- NTH: 50K to 80K   NTH > 80K
-NTH < 35K   NTH: 35K to 50K
- 12.50%  12.50%
- ACE PLUS / ACE   15.50%   13.50%
- 12.50%  14.50%
- CAT SA / A   17.50%   15.50%
- 13.50%  15.50%
- CAT B   19.00%   17.50%
- 14.00%  16.00%
- CAT C   20.00%   18.00%
- 16.00%  18.00%
- CAT D   22.00%   20.00%
- Pricing Grid: BT Cases
- For All BT Cases
- BT Loan ROI
- Rack ROI
- BT Loan ROI   minus   0.25%
- Deviation - RH
- BT Loan ROI   minus   0.75%
- Deviation - ZH/NSM
- RACK RATE: PROC FEE & TPD
- Rack Rate - Salaried
- P Fee %   TPD %
-Rack Rate - Salaried  
- 2.00%
- All Channels   2.00%   All Channels
- DEVIATION AUTHORITY - Rate/Proc Fee/TPD
- Rate % Deviation Authority   Proc Fee % Deviation Authority
- RH   0.25%   RH   0.25%
- ZH   0.50%   ZH   0.50%
- TPD % Deviation Authority
- RH   0.75%
- ZH   2.00%
- Pricing Grid: Scheme Names - Small Ticket Cases
- Special Schemes
- Scheme / Loan Amount
- Rack
- PL SALARIED ST / PL SELF-EMPLOYED ST
- 25.00%
- (LA: <1 LAKH)
- Note:
-No loan (incl. BT loans) can be booked at less than 10.99% ROI (barring Staff Loans / Special Pricing offers)
- *  
-For cases with loan amount > 15 Lacs , scheme would be "PL - PL HIGHEND TICKET" by default. i.e. cases would be booked as SMART PL ONLY
- *  
-SMART PL would only be applicable for UW APPROVED AMOUNT > 15 Lacs
- *  
-Deviations over the above grids would be directed to Business Head
- *  
-For <1 Lakh loan amount, Proc. Fee will mandatorily be at 3.49% (no deviations al
-[...truncated...]
+Existing Personal Loans:
+- IDFC FIRST can be the 3rd lender.
+- Not more than 2 existing Personal Loans.
 
---- From: PL - Self Employed (Ready Reckoner).pdf ---
-PL Self - Employed   –   Ready Reckoner (1/2)
-PL   –   SELF EMPLOYED
- Loan Amount  Loan Tenure  Min. ABB  Bureau Score
- 1   –   9   Lac s  12   –   48 months  INR 8000  CIBIL >= 700
- Banking Norms / Conduct
- 1.   Latest 6 months banking to be taken
- 2.   For LA> 5 Lacs   : 4 debits and 4 credits (both customer induced) to be seen in a month for all months excluding the interest credit/
- bank charges/ minimum charges/loan disbursement for loan amount greater than 5 lacs *
- -   For LA   <=   5   Lacs ,   2 debits & 2 credits to be seen a month
- 1.   No inward cheque returns in last 6 months *
- 2.   No EMI / loan cheque returns in last 6 months
- 3.   Minimum 12 months bank vintage required for bank accounts (In case of two bank statements clubbing, cumulatively the vintage
- criteria should be met)
- Business Vintage
- 1.   At least 2 years of business vintage required. Proof to be submitted.
- 2.   Either residence or Business premises to be owned in the name of applicant (Proof to be submitted)
- 3.   Derived   ownership to be processed on case - to - case basis*
- ABB based Eligibility
- 1.   Serviceable EMI will be basis ABB to EMI ratio mentioned below:
- ➢   ABB <=10k   -   45%
- ➢   ABB >10k to <=30k   -   40%
- ➢   ABB >30k   -   35%
- * Exceptions to be processed with L4 deviation
+--------------------------------------------------------------------------------
+2.2 SALARIED - 1 LAC TO 15 LACS
+--------------------------------------------------------------------------------
 
- PL Self - Employed   –   Ready Reckoner (2/2)
-PL   –   SELF EMPLOYED
- ABB Calculation
- 1.   ABB will be calculated by taking the daily balance average for 6 months statement
- 2.   To derive the ABB for
-[...truncated...]
+Age:
+- Minimum: 23 years
+- Maximum: 60 years or retirement, whichever comes first at loan maturity
 
---- From: PL Special Pricing Offer - Sep'25.pdf ---
-st  
- Disbursals from   1 Sep'25
- SPECIAL
- APPLICABILITY   Scheme: PL - PL HIGHEND TICKET
- PRICING
- Loan Amount:   >= 15.01 Lacs
- OFFER
- OFFER ON   FRESH SOURCING + BT CASES
- Loan Amt :
- 15.01 Lacs+
- STANDARD PF
- BT CASES
- FRESH CASES
- @   2%
-ACE PLUS/ACE/
- ROI @
- ROI @
- SA/A/B/C
- DEVIATION ALLOWED
- SUBJECT TO MIN P.F. OF
- 10.50%
- 10.50%
- INR 4999
- * BOTH SCHEME NAME & LOAN AMOUNT CRITERIA NEEDS TO BE MET FOR SPECIAL PRICING OFFER
- * FOR CASES WITH LOAN AMOUNT > 15 LACS , SCHEME WOULD BE "PL   -   PL HIGHEND TICKET" BY DEFAULT.   i.e.   CASES WOULD BE BOOKED AS SMART PL ONLY
- * PRICING APPLICABLE TOWARDS BOTH GOVT & NON - GOVT CASES
- * NOT APPLICABLE ON TOP - UP, ALLIANCE BUSINESS, STAFF LOANS
- * CASES BELOW BT ROI BENCHMARK ARE NOT ALLOWED. SUCH CASES WOULD NOT BE GIVEN CREDIT TO SALES
- * LOAN AMOUNT APPLICABLE BASIS COMPANY CATEGORY SHALL APPLY
+Income:
+- NTH > Rs. 20,000 per month in the latest 3 months
 
-st  
- Disbursals from   1 Sep'25
- SPECIAL
- Scheme: PL SCORECARD  APPLICABILITY
- PRICING
- Loan Amount:   10 Lacs to 15 Lacs
- OFFER
- Loan Amt :
- FRESH SOURCING OFFER
- 10   -   15 Lacs
-ACE+/ACE  
-ROI @   11.99%   10.99%
- Applicability :
-CAT SA/A
- ROI @   11.99%   11.49%
- STANDARD PF
- Non - BT   only
- CAT B
- ROI @   12.99%   12.49%
- @   2%
- CAT C
- ROI @   13.99%   13.49%
- (DEVIATION ALLOWED
- upto   INR 4999 )
-CAT D
- ROI @   15.99%   15.00%
-GOVT CASES
- ROI @   11.49%
- * APPLICABLE TOWARDS GOVT & NON - GOVT CASES
- * BOTH SCHEME NAME & LOAN AMOUNT CRITERIA NEEDS TO BE MET FOR SPECIAL PRICING OFFER
- * APPLICABLE ONLY FOR SIMPLE PL CASES
- * 
-[...truncated...]
+MUE:
+- 40 Lakhs
 
---- From: Policy 11-01-23.txt ---
-🔅IDFC FIRST BANK LTD🔅
+Tenure:
+- 12 to 60 months
 
-✨ Our Policy ✨ 
+Banking:
+- Latest 3 months Bank Statement
+- Statement must not be older than 10 days from CPA login date
+- Minimum 3 salary credits in Bank Statement
 
-✨ Salary in Personal Loan  - 20k in Super Cat A, A , B , C ,D
-✨ Rates 10.75% to 22% ✨ 
-✨ Location ✨  Login to any where case from just one place (IDFC Working Location)
+Salary Slip:
+- Salary Slip may be waived where Perfios is successful.
+- Where Perfios is unsuccessful, underwriting must check salary credit in
+  bank statement.
 
-🔅Also 50%Incentive and Rental income are Include in income As per policy
-*Above 15 Lakh Cases
+Office CPV:
+- Not required if official email ID verification is successful before CPA login
+  for all segments;
+  OR
+- Employment verification through EPFO employment check along with latest
+  month salary credit in Bank Statement.
 
-🔅Also Current Address is Valid Like ( Aadhar ,Voter id ,DL , Passport , Pipeline Gas Bill , Electricity Bill , Postpaid Mobile Bill , WIFI Bill , Ration Card ,LPG Gas connection ,Bank statement)
+Residence CPV:
+- Can be waived subject to policy conditions.
+- Waived for Platinum & Gold.
+- For Silver, waiver is basis Bureau Based Norms.
 
-🔅Also Funding In Army Case if Salary ac in IDFC
+--------------------------------------------------------------------------------
+2.3 SALARIED - 15 LACS TO 1 CRORE
+--------------------------------------------------------------------------------
 
-🔅Fully Digital Process No Need To physical Document And Signature Req.
-🔅Fastest TAT in industry
+Age:
+- Minimum: 28 years
+- Maximum: 60 years or retirement age, whichever is later
+  [REVIEW against 1L-15L wording]
 
-🔅All profile Is Funded allowed Sweeper And Safaikarmi type Profile
-All Fourth Class profile cover upto 9 lakh
+Tenure:
+- 12 to 60 months
 
-🔅Work From Home Cases Also Funding As per Norms.
-* Electricity Bill or any one ownership proof required 
+Income Norm & MUE:
 
-🔅Only 3 month job continuity proof required below 15 lakh 
-Above 15 Lakh, 5 Year Continuity Proof Req
+15L to 25L Segment:
+- CAT SA / CAT A / CAT B: Rs. 75,000 per month
+- CAT C: Rs. 100,000 per month
+- MUE: 40 Lakhs
+
+25L+ Segment:
+- NTH: Rs. 125,000 per month
+- MUE: 1 Crore
+
+Target Market by Loan Amount:
+- 15L to 25L: CAT SA, CAT A, CAT B, CAT C
+- 25L to 50L+: CAT SA, CAT A, CAT B
+- 50L+:
+  * CAT SA, CAT A and CAT B allowed as deviation
+
+Residence Stability:
+- Minimum 1 year for rented house
+- Not applicable for self-owned / parental house
+
+Work Experience:
+- Minimum 6 months in current employment
+- Total work experience: 5 years+
+
+Income Eligibility Calculation:
+- Eligibility calculations to be based on salary credit in bank statement.
+- Use average of 2 salary credits after removing the highest salary credit
+  out of the last 3 salary credits.
+
+Additional Income:
+1. Pension:
+   - 100% can be considered
+   - Pension proof + pension credit in bank required
+2. Rental Income:
+   - 50% can be considered
+   - Registered Rental Agreement / Form 26AS showing previous year rental income
+   - Latest 3 months rental credit in bank statement
+3. Incentives:
+   - 100% if quarterly or monthly
+
+--------------------------------------------------------------------------------
+2.4 SELF-EMPLOYED - CORE GATING
+--------------------------------------------------------------------------------
+
+Minimum Age:
+- 25 years
+
+Maximum Age:
+- 65 years
+
+Bureau:
+- CIBIL >= 700
+
+Income / Banking Basis:
+- ABB-based eligibility
+
+Gating source states:
+- Minimum ABB: Rs. 5,000
+- 45%-30% multiplier basis ABB band
+
+Ready Reckoner states:
+- Minimum ABB: Rs. 8,000
+
+[REVIEW: Minimum ABB differs between supplied sources.]
+
+Minimum Transactions:
+- Minimum 3 transactions every month
+
+Cheque Return:
+- No inward cheque returns
+
+--------------------------------------------------------------------------------
+2.5 SELF-EMPLOYED - 1 LAC TO 9 LACS
+--------------------------------------------------------------------------------
+
+Profile Scope:
+- Supplied poster: Proprietorship Firm Only
+- Ready Reckoner includes partnership-firm registration certificate as an
+  acceptable proof.
+- Treat profile scope as [REVIEW] unless a currently applicable source confirms
+  the allowed constitution.
+
+Loan Tenure:
+- Standard: 12 to 48 months
+
+Banking:
+- Latest 6 months banking to be taken
+- Loan amount <= 5L:
+  * 2 debits and 2 credits per month
+- Loan amount > 5L:
+  * 4 debits and 4 credits per month
+  * Transactions should be customer-induced
+  * Exclude interest credit, bank charges, minimum charges and loan disbursement
+    from transaction count
+- No inward cheque returns in last 6 months
+- No EMI / loan cheque returns in last 6 months
+- Minimum 12 months bank vintage required
+- If two bank statements are clubbed, cumulative bank vintage criteria must be met
+
+Business Vintage:
+- At least 2 years business vintage required
+- Proof to be submitted
+
+Ownership:
+- Either residence or business premises should be owned in applicant's name
+- Proof to be submitted
+- Derived ownership can be processed case-to-case with deviation
+
+Self-Employed policy image additionally states:
+- Minimum work experience: 3 years
+- Applicant should be managing the business from the same premises for at least 1 year
+
+Bank Statement - policy image:
+- Latest 3 months Bank Statement not older than 10 days from CPA login date
+- Savings / Current Account allowed
+- Minimum 3 transactions in each month with ABB >= Rs. 5,000
+- No recent loan disbursement in last 3 months
+
+[REVIEW:
+ Ready Reckoner requires latest 6 months banking, while another supplied
+ self-employed scorecard image also states latest 3 months statement not older
+ than 10 days. Do not silently replace one with the other.]
+
+MUE:
+- 40 Lakhs
+
+Repayment Account:
+- Repayment to be accepted from main account of applicant / proprietorship firm
+
+Co-applicant:
+- NA
+
+Own House Proof:
+- Ownership proof of either office or residence is mandatory
+- Ownership waiver for selected profile is mentioned in the scorecard image
+
 ================================================================================
-3. COMPANY/EMPLOYER CATEGORIES
+3. COMPANY / CUSTOMER CATEGORIES
 ================================================================================
+
+Pricing / target categories explicitly visible in supplied sources:
+- ACE PLUS
+- ACE
+- CAT SA
+- CAT A
+- CAT B
+- CAT C
+- CAT D
+- Government cases
+- Corporate Salary customers
+- Branch Banking
+- SA Account Holder
+- Non-SA Account Holder
+
+CATEGORY SAFETY RULE:
+- Company/category must come from a verified IDFC FIRST company-category mapping
+  or another explicit verified IDFC source.
+- Do not infer CAT SA/A/B/C/D from another bank's company category.
+- Do not treat category pricing as proof of full eligibility.
+- If category is required but unresolved: NEEDS_REVIEW.
 
 ================================================================================
 4. PRICING & ROI GRIDS
 ================================================================================
 
-ROI Values from Database:
-- Rule 590: ROI Range: N/A% - N/A% (Version: V1)
-- Rule 591: ROI Range: N/A% - N/A% (Version: V2)
-- Rule 592: ROI Range: N/A% - N/A% (Version: V3)
-- Rule 593: ROI Range: N/A% - N/A% (Version: V4)
-- Rule 594: ROI Range: N/A% - N/A% (Version: V5)
-- Rule 595: ROI Range: N/A% - N/A% (Version: V6)
-[REVIEW] Multiple ROI values exist across versions/rules
+--------------------------------------------------------------------------------
+4.1 APRIL 2025 RACK RATE - SALARIED, LOAN AMOUNT > 1 LAC
+--------------------------------------------------------------------------------
+
+Company Category | NTH <35K | NTH 35K-50K | NTH 50K-80K | NTH >80K
+ACE PLUS / ACE   | 15.50%   | 13.50%       | 12.50%       | 12.50%
+CAT SA / A       | 17.50%   | 15.50%       | 14.50%       | 12.50%
+CAT B            | 19.00%   | 17.50%       | 15.50%       | 13.50%
+CAT C            | 20.00%   | 18.00%       | 16.00%       | 14.00%
+CAT D            | 22.00%   | 20.00%       | 18.00%       | 16.00%
+
+Minimum Booking ROI:
+- No loan, including BT loans, can be booked below 10.99% ROI
+  except Staff Loans / applicable Special Pricing offers.
+
+--------------------------------------------------------------------------------
+4.2 BT PRICING - APRIL 2025 GRID
+--------------------------------------------------------------------------------
+
+For All BT Cases:
+- Rack ROI: BT Loan ROI
+- RH deviation: BT Loan ROI minus 0.25%
+- ZH/NSM deviation: BT Loan ROI minus 0.75%
+
+Any pricing below applicable minimum ROI / benchmark must follow the specific
+special offer / deviation rules.
+
+--------------------------------------------------------------------------------
+4.3 PROCESSING FEE (PF) / TPD - RACK RATE
+--------------------------------------------------------------------------------
+
+Processing Fee:
+- Rack Rate - Salaried: 2.00%
+
+TPD:
+- Rack Rate - Salaried: 2.00%
+
+Rate Deviation Authority:
+- RH: 0.25%
+- ZH: 0.50%
+
+Processing Fee Deviation Authority:
+- RH: 0.25%
+- ZH: 0.50%
+
+TPD Deviation Authority:
+- RH: 0.75%
+- ZH: 2.00%
+
+--------------------------------------------------------------------------------
+4.4 SMALL TICKET PRICING
+--------------------------------------------------------------------------------
+
+Scheme:
+- PL SALARIED ST
+- PL SELF-EMPLOYED ST
+
+Loan Amount:
+- < 1 Lakh
+
+Rack Rate:
+- 25.00%
+
+Rules:
+- No Rate Deviation allowed for Small Ticket schemes.
+- For loan amount < 1 Lakh:
+  * Processing Fee mandatory at 3.49%
+  * No PF deviation allowed
+- For loan amount >= 1 Lakh:
+  * Absolute Processing Fee cannot be lower than Rs. 3,499
 
 ================================================================================
 5. LOAN PARAMETERS
 ================================================================================
 
-Loan Amount Parameters:
-- Rule 593: Min: ₹1.00 Lakh, Max: ₹9.00 Lakh
-- Rule 594: Min: N/A, Max: ₹1
-- Rule 595: Min: N/A, Max: ₹9
+--------------------------------------------------------------------------------
+5.1 SALARIED
+--------------------------------------------------------------------------------
+
+1L-15L:
+- Loan Amount: 1 Lac to 15 Lacs
+- Tenure: 12 to 60 months
+- MUE: 40 Lakhs
+
+15L-1Cr:
+- Loan Amount: 15 Lacs to 1 Crore
+- Tenure: 12 to 60 months
+- 15L-25L segment: MUE 40 Lakhs
+- 25L+ segment: MUE 1 Crore
+
+High-End Ticket:
+- Loan amount > 15 Lacs:
+  * Scheme defaults to PL - PL HIGHEND TICKET
+  * Cases are booked as SMART PL only
+  * SMART PL applicable only for UW approved amount > 15 Lacs
+  (April 2025 rack note)
+
+--------------------------------------------------------------------------------
+5.2 SELF-EMPLOYED
+--------------------------------------------------------------------------------
+
+Ready Reckoner / poster:
+- Loan Amount: 1 Lac to 9 Lacs
+- Standard Tenure: 12 to 48 months
+
+Self-Employed scorecard image:
+- Tenure Minimum: 12 months
+- Tenure Maximum: 48 months
+- BT: Up to 60 months where original tenure is >48 months
+- For BT extension to 60 months:
+  * Eligibility to be calculated as per 48 months tenure
+
+Self-Employed scorecard lower table displays:
+- Rs. 75,000* as revised minimum loan amount
+- Rs. 9,00,000 as the other displayed loan amount limit
+- Max Tenor: 48 months
+
+[REVIEW:
+ Main Ready Reckoner/poster states 1L-9L while scorecard image shows revised
+ minimum amount Rs.75,000*. Use the currently verified applicable version.]
+
+Other scorecard remark:
+- Loan < Rs. 40,000 will not be considered in live loan.
 
 ================================================================================
-6. FOIR & MULTIPLIER RULES
+6. ABB / EMI / MULTIPLIER RULES
 ================================================================================
 
+SELF-EMPLOYED ABB-BASED ELIGIBILITY:
+
+Ready Reckoner:
+- Serviceable EMI is based on ABB-to-EMI ratio.
+
+ABB Band              | Eligible EMI Ratio
+ABB <= 10K            | 45%
+ABB >10K to <=30K     | 40%
+ABB >30K              | 35%
+
+Scorecard image shows equivalent bands:
+- 5K-10K ABB: 45%
+- 10K-30K ABB: 40%
+- 30K+ ABB: 35%
+
+Exceptions:
+- Exceptions to be processed with L4 deviation where explicitly stated.
+
+ABB Calculation:
+1. ABB = daily balance average for 6-month statement.
+2. Remove non-business credits for eligibility calculation:
+   - loan credit
+   - self-transfer
+   - other non-business credits
+3. Multiple bank accounts can be clubbed for ABB calculation.
+4. Banking account conduct must be fulfilled by each account individually.
+
+SALARIED:
+- No explicit FOIR rule is supplied in the reviewed documents.
+- Do not invent FOIR.
+- If FOIR is mandatory for an eligibility decision and no other verified source
+  exists: NEEDS_REVIEW.
+
 ================================================================================
-7. NTH / SALARY REQUIREMENTS
+7. NTH / SALARY / INCOME REQUIREMENTS
 ================================================================================
 
-Salary Requirements from Database:
-- Rule 590: Min: ₹12, Max: ₹60
-- Rule 592: Min: ₹50,000, Max: ₹80,000
-- Rule 593: Min: ₹1, Max: N/A
-- Rule 594: Min: ₹35,000, Max: ₹80,000
-[REVIEW] Multiple salary values exist across versions/rules
+--------------------------------------------------------------------------------
+7.1 SALARIED 1L-15L
+--------------------------------------------------------------------------------
+
+- NTH > Rs. 20,000 per month in latest 3 months
+- Minimum 3 salary credits
+- Salary Slip can be waived if Perfios successful
+- If Perfios unsuccessful, salary credit must be checked in bank statement
+
+--------------------------------------------------------------------------------
+7.2 SALARIED 15L-25L
+--------------------------------------------------------------------------------
+
+- CAT SA / CAT A / CAT B: Rs. 75,000 per month
+- CAT C: Rs. 100,000 per month
+- MUE: 40 Lakhs
+
+--------------------------------------------------------------------------------
+7.3 SALARIED 25L+
+--------------------------------------------------------------------------------
+
+- NTH: Rs. 125,000 per month
+- MUE: 1 Crore
+
+--------------------------------------------------------------------------------
+7.4 INCOME CALCULATION - HIGHER TICKET SALARIED
+--------------------------------------------------------------------------------
+
+Salary:
+- Use salary credits in bank statement
+- Average of 2 salary credits after removing highest salary credit from last 3
+
+Pension:
+- 100% with pension proof + pension credit in bank
+
+Rental:
+- 50% with Registered Rental Agreement / Form 26AS showing previous year rental
+  income + latest 3 months rental credit in bank statement
+
+Incentive:
+- 100% if quarterly or monthly
 
 ================================================================================
-8. BT / CCBT / APP LOAN RULES
+8. BT / SPECIAL SCHEME RULES
 ================================================================================
 
-Refer to source documents for detailed BT/CCBT/App Loan rules.
-Total policy rules in database: 6
+--------------------------------------------------------------------------------
+8.1 SPECIAL PRICING - >= 15.01 LACS
+    DISBURSALS FROM 1 SEP 2025
+--------------------------------------------------------------------------------
+
+Scheme:
+- PL - PL HIGHEND TICKET
+
+Loan Amount:
+- >= 15.01 Lacs
+
+Applicability:
+- Fresh sourcing + BT cases
+- Both scheme name AND loan amount criteria must be met
+- Applicable to Government and Non-Government cases
+- Not applicable to:
+  * Top-Up
+  * Alliance Business
+  * Staff Loans
+- Cases below BT ROI benchmark are not allowed
+- Loan amount applicable basis company category continues to apply
+
+Eligible categories shown:
+- ACE PLUS / ACE / SA / A / B / C
+
+Fresh Cases ROI:
+- 10.50%
+
+BT Cases ROI:
+- 10.50%
+
+Standard PF:
+- 2%
+- Deviation allowed subject to minimum PF of Rs. 4,999
+
+--------------------------------------------------------------------------------
+8.2 SPECIAL PRICING - 10 LACS TO 15 LACS
+    NON-BT / FRESH SOURCING
+    DISBURSALS FROM 1 SEP 2025
+--------------------------------------------------------------------------------
+
+Scheme:
+- PL SCORECARD
+
+Loan Amount:
+- 10 Lacs to 15 Lacs
+
+Applicability:
+- Non-BT only
+- Fresh sourcing
+- Applicable towards Government and Non-Government cases
+- Only Simple PL cases
+- Not applicable on Top-Up, Alliance Business, Staff Loans
+- Both scheme name and loan amount criteria must be met
+- Cases below BT ROI benchmark are not allowed
+
+Category          | Special ROI
+ACE+ / ACE        | 10.99%
+CAT SA / A        | 11.49%
+CAT B             | 12.49%
+CAT C             | 13.49%
+CAT D             | 15.00%
+Government Cases  | 11.49%
+
+Standard PF:
+- 2%
+- Deviation allowed up to Rs. 4,999 as stated in source
+
+--------------------------------------------------------------------------------
+8.3 SPECIAL BT SOURCING - 1 LAC TO 15 LACS
+    DISBURSALS FROM 1 SEP 2025
+--------------------------------------------------------------------------------
+
+Scheme:
+- PL SCORECARD
+
+Loan Amount:
+- 1 Lac to 15 Lacs
+
+Applicability:
+- BT Only
+- Government and Non-Government cases
+- Both scheme and loan amount criteria must be met
+- Cases below BT ROI benchmark are not allowed
+
+ROI Offer:
+- BT ROI minus 0.75%, subject to category minimum ROI:
+
+Category                  | Minimum ROI
+ACE PLUS / ACE / SA / A  | 10.99%
+CAT B                     | 11.99%
+CAT C                     | 12.49%
+CAT D                     | 12.99%
+
+Processing Fee:
+- Standard PF: 2%
+- For LA >= 10 Lacs:
+  * deviation allowed up to Rs. 4,999
+- For LA < 10 Lacs:
+  * deviation as per normal Deviation Grid
+
+--------------------------------------------------------------------------------
+8.4 GOVERNMENT SOURCING OFFER - FRESH ONLY
+    DISBURSALS FROM 1 SEP 2025
+--------------------------------------------------------------------------------
+
+Applicability:
+- Government cases only
+- Fresh sourcing only
+- Loan Amount: 1 to 10 Lacs
+
+For Loan Amount < 10 Lacs:
+- ROI: 12.99%
+- Standard PF: 2%
+- PF deviation: as per Normal Grid
+- TPD: Standard Rate
+
+Government cases with LA >= 10 Lacs:
+- Follow applicable special pricing from the relevant higher-ticket offer.
+
+--------------------------------------------------------------------------------
+8.5 CORPORATE SALARY SPECIAL PRICING
+    DISBURSALS FROM 1 SEP 2025
+--------------------------------------------------------------------------------
+
+Applicability:
+- Corporate Salary customers only
+- Fresh sourcing only
+
+NTH > 80K:
+- ROI: 10.99%
+- PF: Rs. 4,999
+
+NTH 35K to 80K:
+- ROI: 11.99%
+- PF: Lower of Rs. 9,999 or 1.50%
+
+NTH < 35K:
+- As per Rack Rate Grid
+
+For Loan Amount > 15 Lacs under PL-PL HIGHEND TICKET:
+- ROI: 10.50%
+- PF: Rs. 4,999
+
+Additional PF Rule:
+- Processing Fee to have 50% waiver if disbursal happens in
+  IDFC FIRST Savings Account.
+
+--------------------------------------------------------------------------------
+8.6 BRANCH BANKING SPECIAL PRICING
+    DISBURSALS FROM 1 SEP 2025
+--------------------------------------------------------------------------------
+
+Applicability:
+- Branch Banking only
+- Loan Amount < 10 Lacs
+- Fresh sourcing only
+- Not applicable to BT
+
+ROI Deviation:
+- SA Account Holder: deviation up to 1.00%
+- Non-SA Account Holder: deviation up to 0.50%
+
+Other Charges:
+- Processing Fee: Standard Rate
+- TPD: Standard Rate
 
 ================================================================================
-9. DOCUMENT REQUIREMENTS
+9. BANKING / DOCUMENT / VERIFICATION REQUIREMENTS
 ================================================================================
 
-Document requirements found in source files:
+--------------------------------------------------------------------------------
+9.1 SALARIED
+--------------------------------------------------------------------------------
 
---- From: IDFC_Salaried_250823.pdf ---
- Not required if official email
- Waived for Platinum & Gold  in Bank Statement
- 100% with pension proof + Pension
- credit in bank statement
+Bank Statement:
+- 1L-15L: Latest 3 months
+- Must not be older than 10 days from CPA login date
+- Minimum 3 salary credits
 
---- From: NTB-PL Pricing - Rack Rate, Deviation Grid April25.pdf ---
- Company Category
+Salary Slip:
+- Waived where Perfios successful
+- If Perfios unsuccessful, UW checks salary credit in bank statement
 
---- From: PL - Self Employed (Ready Reckoner).pdf ---
- 3.   Minimum 12 months bank vintage required for bank accounts (In case of two bank statements clubbing, cumulatively the vintage
- 1.   At least 2 years of business vintage required. Proof to be submitted.
- 2.   Either residence or Business premises to be owned in the name of applicant (Proof to be submitted)
- Acceptable Business Proofs
+Employment Verification:
+- Official email ID verification can waive office CPV where applicable
+- OR EPFO employment check + latest month salary credit in Bank Statement
+
+Residence CPV:
+- Waived for Platinum & Gold
+- Silver: waiver basis Bureau Based Norms
+
+--------------------------------------------------------------------------------
+9.2 SELF-EMPLOYED BANKING
+--------------------------------------------------------------------------------
+
+Ready Reckoner:
+- Latest 6 months banking
+- <=5L: 2 debits + 2 credits per month
+- >5L: 4 debits + 4 credits per month
+- No inward cheque returns in last 6 months
+- No EMI / loan cheque returns in last 6 months
+- Minimum 12 months bank vintage
+
+Scorecard image additionally states:
+- Latest 3 months Bank Statement not older than 10 days from CPA login date
+- Savings / Current Account allowed
+- Minimum 3 transactions each month
+- ABB >= Rs. 5,000
+- No recent loan disbursement in last 3 months
+
+--------------------------------------------------------------------------------
+9.3 SELF-EMPLOYED ACCEPTABLE BUSINESS PROOFS
+--------------------------------------------------------------------------------
+
+Ready Reckoner:
+1. Registration Certificate (for partnership firms)
+2. Valid Shops and Establishment Certificate
+3. Trade License
+4. Latest GST Tax Return
+5. CST / VAT Registration Certificate for goods not covered under GST
+6. Factory Registration Certificate
+7. Business Banking - Current or OD/CC account
+
+Poster also accepts as business proof:
+- Registration certificate
+- Trade license
+- GST certificate
+- Current account or OD account
+
+Scorecard image:
+- Business Proof may be waived subject to repayment from current account and
+  business name confirmed through CPV.
+- For savings account, business proof is mandatory.
+- Where vintage is not confirmed in CPV, business proof is mandatory.
+- For low-stock/low-activity and contractor profiles, business proof is
+  indicated as mandatory in the source image.
+
+--------------------------------------------------------------------------------
+9.4 SELF-EMPLOYED CPV / PD
+--------------------------------------------------------------------------------
+
+Ready Reckoner:
+- Agency CPV mandatory at both residence and office
+- UW to conduct Tele PD / Video PD in all cases to validate CPV and business setup
+
+Scorecard image:
+- Personal Discussion may be waived where office CPV is positive
+- Residence CPV:
+  * Waived for Platinum & Gold
+  * Silver waiver basis Bureau Based Norms
+- Office CPV:
+  * Mandatory for all
+  * Customer must meet during office CPV
+
+[REVIEW:
+ Ready Reckoner says Tele/Video PD in all cases, while scorecard image allows PD
+ waiver where office CPV is positive.]
+
+--------------------------------------------------------------------------------
+9.5 OWNERSHIP
+--------------------------------------------------------------------------------
+
+Self-Employed:
+- Own house OR office/business premises mandatory in the supplied poster
+- Ready Reckoner: either residence or business premises owned in applicant's name
+- Scorecard: ownership proof of either office or residence mandatory
+- Selected-profile ownership waiver is mentioned
+- Derived ownership can be case-to-case
+
+--------------------------------------------------------------------------------
+9.6 LEGACY / SUPPLEMENTAL DOCUMENT-POLICY ITEMS
+    SOURCE: POLICY 11-01-23
+--------------------------------------------------------------------------------
+
+These rules are older than the 2025 material and should be treated as
+supplemental / [REVIEW] if used for current eligibility:
+
+- Current-address proofs listed:
+  * Aadhaar
+  * Voter ID
+  * Driving Licence
+  * Passport
+  * Pipeline Gas Bill
+  * Electricity Bill
+  * Postpaid Mobile Bill
+  * Wi-Fi Bill
+  * Ration Card
+  * LPG Gas connection
+  * Bank statement
+
+- Work From Home cases stated as fundable as per norms
+  * Electricity Bill or another ownership proof required
+
+- Army case funding mentioned where salary account is in IDFC FIRST
+
+- Fourth-class profiles mentioned as covered up to 9 Lakhs
+
+- Job continuity:
+  * Below 15 Lakhs: 3 months continuity proof
+  * Above 15 Lakhs: 5 years continuity proof
+  [REVIEW against newer 15L+ source stating minimum 6 months current employment
+   and total work experience 5 years+.]
 
 ================================================================================
 10. EXCEPTIONS & DEVIATIONS
 ================================================================================
 
-Refer to source documents for detailed exceptions and deviations.
+General Pricing:
+- Deviations beyond stated April 2025 pricing grids go to Business Head.
+- No rate deviation for Small Ticket schemes.
+- <1L Processing Fee: mandatory 3.49%, no deviation.
+- >=1L absolute Processing Fee cannot be below Rs. 3,499.
 
-Conflicts detected requiring review:
-- min_salary: values found = 12, 50000, 1, 35000 [REVIEW]
-- max_salary: values found = 60, 80000 [REVIEW]
-- max_loan_amount: values found = 900000, 1, 9 [REVIEW]
+Special Pricing:
+- Must satisfy exact scheme and loan amount criteria.
+- Do not apply special pricing outside its stated sourcing type.
+- Do not apply Fresh-only pricing to BT.
+- Do not apply BT-only pricing to Fresh.
+- Do not apply Government-only pricing to Non-Government cases.
+- Do not apply Branch Banking pricing outside Branch Banking.
 
-================================================================================
-11. CONFLICTS/REVIEW ITEMS
-================================================================================
-
-The following fields have conflicting values across different policy versions:
-
-Field: min_salary
-Values: 12, 50000, 1, 35000
-Status: [REVIEW] - Multiple values found, verify against latest policy document
-
-Field: max_salary
-Values: 60, 80000
-Status: [REVIEW] - Multiple values found, verify against latest policy document
-
-Field: max_loan_amount
-Values: 900000, 1, 9
-Status: [REVIEW] - Multiple values found, verify against latest policy document
-
+Self-Employed:
+- ABB / banking exceptions marked in Ready Reckoner: L4 deviation.
+- Derived ownership: case-to-case.
+- Ownership waiver: selected profiles only where applicable.
 
 ================================================================================
-END OF POLICY RULEBOOK
+11. CONFLICTS / REVIEW ITEMS
+================================================================================
+
+1. SELF-EMPLOYED MINIMUM ABB
+   - General gating table: Min ABB Rs. 5,000
+   - Self-Employed Ready Reckoner: Min ABB Rs. 8,000
+   - Scorecard uses ABB >= Rs. 5,000 for transaction condition
+   STATUS: [REVIEW]
+   Do not silently choose one value without source/version applicability.
+
+2. SELF-EMPLOYED BANK STATEMENT PERIOD
+   - Ready Reckoner: latest 6 months banking
+   - Scorecard image: latest 3 months statement not older than 10 days
+   STATUS: [REVIEW]
+
+3. SELF-EMPLOYED BUSINESS CONSTITUTION
+   - Poster: Proprietorship Firm Only
+   - Ready Reckoner acceptable proofs include partnership-firm registration
+   STATUS: [REVIEW]
+
+4. SELF-EMPLOYED MINIMUM LOAN AMOUNT
+   - Ready Reckoner/poster: 1 Lac
+   - Scorecard lower table displays revised minimum Rs. 75,000*
+   STATUS: [REVIEW]
+
+5. SELF-EMPLOYED PD RULE
+   - Ready Reckoner: Tele PD / Video PD in all cases
+   - Scorecard: PD can be waived where office CPV positive
+   STATUS: [REVIEW]
+
+6. SALARIED MAXIMUM AGE
+   - 1L-15L: 60 years or retirement, whichever comes first at maturity
+   - 15L-1Cr: 60 years or retirement, whichever is later
+   STATUS: Segment-specific wording; [REVIEW] if applying outside exact segment.
+
+7. SALARIED JOB CONTINUITY
+   - Legacy 2023 source: 3 months below 15L; 5 years above 15L
+   - 2025 15L-1Cr source: 6 months current employment + 5 years total work experience
+   STATUS: [REVIEW]; prefer exact applicable current verified version.
+
+8. CIBIL
+   - Salaried: 690+
+   - Self-Employed: 700+
+   STATUS: These are separate profile rules. Do not merge them.
+
+9. SPECIAL PRICING VS RACK RATE
+   - April 2025 Rack Rate remains the general pricing grid.
+   - September 2025 Special Pricing applies only where its exact applicability
+     conditions are met.
+   STATUS: Do not replace the entire rack grid with special pricing.
+
+10. CATEGORY / NTH ISOLATION
+    - Pricing varies by category and NTH.
+    - Never borrow CAT A pricing for CAT B/C/D or vice versa.
+    - Never borrow one NTH band's rate for another band.
+
+================================================================================
+12. AI / BACKEND EVALUATION RULES
+================================================================================
+
+SALARIED EVALUATION PATH:
+IDFC FIRST Bank
+-> Personal Loan
+-> Salaried
+-> exact loan amount segment
+-> exact company/customer category where required
+-> exact NTH band
+-> Fresh / BT / Government / Corporate Salary / Branch Banking scope
+-> exact applicable eligibility rules
+-> exact applicable pricing rule
+
+SELF-EMPLOYED EVALUATION PATH:
+IDFC FIRST Bank
+-> Personal Loan
+-> Self-Employed
+-> exact applicable self-employed program/version
+-> loan amount
+-> age
+-> CIBIL
+-> ABB
+-> banking conduct
+-> transaction count
+-> business vintage
+-> ownership
+-> CPV / PD
+-> applicable ABB-to-EMI ratio
+-> applicable pricing if explicitly defined
+
+STATUS LOGIC:
+
+ELIGIBLE:
+- Only where all mandatory applicable verified eligibility rules are available
+  and passed.
+
+NOT_ELIGIBLE:
+- Only where an explicit applicable verified IDFC FIRST policy criterion fails.
+
+NEEDS_REVIEW:
+- Required policy rule conflicts across supplied sources.
+- Company/category is unresolved.
+- Required field is missing.
+- Source version/applicability is unclear.
+- Special pricing conditions are not sufficiently resolved.
+- A rule would otherwise need to be guessed.
+
+NEVER:
+- Invent age, CIBIL, salary, ABB, tenure, loan limit, ROI, PF or category.
+- Mix Salaried and Self-Employed rules.
+- Mix another bank's category/rules with IDFC FIRST.
+- Use a marketing statement as an underwriting rule.
+- Use pincode/location information as an eligibility rule unless a verified
+  policy specifically requires serviceability and that rule is intentionally
+  modeled elsewhere.
+
+================================================================================
+END OF IDFC FIRST BANK PERSONAL LOAN POLICY RULEBOOK
 ================================================================================

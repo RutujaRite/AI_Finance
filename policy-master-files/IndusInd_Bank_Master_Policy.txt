@@ -1,354 +1,773 @@
 ================================================================================
 INDUSIND BANK PERSONAL LOAN - POLICY RULEBOOK
-Generated: 2026-08-29
-Source Bank: IndusInd Bank (INDUSIND)
+Generated: 2026-09-01
+Source Bank: IndusInd Bank
+Product: Personal Loan
 ================================================================================
 
 PURPOSE:
-This is a concise eligibility and pricing rulebook for IndusInd Bank Personal Loan.
-It is derived from all source documents and PostgreSQL policy records.
-Use this for AI decision-making, eligibility checks, and policy validation.
+This is a consolidated Personal Loan policy rulebook prepared only from the
+supplied IndusInd Bank policy documents/images.
+
+It includes policy-related:
+- Eligibility
+- CIBIL / bureau rules
+- NMI / salary norms
+- Company categories
+- Employment stability
+- Loan amount caps
+- Tenure
+- FOIR / DBR
+- Multiplier / MUE
+- BT rules
+- Pricing / IRR / PF
+- Foreclosure conditions
+- Variable income rules
+- NTC rules
+- Address-proof documents
+- Relevant deviations / exceptions
+
+EXCLUDED:
+- Pincodes
+- DSA / channel / ECN codes
+- Referral links
+- Marketing slogans
+- Sales messages
+- Decorative/promotional content that does not define a policy rule
+
+SOURCE SET:
+1. PL Policy Norms (Revised) - image, effective 15-Dec-2021
+2. Policy 16-07-22.txt
+3. Rate 09-05-24.jpeg
+4. Updated policy 07-11-24.jpeg
+5. WhatsApp Image 2024-09-17 - promotional confirmation only
+6. STP Process Below 5 Lacks.txt - excluded because supplied content contains
+   link/channel/DSA information rather than policy rules
+
+SOURCE-SAFETY RULES:
+1. Never invent a missing rule.
+2. Never mix company categories.
+3. Never mix NTC with normal bureau cases.
+4. Never mix standard Personal Loan, BT, Overdraft BT, or other programs.
+5. Never use a promotional statement when a more specific policy condition exists.
+6. Where dated sources conflict, preserve both and mark [REVIEW].
+7. Do not assume that an older rule is automatically active only because it
+   appears in this master file; activation/version must be verified separately.
+8. If required applicability is unresolved, return NEEDS_REVIEW.
 
 SECTIONS:
 1. PROGRAM OVERVIEW
-2. ELIGIBILITY CRITERIA
-3. COMPANY/EMPLOYER CATEGORIES
-4. PRICING & ROI GRIDS
-5. LOAN PARAMETERS
-6. FOIR & MULTIPLIER RULES
-7. NTH / SALARY REQUIREMENTS
-8. BT / CCBT / APP LOAN RULES
-9. DOCUMENT REQUIREMENTS
-10. EXCEPTIONS & DEVIATIONS
-11. CONFLICTS/REVIEW ITEMS
+2. COMPANY CATEGORIES
+3. CORE ELIGIBILITY
+4. NTC / NEW-TO-CIBIL POLICY
+5. LOAN AMOUNT & TENURE
+6. FOIR / DBR RULES
+7. MUE / MULTIPLIER RULES
+8. BT / OVERDRAFT BT RULES
+9. PRICING / IRR / PF / FORECLOSURE
+10. INCOME & OBLIGATION CALCULATION
+11. DOCUMENT / VERIFICATION REQUIREMENTS
+12. CONFLICTS / REVIEW ITEMS
+13. AI / BACKEND EVALUATION RULES
 
 ================================================================================
 1. PROGRAM OVERVIEW
 ================================================================================
 
-Active Policy Versions:
-- V2 (Home)
-- V4 (Personal)
-- V3 (Personal)
-- V2 (Personal)
-- V1 (Home)
-- V1 (Personal)
+Primary Product:
+- IndusInd Bank Personal Loan
 
-Key Parameters from Database:
-- Minimum Salary: ₹25,000
-- Maximum Loan Amount: ₹45
-- FOIR Limit: 75%
+Profiles / policy paths explicitly visible in supplied sources:
+- Standard salaried Personal Loan
+- New-to-CIBIL (NTC)
+- Balance Transfer (BT)
+- App Loan BT
+- Overdraft BT
+- Longer-tenure Personal Loan (72 / 84 month conditions)
 
-Total Policy Versions: 6
-Total Policy Rules: 6
-Total Source Files Extracted: 11
-
-================================================================================
-2. ELIGIBILITY CRITERIA
-================================================================================
-
-Employment Types:
-- Self-Employed
-
-Source Document Policy Details:
-
---- From: IMG-2673.jpg ---
-of 7, Ee A
-f 4; } fay 45;
-{ J 3
-: ¥ Wr or 0 ret RA ir
-+ : 7
-F r
-. 4 pe /
-[2 2
-£ 7 i s
-# ] m Si
-¥ Ws ITE atl
-sill # RTE {
-J Biter Ll adie) i ii
-VIERA EE gp ars £53
-; 2 2 piles {pte ry dS BAR
-ad g » i PST,
-oad 4 ty ; His i a d:2
-J 14.2 qt yan FE 4
-¥ i Er: Brim ii Fv)
-a 3 red / iw 3 ih ig
-> f ih I od ee £id ?
-i ; ¥ ih . I ys io y
-i 4 J *
-5 7 i 7
-# } ou HL 150 2 1
-F. 7 r Fs 5 Ld 2 §
-4 ” - ; ’ | 5 :
-b al ry J 4 5 ¥ " 5 » 2 7
-’ 4 x i ¥ gor ot) prt ” - iL 3
-or i i # } ‘ ¢
-A ix 3 y 7 % f $514 ¥ n
-; Et p. # 1 ; ¢ Fics rt e F
-J Big a 7 Sse #
-1 p fy ’ id J 5 :
-s iy / HEE ; ¥ 4 igus 2
-: / 7 7 i" ¥ 7 1
-| f bog) $00 T i, Is a BE Re EE ge Fi od
-{ iy ie et SETA et PA Lt 9he 4 Z ¥ : 5 2 ; ;
-J / 5 J % A 1/4 J4 A 4 Z 5 iF cs 2 1 3 i r 7 » ¢ BR - -
-d yi 3 { %1 71 Fs 4 IT Gr Ea ah a uw : 7
-SE | (Lid / i, # 2 I iar be Ah pret e sd fs : AT
-/ : f iF p 2 4 a an 7s, A jo a “27 wy sa
-” / i / / id sia 3 na bly pi - 4 4 434 F, ¢
-= x J 9 4 b 5 4 /
-2 YUBlky] f file : f iit i 4 ;
-: {
-4 fy
-7a if / 2
-FU
-Ea £7 i
-Aimed
-sre Hh ; ;
-Fie
-SRR
-Lig / J /
-2 VL 8 f i ; ;
-aE / y
-bi Lie er ay
-a
-SOT TE ap a fa £
-Lites Fe
-br Re /
-ban Ea EOE IE # 4
-at Lc
-¥ re gy 4
-Fi ern
-Fale Che PEI 2 :
-ST Bd sy £7 :
-CELT A il
-¢ Ey = A fic ip
-AEP | PSPs Ey fh
-AT ve or oi fd
-: 405 Fe of Lil SRY FINS J
-Rl
-CE TE
-in Best. il fas
-oT oF a
-Peg SO
-sEIE BARE wr PE
-MS Yea
-aR &, Flea
-eet
-
---- From: IMG-2674.jpg ---
-Ro = 0.5 2 # 7
-ERATED ——
-C ENT Hep, i Ty
-1] A e
-. Hare re AA CAT
-$d r 5 3 29. f b £ “© 3 py dr
-g ; : ; 5 ‘ ~ JE ai 1% fig 2%,
-* rd Wd vs Ek
-fp hes = gIBsY zy fosmid : rial) 7
-ey Hr a Ae FE
-4 i ; HL TT ; Fe]
-: / | ¥ °f AL 5 7 7 z 4 gf
-; eds oy pl a
-BB re EEA BA) #5
-2 4» pT Eres ETI :- 55 7 por 5 )
-{ ¢ (8 St A, 7 1 aL
-Z 4 sip fH 7 AH a 7 2
-7 4 jz A Freer ers x p 2 i
-Ga i hs pA a
-7 id £ 8 pr il a A ot 4 Jie
-3 #0] g : LR Cry Ed ’ £
-2 4 2h rE Fi
-i 4 41 BY 5 SZ 7 Fi
-4 J i iy its a / 48 PE ER y AE
-5 ¥ Wor pr / ity a. oo i LE
-¢ ; 7 Fate 4 or gor So) i ee >
-y y 4 i % 7 wh Gd Po andi fo Eo BIN EVEL yo ait {25
-2 DHE ir AT ae
-; ; BEE La a Ji RR en & Ties
-1 : Sr AT >” SG Zig A i
-; 7 { Voie Ss ih 7? Gelli did eet 1s 77, EAT Sy
-/ 1 AC eR Per rr Ae EF ee J
-i) Wp eR HE He Te Sf : i
-; ' 3 {24 be, Jer 2x1 rk Lari A VA Pe l 4rd :
-py : HE a : ia Ee eT a es a
-: : 75 bhi Ai 2 SAAN 7 irtid ep # eal
-4 LT #7 ALSLIE i AE HTS. Ag fe Fiietainy 775% Ek 37 rt ois 7 A mT
-1% TA A Cr eA SG Ash sc 7
-; VY) AA TIAL 6 Vd ET SER fae Fo
-7 / / #3 ¢iies ; (il ies ele Tl Ct Rare at, BEN es
-EAL wn i ar i AE TE) Rr Ci Tk ok get FA
-% / 4 ; EL EE Gr GS FTG Fh
-7 Ar i PE a IA a dA 2 rat
-; 17 IO ile Ena ho A A A TE 4 Yi
-/ ool (ls fp foe A Ed ies 5h i A a LL WS re i er SR 5
-579% g f / rel Sheet Ha EA TE FL ad. Lye Ais ER Fe
-GAGE A pd, SAHA Tr ATE Gr, pr dig
-oii F of 7 £48 WEG dry 5175 77: >A ap Tt tT Fo APT ERO TEE ad A 3
-i Vi NAT] rr Es An IE ig Ean iy SL ss cE 28 se 57K ie esis
-Ede ’ ; Car gE A HL y
-! 7 f ies a Ss EE a eI I
-[...truncated...]
-
---- From: IMG-2675.jpg ---
-rer
-&
-Ah / D i a A YATE)
-A, YOUR DECLARATION ita pd 5: yh val Rat al oh he
-. loan is being taken for the purpose as stated in the
-(1) No cash / bearer cheque has been collected from you upfront towards processing the loan application. (2) I/We herebyconfirm and duly undertake that the loani ities! illegal activities. (3) am/We are bits
-application form. I/We also confirm that the loan is not being used for investment in stocks and shares, speculative activities or any purposes linked to capital market acy {led at the time of applying for S 2
-beneficial owner/owners of all assets that run through my/our account. (4) I/We will update the Bank in case of any change in my / related party / Beneficial Owner detail prov any unless specifically declared =
-; Personal Loan, which includes address change, change in industry, change in employment etc. (5) I/We confirm that we have not taken any loan from any other BC ir) of Indusind Bank. I/We —
-by me/us. (6) | / We certify that!/We are citizens of India. (7) I/We confirm that I/We are not a director of Indusind Bank or specified near relation (as specified by RBI) of any of the banks or specified near relation Em
-confirm that I/We are not specified near relation (as specified by RBI) of any of the Senior Officer of Indusind Bank. I/We confirm that I/We are not a Director/Senior Officer of other 2 hah Tote meus =
-(as specified by RBI) of any of the directors of other banks. (8) I/We certify that all information furnished by me/us is tru
-[...truncated...]
-
---- From: IMG-2676.jpg ---
-15 'e de 7
-a 3 se i ] .
-sis 2 Ne | As i b = i & backspace \ock
-esc | L : p | . & * (€ ) o) i —
-ol (s) Cs
-H $ 70 — | 8 9 prem
-2 |
-y hor
-2A ps
-! s A i : -
-tab =i a rach Ag : Other Bank Credit Card imprint, required only in case of Credit Card based surrogate sourcing enter
-; . Latest 3/6/___months Bank Statement (Where salary income is credited) :
-. Latest 2/3/__ salary slips/Salary Certificate/Form 16 (if applicable) ¥  ——
-. Proof of Identity (Specify) 5 | — i
-. Proof of Residence (Specify) :
-. Proof of Qualification (Specify) {
-caps lock L 3 ‘
-c . Loan Account Statement for Balance Transfer/Balance Transfer & Top up/ . A shift
-Repayment/Retention cases .
-¢ . Latest- [TR/Balance Sheet and P&L :
-R: ere
-. Personal Loan Agreement 2 i Pease
-. Signature Verification }
-shift T . ECS/Auto Debit Mandate :
-7 . Cheques : ——— »
-“Indusind Bank Ltd may request for additional documents other than those requested above :
-in connection with the application : p=
-ctrl fn :
-EX
-1 / We Confirm that, :
-a) | know that | will continue to receive the account statement and other important advice, information relating to transactions on the account irrespective gf DNC status, Only phone / mobile no.(s) / email id
-provided will be excluded fromthe marketing lists (if DNC has been requested for). lt may take upto 45 days from the day one submits a request to action a DNC request.
-b) Ihave not made any payment in cash, bearer cheque or kind to any executive / representative of Indusind Bank Ltd in connecti
-[...truncated...]
-
---- From: NO MAIL ID.pdf ---
-Nayaj Shaikh
- From:   Hemantkumar Patil <Hemantkumar.Patil@indusind.com>
- Sent:   Monday, May 09, 2022 6:10 PM
- To:   Nayaj Shaikh
- Cc:   Nehil Sharma; Prashant Kumar Devendra; Deepak Singh; Sharad Mahure; Yogesh Sakhare; Nilesh Wankhede
- Subject:   Re: BLANKET LOGIN APPROVAL FOR NO OFFICE LANDLINE AND NO OFFICE EMAIL ID.
- Ok
- Regards,
- Hemantkumar-RSM-PL-RoMG
- On 6 May 2022 at 4:45:06 PM IST, Nayaj Shaikh <Nayaj.Shaikh@indusind.com> wrote:
- Dear Sir,
- Request your login approval for no landline at office and no official email id.
- Thanks & Regards ,
- NAYAJ SHAIKH
- IndusInd Bank Ltd,
- 3rd Floor, Suyog Platinum,
-1
-================================================================================
-3. COMPANY/EMPLOYER CATEGORIES
-================================================================================
+Core underwriting dimensions:
+- Company Category
+- NMI / income band
+- CIBIL / bureau status
+- CIBIL vintage
+- Employment stability
+- Age
+- Loan amount
+- FOIR / DBR
+- Housing / ownership condition where specified
+- BT conditions where applicable
 
 ================================================================================
-4. PRICING & ROI GRIDS
+2. COMPANY CATEGORIES
 ================================================================================
 
-ROI Values from Database:
-- Rule 596: ROI Range: N/A% - N/A% (Version: V1)
-- Rule 597: ROI Range: N/A% - N/A% (Version: V1)
-- Rule 598: ROI Range: N/A% - N/A% (Version: V2)
-- Rule 601: ROI Range: N/A% - N/A% (Version: V2)
-- Rule 599: ROI Range: N/A% - N/A% (Version: V3)
-- Rule 600: ROI Range: N/A% - N/A% (Version: V4)
-[REVIEW] Multiple ROI values exist across versions/rules
+Company categories explicitly used in supplied sources:
+- CAT A+
+- CAT A
+- CAT B
+- CAT G
+- CAT C-1000
+- CAT C (Unlisted)
+- Staff
+
+Category naming normalization:
+- "CAT C1000", "CAT C-1000" and "CAT C (1000)" refer to the C-1000 category
+  only when the source/context clearly indicates the same category.
+- "CAT C" / "CAT C (Unlisted)" must not be merged with CAT C-1000.
+
+CATEGORY SAFETY RULE:
+- Resolve the IndusInd-specific company category using a verified
+  company-to-category mapping.
+- Never borrow another bank's category.
+- If a category-dependent rule is required and category is unresolved:
+  NEEDS_REVIEW.
 
 ================================================================================
-5. LOAN PARAMETERS
+3. CORE ELIGIBILITY
 ================================================================================
 
-Loan Amount Parameters:
-- Rule 596: Min: N/A, Max: ₹45
+--------------------------------------------------------------------------------
+3.1 CIBIL SCORE
+--------------------------------------------------------------------------------
+
+Revised PL Policy Norms:
+- CIBIL Score: >= 700
+
+Policy 16-07-22:
+- CAT A+ / A / B / G policy described for CIBIL >= 700.
+
+Therefore verified general bureau threshold in supplied rules:
+- CIBIL >= 700 for standard bureau cases.
+
+IMPORTANT:
+- New-to-CIBIL (0 / -1) is handled separately under Section 4.
+- Do not apply CIBIL >=700 to NTC profiles.
+
+--------------------------------------------------------------------------------
+3.2 CIBIL VINTAGE
+--------------------------------------------------------------------------------
+
+Revised PL Policy Norms:
+- Minimum CIBIL vintage: >= 6 months
+
+This applies to normal bureau cases shown in the revised scorecard.
+NTC cases use separate rules.
+
+--------------------------------------------------------------------------------
+3.3 MINIMUM NMI / SALARY
+--------------------------------------------------------------------------------
+
+Revised PL Policy Norms:
+
+CAT A+ / A / B / G:
+- Tier 1: NMI >= Rs. 25,000
+- Tier 2: NMI >= Rs. 20,000
+
+CAT C-1000:
+- Tier 1: NMI >= Rs. 25,000
+- Tier 2: NMI >= Rs. 20,000
+
+CAT C (Unlisted):
+- Tier 1: NMI >= Rs. 30,000
+- Tier 2: NMI >= Rs. 25,000
+
+Tier classification shown in source:
+- Tier 1: Mumbai, Delhi, Chennai, Kolkata, Bangalore, Hyderabad, Pune
+- Tier 2: All other locations
+
+Policy 16-07-22 confirms:
+- Tier 1 minimum NMI: Rs. 25,000
+- Tier 2 minimum NMI: Rs. 20,000
+  for the CAT A+ / A / B / G policy described there.
+
+LOCATION SAFETY:
+- These city names are included only because they determine the applicable
+  income threshold; no pincode list is included.
+
+--------------------------------------------------------------------------------
+3.4 EMPLOYMENT STABILITY
+--------------------------------------------------------------------------------
+
+Standard bureau policy:
+
+CAT A+ / A / B / G:
+- Current employer stability: >= 3 months
+
+CAT C-1000:
+- Current employer stability: >= 12 months
+
+CAT C (Unlisted):
+- Current employer stability: >= 12 months
+
+NTC employment stability is separate:
+- Current employment >= 1 year
+
+--------------------------------------------------------------------------------
+3.5 AGE
+--------------------------------------------------------------------------------
+
+General minimum / maximum age for ordinary standard tenure:
+- NOT fully defined in the supplied core scorecards.
+
+Long-tenure specific age condition:
+- For 72-month policy: Age > 25 years
+- For 84-month policy: Age > 25 years
+
+Do not infer a universal minimum age from the long-tenure rule.
 
 ================================================================================
-6. FOIR & MULTIPLIER RULES
+4. NTC / NEW-TO-CIBIL POLICY
 ================================================================================
 
-FOIR Limits:
-- Rule 601: 75%
+NTC Bureau Status:
+- CIBIL 0 / -1
+
+Minimum NMI:
+- >= Rs. 30,000
+
+Current Employment:
+- >= 1 year
+
+Maximum Loan Cap:
+
+CAT G:
+- Rs. 5,00,000
+
+CAT A+ / A / B / C-1000:
+- Base cap: Rs. 3,00,000
+- Policy 16-07-22 additionally states:
+  If Salary >= Rs. 50,000 AND Age > 28 AND Own House:
+  max loan can be Rs. 5,00,000
+
+CAT C (Unlisted):
+- Rs. 2,00,000
+
+NTC SAFETY RULE:
+- Do not apply normal CIBIL>=700 eligibility to an NTC (0/-1) profile.
+- Apply only NTC-specific loan caps and conditions.
 
 ================================================================================
-7. NTH / SALARY REQUIREMENTS
+5. LOAN AMOUNT & TENURE
 ================================================================================
 
-Salary Requirements from Database:
-- Rule 598: Min: ₹25,000, Max: N/A
+--------------------------------------------------------------------------------
+5.1 STANDARD MAX LOAN CAPS - EARLIER REVISED POLICY
+    EFFECTIVE 15-DEC-2021
+--------------------------------------------------------------------------------
+
+CAT A+ / A / B / G:
+- Max Loan Cap: Rs. 25 Lakhs
+
+CAT C-1000:
+- Max Loan Cap: Rs. 15 Lakhs
+
+CAT C (Unlisted):
+- Max Loan Cap: Rs. 10 Lakhs
+
+--------------------------------------------------------------------------------
+5.2 MAX LOAN CAPS - POLICY 16-07-22
+--------------------------------------------------------------------------------
+
+Policy 16-07-22 states:
+
+CAT A+ / A / B / G:
+- Max Loan: Rs. 50 Lakhs
+
+CAT C-1000:
+- Max Loan: Rs. 15 Lakhs
+
+CAT C (Unlisted):
+- Max Loan: Rs. 10 Lakhs
+
+[REVIEW]:
+- CAT A+ / A / B / G increased from 25L in the 2021 policy image to 50L in
+  the 16-07-22 policy text.
+- Use the active policy version applicable to the case.
+
+--------------------------------------------------------------------------------
+5.3 LONG TENURE - 72 MONTHS
+    UPDATED POLICY 07-11-24
+--------------------------------------------------------------------------------
+
+Highest Tenure:
+- 72 months
+
+Conditions:
+- NMI > Rs. 50,000
+- Category: CAT A / B / G
+- Age > 25 years
+- Minimum Loan Amount > Rs. 5 Lakhs
+
+Do not extend this 72-month rule to categories not listed.
+
+--------------------------------------------------------------------------------
+5.4 LONG TENURE - 84 MONTHS
+    UPDATED POLICY 07-11-24
+--------------------------------------------------------------------------------
+
+Highest Tenure:
+- 84 months
+
+Conditions:
+- NMI > Rs. 1 Lakh
+- Category: CAT A / B / G
+- Age > 25 years
+- Minimum Loan Amount > Rs. 15 Lakhs
+- CIBIL Score: 750
+
+PROMOTIONAL CONFIRMATION:
+- A supplied IndusInd "84 Advantage Personal Loans" image advertises tenure
+  up to 84 months and loan amount up to Rs. 50 Lakhs.
+- This promotional image must NOT override the detailed 84-month eligibility
+  conditions listed above.
 
 ================================================================================
-8. BT / CCBT / APP LOAN RULES
+6. FOIR / DBR RULES
 ================================================================================
 
-Refer to source documents for detailed BT/CCBT/App Loan rules.
-Total policy rules in database: 6
+--------------------------------------------------------------------------------
+6.1 POLICY 16-07-22 FOIR GRID
+--------------------------------------------------------------------------------
+
+NMI 20K to <35K:
+- FOIR: 50%
+- Applies to all company categories in that source.
+
+NMI 35K to <50K:
+- FOIR: 60%
+- Categories: CAT A+ / A / B / G
+
+NMI 50K to <80K:
+- FOIR: 70%
+- Applies to all company categories in that source.
+
+NMI >=80K:
+- CAT A+ / A / G: 75%
+- CAT B:
+  * 75% if self-owned house condition is satisfied
+  * otherwise 70%
+- CAT C-1000 / CAT C: 70%
+
+--------------------------------------------------------------------------------
+6.2 UPDATED POLICY 07-11-24 - FOIR / DBR
+--------------------------------------------------------------------------------
+
+CAT B / G:
+- FOIR / DBR: 75%
+- Condition:
+  * NMI > Rs. 75,000
+  * Own house / HL repayment
+
+CAT A+ / A:
+- FOIR / DBR: 75%
+- For NMI > Rs. 80,000
+- For rented accommodation / PA non-sourcing cases:
+  * Max DBR capped at 60%
+  * Max funding capped at Rs. 30 Lakhs
+  [Preserved as written in supplied image.]
+
+CAT A / B / G:
+- FOIR / DBR: 60%
+- NMI > Rs. 35,000 to Rs. 50,000
+
+Unlisted:
+- FOIR / DBR: 70%
+- NMI > Rs. 50,000
+
+--------------------------------------------------------------------------------
+6.3 ADDITIONAL SPOUSE BENEFIT
+--------------------------------------------------------------------------------
+
+Policy 16-07-22:
+- Additional 5% spouse income benefit on HHE reduction for income >= Rs. 50,000.
+
+Do not apply this benefit unless the exact household-expense/obligation logic
+used by the system supports the policy condition.
 
 ================================================================================
-9. DOCUMENT REQUIREMENTS
+7. MUE / MULTIPLIER RULES
 ================================================================================
 
-Document requirements found in source files:
+--------------------------------------------------------------------------------
+7.1 REVISED MUE MULTIPLIER
+    EFFECTIVE FROM 15-DEC-2021
+--------------------------------------------------------------------------------
 
---- From: IMG-2675.jpg ---
-information furnished by me/us in application form(s)/related documents executed in relation to the facilities availed from the Bank, our finance details and repayment information to the fee AnaIystss or for
-privilege of privacy & privity of contract. (9) I/We also authorise the Bank to carry out multiple bureau checks wherever required. (10) | / We confirm having received, read & understood pe hi I/We will be
-Consents: The information including Landline number, Mobile number and E-mail ID as mentioned above (a part from being used for mandatory account verification and maintenance purpose) may also be used
-the applicant and that he/she has filled the application form as enclosed and provided the necessary documents. | declare that | have verified the photocopies, if any, against the original
-: documents. | hereby confirm that the prescribed KYC process has been adhered to and recommend this applicant for credit assessment for the issuance of Personal Loan.
-Application Typ 3 2 New Update KYC No.: an Ui CE | (Mandatory for KYC update request)
+Income Bands:
+- 20K to 25K
+- 25K to 35K
+- 35K to 50K
+- 50K to 75K
+- 75K to 1.25L
+- >= 1.25L
 
---- From: IMG-2676.jpg ---
-tab =i a rach Ag : Other Bank Credit Card imprint, required only in case of Credit Card based surrogate sourcing enter
-; . Latest 3/6/___months Bank Statement (Where salary income is credited) :
-. Latest 2/3/__ salary slips/Salary Certificate/Form 16 (if applicable) ¥  ——
-. Proof of Identity (Specify) 5 | — i
-. Proof of Residence (Specify) :
-. Proof of Qualification (Specify) {
-“Indusind Bank Ltd may request for additional documents other than those requested above :
-d) Discount/ free gift orany other commitment whatsoever which is not documented in the loan agreement by Indusind Bank or any of its authorized representative(S) shall not be entertained
-) Visit www p-comIn/ ota h) Indusind Bank Limited may request for additional documents other than those collected with the application.
-call 1800 200 oo47cr 303063 ] I) Indusind Bank limited reserves the right to retain the photograph and documents submitted along with the application form and shall not return the same to the applicant and may have the same shredded
-t | j) Indusind Bank Limited shall not be liable for loss or delay in the receipt of documents.
-To Extend War al : k) Application processing and loan disbursement will take approximately 10 working days from the time of completion and submission of all relevant loan document as per Bank's criteria.
-Agreement | documents : 7250 (j) Penal Charge : 3150, Per EMI delay beyond 5 days (k) Legal Charges: As per Actuals (1) Stamp Duty: As per State laws (m) CIBIL Report: 50
+Multiplier Grid:
 
---- From: Policy 16-07-22.txt ---
-Documents for Address proof:
-Aadhar card 
+Category       | 20-25K | 25-35K | 35-50K | 50-75K | 75K-1.25L | >=1.25L
+Staff          | 21     | 21     | 21     | 21     | 25        | 30
+CAT A+ / A     | 21     | 21     | 21     | 21     | 25        | 30
+CAT G          | 21     | 21     | 21     | 21     | 25        | 30
+CAT B          | 21     | 21     | 21     | 21     | 25        | 25
+CAT C-1000     | 21     | 21     | 21     | 21     | 21        | 21
+CAT C          | 21     | 21     | 21     | 21     | 21        | 21
+
+Note:
+- MUE is subject to the respective maximum loan caps.
+
+--------------------------------------------------------------------------------
+7.2 POLICY 16-07-22 SUMMARY OF MULTIPLIER
+--------------------------------------------------------------------------------
+
+Policy states multiplier increased up to 30 times.
+
+CAT A+ / A / G:
+- NMI >= Rs. 1.25L: 30 times
+
+CAT B:
+- NMI >= Rs. 75K: 25 times
+
+Other lower-income brackets and CAT C-1000 / CAT C:
+- 21 times
+
+This is consistent with the detailed revised multiplier grid above.
 
 ================================================================================
-10. EXCEPTIONS & DEVIATIONS
+8. BT / OVERDRAFT BT RULES
 ================================================================================
 
-Refer to source documents for detailed exceptions and deviations.
+--------------------------------------------------------------------------------
+8.1 BALANCE TRANSFER
+--------------------------------------------------------------------------------
+
+Policy 16-07-22:
+- Can take over from any Bank / NBFC / Fintech
+- Maximum takeover: 5 BTs
+- Minimum BT seasoning / tenure: 3 EMIs
+
+Updated policy 07-11-24:
+- Maximum of 5 Loan BTs
+- Can consolidate maximum 5 PL / App Loan BTs
+
+--------------------------------------------------------------------------------
+8.2 APP LOAN BT
+--------------------------------------------------------------------------------
+
+Updated policy 07-11-24:
+- App Loan BT allowed
+- All app loans can be sourced for BT
+- Source note indicates the relevant tradeline should appear as Personal Loan
+  in bureau/CIBIL.
+
+If tradeline classification is unclear:
+- NEEDS_REVIEW
+
+--------------------------------------------------------------------------------
+8.3 OVERDRAFT BT
+--------------------------------------------------------------------------------
+
+Updated policy 07-11-24:
+- Overdraft BT allowed for:
+  * Bajaj
+  * Tata Capital
+  * Kotak Bank
+
+Condition:
+- Client must submit BT DD NOC for transfer / release of the remaining top-up
+  amount as stated in the source.
+
+Do not generalize this OD-BT rule to other lenders without another verified rule.
 
 ================================================================================
-11. CONFLICTS/REVIEW ITEMS
+9. PRICING / IRR / PF / FORECLOSURE
 ================================================================================
 
-No significant conflicts detected in database rules.
+--------------------------------------------------------------------------------
+9.1 RACC PRICING - RATE 09-05-24
+    INCOME >= Rs. 50K
+--------------------------------------------------------------------------------
+
+Source columns:
+- Company Category
+- Loan Amount
+- RACC IRR - GE (>70% FOIR)
+- RACC IRR - UE (FOIR <=70%)
+- RACC PF
+- Foreclosure Charges post 12 EMIs
+
+IMPORTANT:
+The GE/UE labels and FOIR conditions are preserved exactly from the supplied
+rate image. Do not reinterpret them beyond their printed headings.
+
+CAT A / B / G
+Income: >= Rs. 50K
+
+Loan Amount >= 20 Lakhs:
+- GE (>70% FOIR) IRR: 10.75%
+- UE (FOIR <=70%) IRR: 10.50%
+- PF: 0.45%
+- FC post 12 EMIs: 0%*
+
+Loan Amount >= 15L to 20L:
+- GE (>70% FOIR) IRR: 11.00%
+- UE (FOIR <=70%) IRR: 10.75%
+- PF: 0.45%
+- FC post 12 EMIs: 0%*
+
+Loan Amount >= 10L to 15L:
+- GE (>70% FOIR) IRR: 11.50%
+- UE (FOIR <=70%) IRR: 11.25%
+- PF: 0.45%
+- FC post 12 EMIs: 0%*
+
+CAT C-1000 / C
+Income: >= Rs. 50K
+
+Loan Amount >= 20 Lakhs:
+- GE (>70% FOIR) IRR: 11.00%
+- UE (FOIR <=70%) IRR: 10.75%
+- PF: 0.50%
+- FC post 12 EMIs: As per KFS
+
+Loan Amount >= 15L to 20L:
+- GE (>70% FOIR) IRR: 11.25%
+- UE (FOIR <=70%) IRR: 10.99%
+- PF: 0.50%
+- FC post 12 EMIs: As per KFS
+
+Loan Amount >= 10L to 15L:
+- GE (>70% FOIR) IRR: 11.99%
+- UE (FOIR <=70%) IRR: 11.50%
+- PF: 0.50%
+- FC post 12 EMIs: As per KFS
+
+--------------------------------------------------------------------------------
+9.2 FORECLOSURE WAIVER CONDITION
+--------------------------------------------------------------------------------
+
+Rate 09-05-24:
+- If a foreclosure-charge waiver is taken pre-disbursement or post completion
+  of 12 EMIs, customer can close the loan only with own funds.
+- 0% foreclosure charge is applicable only for closure with own funds.
+
+Do not treat 0% foreclosure as unconditional.
+
+--------------------------------------------------------------------------------
+9.3 BEST-IN-CLASS PRICING - UPDATED POLICY 07-11-24
+--------------------------------------------------------------------------------
+
+- Pricing: 10.35%
+- Condition: Loan Amount > Rs. 25 Lakhs
+
+The source calls this "Best in Class Pricing".
+Do not apply outside the stated loan-amount condition.
 
 ================================================================================
-END OF POLICY RULEBOOK
+10. INCOME & OBLIGATION CALCULATION
+================================================================================
+
+--------------------------------------------------------------------------------
+10.1 CREDIT CARD OBLIGATION
+--------------------------------------------------------------------------------
+
+Policy 16-07-22:
+- If NMI >= Rs. 50,000:
+  Credit-card outstanding up to an amount equivalent to NMI will not be obligated.
+
+Any outstanding above that policy condition:
+- Handle according to applicable obligation rules; do not infer a waiver beyond
+  the stated amount.
+
+--------------------------------------------------------------------------------
+10.2 JOINT HOUSING LOAN OBLIGATION
+--------------------------------------------------------------------------------
+
+Policy 16-07-22:
+- Joint Housing Loan obligation can be ignored if spouse is servicing the EMI
+  from spouse's own account and has sufficient income to cover all EMIs serviced
+  from that account.
+
+Updated policy 07-11-24 similarly states:
+- Joint HL only with spouse: HL obligation can be ignored when spouse pays the
+  full HL and has sufficient income.
+
+--------------------------------------------------------------------------------
+10.3 VARIABLE ALLOWANCE
+--------------------------------------------------------------------------------
+
+Updated policy 07-11-24:
+- Consider the lowest of the last 3 months' variable allowance.
+- Variable allowance must be part of all 3 months' payslips.
+
+Do not use the highest or average variable allowance under this rule.
+
+--------------------------------------------------------------------------------
+10.4 REIMBURSEMENTS / PERKS
+--------------------------------------------------------------------------------
+
+Policy 16-07-22:
+For top corporate employees with NMI > Rs. 50,000, the following may be
+considered for DBR computation:
+- Company car allowance
+- Driver / car maintenance allowance
+- Fuel allowance
+- Other qualifying reimbursements/perks as described in the source
+
+Use only when the applicant profile meets the stated top-corporate and NMI condition.
+
+================================================================================
+11. DOCUMENT / VERIFICATION REQUIREMENTS
+================================================================================
+
+--------------------------------------------------------------------------------
+11.1 ADDRESS PROOF
+--------------------------------------------------------------------------------
+
+Policy 16-07-22 lists:
+- Aadhaar Card
+- Driving Licence
+- Voter ID
+- Passport
+- Postpaid Mobile Bill
+
+These are included because they are explicitly stated policy documents.
+
+--------------------------------------------------------------------------------
+11.2 OWN-HOUSE CONDITION WHERE POLICY REQUIRES IT
+--------------------------------------------------------------------------------
+
+Own-house condition appears in:
+- CAT B FOIR 75% rule for higher NMI where applicable
+- NTC enhanced loan cap for CAT A+ / A / B / C-1000:
+  Salary >=50K + Age >28 + Own House
+
+Ownership must not be made mandatory for all IndusInd PL cases unless another
+specific applicable rule requires it.
+
+================================================================================
+12. CONFLICTS / REVIEW ITEMS
+================================================================================
+
+1. MAX LOAN - CAT A+ / A / B / G
+   15-Dec-2021 policy: Rs. 25 Lakhs
+   16-07-22 policy: Rs. 50 Lakhs
+   STATUS: [REVIEW / VERSION-SPECIFIC]
+   Use the active applicable policy version.
+
+2. CAT C-1000 MAX LOAN
+   Supplied sources consistently show Rs. 15 Lakhs in the standard policy.
+
+3. CAT C (UNLISTED) MAX LOAN
+   Supplied sources consistently show Rs. 10 Lakhs in the standard policy.
+
+4. 72 / 84 MONTH TENURE
+   These are conditional longer-tenure programs.
+   Do not treat 84 months as the default tenure for every PL case.
+
+5. 84-MONTH PROMOTIONAL IMAGE
+   It advertises up to 84 months and up to Rs. 50 Lakhs.
+   Detailed underwriting conditions from Updated Policy 07-11-24 take precedence
+   for deterministic evaluation.
+
+6. FOIR / DBR
+   Different percentages apply by NMI, category, housing condition and newer
+   policy conditions.
+   Never use a single universal FOIR.
+
+7. RACC GE / UE PRICING
+   The rate image labels GE as (>70% FOIR) and UE as (FOIR <=70%).
+   Preserve those labels exactly.
+   If backend cannot determine GE/UE applicability from verified data:
+   NEEDS_REVIEW.
+
+8. GENERAL AGE
+   No complete universal standard PL age range is present in the reviewed sources.
+   Age >25 is explicitly required for 72/84-month programs only.
+   Do not invent a general minimum/maximum age.
+
+9. NTC
+   CIBIL 0/-1 follows separate NTC policy.
+   Never decline an NTC case merely for not meeting the standard CIBIL>=700 rule.
+
+10. STP PROCESS BELOW 5 LAKHS
+    The supplied text file contains link/channel/ECN/DSA details, not usable
+    policy criteria.
+    It is intentionally excluded from this rulebook.
+
+================================================================================
+13. AI / BACKEND EVALUATION RULES
+================================================================================
+
+STANDARD SALARIED PATH:
+IndusInd Bank
+-> Personal Loan
+-> Standard bureau or NTC
+-> exact IndusInd company category
+-> NMI band
+-> CIBIL / CIBIL vintage
+-> employment stability
+-> requested loan amount
+-> applicable max loan cap
+-> applicable multiplier
+-> applicable FOIR / DBR
+-> applicable tenure program
+-> pricing grid if required
+-> applicable obligations / documents
+
+NTC PATH:
+IndusInd Bank
+-> Personal Loan
+-> NTC (CIBIL 0/-1)
+-> exact company category
+-> NMI >=30K
+-> current employment >=1 year
+-> NTC max loan cap
+-> enhanced 5L conditions where explicitly applicable
+
+LONG-TENURE PATH:
+- 72 months only if all 72-month conditions pass.
+- 84 months only if all 84-month conditions pass.
+- Never return 84 months only because a promotional image says "up to 84 months."
+
+BT PATH:
+- Verify BT type
+- Verify takeover source / tradeline
+- Verify max 5 BTs
+- Verify minimum 3 EMI seasoning where applicable
+- For OD BT, only use explicitly listed lenders unless another verified rule exists
+
+PRICING PATH:
+- Exact category
+- Exact income requirement
+- Exact loan-amount band
+- Exact GE / UE FOIR condition
+- Exact PF
+- Exact foreclosure condition
+
+STATUS LOGIC:
+
+ELIGIBLE:
+- All mandatory applicable verified rules are available and passed.
+
+NOT_ELIGIBLE:
+- An explicit applicable verified rule fails.
+
+NEEDS_REVIEW:
+- Company category unresolved.
+- Applicable policy version unresolved.
+- Conflicting dated rule cannot be safely resolved.
+- GE / UE pricing applicability cannot be determined.
+- Required field is not explicitly defined.
+- A value would otherwise need to be guessed.
+
+NEVER:
+- Invent a missing age, salary, FOIR, tenure, category, loan cap, ROI or PF.
+- Borrow rules from another category.
+- Borrow rules from another bank.
+- Treat marketing copy as a standalone underwriting rule.
+- Use pincode/channel/DSA information as an eligibility criterion.
+- Mix NTC and normal CIBIL policy.
+- Mix BT and standard fresh-loan rules.
+
+================================================================================
+END OF INDUSIND BANK PERSONAL LOAN POLICY RULEBOOK
 ================================================================================

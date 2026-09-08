@@ -1,50 +1,65 @@
-/**
- * PURPOSE: Clears any lingering processes on port 3000 before starting Next.js dev server.
- * USAGE: node scripts/kill-port-then-dev.js
- */
-const { execSync } = require('child_process');
-const { spawn } = require('child_process');
+const { execSync, spawn } = require("child_process");
 
 const PORT = 3001;
 
-function getPortKilled() {
-  try {
-    const pids = execSync(`lsof -t -i:${PORT}`, { encoding: 'utf8' }).trim();
-    if (pids) {
-      pids.split('\n').forEach(pid => {
-        try {
-          process.kill(parseInt(pid, 10), 'SIGKILL');
-        } catch (e) {
-        }
-      });
-      console.log(`Killed existing process on port ${PORT}`);
-      return true;
+// Kill any process currently using port 3001
+try {
+  const output = execSync(`netstat -ano | findstr :${PORT}`, {
+    encoding: "utf8",
+  });
+
+  const lines = output.trim().split("\n");
+
+  const pids = new Set();
+
+  for (const line of lines) {
+    const parts = line.trim().split(/\s+/);
+    const pid = parts[parts.length - 1];
+
+    if (/^\d+$/.test(pid) && pid !== "0") {
+      pids.add(pid);
     }
-  } catch (e) {
   }
-  return false;
+
+  for (const pid of pids) {
+    try {
+      execSync(`taskkill /PID ${pid} /F`, {
+        stdio: "ignore",
+      });
+
+      console.log(`Killed process ${pid} on port ${PORT}`);
+    } catch (error) {
+      // Process may already be stopped
+    }
+  }
+} catch (error) {
+  // No process is using the port
 }
 
-getPortKilled();
+console.log(`Starting Next.js on port ${PORT}...`);
 
-const next = spawn('npx', ['next', 'dev', '--port', String(PORT)], {
-  stdio: 'inherit',
-  cwd: process.cwd(),
+const next = spawn(
+  process.platform === "win32" ? "npx.cmd" : "npx",
+  ["next", "dev", "--port", String(PORT)],
+  {
+    stdio: "inherit",
+    cwd: process.cwd(),
+  }
+);
+
+next.on("close", (code) => {
+  process.exit(code ?? 0);
 });
 
-next.on('close', (code) => {
-  process.exit(code);
-});
-
-next.on('error', (err) => {
-  console.error(err.message);
+next.on("error", (error) => {
+  console.error("Failed to start Next.js:", error.message);
   process.exit(1);
 });
 
-process.on('SIGINT', () => {
-  next.kill('SIGINT');
+process.on("SIGINT", () => {
+  next.kill("SIGINT");
 });
 
-process.on('SIGTERM', () => {
-  next.kill('SIGTERM');
+process.on("SIGTERM", () => {
+  next.kill("SIGTERM");
 });

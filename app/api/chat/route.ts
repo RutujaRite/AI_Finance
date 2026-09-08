@@ -1,7 +1,7 @@
 /*
  * Chat API Route with Tool-Calling LLM Agent Architecture.
  * The LLM acts as the central reasoning engine, deciding when and how to invoke database search tools.
- 
+ */
 
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
@@ -23,7 +23,7 @@ function nowISO() {
 
 /**
  * Definition of AI Assistant Tools for LLM Function Calling
- 
+ */
 const ASSISTANT_TOOLS = [
   {
     type: "function",
@@ -90,7 +90,7 @@ async function searchPoliciesForBank(bankName: string, question: string): Promis
 
 /**
  * OpenRouter Tool-Calling Agent Execution Loop
- 
+ */
 async function runToolCallingAgent(
   userMessage: string,
   modelOverride?: string,
@@ -597,169 +597,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: "Chat failed" });
   }
 }
-   */
 
-
-
-
-
-/**
- * Central Chat API Route
- *
- * This route is intentionally kept thin.
- *
- * Flow:
- * Request
- *   ↓
- * Central AI Agent
- *   ↓
- * Existing tools / deterministic policy engine / LLM
- *   ↓
- * Standard frontend response
- */
-
-import { NextRequest, NextResponse } from "next/server";
-
-import runCentralAgent from "@/lib/ai/agent";
-
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-/* -------------------------------------------------------------------------- */
-/*                                  HELPERS                                   */
-/* -------------------------------------------------------------------------- */
-
-function uid(): string {
-  return (
-    Math.random().toString(36).slice(2) +
-    Date.now().toString(36)
-  );
-}
-
-function nowISO(): string {
-  return new Date().toISOString();
-}
-
-/* -------------------------------------------------------------------------- */
-/*                                    POST                                    */
-/* -------------------------------------------------------------------------- */
-
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json().catch(() => ({}));
-
-    const message = String(body?.message || "").trim();
-
-    const conversationId =
-      String(body?.conversation_id || "default_session").trim();
-
-    const requestedModel =
-      body?.model
-        ? String(body.model).trim()
-        : undefined;
-
-    /* ---------------------------------------------------------------------- */
-    /* Validate request                                                       */
-    /* ---------------------------------------------------------------------- */
-
-    if (!message) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Message is required",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    /* ---------------------------------------------------------------------- */
-    /* Central AI Agent                                                       */
-    /* ---------------------------------------------------------------------- */
-
-    const agentResult = await runCentralAgent({
-      message,
-      conversationId,
-      model: requestedModel,
-    });
-
-    /* ---------------------------------------------------------------------- */
-    /* Build AI message                                                      */
-    /* ---------------------------------------------------------------------- */
-
-    const aiMessage: any = {
-      id: uid(),
-
-      role: "ai",
-
-      content: agentResult.reply,
-
-      timestamp: nowISO(),
-    };
-
-    /*
-     * Preserve the existing frontend contract.
-     *
-     * Your UI already expects:
-     * - company_data
-     * - company_query
-     * - bank_data
-     *
-     * Therefore we keep those fields unchanged.
-     */
-
-    if (agentResult.companyData) {
-      aiMessage.company_data = agentResult.companyData;
-    }
-
-    if (agentResult.companyQuery) {
-      aiMessage.company_query = agentResult.companyQuery;
-    }
-
-    if (agentResult.bankData) {
-      aiMessage.bank_data = agentResult.bankData;
-    }
-
-    /* ---------------------------------------------------------------------- */
-    /* Return standard chat response                                          */
-    /* ---------------------------------------------------------------------- */
-
-    return NextResponse.json({
-      success: true,
-
-      conversation_id: conversationId,
-
-      title:
-        message.slice(0, 40) ||
-        "New Conversation",
-
-      ai_message: aiMessage,
-
-      user_message: {
-        id: uid(),
-
-        role: "user",
-
-        content: message,
-
-        timestamp: nowISO(),
-      },
-    });
-  } catch (error) {
-    console.error(
-      "Central Chat API error:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Chat failed",
-      },
-      {
-        status: 500,
-      }
-    );
-  }
-}

@@ -1,13 +1,12 @@
 /**
  * Registration API route.
- * Creates a new user in PostgreSQL and returns JWT cookie.
- * Uses: lib/db, lib/auth (signToken), bcryptjs
+ * Creates a new user in PostgreSQL. Does NOT log the user in automatically.
+ * Uses: lib/db, bcryptjs
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import pool from "@/lib/db"
 import bcrypt from 'bcryptjs'
-import { signToken } from "@/lib/auth"
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
@@ -23,10 +22,7 @@ export async function POST(req: NextRequest) {
     const res = await client.query('INSERT INTO users (name, email, password) VALUES ($1,$2,$3) RETURNING id, name, email', [name||null, email, hash])
     const user = res.rows[0]
 
-    const token = signToken({ id: user.id, email: user.email, name: user.name, role: 'user' })
-    const response = NextResponse.json({ success: true })
-    response.cookies.set('token', token, { httpOnly: true, path: '/', maxAge: 60*60*24, sameSite: 'lax', secure: process.env.NODE_ENV==='production'})
-    return response
+    return NextResponse.json({ success: true, user: { id: user.id, name: user.name, email: user.email } })
   }catch(err:any){
     console.error('register error', err)
     return NextResponse.json({ success: false, error: String(err) }, { status: 500 })

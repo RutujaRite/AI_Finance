@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
+import { BANK_MASTER_POLICIES, getMasterPolicyText } from "@/lib/masterPolicies";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -126,8 +127,24 @@ async function getMasterPolicyForBank(bankId: number) {
     `SELECT id, file_name, extracted_text, metadata FROM bank_policy_files WHERE bank_id = $1 AND (metadata->>'is_master_policy' = 'true' OR metadata->>'is_unified_text' = 'true') ORDER BY id DESC LIMIT 1`,
     [bankId]
   );
-  if (result.rowCount === 0) return null;
-  return result.rows[0];
+  if (result.rows.length > 0 && result.rows[0]?.extracted_text) {
+    return result.rows[0];
+  }
+
+  const matched = BANK_MASTER_POLICIES.find((b) => b.bank_id === bankId || b.id === bankId);
+  if (matched) {
+    const text = getMasterPolicyText(matched.file_name);
+    if (text) {
+      return {
+        id: matched.file_id || matched.id,
+        file_name: matched.file_name,
+        extracted_text: text,
+        metadata: { is_master_policy: "true", bank_name: matched.bank_name },
+      };
+    }
+  }
+
+  return result.rows[0] || null;
 }
 
 function answerFromMasterPolicy(masterPolicy: any, question: string, bankName: string): string {

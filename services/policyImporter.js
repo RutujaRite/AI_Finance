@@ -110,7 +110,8 @@ async function extractTextFromFile(filePath, ext) {
 
 async function extractPdfText(filePath) {
   try {
-    const imported = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const pdfPkg = 'pdfjs-dist/legacy/build/pdf.mjs';
+    const imported = await import(/* webpackIgnore: true */ pdfPkg);
     const pdfjsLib = imported.default || imported;
     const data = new Uint8Array(await fs.promises.readFile(filePath));
     const doc = await pdfjsLib.getDocument({ data }).promise;

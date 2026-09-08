@@ -1,0 +1,405 @@
+================================================================================
+UTKARSH SMALL FINANCE BANK PERSONAL LOAN - MASTER POLICY
+================================================================================
+
+BANK: Utkarsh Small Finance Bank
+PRODUCT: Personal Loan
+PRIMARY PROFILE: Salaried Individuals
+SOURCE: USFB PL One Pager dated 13-03-2026
+
+================================================================================
+1. COMPANY CATEGORIES
+================================================================================
+
+Company Categories:
+- CAT A
+- CAT B
+- CAT C
+- CAT D
+- CAT E / Unlisted
+
+CAT E:
+- Any organization not categorized under CAT A to CAT D
+- Prior bank approval required before login where applicable
+
+Company category must be resolved from the Utkarsh Small Finance Bank company list.
+
+================================================================================
+2. PERSONAL LOAN - STANDARD PL
+================================================================================
+
+Loan Amount:
+- Minimum: Rs. 1,50,000
+- Maximum: Rs. 10,00,000
+
+CAT E / Unlisted:
+- Maximum Loan Amount: Rs. 7,00,000
+
+Tenure:
+- Minimum: 12 months
+- Maximum: 60 months
+
+Age:
+- Minimum: 23 years
+- Maximum: 58 years or retirement age, as applicable
+
+CIBIL:
+- Minimum CIBIL Score: 650+
+
+Employment:
+- Minimum 6 months with current employer
+- Total work experience: Minimum 2 years
+
+Banking:
+- Salary must be credited directly into applicant's bank account
+
+================================================================================
+3. PERSONAL LOAN MAXIMA
+================================================================================
+
+Loan Amount:
+- Minimum: Rs. 10,00,001
+- Maximum: Rs. 15,00,000
+
+Eligible Company Categories:
+- CAT A
+- CAT B
+
+CAT C / CAT D / CAT E:
+- Not eligible for PL Maxima
+
+Tenure:
+- Minimum: 12 months
+- Maximum: 84 months
+
+CIBIL:
+- Minimum CIBIL Score: 675+
+
+Private Employee Salary Requirement:
+- Loan Amount Rs. 10L to Rs. 12L:
+  Minimum Salary: Rs. 75,000
+- Loan Amount above Rs. 12L to Rs. 15L:
+  Minimum Salary: Rs. 1,00,000
+
+Government Employees:
+- Not eligible for PL Maxima
+
+================================================================================
+4. MINIMUM NTH - STANDARD PL
+================================================================================
+
+Private Employees:
+
+CAT A / CAT B:
+- Minimum NTH: Rs. 25,000 in bank-designated lower-threshold locations
+- Minimum NTH: Rs. 30,000 in other locations
+
+CAT C / CAT D:
+- Minimum NTH: Rs. 30,000
+
+CAT E / Unlisted:
+- Minimum NTH: Rs. 35,000
+
+Government Employees:
+- Minimum NTH: Rs. 30,000
+
+================================================================================
+5. FOIR
+================================================================================
+
+STANDARD PL:
+
+NTH Rs. 25,000 to Rs. 35,000:
+- Maximum FOIR: 50%
+
+NTH above Rs. 35,000 to Rs. 50,000:
+- Maximum FOIR: 55%
+
+NTH Rs. 50,000 to Rs. 75,000:
+- Maximum FOIR: 60%
+
+NTH above Rs. 75,000:
+- Maximum FOIR: 65%
+
+
+PL MAXIMA:
+
+NTH below Rs. 50,000:
+- Not applicable
+
+NTH Rs. 50,000 to Rs. 75,000:
+- Maximum FOIR: 60%
+
+NTH above Rs. 75,000:
+- Maximum FOIR: 65%
+
+================================================================================
+6. GOVERNMENT EMPLOYEE RULES
+================================================================================
+
+Government Employees:
+- Minimum NTH: Rs. 30,000
+- Minimum Age: 25 years
+
+Not Allowed:
+- Municipal Corporation employees
+- ZP employees
+- Class 4 employees
+- Blue-collar workers
+
+If Government department/company is not present in the USFB company list:
+- Company/department must be added through the applicable company-addition process
+
+================================================================================
+7. SPECIAL PROFILE RULES
+================================================================================
+
+BACHELORS:
+- Maximum Loan Amount: Rs. 7,00,000
+- Eligible Categories: CAT A / CAT B
+- Minimum NTH: Rs. 40,000
+- Minimum Age: 25 years
+- Residence ownership-related condition applies as per policy
+
+BPO / CALL CENTRE:
+- Only Manager level and above
+- Minimum NTH: Rs. 40,000
+- Minimum Age: 25 years
+- Residence ownership proof mandatory
+
+MEDICAL REPRESENTATIVE / INSURANCE AGENT:
+- Salaried Insurance Agent only
+- Minimum NTH: Rs. 40,000
+- Minimum Age: 28 years
+- Residence ownership proof mandatory
+
+SOFTWARE EMPLOYEES - CAT B / C / D:
+- Minimum NTH: Rs. 40,000
+- Minimum Age: 25 years
+- Residence ownership proof mandatory
+
+Accepted Residence Ownership Proof:
+- Parental
+- Self-owned
+- Ancestral house with relationship proof
+
+================================================================================
+8. BALANCE TRANSFER
+================================================================================
+
+Eligible BT Sources:
+- Scheduled Commercial Banks
+- Co-operative Banks
+- Private Banks
+- NBFCs
+
+Credit Card BT:
+- Up to 100% Credit Card BT can be done
+- Credit Card BT alone is not allowed
+- Minimum 1 Personal Loan BT is required
+
+Not Taken Over:
+- Overdraft
+- Flexi Loan
+- Fintech Loans
+
+BT Documents:
+- Any one of:
+  - Repayment Schedule
+  - Statement of Account
+  - Foreclosure Letter
+
+Credit Card BT:
+- Latest billing-cycle Credit Card Statement required
+- BT amount to be based on outstanding shown in Credit Card Statement
+
+================================================================================
+9. IRR - NON-BT
+================================================================================
+
+NTH BAND: Below Rs. 50,000
+
+CAT A:
+- IRR: 18.00%
+
+CAT B:
+- IRR: 19.00%
+
+CAT C:
+- IRR: 21.00%
+
+CAT D:
+- IRR: 22.00%
+
+CAT E:
+- IRR: 23.00%
+
+
+NTH BAND: Rs. 50,000 to Rs. 80,000
+
+CAT A:
+- IRR: 17.00%
+
+CAT B:
+- IRR: 18.00%
+
+CAT C:
+- IRR: 20.00%
+
+CAT D:
+- IRR: 21.00%
+
+CAT E:
+- IRR: 22.00%
+
+
+NTH BAND: Above Rs. 80,000
+
+CAT A:
+- IRR: 15.00%
+
+CAT B:
+- IRR: 15.00%
+
+CAT C:
+- IRR: 17.00%
+
+CAT D:
+- IRR: 19.00%
+
+CAT E:
+- IRR: 21.00%
+
+================================================================================
+10. IRR - BALANCE TRANSFER
+================================================================================
+
+NTH BAND: Below Rs. 50,000
+
+CAT A:
+- IRR: 15.00%
+
+CAT B:
+- IRR: 16.00%
+
+CAT C:
+- IRR: 17.00%
+
+CAT D:
+- IRR: 18.00%
+
+CAT E:
+- IRR: 19.00%
+
+
+NTH BAND: Rs. 50,000 to Rs. 80,000
+
+CAT A:
+- IRR: 15.00%
+
+CAT B:
+- IRR: 15.00%
+
+CAT C:
+- IRR: 16.00%
+
+CAT D:
+- IRR: 17.00%
+
+CAT E:
+- IRR: 18.00%
+
+
+NTH BAND: Above Rs. 80,000
+
+CAT A:
+- IRR: 14.00%
+
+CAT B:
+- IRR: 14.00%
+
+CAT C:
+- IRR: 15.00%
+
+CAT D:
+- IRR: 16.00%
+
+CAT E:
+- IRR: 17.00%
+
+================================================================================
+11. PROCESSING FEE
+================================================================================
+
+NTH below Rs. 50,000:
+- Processing Fee: 2.00%
+
+NTH Rs. 50,000 to Rs. 80,000:
+- Processing Fee: 1.50%
+
+NTH above Rs. 80,000:
+- Processing Fee: 1.50%
+
+================================================================================
+12. DOCUMENTS - STANDARD PL
+================================================================================
+
+- PAN
+- Aadhaar
+- Latest 3 months Salary Slips
+- Latest 3 months Bank Statement
+- Employment Vintage Proof, any applicable document:
+  - Company ID Card
+  - Appointment Letter
+  - Form 16
+  - Form 26AS
+
+================================================================================
+13. DOCUMENTS - PL MAXIMA
+================================================================================
+
+- PAN
+- Aadhaar
+- Latest 3 months Salary Slips
+- Latest 6 months Bank Statement
+- Employment Vintage Proof, any applicable document:
+  - Company ID Card
+  - Appointment Letter
+  - Form 16
+  - Form 26AS
+
+================================================================================
+14. EMI / REPAYMENT DATE RULES
+================================================================================
+
+Available EMI Dates:
+- 1st of the month
+- 5th of the month
+
+If loan is disbursed on the 1st:
+- First EMI: 1st of succeeding month
+
+If loan is disbursed between 2nd and 5th:
+- First EMI: 5th of succeeding month
+
+If loan is disbursed between 6th and month-end:
+- First EMI: 1st of the month after the succeeding month
+- Pre-EMI interest charged and collected upfront
+
+================================================================================
+15. CHARGES / INSURANCE
+================================================================================
+
+Applicable charges are deducted upfront from disbursement where applicable:
+- Processing Fee
+- Insurance Premium
+- GST
+- Stamp Charges
+- Pre-EMI Interest
+
+Insurance:
+- Compulsory
+
+================================================================================
+END OF UTKARSH SMALL FINANCE BANK PERSONAL LOAN MASTER POLICY
+================================================================================

@@ -20,7 +20,6 @@ export default function BankManagerFilesPage() {
   const [uploadMsg, setUploadMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [files, setFiles] = useState<any[]>([])
   const [isLoadingFiles, setIsLoadingFiles] = useState(true)
-  const [theme, setTheme] = useState<"light" | "dark">("dark")
   const [selectedModel, setSelectedModel] = useState("liquid/lfm-2.5-embedding-350m:free")
 
   // Directory tab state
@@ -193,8 +192,6 @@ export default function BankManagerFilesPage() {
         pathname="/bank-managers"
         selectedModel={selectedModel}
         onModelChange={setSelectedModel}
-        theme={theme}
-        onThemeToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
       />
 
       {/* Main Page Body */}
@@ -206,8 +203,8 @@ export default function BankManagerFilesPage() {
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#bmFileGradient)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <defs>
                   <linearGradient id="bmFileGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#6366f1" />
-                    <stop offset="100%" stopColor="#a5b4fc" />
+                     <stop offset="0%" stopColor="#10a37f" />
+                     <stop offset="100%" stopColor="#34d399" />
                   </linearGradient>
                 </defs>
                 <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
@@ -222,7 +219,7 @@ Bank Manager Directory
         </div>
 
         {/* Tab Switcher */}
-        <div className="tab-bar" style={{ display: "flex", gap: 8, background: "rgba(17, 24, 39, 0.7)", border: "1px solid var(--border-color)", padding: 6, borderRadius: "var(--radius-md)", marginBottom: 28, width: "fit-content" }}>
+        <div className="tab-bar" style={{ display: "flex", gap: 8, background: "#f9fafb", border: "1px solid var(--border-color)", padding: 6, borderRadius: "var(--radius-md)", marginBottom: 28, width: "fit-content" }}>
           <button
             type="button"
             className={`tab-button ${activeTab === "directory" ? "active" : ""}`}
@@ -335,7 +332,7 @@ Bank Manager Directory
                         borderRadius: "var(--radius-md)",
                         background: "rgba(99, 102, 241, 0.15)",
                         border: "1px solid var(--border-highlight)",
-                        color: "#a5b4fc",
+                         color: "#6ee7b7",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -348,7 +345,7 @@ Bank Manager Directory
                     <div>
                       <div style={{ fontWeight: 700, color: "#fff", fontSize: "1rem" }}>{file.file_name}</div>
                       <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: 4 }}>
-                        Bank: <strong style={{ color: "#a5b4fc" }}>{file.bank_name}</strong> | Size: {formatFileSize(file.file_size)} | Uploaded: {new Date(file.uploaded_at).toLocaleDateString()} {file.uploaded_by_name ? `by ${file.uploaded_by_name}` : ""}
+                        Bank: <strong style={{ color: "#10a37f" }}>{file.bank_name}</strong> | Size: {formatFileSize(file.file_size)} | Uploaded: {new Date(file.uploaded_at).toLocaleDateString()} {file.uploaded_by_name ? `by ${file.uploaded_by_name}` : ""}
                       </div>
                     </div>
                   </div>

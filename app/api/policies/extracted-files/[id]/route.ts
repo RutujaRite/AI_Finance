@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getResolvedMasterPolicies, getMasterPolicyText } from "@/lib/masterPolicies";
 import pool from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -15,6 +16,31 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Invalid file ID" }, { status: 400 });
     }
 
+    const policies = getResolvedMasterPolicies();
+    const matched = policies.find(
+      (b) => b.file_id === fileId || b.bank_id === fileId || b.id === fileId
+    );
+
+    if (matched) {
+      const text = getMasterPolicyText(matched.file_name);
+      return NextResponse.json({
+        success: true,
+        file: {
+          id: matched.file_id,
+          bank_id: matched.bank_id,
+          bank_name: matched.bank_name,
+          bank_code: matched.bank_code,
+          file_name: matched.file_name,
+          file_type: "txt",
+          file_path: `policy-master-files/${matched.file_name}`,
+          file_size_bytes: Buffer.byteLength(text, "utf-8"),
+          extracted_text: text,
+          uploaded_at: "2026-08-29T00:00:00.000Z",
+        },
+      });
+    }
+
+    // Fallback to database
     const result = await pool.query(
       `
       SELECT 

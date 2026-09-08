@@ -1,6 +1,9 @@
 "use client"
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
+import Topbar, { DashboardSection } from "../../components/Topbar"
+import EmiCalculator from "../../components/EmiCalculator"
+import PoliciesView from "../../components/PoliciesView"
 
 declare const marked: any
 declare const hljs: any
@@ -13,12 +16,12 @@ const AVAILABLE_MODELS = [
 
 export default function HomePage() {
   const router = useRouter()
+  const [activeSection, setActiveSection] = useState<DashboardSection>("home")
   const [user, setUser] = useState<any>(null)
   const [messages, setMessages] = useState<any[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [conversations, setConversations] = useState<any[]>([])
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
@@ -26,7 +29,6 @@ export default function HomePage() {
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const [messageActions, setMessageActions] = useState<Record<string, { liked: boolean; disliked: boolean }>>({})
-  const [theme, setTheme] = useState<"light" | "dark">("light")
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const [messagesRef, setMessagesRef] = useState<HTMLDivElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -53,7 +55,46 @@ export default function HomePage() {
     loadState()
     loadConversations()
     initializedRef.current = true
+
+    if (typeof window !== "undefined") {
+      if (window.innerWidth <= 768) {
+        setSidebarOpen(false)
+      }
+      const params = new URLSearchParams(window.location.search)
+      const sec = params.get("section") as DashboardSection | null
+      if (sec && ["home", "assistant", "emi", "policies"].includes(sec)) {
+        setActiveSection(sec)
+      }
+    }
   }, [])
+
+  useEffect(() => {
+    function handlePopState() {
+      if (typeof window === "undefined") return
+      const params = new URLSearchParams(window.location.search)
+      const sec = params.get("section") as DashboardSection | null
+      if (sec && ["home", "assistant", "emi", "policies"].includes(sec)) {
+        setActiveSection(sec)
+      } else {
+        setActiveSection("home")
+      }
+    }
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [])
+
+  function handleSectionChange(section: DashboardSection) {
+    setActiveSection(section)
+    if (typeof window !== "undefined") {
+      const url = section === "home" ? "/home" : `/home?section=${section}`
+      window.history.pushState({ section }, "", url)
+    }
+  }
+
+  function handleLaunchPrompt(promptText: string) {
+    handleSectionChange("assistant")
+    sendMessage(promptText)
+  }
 
   useEffect(() => {
     if (!initializedRef.current) return
@@ -562,7 +603,7 @@ export default function HomePage() {
         html += `<div class="disambiguation-candidates" style="display: flex; flex-direction: column; gap: 8px; margin: 12px 0;">`
         candidates.forEach((candidate: string, index: number) => {
           const escapedCandidate = escapeHtml(candidate)
-          html += `<button class="disambiguation-candidate" data-candidate="${escapedCandidate}" style="cursor: pointer; text-align: left; padding: 10px 16px; background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 8px; color: #a5b4fc; font-weight: 500; font-size: 0.9rem; transition: all 0.2s ease; width: 100%;"><strong>${index + 1}.</strong> ${escapedCandidate}</button>`
+          html += `<button class="disambiguation-candidate" data-candidate="${escapedCandidate}" style="cursor: pointer; text-align: left; padding: 10px 16px; background: rgba(16, 163, 127, 0.12); border: 1px solid rgba(16, 163, 127, 0.35); border-radius: 8px; color: #10a37f; font-weight: 500; font-size: 0.9rem; transition: all 0.2s ease; width: 100%;"><strong>${index + 1}.</strong> ${escapedCandidate}</button>`
         })
         html += `</div>`
       }
@@ -721,111 +762,231 @@ export default function HomePage() {
   if (!user) return <main style={{ padding: 24 }}>Loading...</main>
 
   return (
-    <main className={`home-body chat-page ${theme === "dark" ? "dark" : ""}`}>
-      <header className="topbar app-topbar">
-        <button className="chat-sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        </button>
-        <a className="brand" href="/home">
-          <span className="brand-mark">◆</span>
-          <span className="brand-text">AI ASSISTANT</span>
-        </a>
-        <nav className="nav-menu" aria-label="Main navigation">
-          <a href="/home" className="nav-item active">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            Home
-          </a>
-          <a href="/emi" className="nav-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><path d="M12 12h.01"/></svg>
-            EMI Calculator
-          </a>
-          <a href="/admin" className="nav-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-            Admin Panel
-          </a>
-          <a href="/policies" className="nav-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            Policies
-          </a>
-          <a href="/bank-managers" className="nav-item">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a2 2 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            Bank Manager
-          </a>
-        </nav>
-        <div className="model-selector-wrapper" ref={modelSelectorRef}>
-          <button
-            className="model-selector"
-            onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-          >
-            <span className="model-selector-icon">◆</span>
-            {getSelectedModelName()}
-            <span className="model-selector-caret">▾</span>
-          </button>
-          <div className={`model-dropdown ${modelDropdownOpen ? "open" : ""}`}>
-            {AVAILABLE_MODELS.map((model) => (
-              <button
-                key={model.id}
-                className={`model-dropdown-item ${selectedModel === model.id ? "active" : ""}`}
-                onClick={() => {
-                  setSelectedModel(model.id)
-                  setModelDropdownOpen(false)
-                }}
-              >
-                <span className="model-dropdown-item-icon">{model.icon}</span>
-                <div className="model-dropdown-item-info">
-                  <div className="model-dropdown-item-name">{model.name}</div>
-                  <div className="model-dropdown-item-desc">{model.desc}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-        <button
-          className="theme-toggle"
-          onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-          title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-          aria-label="Toggle theme"
-        >
-          {theme === "light" ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-          )}
-        </button>
-        <div className="profile-menu" role="link" tabIndex={0} onClick={() => router.push("/profile")}>
-          <span className="profile-menu-label">{user.name || user.email}</span>
-          <span className="caret">▾</span>
-          <div className="profile-dropdown">
-            <a href="/profile">Profile</a>
-            <a href="/logout">Logout</a>
-          </div>
-        </div>
-      </header>
+    <main className={`home-body ${activeSection === "assistant" ? "chat-page" : ""}`}>
+      <Topbar
+        user={user}
+        pathname="/home"
+        selectedModel={selectedModel}
+        onModelChange={setSelectedModel}
+        activeSection={activeSection}
+        onSectionChange={handleSectionChange}
+        onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+      />
 
-      <div className="chat-layout">
+      {activeSection === "home" && (
+        <div className="dashboard-home-view animate-fade-in">
+          <div className="home-hero-banner">
+            <div className="home-hero-badge">✦ Financial & Loan Intelligence Platform</div>
+            <h1 className="home-hero-title">
+              Welcome back, {user.name || user.email?.split("@")[0] || "User"}
+            </h1>
+            <p className="home-hero-subtitle">
+              Your centralized workspace for AI loan evaluation, live bank policy rules, employer verification, and real-time EMI simulations.
+            </p>
+            <div className="home-hero-actions">
+              <button
+                type="button"
+                className="home-hero-btn primary"
+                onClick={() => handleSectionChange("assistant")}
+              >
+                💬 Launch AI Assistant
+              </button>
+              <button
+                type="button"
+                className="home-hero-btn secondary"
+                onClick={() => handleSectionChange("emi")}
+              >
+                🧮 Open EMI Calculator
+              </button>
+              <button
+                type="button"
+                className="home-hero-btn secondary"
+                onClick={() => handleSectionChange("policies")}
+              >
+                📋 View Bank Policies
+              </button>
+            </div>
+          </div>
+
+          <div className="home-stats-grid">
+            <div className="home-stat-card">
+              <div className="home-stat-icon">🏦</div>
+              <div>
+                <div className="home-stat-value">20+ Banks</div>
+                <div className="home-stat-label">HDFC, ICICI, SBI, Axis & more</div>
+              </div>
+            </div>
+            <div className="home-stat-card">
+              <div className="home-stat-icon">🏢</div>
+              <div>
+                <div className="home-stat-value">339K+</div>
+                <div className="home-stat-label">Employer Category Listings</div>
+              </div>
+            </div>
+            <div className="home-stat-card">
+              <div className="home-stat-icon">📋</div>
+              <div>
+                <div className="home-stat-value">Live Policies</div>
+                <div className="home-stat-label">CIBIL, FOIR, Age & Salary rules</div>
+              </div>
+            </div>
+            <div className="home-stat-card">
+              <div className="home-stat-icon">⚡</div>
+              <div>
+                <div className="home-stat-value">Instant Math</div>
+                <div className="home-stat-label">Real-time amortization schedule</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="home-cards-section-title">
+            <span>Explore Dashboard Tools</span>
+          </div>
+
+          <div className="home-cards-grid">
+            <div className="home-feature-card">
+              <div>
+                <div className="home-feature-card-header">
+                  <div className="home-feature-icon">🤖</div>
+                  <span className="home-feature-tag">AI Powered</span>
+                </div>
+                <h3 className="home-feature-title">AI Loan Assistant</h3>
+                <p className="home-feature-desc">
+                  Ask natural language questions about loan eligibility, employer ratings, interest rates, and required documentation.
+                </p>
+                <div className="home-prompt-chips">
+                  <button
+                    type="button"
+                    className="home-prompt-chip"
+                    onClick={() => handleLaunchPrompt("Calculate EMI for a home loan of 500000 at 9.5% for 60 months")}
+                  >
+                    💬 Calculate EMI for 5L home loan at 9.5%
+                  </button>
+                  <button
+                    type="button"
+                    className="home-prompt-chip"
+                    onClick={() => handleLaunchPrompt("Tell me about loan processing fees")}
+                  >
+                    💬 Loan processing fees & charges
+                  </button>
+                  <button
+                    type="button"
+                    className="home-prompt-chip"
+                    onClick={() => handleLaunchPrompt("Check ICICI manager details in Pune")}
+                  >
+                    💬 Find ICICI manager details in Pune
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="home-feature-btn"
+                onClick={() => handleSectionChange("assistant")}
+              >
+                Chat with Assistant →
+              </button>
+            </div>
+
+            <div className="home-feature-card">
+              <div>
+                <div className="home-feature-card-header">
+                  <div className="home-feature-icon">🧮</div>
+                  <span className="home-feature-tag">Interactive</span>
+                </div>
+                <h3 className="home-feature-title">EMI Calculator</h3>
+                <p className="home-feature-desc">
+                  Calculate accurate monthly EMI, principal vs interest breakdown, and export or print complete amortization tables.
+                </p>
+                <div style={{ background: "#f9fafb", padding: "14px", borderRadius: "10px", marginBottom: "18px", border: "1px solid #e5e7eb" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#6b7280", marginBottom: "6px" }}>
+                    <span>Default Example</span>
+                    <span style={{ fontWeight: 700, color: "#10a37f" }}>₹10,501 / mo</span>
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "#9ca3af" }}>
+                    ₹5,00,000 at 9.5% for 60 months
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="home-feature-btn"
+                onClick={() => handleSectionChange("emi")}
+              >
+                Open EMI Calculator →
+              </button>
+            </div>
+
+            <div className="home-feature-card">
+              <div>
+                <div className="home-feature-card-header">
+                  <div className="home-feature-icon">📋</div>
+                  <span className="home-feature-tag">Bank Rules</span>
+                </div>
+                <h3 className="home-feature-title">Bank Policy Guidelines</h3>
+                <p className="home-feature-desc">
+                  Explore underwriting policy guidelines, FOIR multipliers, minimum salary requirements, and view official bank documents.
+                </p>
+                <div style={{ background: "#f9fafb", padding: "14px", borderRadius: "10px", marginBottom: "18px", border: "1px solid #e5e7eb" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#6b7280", marginBottom: "6px" }}>
+                    <span>Bank Coverage</span>
+                    <span style={{ fontWeight: 700, color: "#10a37f" }}>HDFC, ICICI, SBI, Axis</span>
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "#9ca3af" }}>
+                    CIBIL, FOIR, multipliers & policy attachments
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="home-feature-btn"
+                onClick={() => handleSectionChange("policies")}
+              >
+                View Bank Policies →
+              </button>
+            </div>
+
+            <div className="home-feature-card">
+              <div>
+                <div className="home-feature-card-header">
+                  <div className="home-feature-icon">🏦</div>
+                  <span className="home-feature-tag">Directory</span>
+                </div>
+                <h3 className="home-feature-title">Bank Managers</h3>
+                <p className="home-feature-desc">
+                  Locate verified branch managers, regional credit officers, and loan executives in your target city.
+                </p>
+                <div style={{ background: "#f9fafb", padding: "14px", borderRadius: "10px", marginBottom: "18px", border: "1px solid #e5e7eb" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#6b7280", marginBottom: "6px" }}>
+                    <span>City Coverage</span>
+                    <span style={{ fontWeight: 700, color: "#f59e0b" }}>Pan-India</span>
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "#9ca3af" }}>
+                    Phone, email, and branch addresses
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="home-feature-btn"
+                onClick={() => router.push("/bank-managers")}
+              >
+                Search Bank Managers →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="chat-layout" style={{ display: activeSection === "assistant" ? "flex" : "none" }}>
         <div
           className={`chat-sidebar-overlay ${sidebarOpen ? "visible" : ""}`}
           onClick={() => setSidebarOpen(false)}
         />
-        <aside className={`chat-sidebar ${sidebarOpen ? "open" : ""} ${sidebarCollapsed ? "collapsed" : ""}`} id="chatSidebar">
+        <aside className={`chat-sidebar ${sidebarOpen ? "open" : "closed"}`} id="chatSidebar">
           <div className="chat-sidebar-header">
             <button className="chat-new-chat-btn" id="chatNewConversation" onClick={newConversation}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
               New Chat
-            </button>
-            <button
-              className="chat-sidebar-collapse"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              title={sidebarCollapsed ? "Expand" : "Collapse"}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                {sidebarCollapsed ? (
-                  <><path d="M9 18l6-6-6-6"/></>
-                ) : (
-                  <><path d="M15 9l-6 6 6 6"/></>
-                )}
-              </svg>
             </button>
           </div>
           <div className="chat-search-box">
@@ -1060,6 +1221,14 @@ export default function HomePage() {
           </div>
         </main>
       </div>
+
+      {activeSection === "emi" && (
+        <EmiCalculator user={user} embedded={true} />
+      )}
+
+      {activeSection === "policies" && (
+        <PoliciesView user={user} embedded={true} />
+      )}
 
       {/* Conversation context menu */}
       {contextMenu && (

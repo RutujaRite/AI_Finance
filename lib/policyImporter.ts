@@ -483,9 +483,9 @@ async function extractPdfText(
   filePath: string,
 ): Promise<StructuredDocument | null> {
   try {
-    const imported = await import(
-      'pdfjs-dist/legacy/build/pdf.mjs'
-    );
+    const pdfPkg = 'pdfjs-dist/legacy/build/pdf.mjs';
+    // @ts-ignore
+    const imported: any = await import(/* webpackIgnore: true */ pdfPkg);
 
     const pdfjsLib = imported.default || imported;
 
@@ -1077,14 +1077,12 @@ export function extractRulesFromText(
   folderName: string,
   explicitCategory?: string | null,
 ): PolicyRules | null {
-  const doc =
-    typeof text === 'object' && text !== null
+  const plainText: string =
+    typeof text === 'string'
       ? text
-      : null;
-
-  const plainText = doc
-    ? getTextFromStructured(doc)
-    : text || '';
+      : text && typeof text === 'object'
+      ? getTextFromStructured(text)
+      : '';
 
   if (!plainText) {
     return null;
@@ -1274,8 +1272,8 @@ export function extractRulesFromText(
     salaryRangeMatch &&
     !normalizedText
       .substring(
-        salaryRangeMatch.index,
-        salaryRangeMatch.index +
+        salaryRangeMatch.index!,
+        salaryRangeMatch.index! +
           salaryRangeMatch[0].length,
       )
       .includes('%')
@@ -1307,8 +1305,8 @@ export function extractRulesFromText(
       minSalaryMatch &&
       !normalizedText
         .substring(
-          minSalaryMatch.index,
-          minSalaryMatch.index +
+          minSalaryMatch.index!,
+          minSalaryMatch.index! +
             minSalaryMatch[0].length,
         )
         .includes('%')
@@ -1342,8 +1340,8 @@ export function extractRulesFromText(
     salaryTierMatch &&
     !normalizedText
       .substring(
-        salaryTierMatch.index,
-        salaryTierMatch.index +
+        salaryTierMatch.index!,
+        salaryTierMatch.index! +
           salaryTierMatch[0].length,
       )
       .includes('%')
@@ -1388,8 +1386,8 @@ export function extractRulesFromText(
     salaryAboveMatch &&
     !normalizedText
       .substring(
-        salaryAboveMatch.index,
-        salaryAboveMatch.index +
+        salaryAboveMatch.index!,
+        salaryAboveMatch.index! +
           salaryAboveMatch[0].length,
       )
       .includes('%')
@@ -1416,8 +1414,8 @@ export function extractRulesFromText(
     salaryBelowMatch &&
     !normalizedText
       .substring(
-        salaryBelowMatch.index,
-        salaryBelowMatch.index +
+        salaryBelowMatch.index!,
+        salaryBelowMatch.index! +
           salaryBelowMatch[0].length,
       )
       .includes('%')
@@ -2217,7 +2215,7 @@ export async function convertBankDocumentsToText(
       [bankId],
     );
 
-    if (bankResult.rowCount === 0) {
+    if (bankResult.rowCount! === 0) {
       throw new Error('Bank not found');
     }
 
@@ -2232,7 +2230,7 @@ export async function convertBankDocumentsToText(
         [bankId],
       );
 
-    if (filesResult.rowCount === 0) {
+    if (filesResult.rowCount! === 0) {
       throw new Error(
         'No policy documents found for this bank',
       );
@@ -2464,7 +2462,7 @@ export async function saveUnifiedBankDocument(
         [bankId, description],
       );
 
-    if (existing.rowCount > 0) {
+    if (existing.rowCount! > 0) {
       await client.query(
         `UPDATE bank_policy_files
          SET extracted_text = $1,
@@ -2560,7 +2558,7 @@ export async function getNextVersionLabel(
       [bankId, loanType],
     );
 
-  if (res.rowCount === 0) {
+  if (res.rowCount! === 0) {
     return 'V1';
   }
 
@@ -2612,7 +2610,7 @@ export async function getOrCreateBank(
       ],
     );
 
-  if (res.rowCount > 0) {
+  if (res.rowCount! > 0) {
     return res.rows[0];
   }
 
@@ -2862,7 +2860,7 @@ export async function importPolicyFiles(
         );
 
       if (
-        existingBank.rowCount > 0
+        existingBank.rowCount! > 0
       ) {
         bankRecord =
           existingBank.rows[0];
@@ -2949,7 +2947,7 @@ export async function importPolicyFiles(
           );
 
         if (
-          existing.rowCount > 0 &&
+          existing.rowCount! > 0 &&
           existing.rows[0]
             .extracted_text
         ) {
@@ -2996,7 +2994,7 @@ export async function importPolicyFiles(
             }
 
             if (
-              existing.rowCount > 0
+              existing.rowCount! > 0
             ) {
               await client.query(
                 `UPDATE bank_policy_files
@@ -3264,6 +3262,8 @@ export async function scanPolicyFiles(
             file.sizeBytes,
           folder:
             file.folderName,
+          relativePath:
+            file.relativeDir,
         }),
       ),
   };
@@ -3533,7 +3533,7 @@ export async function registerPolicyDocuments(
         );
 
       if (
-        existingBank.rowCount > 0
+        existingBank.rowCount! > 0
       ) {
         bankRecord =
           existingBank.rows[0];
@@ -3604,7 +3604,7 @@ export async function registerPolicyDocuments(
           );
 
         if (
-          existing.rowCount > 0 &&
+          existing.rowCount! > 0 &&
           existing.rows[0]
             .extracted_text
         ) {
@@ -3643,7 +3643,7 @@ export async function registerPolicyDocuments(
             }
 
             if (
-              existing.rowCount > 0
+              existing.rowCount! > 0
             ) {
               await client.query(
                 `UPDATE bank_policy_files
@@ -3994,7 +3994,7 @@ export async function rebuildABFLUnifiedDocument(
       );
 
     if (
-      bankResult.rowCount === 0
+      bankResult.rowCount! === 0
     ) {
       throw new Error(
         'Bank not found',
@@ -4019,7 +4019,7 @@ export async function rebuildABFLUnifiedDocument(
       );
 
     if (
-      filesResult.rowCount === 0
+      filesResult.rowCount! === 0
     ) {
       throw new Error(
         'No policy documents found for this bank',
@@ -4292,7 +4292,7 @@ export async function replaceABFLUnifiedDocument(
     let unifiedDocId: number;
 
     if (
-      existing.rowCount > 0
+      existing.rowCount! > 0
     ) {
       await client.query(
         `UPDATE bank_policy_files

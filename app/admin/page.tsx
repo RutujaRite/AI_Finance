@@ -17,7 +17,6 @@ export default function AdminPage() {
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState("")
   const [isDragOver, setIsDragOver] = useState(false)
-  const [theme, setTheme] = useState<"light" | "dark">("dark")
   const [selectedModel, setSelectedModel] = useState("liquid/lfm-2.5-embedding-350m:free")
 
   // Search filter states
@@ -170,8 +169,6 @@ export default function AdminPage() {
         pathname="/admin"
         selectedModel={selectedModel}
         onModelChange={setSelectedModel}
-        theme={theme}
-        onThemeToggle={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
       />
 
       <main className="admin-page" style={{ padding: "24px 36px" }}>
@@ -203,7 +200,7 @@ export default function AdminPage() {
             <div className="summary-label" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <span>🕒</span> Latest Activity
             </div>
-            <div className="summary-value" style={{ fontSize: "1.1rem", color: "#a5b4fc" }}>
+            <div className="summary-value" style={{ fontSize: "1.1rem", color: "#10a37f" }}>
               {files.length > 0 ? formatDate(files[0].uploaded_at) : "No uploads yet"}
             </div>
           </div>
@@ -218,7 +215,7 @@ export default function AdminPage() {
         {/* Top Grid: Drag & Drop Upload + File Manager */}
         <div className="admin-grid">
           {/* Upload Form Card */}
-          <div className="form-card" style={{ background: "rgba(17, 24, 39, 0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "16px", padding: "24px" }}>
+          <div className="form-card" style={{ background: "#ffffff", backdropFilter: "blur(16px)", border: "1px solid #e5e7eb", borderRadius: "16px", padding: "24px" }}>
             <div className="form-card-title" style={{ fontSize: "1.1rem", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               Upload Bank Document
@@ -231,8 +228,8 @@ export default function AdminPage() {
                 onDragLeave={() => setIsDragOver(false)}
                 onDrop={handleDrop}
                 style={{
-                  border: isDragOver ? "2px dashed #6366f1" : "2px dashed rgba(99, 102, 241, 0.35)",
-                  background: isDragOver ? "rgba(99, 102, 241, 0.12)" : "rgba(99, 102, 241, 0.03)",
+                  border: isDragOver ? "2px dashed #10a37f" : "2px dashed rgba(16, 163, 127, 0.35)",
+                  background: isDragOver ? "rgba(16, 163, 127, 0.12)" : "rgba(16, 163, 127, 0.03)",
                   borderRadius: "14px",
                   padding: "36px 20px",
                   textAlign: "center",
@@ -247,7 +244,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  style={{ display: "inline-flex", width: "auto", padding: "10px 20px", borderRadius: "8px", background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)", color: "#fff", fontWeight: 600, border: "none", cursor: "pointer", boxShadow: "0 4px 14px rgba(99, 102, 241, 0.4)" }}
+                  style={{ display: "inline-flex", width: "auto", padding: "10px 20px", borderRadius: "8px", background: "linear-gradient(135deg, #10a37f 0%, #059669 100%)", color: "#fff", fontWeight: 600, border: "none", cursor: "pointer", boxShadow: "0 4px 14px rgba(16, 163, 127, 0.4)" }}
                 >
                   📁 Browse Computer
                 </button>
@@ -261,8 +258,8 @@ export default function AdminPage() {
               </div>
 
               {uploading && (
-                <div className="upload-progress active" style={{ marginTop: "14px", padding: "10px 14px", borderRadius: "8px", background: "rgba(99, 102, 241, 0.15)", color: "#a5b4fc", fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <div className="chat-typing-dot" style={{ width: 8, height: 8, borderRadius: "50%", background: "#818cf8" }}></div>
+                <div className="upload-progress active" style={{ marginTop: "14px", padding: "10px 14px", borderRadius: "8px", background: "rgba(16, 163, 127, 0.15)", color: "#6ee7b7", fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div className="chat-typing-dot" style={{ width: 8, height: 8, borderRadius: "50%", background: "#34d399" }}></div>
                   Uploading file to system repository...
                 </div>
               )}
@@ -288,12 +285,12 @@ export default function AdminPage() {
           </div>
 
           {/* Uploaded Documents List Card */}
-          <div className="result-card" style={{ background: "rgba(17, 24, 39, 0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "16px", padding: "24px" }}>
+          <div className="result-card" style={{ background: "#ffffff", backdropFilter: "blur(16px)", border: "1px solid #e5e7eb", borderRadius: "16px", padding: "24px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
               <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "10px", margin: 0 }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 Uploaded Documents
-                <span style={{ fontSize: "0.78rem", padding: "2px 10px", borderRadius: "999px", background: "rgba(99, 102, 241, 0.15)", color: "#a5b4fc", border: "1px solid rgba(99, 102, 241, 0.3)" }}>
+                <span style={{ fontSize: "0.78rem", padding: "2px 10px", borderRadius: "999px", background: "rgba(16, 163, 127, 0.15)", color: "#6ee7b7", border: "1px solid rgba(16, 163, 127, 0.3)" }}>
                   {filteredFiles.length} {filteredFiles.length === 1 ? "File" : "Files"}
                 </span>
               </h3>
@@ -385,9 +382,9 @@ export default function AdminPage() {
                                   gap: "6px",
                                   padding: "6px 12px",
                                   borderRadius: "6px",
-                                  background: "rgba(99, 102, 241, 0.15)",
-                                  color: "#a5b4fc",
-                                  border: "1px solid rgba(99, 102, 241, 0.3)",
+                                  background: "rgba(16, 163, 127, 0.15)",
+                                  color: "#6ee7b7",
+                                  border: "1px solid rgba(16, 163, 127, 0.3)",
                                   fontSize: "0.8rem",
                                   fontWeight: 600,
                                   textDecoration: "none"
@@ -430,7 +427,7 @@ export default function AdminPage() {
         </div>
 
         {/* Bottom Card: Registered User Management Table */}
-        <div className="result-card" style={{ marginTop: "32px", background: "rgba(17, 24, 39, 0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: "16px", padding: "24px" }}>
+        <div className="result-card" style={{ marginTop: "32px", background: "#ffffff", backdropFilter: "blur(16px)", border: "1px solid #e5e7eb", borderRadius: "16px", padding: "24px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px", flexWrap: "wrap", gap: "12px" }}>
             <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: "10px", margin: 0 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f472b6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -502,7 +499,7 @@ export default function AdminPage() {
                                 width: "32px", 
                                 height: "32px", 
                                 borderRadius: "50%", 
-                                background: isAdmin ? "linear-gradient(135deg, #6366f1 0%, #a855f7 100%)" : "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)", 
+                                background: isAdmin ? "linear-gradient(135deg, #10a37f 0%, #059669 100%)" : "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)", 
                                 color: "#fff", 
                                 display: "flex", 
                                 alignItems: "center", 
@@ -525,9 +522,9 @@ export default function AdminPage() {
                               borderRadius: "999px", 
                               fontSize: "0.75rem", 
                               fontWeight: 700, 
-                              background: isAdmin ? "rgba(99, 102, 241, 0.2)" : "rgba(148, 163, 184, 0.12)", 
-                              color: isAdmin ? "#a5b4fc" : "#cbd5e1",
-                              border: isAdmin ? "1px solid rgba(99, 102, 241, 0.4)" : "1px solid rgba(148, 163, 184, 0.25)"
+                              background: isAdmin ? "rgba(16, 163, 127, 0.2)" : "rgba(148, 163, 184, 0.12)",
+                              color: isAdmin ? "#6ee7b7" : "#cbd5e1",
+                              border: isAdmin ? "1px solid rgba(16, 163, 127, 0.4)" : "1px solid rgba(148, 163, 184, 0.25)"
                             }}
                           >
                             {isAdmin ? "👑 ADMIN" : "USER"}

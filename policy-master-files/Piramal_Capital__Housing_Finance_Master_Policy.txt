@@ -1,300 +1,355 @@
 ================================================================================
-PIRAMAL CAPITAL & HOUSING FINANCE PERSONAL LOAN - POLICY RULEBOOK
-Generated: 2026-08-29
-Source Bank: Piramal Capital & Housing Finance (PIRAMAL)
+PIRAMAL FINANCE PERSONAL LOAN - MASTER POLICY
 ================================================================================
 
-PURPOSE:
-This is a concise eligibility and pricing rulebook for Piramal Capital & Housing Finance Personal Loan.
-It is derived from all source documents and PostgreSQL policy records.
-Use this for AI decision-making, eligibility checks, and policy validation.
-
-SECTIONS:
-1. PROGRAM OVERVIEW
-2. ELIGIBILITY CRITERIA
-3. COMPANY/EMPLOYER CATEGORIES
-4. PRICING & ROI GRIDS
-5. LOAN PARAMETERS
-6. FOIR & MULTIPLIER RULES
-7. NTH / SALARY REQUIREMENTS
-8. BT / CCBT / APP LOAN RULES
-9. DOCUMENT REQUIREMENTS
-10. EXCEPTIONS & DEVIATIONS
-11. CONFLICTS/REVIEW ITEMS
+BANK: Piramal Finance
+PRODUCT: Personal Loan
 
 ================================================================================
-1. PROGRAM OVERVIEW
+1. CORE PRODUCT RULES
 ================================================================================
 
-Active Policy Versions:
-- V3 (Personal)
-- V2 (Personal)
-- V1 (Business)
-- V1 (Personal)
+Loan Amount:
+- Standard Personal Loan: Rs. 1 Lakh to Rs. 25 Lakhs in one supplied policy summary.
+- Revised/JFM material shows selected programs up to Rs. 30 Lakhs.
+- Government Employees:
+  - Fresh: Up to Rs. 20 Lakhs
+  - Balance Transfer: Up to Rs. 24 Lakhs
+- NTC / CIBIL -1:
+  - Up to Rs. 7.5 Lakhs in revised JFM policy
+  - Ventile-based cap may be lower; apply exact applicable policy section.
 
-Key Parameters from Database:
-- Minimum Salary: ₹0
+Tenure:
+- Standard: 12 to 72 months
+- Revised JFM program: up to 84 months for applicable profiles
+
+Age:
 - Minimum Age: 21 years
 - Maximum Age: 61 years
-- Maximum Loan Amount: ₹70,000
-- FOIR Limit: 75%
+- Government Employees: Maximum Age 63 years
 
-Total Policy Versions: 4
-Total Policy Rules: 4
-Total Source Files Extracted: 7
+Interest Rate:
+- General policy range in supplied text: approximately 12.99% to 24.49%
+- Exact ROI must be selected from the applicable NTC / Ventile / Employer Category pricing grid below.
 
-================================================================================
-2. ELIGIBILITY CRITERIA
-================================================================================
+Processing Fee:
+- General policy: 1.50% to 2.50%
+- Exact PL Prime flat PF rules are listed separately below.
 
-Age Requirements:
-- Minimum Age: 21 years
-- Maximum Age: 61 years
-
-Employment Types:
-- Self-Employed
-
-Source Document Policy Details:
-
---- From: Minus 1 Cibil Rate of interest 04-06-25.jpeg ---
-Pricing grid for NTC Customers for PL Business
-Salary (NTH p.m.) Lt ol |
-Upto Rs. 30000 25.99
-| From Rs. 30001 upto Rs. 22.99 23.99
-50000 |
-From Rs. 50001 & Above | 20.49 21.49
-
---- From: Piramal FOIR & Multiplier Chart 20-09-24.jpeg ---
-an eligibility calculation except Vistaar, Army NCO & Doctor profile minimum of A % 8 f
-[= —= Maximum | ==
-= FOR Net | — =
-= | = | B. Maximum loan amount eap {in = lakhs) =" =
-Ventile | Monthly =F
-band | Income {inX} | = |
-
-| | | | Govt. with NI I ji
-Bs cc |
-=~ | | « a.
-sv | 2 — =
-
---- From: Piramal_1.jpeg ---
-@ Piramal
-Finance
-Your Dreams, Our Support:
-F Ao Avail Personal Loan now up to
-aa 25 Lacs!
-CS 2
-i» E25) [Starting 12.99%
-I] I" Te Zh |
-a © \ 1.5% onwards
-| Tenure
-Up to 72 months
-wz
-£4 - a << :
-SR Lo
-©
-For select segment only
-
---- From: Policy 20-09-24.txt ---
-Location : -Pune -27500 k salary requirement 
-
-Low rate Interest
-Loan Amount : 1 lac to 25 lac
-Rate of Interest : 12.99 to 23.99% Reducing 
-Processing Fees : 1.5 to 2 % + GST
-
-Tenure : 12 to 72Month
-
-0 %part payment preclosing 
-Min Age : 21 
-Max Age : 61
-For Govt Max Age : 63
-All Pvt LTD, 
-
-For Partnership and proprietor salary required 30000 Own house required
-
-
-Max FOIR : 75% 
-
-For -1 CIBIL 50% FOIR can do Cibil 650 can do
-
-Approval Based on Score Card
-
-
-
-
-
-
-PIRAMAL FINNACE POLICY
-
-GEO LIMIT upto 70 KM
-
-Loan Amount : 1 lac to 20 lac
-Rate of Interest : 12.99 to 23.99% Reducing 
-Processing Fees : 1.5 to 2 % + GST
-Tenure : 12 to 60 Month 
-Part payment or Foreclose free
-* Salary: 20000*
-Approval TAT :- SAME DAY
-Min Age : 21 
-Max Age : 61
-For Govt Max Age : 63
-All Pvt LTD, 
-For Partnership and proprietor salary required 22000/- Own house required
-PF Deduction Mandatory for all 
-Max FOIR : 70 % 
-For -1 CIBIL 50% FOIR can do
-Approval Based on Score Card
-* External Balance transfer Personal loan
-1)Minimum 9 emi done
-2)Foreclosure letter
-
-
-
-⭐⭐⭐PIRAMAL FINANCE POLICY ⭐⭐⭐
-
-✨ Dear All 🙏
-
-🎤 Uniqueness of this product 👈
-
-👌 No locking period
-👌 ZERO partial payment / Foreclosure charges
-👌 Govt employees upto 63 years of age.
-👌 Employees of partnership & proprietorship is allowed.
-👌 Funding NGO, SOCIETY, TRUST
-👌 Eligibility based on only FOIR & FOIR UPTO 75%
-👌 CIBIL 0/ -1 allowed.
-👌 Gold loan not obligated
-👌 8 
-[...truncated...]
-
---- From: WhatsApp Image 2026-03-20 at 12.20.36.jpeg ---
-pre. a
-og JFM - Revised Polic
--
-® 1
-irama £
-> 1 ES i
-; » id
-! Fl Finance _
-be SE Bul wes 25
-5 43 “ pa IE = dP 41
-_=—(& . Login to Disbursement Digital Platform . » j=
-GG Ticket Size ©) Es p= & *,
-a ecial Benefits + )
-|| ® 21,00,000 - 3,00,0000/- E 4
-Nil Fore Closure Charges &
-| (©) Tenure 12 m-84 m - Part-payment Charges.
-| © Rates Starting 11.99% to 27.99%  Cibil-1- We can fund upto 75 lakhs. y
-© PF 1.5% to 2.5% ( We can fund upto 20 lakhs
-i ; Govt employee - Fresh & 24 lakhs for BT. 1
-HE ed Voava0 (J EMI Deduction Facility 2n¢, 5% 10"
-3 = No Multiplier Calculation |
-: Q Less Documentation & EEO Allowed Upto 75% E:
-= Special Benefits ~ Gold Loan - No obligation =
-i Nit Fore Closure ch 2 (+ Grade 4 & Partnership firms profiles l=
-© yd ed well till Do up to 10 Lakhs with T&C
-3 : We can do APP Loans (Navy,
- Cibil-1 - We can fund upto 75 lakhs. | Moneyview, Credit Bee) BT & CC BT
-© We can fund upto 20 lakhs We can do for LIC Agents
-- aha 2a tits BIT. + Account against home pending pending F
-d EMI Deduction Facility 2d,5*& 10th EMI Not obligate
-yi2rd, r
-g (v] No Multiplier Calculation [V] Staying Own house- Verifications waived off Ee
-© FOIR Allowed Upto 75% Account aggregator for FCU Waived Off
-- & ( CC 5% OUT standing will Obligation ”
-pig
-(2) AKSHAY MANKAR pe E
-2 Contact No.- 9967791633 : La | dis
-Email ID - akshay.mankar2@piramal.com - EEE we lO,
-ee)
-en ae
-= . g
-dll — - Pe
-. j = . - A
-— a? SERRE SR aa —— :
-================================================================================
-3. COMPANY/EMPLOYER CATEGORIES
-================================================================================
+Foreclosure / Part Payment:
+- Nil / zero foreclosure charges in revised policy material
+- Nil / zero part-payment charges in revised policy material
+- No locking period stated in supplied policy text
 
 ================================================================================
-4. PRICING & ROI GRIDS
+2. ELIGIBLE EMPLOYER / PROFILE TYPES
 ================================================================================
 
-ROI Values from Database:
-- Rule 611: ROI Range: N/A% - N/A% (Version: V1)
-- Rule 612: ROI Range: N/A% - N/A% (Version: V1)
-- Rule 613: ROI Range: N/A% - N/A% (Version: V2)
-- Rule 614: ROI Range: N/A% - N/A% (Version: V3)
-[REVIEW] Multiple ROI values exist across versions/rules
+Allowed:
+- Private Limited company employees
+- Government employees
+- Partnership-firm employees
+- Proprietorship employees
+- NGO employees
+- Society employees
+- Trust employees
+- LIC Agents
+- Grade 4 profiles subject to applicable conditions
+
+Partnership / Proprietorship:
+- Own house required in supplied policy text
+- Salary requirement appears as Rs. 30,000 in the later policy version
+
+Government:
+- Special loan caps apply
+- Maximum age up to 63 years
 
 ================================================================================
-5. LOAN PARAMETERS
+3. MINIMUM INCOME / SALARY
 ================================================================================
 
-Loan Amount Parameters:
-- Rule 611: Min: N/A, Max: ₹70,000
-- Rule 613: Min: N/A, Max: ₹15
+Later supplied policy version:
+- Minimum NTH: Rs. 27,500 per month
+- PF deduction mandatory
+- If PF is not deducted, Form 26AS mandatory
+
+Partnership / Proprietorship:
+- Minimum salary: Rs. 30,000
+- Own house required
+
+Older supplied policy variants also show:
+- Rs. 20,000 general salary
+- Rs. 22,000 for Partnership / Proprietorship
+
+[REVIEW]
+Use the currently active policy version. Do not mix older salary thresholds with newer policy rules.
 
 ================================================================================
-6. FOIR & MULTIPLIER RULES
+4. CIBIL / SCORECARD / VENTILE
 ================================================================================
 
-FOIR Limits:
-- Rule 611: 75%
+Standard CIBIL:
+- CIBIL 650 can be considered as stated in supplied policy text
+
+NTC / CIBIL 0 / -1:
+- Allowed
+- Separate pricing and loan-cap rules apply
+
+Approval:
+- Based on Scorecard / Ventile
+
+Revised JFM:
+- Ventile Pass Mandatory: V6 to V20 for the specified JFM segment
+- Good CIBIL history required
 
 ================================================================================
-7. NTH / SALARY REQUIREMENTS
+5. NTC PRICING GRID
 ================================================================================
 
-Salary Requirements from Database:
-- Rule 611: Min: ₹0, Max: N/A
+NTC CUSTOMER PRICING - PERSONAL LOAN
+
+Salary NTH up to Rs. 30,000:
+- Metro / Tier 1: 25.99%
+- Others: 25.99%
+
+Salary NTH Rs. 30,001 to Rs. 50,000:
+- Metro / Tier 1: 22.99%
+- Others: 23.99%
+
+Salary NTH Rs. 50,001 and above:
+- Metro / Tier 1: 20.49%
+- Others: 21.49%
 
 ================================================================================
-8. BT / CCBT / APP LOAN RULES
+6. FOIR AND VENTILE-BASED MAX LOAN CAP
 ================================================================================
 
-Refer to source documents for detailed BT/CCBT/App Loan rules.
-Total policy rules in database: 4
+This grid applies to the revised loan-eligibility calculation shown in the
+supplied Piramal policy material.
+
+VENTILE: NTC
+- Maximum FOIR:
+  - NMI < Rs. 35K: 50%
+  - NMI >= Rs. 35K: 50%
+- Maximum Loan:
+  - Elite / CAT A: Rs. 5 Lakhs
+  - Government with NMI >= Rs. 60K: Rs. 5 Lakhs
+  - Government with NMI < Rs. 60K & Others: Rs. 5 Lakhs
+
+VENTILE: V5
+- Maximum FOIR:
+  - NMI < Rs. 35K: 50%
+  - NMI >= Rs. 35K: 55%
+- Maximum Loan:
+  - Elite / CAT A: Rs. 5 Lakhs
+  - Government with NMI >= Rs. 60K: Rs. 5 Lakhs
+  - Government with NMI < Rs. 60K & Others: Rs. 5 Lakhs
+
+VENTILE: V6 - V8
+- Maximum FOIR:
+  - NMI < Rs. 35K: 55%
+  - NMI >= Rs. 35K: 60%
+- Maximum Loan:
+  - Elite / CAT A: Rs. 9 Lakhs
+  - Government with NMI >= Rs. 60K: Rs. 6 Lakhs
+  - Government with NMI < Rs. 60K & Others: Rs. 6 Lakhs
+
+VENTILE: V9 - V11
+- Maximum FOIR:
+  - NMI < Rs. 35K: 65%
+  - NMI >= Rs. 35K: 70%
+- Maximum Loan:
+  - Elite / CAT A: Rs. 15 Lakhs
+  - Government with NMI >= Rs. 60K: Rs. 8 Lakhs
+  - Government with NMI < Rs. 60K & Others: Rs. 8 Lakhs
+
+VENTILE: V12 - V14
+- Maximum FOIR:
+  - NMI < Rs. 35K: 65%
+  - NMI >= Rs. 35K: 70%
+- Maximum Loan:
+  - Elite / CAT A: Rs. 20 Lakhs*
+  - Government with NMI >= Rs. 60K: Rs. 12 Lakhs
+  - Government with NMI < Rs. 60K & Others: Rs. 10 Lakhs
+
+VENTILE: V15 - V20
+- Maximum FOIR:
+  - NMI < Rs. 35K: 65%
+  - NMI >= Rs. 35K: 70%
+- Maximum Loan:
+  - Elite / CAT A: Rs. 25 Lakhs*
+  - Government with NMI >= Rs. 60K: Rs. 15 Lakhs
+  - Government with NMI < Rs. 60K & Others: Rs. 12 Lakhs
+
+*The supplied source marks these caps with an asterisk but does not show the
+corresponding footnote. Treat the asterisked cap as conditional until verified.
+
+General FOIR:
+- Maximum FOIR up to 75% is mentioned in revised Piramal policy material
+- CIBIL -1 cases: 50% FOIR can be considered in supplied policy text
 
 ================================================================================
-9. DOCUMENT REQUIREMENTS
+7. PL PRIME ROI GRID
 ================================================================================
 
-Document requirements found in source files:
+Employer Categories:
+- ELITE / CAT A / Government
+- CAT B
+- CAT C
 
---- From: Policy 20-09-24.txt ---
-For Partnership and proprietor salary required 30000 Own house required
-For Partnership and proprietor salary required 22000/- Own house required
-PF Deduction Mandatory for all 
-👉 2 year old company with minimum 30 employees
-*27500/- Monthly ( PF DEDUCTION MANDATORY IF NO PF DEDUCTION FORM 26AS MANDATORY)*
-👉 Insurance: *Mandatory*
-👉 Documents Required :  
+------------------------------------------------------------
+VENTILE >= V13
+------------------------------------------------------------
 
---- From: WhatsApp Image 2026-03-20 at 12.20.36.jpeg ---
-: Q Less Documentation & EEO Allowed Upto 75% E:
+ELITE / CAT A / GOVERNMENT
+- Loan 15L and above: 11.99%
+- Loan 10L to 14.9L: 12.49%
+- Loan up to 10L: 13.99%
+
+CAT B
+- Loan 15L and above: 12.99%
+- Loan 10L to 14.9L: 13.49%
+- Loan up to 10L: 14.99%
+
+CAT C
+- Loan 15L and above: 14.99%
+- Loan 10L to 14.9L: 15.49%
+- Loan up to 10L: 16.99%
+
+------------------------------------------------------------
+VENTILE < V13
+------------------------------------------------------------
+
+ELITE / CAT A / GOVERNMENT
+- Loan 15L and above: 12.99%
+- Loan 10L to 14.9L: 13.49%
+- Loan up to 10L: 14.99%
+
+CAT B
+- Loan 15L and above: 13.99%
+- Loan 10L to 14.9L: 14.49%
+- Loan up to 10L: 15.99%
+
+CAT C
+- Loan 15L and above: 15.99%
+- Loan 10L to 14.9L: 16.49%
+- Loan up to 10L: 17.99%
 
 ================================================================================
-10. EXCEPTIONS & DEVIATIONS
+8. PL PRIME PROCESSING FEE
 ================================================================================
 
-Refer to source documents for detailed exceptions and deviations.
+Ventile:
+- All
 
-Conflicts detected requiring review:
-- max_loan_amount: values found = 70000, 15 [REVIEW]
+Loan Amount 15L to 30L:
+- Flat PF: Rs. 9,999 excluding GST
 
-================================================================================
-11. CONFLICTS/REVIEW ITEMS
-================================================================================
-
-The following fields have conflicting values across different policy versions:
-
-Field: max_loan_amount
-Values: 70000, 15
-Status: [REVIEW] - Multiple values found, verify against latest policy document
-
+Loan Amount up to 15L:
+- Flat PF: Rs. 4,999 excluding GST
 
 ================================================================================
-END OF POLICY RULEBOOK
+9. BALANCE TRANSFER
+================================================================================
+
+External Personal Loan BT:
+- Allowed
+
+Minimum seasoning:
+- Minimum 9 EMIs completed in supplied policy text
+
+Required:
+- Foreclosure Letter
+
+Revised JFM policy additionally states:
+- App Loan BT allowed for listed providers such as:
+  - Navi
+  - Moneyview
+  - CreditBee
+- Credit Card BT allowed
+- Bajaj and Tata OD BT allowed in supplied policy text
+
+Government Employees:
+- BT loan cap up to Rs. 24 Lakhs
+
+================================================================================
+10. OBLIGATION / ELIGIBILITY TREATMENT
+================================================================================
+
+Gold Loan:
+- No obligation
+
+Credit Card:
+- 5% of outstanding to be considered as obligation
+
+Multiplier:
+- Revised JFM material states no multiplier calculation
+
+EMI Deduction Facility:
+- 2nd, 5th and 10th EMI deduction facility is stated in revised JFM material
+
+Own House:
+- Verification may be waived for own-house cases as stated in revised policy
+
+Account Aggregator:
+- FCU waiver mentioned when Account Aggregator is used
+
+================================================================================
+11. DOCUMENT REQUIREMENTS
+================================================================================
+
+Basic Documents:
+- KYC
+- Income Proof
+- Banking
+
+PF / Income Validation:
+- PF deduction mandatory under the later supplied policy
+- If no PF deduction, Form 26AS mandatory
+
+Partnership / Proprietorship:
+- Own-house proof required where applicable
+
+Balance Transfer:
+- Foreclosure Letter
+
+================================================================================
+12. INSURANCE
+================================================================================
+
+- Insurance mandatory as stated in supplied policy text
+
+================================================================================
+13. POLICY REVIEW ITEMS
+================================================================================
+
+1. Loan Amount:
+   - Some supplied materials show maximum Rs. 20 Lakhs
+   - Other materials show Rs. 25 Lakhs
+   - Revised/JFM material shows selected programs up to Rs. 30 Lakhs
+   Apply the exact active program / ventile / profile cap.
+
+2. Tenure:
+   - Some supplied policy text shows maximum 60 months
+   - Later material shows 72 months
+   - Revised JFM material shows up to 84 months
+   Apply the exact current program rule.
+
+3. Minimum Salary:
+   - Older policy variants show Rs. 20,000 / Rs. 22,000
+   - Later policy shows Rs. 27,500 / Rs. 30,000 for partnership-proprietorship
+   Use current active policy.
+
+4. FOIR:
+   - General policy mentions up to 75%
+   - Ventile grid provides exact FOIR by NMI and ventile
+   Use the exact ventile rule when available.
+
+5. Asterisked Loan Caps:
+   - V12-V14 Rs.20L and V15-V20 Rs.25L for Elite/CAT A are marked with *
+   - Footnote is not visible in supplied source
+   Treat as conditional until verified.
+
+================================================================================
+END OF PIRAMAL FINANCE PERSONAL LOAN MASTER POLICY
 ================================================================================

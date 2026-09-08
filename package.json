@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "AI-powered loan assistant platform",
   "scripts": {
-    "dev": "node scripts/kill-port-then-dev.js",
+    "dev": "next dev -p 3001",
     "start": "next start",
     "build": "next build"
   },
@@ -14,6 +14,7 @@
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "express-session": "^1.17.3",
+    "jose": "^6.2.12",
     "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.12.2",
     "next": "^15.3.4",
