@@ -1204,6 +1204,27 @@ a:hover {
     background: var(--bg);
 }
 
+/* AI Assistant Page Lock: lock window scrolling and fill viewport */
+html.chat-page-active,
+body.chat-page-active,
+html:has(.chat-page),
+body:has(.chat-page) {
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+.home-body.chat-page {
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
 .dashboard-home-view {
     padding: 2rem;
     max-width: 1280px;
@@ -1468,8 +1489,12 @@ a:hover {
    -------------------------------------------------------------------------- */
 .chat-layout {
     display: flex;
-    flex: 1;
+    flex: 1 1 0%;
     height: calc(100vh - var(--topbar-height));
+    height: calc(100dvh - var(--topbar-height));
+    max-height: calc(100vh - var(--topbar-height));
+    max-height: calc(100dvh - var(--topbar-height));
+    min-height: 0;
     overflow: hidden;
     position: relative;
     width: 100%;
@@ -1495,6 +1520,9 @@ a:hover {
         display: flex;
         flex-direction: column;
         flex-shrink: 0;
+        height: 100%;
+        max-height: 100%;
+        min-height: 0;
         transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
                     min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
                     max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
@@ -1547,6 +1575,10 @@ a:hover {
         left: 0;
         width: 280px;
         max-width: 85vw;
+        height: calc(100vh - var(--topbar-height));
+        height: calc(100dvh - var(--topbar-height));
+        max-height: calc(100vh - var(--topbar-height));
+        max-height: calc(100dvh - var(--topbar-height));
         background: var(--surface);
         border-right: 1px solid var(--border);
         display: flex;
@@ -1555,6 +1587,7 @@ a:hover {
         transform: translateX(0);
         transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: var(--shadow-xl);
+        overflow: hidden;
     }
 
     .chat-sidebar.closed {
@@ -1613,7 +1646,8 @@ a:hover {
 }
 
 .chat-list {
-    flex: 1;
+    flex: 1 1 0%;
+    min-height: 0;
     overflow-y: auto;
     padding: 0.375rem;
     display: flex;
@@ -1726,24 +1760,30 @@ a:hover {
 
 /* Chat Main Area — Compact ChatGPT Style */
 .chat-main {
-    flex: 1 1 auto;
+    flex: 1 1 0%;
     width: 100%;
     display: flex;
     flex-direction: column;
     min-width: 0;
-    height: auto;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
     align-self: stretch;
     background: var(--bg);
     transition: width 0.25s ease;
     overflow: hidden;
+    position: relative;
 }
 
 .chat-messages {
     flex: 1;
     overflow-y: auto;
     padding: 0.5rem 1rem;
+    min-height: 0;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
+    overscroll-behavior-y: contain;
 }
 
 #chatMessagesInner {
@@ -2070,6 +2110,10 @@ a:hover {
     padding: 0.35rem 1rem 0.4rem 1rem;
     margin-top: auto;
     flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    width: 100%;
 }
 
 .chat-composer-form {

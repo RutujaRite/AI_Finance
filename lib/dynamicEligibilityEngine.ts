@@ -186,18 +186,19 @@ export function detectLoanIntent(message: string): { isLoanIntent: boolean; loan
 }
 
 /**
- * Normalizes company short forms, spelling variations, and abbreviations.
+ * Normalizes company short forms, spelling variations, and abbreviations dynamically.
  */
 function normalizeCompanyName(raw: string): string {
   const clean = raw.trim();
-  const lower = clean.toLowerCase();
-  if (lower === "tcs" || lower === "tat consultancy" || lower === "tata consultancy") return "Tata Consultancy Services";
-  if (lower === "infy" || lower === "infosys tech" || lower === "infosys ltd") return "Infosys";
-  if (lower === "wipro tech" || lower === "wipro ltd") return "Wipro";
-  if (lower === "hcl tech" || lower === "hcl technologies") return "HCL Technologies";
-  if (lower === "techm" || lower === "tech mahindra") return "Tech Mahindra";
-  if (lower === "cts" || lower === "cognizant tech") return "Cognizant";
-  if (lower === "ril" || lower === "reliance ind") return "Reliance Industries";
+  if (!clean) return "";
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { resolveCompanyAlias } = require("@/services/companyAliases");
+    if (typeof resolveCompanyAlias === "function") {
+      const alias = resolveCompanyAlias(clean);
+      if (alias && typeof alias === "string") return alias;
+    }
+  } catch {}
   return clean;
 }
 
@@ -1411,32 +1412,14 @@ export async function processDynamicEligibility(
         formattedMarkdown: question,
       };
     } else {
-      // Resolve company name from company_records
+      // Resolve company name dynamically from company_records or as unlisted corporate
       const cleanCandidate = trimmedInput
         .replace(/^(?:i\s+)?(?:work\s+at|working\s+at|employed\s+at|company\s+is|employer\s+is|at)\s+/i, "")
         .trim();
 
       const resolved = await resolveCompanyCategories(cleanCandidate);
-      if (resolved.isFound) {
-        applicant.companyName = resolved.matchedName || cleanCandidate;
-        expectedField = undefined; // Company resolved successfully!
-      } else {
-        applicant.companyName = undefined;
-        const retryQuestion = `I couldn't find "${cleanCandidate}" in our partner corporate company records. Please provide your full registered corporate name (or let me know if you are self-employed):`;
-        await saveEligibilityState(conversationId, {
-          applicant,
-          expectedField: "companyName",
-          missingFields: ["companyName"],
-          updatedAt: Date.now(),
-        });
-        return {
-          isComplete: false,
-          missingFields: ["companyName"],
-          nextQuestion: retryQuestion,
-          applicant,
-          formattedMarkdown: retryQuestion,
-        };
-      }
+      applicant.companyName = resolved.matchedName || cleanCandidate;
+      expectedField = undefined; // Company resolved successfully!
     }
   }
 

@@ -101,6 +101,24 @@ export default function HomePage() {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [])
 
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      if (activeSection === "assistant") {
+        document.documentElement.classList.add("chat-page-active")
+        document.body.classList.add("chat-page-active")
+      } else {
+        document.documentElement.classList.remove("chat-page-active")
+        document.body.classList.remove("chat-page-active")
+      }
+    }
+    return () => {
+      if (typeof document !== "undefined") {
+        document.documentElement.classList.remove("chat-page-active")
+        document.body.classList.remove("chat-page-active")
+      }
+    }
+  }, [activeSection])
+
   function handleSectionChange(section: DashboardSection) {
     setActiveSection(section)
     if (typeof window !== "undefined") {
@@ -141,6 +159,9 @@ export default function HomePage() {
     if (messagesRef) {
       messagesRef.scrollTop = messagesRef.scrollHeight
       enhanceCodeBlocks(messagesRef)
+    }
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
   }, [messages, messagesRef])
 
@@ -1184,6 +1205,7 @@ export default function HomePage() {
           <div
             className="chat-messages"
             id="chatMessages"
+            ref={(el) => setMessagesRef(el)}
             onClick={(e) => {
               const target = e.target as HTMLElement | null
               if (!target) return
@@ -1265,7 +1287,7 @@ export default function HomePage() {
                   </div>
                 </div>
               )}
-              <div ref={(el) => setMessagesRef(el)} />
+              <div ref={messagesEndRef} />
             </div>
           </div>
 

@@ -99,16 +99,18 @@ export async function resolveCompanyCategories(companyQuery: string): Promise<Co
   }
 
   try {
-    // Expand common corporate abbreviations for accurate lookup
+    // Dynamically resolve corporate alias from canonical company aliases without hardcoding
     let target = query;
-    const upperQuery = query.toUpperCase();
-    if (upperQuery === "TCS") {
-      target = "TATA CONSULTANCY SERVICES";
-    } else if (upperQuery === "SBI") {
-      target = "STATE BANK OF INDIA";
-    } else if (upperQuery === "IBM") {
-      target = "IBM INDIA";
-    }
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { resolveCompanyAlias } = require("@/services/companyAliases");
+      if (typeof resolveCompanyAlias === "function") {
+        const alias = resolveCompanyAlias(query);
+        if (alias && typeof alias === "string") {
+          target = alias;
+        }
+      }
+    } catch {}
 
     // 1. Ranked search for best matching company name in company_records
     let bestName: string | null = null;
@@ -160,6 +162,12 @@ export async function resolveCompanyCategories(companyQuery: string): Promise<Co
     }
 
     if (!bestName) {
+      // Company is not listed in corporate database -> Treat as unlisted / open-market corporate
+      result.isFound = true;
+      result.matchedName = query;
+      result.overallCategoryTier = "Tier 4 / Unlisted";
+      result.overallCategoryDisplay = "Unlisted Corporate / Open Market";
+      result.bankCategories = {};
       companyCategoryCache.set(cacheKey, result);
       return result;
     }
