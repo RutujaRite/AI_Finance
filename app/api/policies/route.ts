@@ -36,6 +36,15 @@ export async function GET(req: NextRequest) {
     // Return exactly ONE row per bank with one master text file
     let rows = getAllMasterPolicies();
 
+    // Strict deduplication by bank_id and bank_name to guarantee exactly one row per bank
+    const seenBankIds = new Set<string>();
+    rows = rows.filter((r) => {
+      const key = `${r.bank_id}_${r.bank_name.toLowerCase().trim()}`;
+      if (seenBankIds.has(key)) return false;
+      seenBankIds.add(key);
+      return true;
+    });
+
     if (bank_id) {
       rows = rows.filter((r) => r.bank_id === bank_id);
     }

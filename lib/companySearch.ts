@@ -5,6 +5,7 @@
  */
 
 import pool from "./db";
+import { isInvalidCompanyName } from "./dynamicEligibilityEngine";
 
 export interface CompanyRecord {
   bank_name: string;
@@ -132,6 +133,8 @@ export async function searchCompany(companyName: string): Promise<CompanySearchR
   if (
     !normInput ||
     normInput.length < 2 ||
+    isInvalidCompanyName(companyName) ||
+    isInvalidCompanyName(normInput) ||
     /^(i want personal loan|i want loan|i need personal loan|i need loan|want personal loan|want loan|need loan|personal loan|loan eligibility|check eligibility|check loan eligibility|apply loan|apply for loan|salaried|self-employed|self employed|hello|hi|hey|reset|restart|cancel|help)$/i.test(normInput) ||
     /^(i want|i need|want|need|looking for|apply for)\s*(a|personal)?\s*loan$/i.test(normInput)
   ) {
@@ -146,32 +149,32 @@ export async function searchCompany(companyName: string): Promise<CompanySearchR
 
     const [bankRes, basicRes, financialRes] = await Promise.all([
       client.query(
-        `SELECT bcd.bank_name, bcd.sr_no, bcd.company_category, bcd.other_info, bcd.company_name
-          FROM bank_company_data bcd
-          WHERE LOWER(bcd.company_name) LIKE LOWER($1)
-          ORDER BY bcd.company_name, bcd.bank_name, bcd.sr_no
+        `SELECT cr.bank_name, cr.company_category, cr.other_info, cr.company_name
+          FROM company_records cr
+          WHERE LOWER(cr.company_name) LIKE LOWER($1)
+          ORDER BY cr.company_name, cr.bank_name
           LIMIT 200`,
         [pattern]
-      ),
+      ).catch(() => ({ rows: [], rowCount: 0 })),
       client.query(
         `SELECT company_name, industry, address, website, cin, incorporation_date, listing_status, country
          FROM company_basic_info
          WHERE LOWER(company_name) LIKE LOWER($1)
          LIMIT 1`,
         [pattern]
-      ),
+      ).catch(() => ({ rows: [], rowCount: 0 })),
       client.query(
         `SELECT company_name, employees, turnover, profit_status, last_agm, profit_history
          FROM company_financial_info
          WHERE LOWER(company_name) LIKE LOWER($1)
          LIMIT 1`,
         [pattern]
-      ),
+      ).catch(() => ({ rows: [], rowCount: 0 })),
     ]);
 
-    const bankRecords: CompanyRecord[] = bankRes.rows.map((r: any) => ({
+    const bankRecords: CompanyRecord[] = bankRes.rows.map((r: any, idx: number) => ({
       bank_name: r.bank_name,
-      sr_no: r.sr_no,
+      sr_no: r.sr_no ?? idx + 1,
       company_category: r.company_category,
       other_info: r.other_info,
       company_name: r.company_name,

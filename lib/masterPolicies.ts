@@ -144,7 +144,7 @@ const BANK_DEFINITIONS: Array<{
     file_pattern: /home_loan/i,
     default_file_name: "home_loan_eligibility_policy_rules.txt",
     loan_type: "Home Loan",
-    supported_loan_types: ["Home Loan", "Personal Loan"],
+    supported_loan_types: ["Home Loan"],
   },
   {
     id: 13,
@@ -431,22 +431,22 @@ export function getAllMasterPolicies() {
       attachment_extracted_text: text,
       file_size_bytes: Buffer.byteLength(text, "utf-8"),
 
-      // Default/overridden policy rule values matching mockup specifications
+      // Bank master policy parameters from overrides or active file
       policy_version: ov.policy_version || "Current Version",
       employment_type: ov.employment_type || "Salaried",
-      min_cibil: ov.min_cibil !== undefined ? ov.min_cibil : 700,
-      max_cibil: ov.max_cibil !== undefined ? ov.max_cibil : 900,
-      min_salary: ov.min_salary !== undefined ? ov.min_salary : 30000,
-      max_salary: ov.max_salary !== undefined ? ov.max_salary : 600000,
-      min_age: ov.min_age !== undefined ? ov.min_age : 21,
-      max_age: ov.max_age !== undefined ? ov.max_age : 60,
-      min_loan_amount: ov.min_loan_amount !== undefined ? ov.min_loan_amount : 200000,
-      max_loan_amount: ov.max_loan_amount !== undefined ? ov.max_loan_amount : 5000000,
-      min_tenure_months: ov.min_tenure_months !== undefined ? ov.min_tenure_months : 12,
-      max_tenure_months: ov.max_tenure_months !== undefined ? ov.max_tenure_months : 60,
-      foir_percent: ov.foir_percent !== undefined ? ov.foir_percent : 22,
-      roi: ov.roi !== undefined ? ov.roi : "12.5",
-      processing_fee_percent: ov.processing_fee_percent !== undefined ? ov.processing_fee_percent : 1.5,
+      min_cibil: ov.min_cibil !== undefined ? ov.min_cibil : undefined,
+      max_cibil: ov.max_cibil !== undefined ? ov.max_cibil : undefined,
+      min_salary: ov.min_salary !== undefined ? ov.min_salary : undefined,
+      max_salary: ov.max_salary !== undefined ? ov.max_salary : undefined,
+      min_age: ov.min_age !== undefined ? ov.min_age : undefined,
+      max_age: ov.max_age !== undefined ? ov.max_age : undefined,
+      min_loan_amount: ov.min_loan_amount !== undefined ? ov.min_loan_amount : undefined,
+      max_loan_amount: ov.max_loan_amount !== undefined ? ov.max_loan_amount : undefined,
+      min_tenure_months: ov.min_tenure_months !== undefined ? ov.min_tenure_months : undefined,
+      max_tenure_months: ov.max_tenure_months !== undefined ? ov.max_tenure_months : undefined,
+      foir_percent: ov.foir_percent !== undefined ? ov.foir_percent : undefined,
+      roi: ov.roi !== undefined ? ov.roi : undefined,
+      processing_fee_percent: ov.processing_fee_percent !== undefined ? ov.processing_fee_percent : undefined,
     };
   });
 }

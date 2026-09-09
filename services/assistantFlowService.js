@@ -10,10 +10,12 @@ function normalizeAssistantText(value) {
 
 async function getConversationState(pool, conversationId) {
   if (!pool || !conversationId) return null;
+  const numId = Number(conversationId);
+  if (!Number.isFinite(numId)) return null;
   try {
     const result = await pool.query(
       `SELECT state FROM assistant_conversation_states WHERE conversation_id = $1 AND expires_at > NOW()`,
-      [conversationId]
+      [numId]
     );
     if (result.rowCount > 0 && result.rows[0].state) {
       return result.rows[0].state;
@@ -26,12 +28,14 @@ async function getConversationState(pool, conversationId) {
 
 async function setConversationState(pool, conversationId, state) {
   if (!pool || !conversationId) return;
+  const numId = Number(conversationId);
+  if (!Number.isFinite(numId)) return;
   try {
     await pool.query(
       `INSERT INTO assistant_conversation_states (conversation_id, state, expires_at)
        VALUES ($1, $2, NOW() + INTERVAL '30 minutes')
        ON CONFLICT (conversation_id) DO UPDATE SET state = $2, expires_at = NOW() + INTERVAL '30 minutes'`,
-      [conversationId, state || {}]
+      [numId, state || {}]
     );
   } catch (err) {
     console.warn("Failed to save conversation state:", err.message);
@@ -40,8 +44,10 @@ async function setConversationState(pool, conversationId, state) {
 
 async function clearConversationState(pool, conversationId) {
   if (!pool || !conversationId) return;
+  const numId = Number(conversationId);
+  if (!Number.isFinite(numId)) return;
   try {
-    await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [conversationId]);
+    await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numId]);
   } catch (err) {
     console.warn("Failed to clear conversation state:", err.message);
   }

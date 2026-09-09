@@ -1,66 +1,235 @@
 import pool from "@/lib/db";
 import { searchCompany, formatCompanyResponse, formatCompanyCandidateList } from "@/lib/companySearch";
 import { searchBankManager, formatManagers } from "@/lib/bankSearch";
-import { ELIGIBILITY_WIZARD_PROMPT } from "@/lib/ai/prompts";
+import {
+  calculateEmi as dynamicCalculateEmi,
+  evaluateApplicantAgainstAllBanks,
+  formatDynamicEligibilityReport,
+  processDynamicEligibility,
+  extractApplicantDetails,
+  getMissingRequiredFields,
+  generateDynamicQuestion,
+  getEligibilityState,
+  saveEligibilityState,
+  clearEligibilityState,
+  detectLoanIntent,
+  ApplicantProfile,
+  BankEvaluationResult,
+} from "@/lib/dynamicEligibilityEngine";
+import { resolveCompanyCategories } from "@/lib/companyCategoryResolver";
 
-// @ts-ignore
-import assistantFlowService from "@/services/assistantFlowService";
-// @ts-ignore
-import programCategoryResolver from "@/services/programCategoryResolver";
-// @ts-ignore
-import eligibilityService from "@/services/eligibilityService";
-
-const {
-  getConversationState,
-  setConversationState,
-  clearConversationState,
-  collectEligibilityField,
-  formatEligibilityResult,
-  generateEligibleBankRecommendations,
-} = assistantFlowService;
-
-const {
-  RESOLVER_QUESTIONS,
-  getNextResolverQuestion,
-  isResolverComplete,
-} = programCategoryResolver;
-
-const {
-  evaluateApplicantAgainstPolicies,
-} = eligibilityService;
-
+/**
+ * Checks whether user message expresses loan eligibility intent.
+ */
 export function isLoanEligibilityIntent(text: string): boolean {
   const norm = String(text || "").toLowerCase();
-  if (/interest\s*rate|roi|rate|tenure|document|company|listing|manager|contact|phone|email/i.test(norm)) {
-    return false;
+  if (/interest\s*rate|roi|rate|tenure|document|listing|manager|contact|phone|email/i.test(norm)) {
+    // Avoid hijacking specific manager/interest rate queries if not explicitly asking for eligibility
+    if (!/check|eligible|eligibility|apply|need|want/i.test(norm)) {
+      return false;
+    }
   }
-  return /(check loan eligibility|am i eligible|loan eligibility|check my eligibility|eligibility check|check eligibility|apply for loan|loan wizard|eligibility wizard|calculate eligibility|loan criteria check|i want personal loan|i need personal loan|want personal loan|need personal loan|i want a loan|i need a loan|looking for personal loan|looking for a loan|apply for personal loan|get personal loan|i want loan|want loan|need loan|apply loan)/i.test(norm);
+  return /(check loan eligibility|am i eligible|loan eligibility|check my eligibility|eligibility check|check eligibility|apply for loan|loan wizard|eligibility wizard|calculate eligibility|loan criteria check|i want personal loan|i need personal loan|want personal loan|need personal loan|i want a loan|i need a loan|looking for personal loan|looking for a loan|apply for personal loan|get personal loan|i want loan|want loan|need loan|apply loan|can i get.*loan)/i.test(norm);
 }
 
+/**
+ * Calculates monthly EMI using the standard financial formula.
+ * Supports both function signatures: (principal, rate, tenure) or ({ principal, rate, tenure }).
+ */
+export function calculateEmi(
+  principalOrObj: number | { principal: number; rate: number; tenure: number },
+  annualRatePct?: number,
+  tenureMonths?: number
+): number {
+  if (typeof principalOrObj === "object" && principalOrObj !== null) {
+    return dynamicCalculateEmi(
+      Number(principalOrObj.principal || 0),
+      Number(principalOrObj.rate || 0),
+      Number(principalOrObj.tenure || 0)
+    );
+  }
+  return dynamicCalculateEmi(
+    Number(principalOrObj || 0),
+    Number(annualRatePct || 0),
+    Number(tenureMonths || 0)
+  );
+}
+
+/**
+ * Formats monthly EMI and interest schedule calculation into clean Markdown.
+ */
+export function formatEmiResult(
+  input: { principal: number; rate: number; tenure: number } | any,
+  monthlyEmi: number
+): string {
+  const principal = Number(input?.principal || 0);
+  const rate = Number(input?.rate || 0);
+  const tenure = Number(input?.tenure || 0);
+  const totalPayment = monthlyEmi * tenure;
+  const totalInterest = Math.max(0, totalPayment - principal);
+
+  return (
+    `### 🧮 Loan EMI Calculation Result\n\n` +
+    `| Parameter | Value |\n` +
+    `| :--- | :--- |\n` +
+    `| **Loan Amount (Principal)** | ₹${principal.toLocaleString("en-IN")} |\n` +
+    `| **Annual Interest Rate (ROI)** | ${rate}% p.a. |\n` +
+    `| **Repayment Tenure** | ${tenure} months (${(tenure / 12).toFixed(1)} years) |\n` +
+    `| **Estimated Monthly EMI** | **₹${monthlyEmi.toLocaleString("en-IN")}/month** |\n` +
+    `| **Total Interest Payable** | ₹${totalInterest.toLocaleString("en-IN")} |\n` +
+    `| **Total Repayment Amount** | ₹${totalPayment.toLocaleString("en-IN")} |\n`
+  );
+}
+
+/**
+ * Evaluates applicant eligibility directly for central agent tool-calls.
+ * Uses exact Master Policy .txt rules and resolves the company category from company_records.
+ */
+export async function evaluateEligibilityFromTool(input: {
+  bankName?: string;
+  loanType?: string;
+  salary?: number | string;
+  cibil?: number | string;
+  existingEmi?: number | string;
+  companyName?: string;
+  employmentType?: string;
+  age?: number | string;
+  loanAmount?: number | string;
+  tenureMonths?: number | string;
+}): Promise<string> {
+  const applicant: ApplicantProfile = {
+    loanType: input.loanType || "Personal Loan",
+    companyName: input.companyName,
+    monthlyIncome: input.salary != null ? Number(input.salary) : undefined,
+    cibil: input.cibil != null ? Number(input.cibil) : undefined,
+    existingEmi: input.existingEmi != null ? Number(input.existingEmi) : undefined,
+    age: input.age != null ? Number(input.age) : undefined,
+    employmentType: input.employmentType || "Salaried",
+    loanAmount: input.loanAmount != null ? Number(input.loanAmount) : undefined,
+    tenureMonths: input.tenureMonths != null ? Number(input.tenureMonths) : undefined,
+  };
+
+  const evalResult = await evaluateApplicantAgainstAllBanks(applicant, applicant.loanType || "Personal Loan");
+
+  // If a specific bank is requested, filter the result for that bank
+  if (input.bankName) {
+    const target = input.bankName.toLowerCase().replace(/bank|finance|limited|ltd/gi, "").trim();
+    const matched = evalResult.evaluations.find(
+      (e) => e.bankName.toLowerCase().includes(target) || e.bankCode.toLowerCase().includes(target)
+    );
+    if (matched) {
+      let md = `### 🏦 ${matched.bankName} — ${applicant.loanType || "Personal Loan"} Eligibility: ${matched.isEligible ? "✅ ELIGIBLE" : "❌ NOT ELIGIBLE"}\n\n`;
+      md += `**Policy Source**: Official Bank Lending Guidelines\n`;
+      md += `**Applied Company Category**: **${matched.resolvedCategory}**\n\n`;
+
+      if (matched.isEligible) {
+        md += `**Approved Financial Terms**:\n`;
+        md += `• **Annual Interest Rate (ROI)**: **${matched.roi}% p.a.**\n`;
+        md += `• **Monthly EMI**: **₹${matched.monthlyEmi.toLocaleString("en-IN")}/month**\n`;
+        md += `• **Maximum Loan Eligibility**: **₹${matched.maxLoanEligible.toLocaleString("en-IN")}**\n`;
+        md += `• **Processing Fee**: **${matched.processingFeePercent}%**\n`;
+        md += `• **FOIR Ratio**: **${matched.calculatedFoir}% used of ${matched.foirPercent}% permissible limit**\n\n`;
+        md += `**Verified Policy Criteria**:\n`;
+        matched.verifiedChecks.forEach((c) => { md += `• ✅ ${c}\n`; });
+      } else {
+        md += `**Policy Criteria Not Met**:\n`;
+        matched.failureReasons.forEach((r) => { md += `• ❌ ${r}\n`; });
+        if (matched.verifiedChecks.length > 0) {
+          md += `\n**Passed Criteria**:\n`;
+          matched.verifiedChecks.forEach((c) => { md += `• ✅ ${c}\n`; });
+        }
+      }
+      return md;
+    }
+  }
+
+  return formatDynamicEligibilityReport(applicant, evalResult);
+}
+
+/**
+ * Initializes a new dynamic loan flow when loan intent is detected.
+ */
+export async function createLoanIntentFlow(
+  dbPool: any,
+  conversationId: string,
+  userMessage: string
+): Promise<{ reply: string; isFinished: boolean }> {
+  const result = await processDynamicEligibility(conversationId, userMessage);
+  return {
+    reply: result.formattedMarkdown || result.nextQuestion || "",
+    isFinished: result.isComplete,
+  };
+}
+
+/**
+ * Primary conversational eligibility handler.
+ * Dynamically extracts fields, asks ONLY for what is missing, evaluates all banks against Master Policy .txt rules,
+ * and seamlessly handles official bank manager connection upon bank selection.
+ */
 export async function processEligibilityFlow(
   conversationId: string,
   userMessage: string,
   modelOverride?: string,
-  callOpenRouterFn?: (msg: string, model?: string, context?: string, prompt?: string) => Promise<string | null>
+  callOpenRouterFn?: (msg: string, model?: string, context?: string, prompt?: string) => Promise<string | null>,
+  preClassifiedIntent?: any
 ): Promise<{ reply: string; isFinished: boolean; applicant?: any; companyData?: any }> {
-  const activeState = await getConversationState(pool, conversationId);
   const lowerMsg = userMessage.toLowerCase().trim();
 
-  if (lowerMsg === "cancel" || lowerMsg === "reset" || lowerMsg === "restart") {
-    await clearConversationState(pool, conversationId);
+  const numConvId = Number(conversationId);
+  const isValidConvId = Number.isFinite(numConvId);
+
+  // Handle reset/cancel commands
+  if (lowerMsg === "cancel" || lowerMsg === "reset" || lowerMsg === "restart" || preClassifiedIntent?.intent === "CANCEL_RESET") {
+    if (pool && isValidConvId) {
+      await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numConvId]);
+    }
+    await clearEligibilityState(conversationId);
     return {
-      reply: "🔄 **Loan Eligibility Assessment Reset**\n\nYou can start a new eligibility check anytime by typing **'Check loan eligibility'** or **'I want loan'**.",
+      reply: "🔄 **Loan Eligibility Assessment Reset**\n\nYou can start a new eligibility evaluation anytime by typing **'Check loan eligibility'** or **'I want personal loan'**.",
       isFinished: true,
     };
   }
 
-  // 1. Check if user is currently selecting a bank to proceed (chosenBank)
-  if (activeState && activeState.in_eligibility_flow && activeState.expected_field === "chosenBank") {
+  // If user expresses new loan intent, clear any stale state to ensure a 100% fresh start
+  if (preClassifiedIntent?.intent === "PERSONAL_LOAN_REQUEST" || isLoanEligibilityIntent(userMessage)) {
+    if (pool && isValidConvId) {
+      try {
+        await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numConvId]);
+      } catch (e) {}
+    }
+    await clearEligibilityState(conversationId);
+  }
+
+  // Check existing conversation state in DB or in-memory
+  let activeState: any = null;
+  if (pool && isValidConvId) {
+    try {
+      const stateRes = await pool.query(
+        `SELECT state FROM assistant_conversation_states WHERE conversation_id = $1 AND expires_at > NOW()`,
+        [numConvId]
+      );
+      if (stateRes.rowCount && stateRes.rows[0].state) {
+        activeState = stateRes.rows[0].state;
+      }
+    } catch (e) {
+      console.warn("Error reading state in processEligibilityFlow:", e);
+    }
+  }
+  if (!activeState) {
+    activeState = await getEligibilityState(conversationId);
+  }
+
+  // 1. Bank Manager Selection Step (when user selects their preferred bank after evaluation)
+  if (
+    activeState &&
+    (activeState.expected_field === "chosenBank" ||
+      activeState.expectedField === "chosenBank" ||
+      (activeState.in_eligibility_flow && activeState.expected_field === "chosenBank"))
+  ) {
     const rawInput = userMessage.trim();
     const eligibleBanks: string[] = activeState.eligible_banks || [];
-    const collectedLocation = activeState.applicant?.preferredLocation || "";
+    const collectedLocation = activeState.applicant?.location || activeState.applicant?.preferredLocation || "";
 
-    // Extract specific target bank from userMessage or default to top eligible bank
     let selectedBank = "";
     for (const b of eligibleBanks) {
       const bClean = b.replace(/bank|finance|limited|ltd/gi, "").trim().toLowerCase();
@@ -74,7 +243,7 @@ export async function processEligibilityFlow(
       const commonBanks = ["hdfc", "icici", "axis", "sbi", "kotak", "indusind", "idfc", "bajaj", "chola", "piramal", "poonawalla", "tata", "yes"];
       for (const cb of commonBanks) {
         if (rawInput.toLowerCase().includes(cb)) {
-          selectedBank = eligibleBanks.find(b => b.toLowerCase().includes(cb)) || cb.toUpperCase() + " Bank";
+          selectedBank = eligibleBanks.find((b) => b.toLowerCase().includes(cb)) || cb.toUpperCase() + " Bank";
           break;
         }
       }
@@ -85,7 +254,6 @@ export async function processEligibilityFlow(
     }
     if (!selectedBank) selectedBank = rawInput;
 
-    // Determine target location (from collected profile location or user input)
     let userLocation = collectedLocation;
     if (!userLocation) {
       userLocation = rawInput
@@ -100,7 +268,6 @@ export async function processEligibilityFlow(
     let managerSection = "";
     try {
       const mgrList = await searchBankManager({ bank_name: selectedBank, city: userLocation, query: `${selectedBank} ${userLocation}` });
-      
       const filteredMgrs = mgrList.filter((m: any) => {
         const mBank = (m.bank_name || "").toLowerCase();
         const sBank = selectedBank.toLowerCase().replace(/bank|finance|ltd/gi, "").trim();
@@ -108,280 +275,102 @@ export async function processEligibilityFlow(
       });
 
       const displayMgrs = filteredMgrs.length > 0 ? filteredMgrs : mgrList.slice(0, 10);
-
       if (displayMgrs.length > 0) {
-        managerSection = `### 👔 Official Bank Manager Details: **${selectedBank}** (${userLocation})\n\n` +
-          formatManagers(displayMgrs, userLocation);
+        managerSection = `### 👔 Official Bank Manager Directory: **${selectedBank}** (${userLocation})\n\n` + formatManagers(displayMgrs, userLocation);
       } else {
-        managerSection = `| 🏦 Bank | 📍 Location | Message |\n| :--- | :--- | :--- |\n| **${selectedBank}** | **${userLocation}** | Branch manager details logged for ${selectedBank} in ${userLocation}. |`;
+        managerSection = `| 🏦 Bank | 📍 Location | Status |\n| :--- | :--- | :--- |\n| **${selectedBank}** | **${userLocation}** | Official manager contact request logged for ${selectedBank} in ${userLocation}. |`;
       }
     } catch (err) {
-      console.warn("Failed to fetch bank managers for location:", err);
-      managerSection = `Bank: **${selectedBank}** | Location: **${userLocation}**. Bank manager details will be sent directly.`;
+      managerSection = `Bank: **${selectedBank}** | Location: **${userLocation}**. Official manager contacts logged.`;
     }
 
-    await clearConversationState(pool, conversationId);
+    if (pool && isValidConvId) {
+      await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numConvId]);
+    }
+    await clearEligibilityState(conversationId);
 
     return {
-      reply: `${managerSection}\n\n---\n✅ **Thank you for choosing ${selectedBank}! Our official bank manager for ${userLocation} will contact you soon.**`,
+      reply: `${managerSection}\n\n---\n✅ **Thank you for choosing ${selectedBank}! Our official bank representative for ${userLocation} will assist with your application.**`,
       isFinished: true,
       applicant: activeState.applicant,
     };
   }
 
-  // 2. Existing active eligibility flow (Steps 1 through 8)
-  if (activeState && activeState.in_eligibility_flow) {
-    const currentExpectedField = activeState.expected_field;
+  // 2. Delegate to the fully dynamic eligibility engine
+  const dynamicOutput = await processDynamicEligibility(
+    conversationId,
+    userMessage,
+    modelOverride,
+    preClassifiedIntent
+  );
 
-    // If user expresses fresh loan eligibility intent during an active flow (beyond Step 1), reset to Step 1
-    if (isLoanEligibilityIntent(userMessage) && currentExpectedField !== "companyName" && currentExpectedField !== "companySelection") {
-      await clearConversationState(pool, conversationId);
-      const initialApplicant: any = {};
-      const firstQ = getNextResolverQuestion(initialApplicant);
-      await setConversationState(pool, conversationId, {
-        in_eligibility_flow: true,
-        applicant: initialApplicant,
-        expected_field: firstQ ? firstQ.key : "companyName",
-      });
-      return {
-        reply: firstQ ? firstQ.label : "What is your employer or company name?",
-        isFinished: false,
-        applicant: initialApplicant,
-      };
-    }
-
-    let companyHeaderBlock = "";
-
-    // Handle Company Confirmation Step: expected_field === "companyConfirmation"
-    if (currentExpectedField === "companyConfirmation") {
-      const lower = userMessage.trim().toLowerCase();
-      if (/yes|proceed|ok|confirm|yup|sure|correct|y/i.test(lower) || lower.includes("yes") || lower.includes("proceed")) {
-        const nextQ = getNextResolverQuestion(activeState.applicant || {});
-        await setConversationState(pool, conversationId, {
-          in_eligibility_flow: true,
-          applicant: activeState.applicant || {},
-          expected_field: nextQ ? nextQ.key : "employmentType",
-        });
-
-        return {
-          reply: nextQ ? nextQ.label : "Are you salaried or self-employed?",
-          isFinished: false,
-          applicant: activeState.applicant,
-        };
-      } else {
-        return {
-          reply: "Please reply **'Yes, proceed'** to confirm your company details and continue with the loan eligibility check.",
-          isFinished: false,
-          applicant: activeState.applicant,
-        };
-      }
-    }
-
-    // Handle Step 1 Disambiguation selection: expected_field === "companySelection"
-    if (currentExpectedField === "companySelection") {
-      const candidates: string[] = activeState.candidate_companies || [];
-      let chosenCompany = userMessage.trim();
-
-      const numIndex = parseInt(chosenCompany) - 1;
-      if (!isNaN(numIndex) && numIndex >= 0 && numIndex < candidates.length) {
-        chosenCompany = candidates[numIndex];
-      } else {
-        const foundMatch = candidates.find(c => c.toLowerCase().includes(chosenCompany.toLowerCase()));
-        if (foundMatch) chosenCompany = foundMatch;
-      }
-
-      const updatedApplicant = { ...(activeState.applicant || {}), companyName: chosenCompany };
-      let compDataObj: any = null;
-      try {
-        const compRes = await searchCompany(chosenCompany);
-        if (compRes?.found) {
-          companyHeaderBlock = formatCompanyResponse(compRes) + "\n\n---\n\n";
-          updatedApplicant.companyName = compRes.primaryName;
-          compDataObj = {
-            company_name: compRes.primaryName,
-            overview: compRes.overview,
-            basic_info: compRes.basicInfo,
-            financial_info: compRes.financialInfo,
-            bank_records: compRes.bankRecords,
-            needs_disambiguation: false,
-          };
-        }
-      } catch (err) {
-        console.warn("[Wizard] Company selection lookup error:", err);
-      }
-
-      await setConversationState(pool, conversationId, {
-        in_eligibility_flow: true,
-        applicant: updatedApplicant,
-        expected_field: "companyConfirmation",
-      });
-
-      return {
-        reply: `${companyHeaderBlock}⚠️ **Please confirm your company details.**\nReply **"Yes, proceed"** to start your loan eligibility evaluation.`,
-        isFinished: false,
-        applicant: updatedApplicant,
-        companyData: compDataObj,
-      };
-    }
-
-    // If user is answering Step 1 (companyName)
-    if (currentExpectedField === "companyName") {
-      const trimmedUserMsg = userMessage.trim();
-      if (isLoanEligibilityIntent(trimmedUserMsg) || /^(i want|i need|want|need)\s*(a|personal)?\s*loan$/i.test(trimmedUserMsg)) {
-        return {
-          reply: "What is your employer or company name?",
-          isFinished: false,
-          applicant: activeState.applicant,
-        };
-      }
-
-      try {
-        const compRes = await searchCompany(userMessage);
-        if (compRes?.found) {
-          // Check if multiple matching candidate companies exist in bank records
-          if (compRes.candidates && compRes.candidates.length > 1) {
-            await setConversationState(pool, conversationId, {
-              in_eligibility_flow: true,
-              applicant: activeState.applicant || {},
-              expected_field: "companySelection",
-              candidate_companies: compRes.candidates,
-            });
-
-            return {
-              reply: formatCompanyCandidateList(compRes.candidates, userMessage),
-              isFinished: false,
-              applicant: activeState.applicant,
-              companyData: { needs_disambiguation: true, candidates: compRes.candidates }
-            };
-          }
-
-          companyHeaderBlock = formatCompanyResponse(compRes) + "\n\n---\n\n";
-          activeState.applicant = activeState.applicant || {};
-          activeState.applicant.companyName = compRes.primaryName;
-
-          await setConversationState(pool, conversationId, {
-            in_eligibility_flow: true,
-            applicant: activeState.applicant,
-            expected_field: "companyConfirmation",
-          });
-
-          return {
-            reply: `${companyHeaderBlock}⚠️ **Please confirm your company details.**\nReply **"Yes, proceed"** to start your loan eligibility evaluation.`,
-            isFinished: false,
-            applicant: activeState.applicant,
-            companyData: {
-              company_name: compRes.primaryName,
-              overview: compRes.overview,
-              basic_info: compRes.basicInfo,
-              financial_info: compRes.financialInfo,
-              bank_records: compRes.bankRecords,
-              needs_disambiguation: false,
-            },
-          };
-        }
-      } catch (err) {
-        console.warn("[Wizard] Company lookup error:", err);
-      }
-    }
-
-    // Collect applicant inputs
-    // @ts-ignore
-    const updatedApplicant = collectEligibilityField(userMessage, activeState.applicant || {}, currentExpectedField);
-    const nextQ = getNextResolverQuestion(updatedApplicant);
-
-    if (nextQ) {
-      await setConversationState(pool, conversationId, {
-        in_eligibility_flow: true,
-        applicant: updatedApplicant,
-        expected_field: nextQ.key,
-      });
-
-      return {
-        reply: `${companyHeaderBlock}${nextQ.label}`,
-        isFinished: false,
-        applicant: updatedApplicant,
-      };
-    } else {
-      // All inputs collected! Perform deterministic policy evaluation across all master bank rules
-      const evals = await evaluateApplicantAgainstPolicies(pool, updatedApplicant);
-      const rawReport = formatEligibilityResult(updatedApplicant, evals);
-      const eligibleList = Array.isArray(evals) ? evals.filter((e: any) => e.status === "ELIGIBLE") : [];
-      const eligibleBankNames = eligibleList.map((e: any) => e.bank);
-      const recs = generateEligibleBankRecommendations(eligibleList);
-
-      let finalReport = `${rawReport}\n\n${recs}`;
-
-      if (callOpenRouterFn) {
-        try {
-          const llmSynthesized = await callOpenRouterFn(
-            userMessage,
-            modelOverride,
-            finalReport,
-            ELIGIBILITY_WIZARD_PROMPT
-          );
-          if (
-            llmSynthesized &&
-            !llmSynthesized.includes("unable to process") &&
-            !llmSynthesized.includes("Please try again") &&
-            llmSynthesized.trim().length > 50
-          ) {
-            finalReport = llmSynthesized;
-          }
-        } catch (err) {
-          console.warn("[Wizard] LLM synthesis failed, using deterministic policy report:", err);
-        }
-      }
-
-      // Transition to Step 9: Ask preferred bank selection for Bank Manager Connection
-      await setConversationState(pool, conversationId, {
-        in_eligibility_flow: true,
-        applicant: updatedApplicant,
-        expected_field: "chosenBank",
-        eligible_banks: eligibleBankNames,
-        last_report: finalReport,
-      });
-
-      return {
-        reply: `${companyHeaderBlock}${finalReport}\n\n---\n\n🏦 **Choose Bank to Proceed**\n\nPlease select or reply with your **Chosen Bank** to connect with an official manager (e.g. *"HDFC Bank"* or *"ICICI Bank"*):`,
-        isFinished: false,
-        applicant: updatedApplicant,
-      };
-    }
-  }
-
-  // 3. Start New Assessment Flow
-  const initialApplicant: any = {};
-  
-  // Check if initial prompt directly contains a valid company name
-  if (!isLoanEligibilityIntent(userMessage)) {
-    try {
-      const compRes = await searchCompany(userMessage);
-      if (compRes?.found && compRes.candidates && compRes.candidates.length === 1) {
-        initialApplicant.companyName = compRes.primaryName;
-      }
-    } catch (e) {}
-  }
-
-  const firstQ = getNextResolverQuestion(initialApplicant);
-
-  if (firstQ) {
-    await setConversationState(pool, conversationId, {
-      in_eligibility_flow: true,
-      applicant: initialApplicant,
-      expected_field: firstQ.key,
-    });
-
+  if (!dynamicOutput.isComplete) {
     return {
-      reply: `${firstQ.label}`,
+      reply: dynamicOutput.formattedMarkdown || dynamicOutput.nextQuestion || "",
       isFinished: false,
-      applicant: initialApplicant,
+      applicant: dynamicOutput.applicant,
     };
   }
 
-  return {
-    reply: "Could you please provide your employer or company name to start the loan eligibility check?",
-    isFinished: false,
-  };
+  // 3. Evaluation complete: Save state for bank manager connection
+  const eligibleBankNames = (dynamicOutput.eligibleBanks || []).map((b) => b.bankName);
+  if (eligibleBankNames.length > 0) {
+    if (pool && isValidConvId) {
+      try {
+        await pool.query(
+          `INSERT INTO assistant_conversation_states (conversation_id, state, expires_at)
+           VALUES ($1, $2, NOW() + INTERVAL '30 minutes')
+           ON CONFLICT (conversation_id) DO UPDATE SET state = $2, expires_at = NOW() + INTERVAL '30 minutes'`,
+          [
+            numConvId,
+            {
+              in_eligibility_flow: true,
+              expected_field: "chosenBank",
+              eligible_banks: eligibleBankNames,
+              applicant: dynamicOutput.applicant,
+            },
+          ]
+        );
+      } catch (e) {
+        console.warn("Could not save chosenBank state:", e);
+      }
+    }
+
+    await saveEligibilityState(conversationId, {
+      applicant: dynamicOutput.applicant,
+      expectedField: "chosenBank",
+      updatedAt: Date.now(),
+      in_eligibility_flow: true,
+      eligible_banks: eligibleBankNames,
+    } as any);
+
+    return {
+      reply: dynamicOutput.formattedMarkdown || "",
+      isFinished: false,
+      applicant: dynamicOutput.applicant,
+      companyData: dynamicOutput.companyMatch?.isFound
+        ? {
+            company_name: dynamicOutput.companyMatch.matchedName || dynamicOutput.companyMatch.searchedName,
+            category: dynamicOutput.companyMatch.bankCategories,
+            needs_disambiguation: false,
+          }
+        : undefined,
+    };
+  } else {
+    // If no partner bank is eligible, clear any stored conversation state and conclude
+    if (pool && isValidConvId) {
+      try {
+        await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numConvId]);
+      } catch (e) {}
+    }
+    await clearEligibilityState(conversationId);
+
+    return {
+      reply: dynamicOutput.formattedMarkdown || "",
+      isFinished: true,
+      applicant: dynamicOutput.applicant,
+    };
+  }
 }
 
 export interface DeterministicApplicantInput {
@@ -412,7 +401,7 @@ export interface DeterministicCalculations {
 
 export interface DeterministicEligibilityResult {
   loanType: string;
-  eligibility: 'Eligible' | 'Not Eligible' | 'Conditionally Eligible' | 'Unable to Determine';
+  eligibility: "Eligible" | "Not Eligible" | "Conditionally Eligible" | "Unable to Determine";
   conditionsChecked: string[];
   passedConditions: string[];
   failedConditions: string[];
@@ -432,8 +421,7 @@ export async function calculateDeterministicEligibility(
   poolOverride?: any
 ): Promise<DeterministicEligibilityResult> {
   const dbPool = poolOverride || pool;
-  
-  // Extract and normalize inputs
+
   const rawSalary = input.salary ?? input.monthlyIncome;
   const netSalary = rawSalary != null && rawSalary !== "" && !isNaN(Number(rawSalary)) ? Number(rawSalary) : undefined;
 
@@ -457,12 +445,10 @@ export async function calculateDeterministicEligibility(
   const missingInformation: string[] = [];
   const calculations: DeterministicCalculations = {};
 
-  // Check required basic inputs
   if (netSalary === undefined) missingInformation.push("Net Monthly Salary");
   if (cibil === undefined) missingInformation.push("CIBIL Credit Score");
   if (existingEmi === undefined) missingInformation.push("Existing Monthly EMIs");
 
-  // Query policy rules from PostgreSQL
   let queryBankSql = "";
   const params: any[] = [loanType];
 
@@ -503,7 +489,7 @@ export async function calculateDeterministicEligibility(
       calculations: {},
       policySource: "N/A",
       reason: "Database policy lookup failed.",
-      bankName
+      bankName,
     };
   }
 
@@ -518,12 +504,12 @@ export async function calculateDeterministicEligibility(
       calculations: {},
       policySource: "N/A",
       reason: `No active ${loanType} Loan policy rules found for ${bankName || "the specified bank"} in PostgreSQL.`,
-      bankName
+      bankName,
     };
   }
 
   const primaryRule = rulesRes.rows[0];
-  const policySource = `${primaryRule.bank_name} — ${loanType} Loan Policy ${primaryRule.policy_version || 'V1'}`;
+  const policySource = `${primaryRule.bank_name} — ${loanType} Loan Policy ${primaryRule.policy_version || "V1"}`;
 
   // 1. Validate Net Monthly Salary
   conditionsChecked.push("Minimum Net Monthly Salary");
@@ -556,10 +542,10 @@ export async function calculateDeterministicEligibility(
     }
   }
 
-  // 3. Validate FOIR & EMI Obligations (Formula: FOIR % = Existing EMI / Net Salary * 100)
+  // 3. Validate FOIR & EMI Obligations
   conditionsChecked.push("FOIR & Permissible EMI Limit");
   let foirCap = primaryRule.foir_percent != null ? Number(primaryRule.foir_percent) : undefined;
-  
+
   if (foirCap === undefined && netSalary !== undefined) {
     if (netSalary >= 100000) foirCap = 65;
     else if (netSalary >= 50000) foirCap = 60;
@@ -582,9 +568,9 @@ export async function calculateDeterministicEligibility(
 
         const calculatedFoir = Number(((existingEmi / netSalary) * 100).toFixed(1));
         if (existingEmi > maxPermissibleEmi) {
-          failedConditions.push(`Calculated FOIR (${calculatedFoir}%) exceeds PostgreSQL policy FOIR cap (${foirCap}%) [Max EMI Cap: ₹${maxPermissibleEmi.toLocaleString("en-IN")}] — [FAIL]`);
+          failedConditions.push(`Calculated FOIR (${calculatedFoir}%) exceeds policy FOIR cap (${foirCap}%) [Max EMI Cap: ₹${maxPermissibleEmi.toLocaleString("en-IN")}] — [FAIL]`);
         } else {
-          passedConditions.push(`Calculated FOIR (${calculatedFoir}%) is within PostgreSQL policy FOIR cap (${foirCap}%) [Net Capacity: ₹${netAvailableEmi.toLocaleString("en-IN")}/mo] — [PASS]`);
+          passedConditions.push(`Calculated FOIR (${calculatedFoir}%) is within policy FOIR cap (${foirCap}%) [Net Capacity: ₹${netAvailableEmi.toLocaleString("en-IN")}/mo] — [PASS]`);
         }
       }
     }
@@ -618,23 +604,20 @@ export async function calculateDeterministicEligibility(
   if (companyName) {
     conditionsChecked.push("Employer Category Rating");
     try {
-      const compRes = await dbPool.query(
-        `SELECT company_category FROM company_records WHERE company_name ILIKE $1 LIMIT 1`,
-        [`%${companyName}%`]
-      );
-      if (compRes.rows.length > 0) {
-        const cat = compRes.rows[0].company_category || "Approved";
-        passedConditions.push(`Employer '${companyName}' verified under category '${cat}'`);
+      const catMatch = await resolveCompanyCategories(companyName);
+      if (catMatch.isFound) {
+        const topCat = Object.values(catMatch.bankCategories)[0] || "Prime";
+        passedConditions.push(`Employer '${companyName}' verified in 591k records under '${topCat}' tier`);
       } else {
-        passedConditions.push(`Employer '${companyName}' evaluated under Open Market / Standard Corporate guidelines`);
+        passedConditions.push(`Employer '${companyName}' evaluated under Standard Corporate / Open Market guidelines`);
       }
     } catch (e) {
       passedConditions.push(`Employer '${companyName}' evaluated under standard corporate guidelines`);
     }
   }
 
-  // Determine Overall Eligibility Status
-  let eligibility: 'Eligible' | 'Not Eligible' | 'Conditionally Eligible' | 'Unable to Determine' = 'Unable to Determine';
+  // Overall Decision
+  let eligibility: "Eligible" | "Not Eligible" | "Conditionally Eligible" | "Unable to Determine" = "Unable to Determine";
   let reason = "";
 
   if (failedConditions.length > 0) {
@@ -658,6 +641,6 @@ export async function calculateDeterministicEligibility(
     calculations,
     policySource,
     reason,
-    bankName: primaryRule.bank_name
+    bankName: primaryRule.bank_name,
   };
 }

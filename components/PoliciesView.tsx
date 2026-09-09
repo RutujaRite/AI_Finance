@@ -130,7 +130,16 @@ export default function PoliciesView({
     try {
       const res = await fetch("/api/policies")
       const data = await res.json()
-      setPolicies(Array.isArray(data) ? data : [])
+      const list = Array.isArray(data) ? data : []
+      // Defensive deduplication: strictly one row per bank
+      const seen = new Set<string>()
+      const unique = list.filter((p: any) => {
+        const key = `${p.bank_id}_${String(p.bank_name || p.bank_code || "").toLowerCase().trim()}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      setPolicies(unique)
     } catch (e) {
       console.error("Failed to load policies", e)
       setPolicies([])
@@ -145,7 +154,16 @@ export default function PoliciesView({
       const res = await fetch("/api/policies/extracted-files")
       const data = await res.json()
       if (data.success) {
-        setPolicyFiles(data.files || [])
+        const raw = Array.isArray(data.files) ? data.files : []
+        // Defensive deduplication: strictly one row per bank
+        const seen = new Set<string>()
+        const unique = raw.filter((f: any) => {
+          const key = `${f.bank_id}_${String(f.bank_name || f.bank_code || "").toLowerCase().trim()}`
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+        setPolicyFiles(unique)
       }
     } catch (e) {
       console.error("Failed to load policy files", e)
@@ -699,7 +717,9 @@ export default function PoliciesView({
                 <table className="table table-hover">
                   <thead>
                     <tr>
+                      <th style={{ width: 45 }}>#</th>
                       <th>Bank Name</th>
+                      <th>Master Policy File</th>
                       <th>Loan Category</th>
                       <th>Status</th>
                       <th style={{ textAlign: "right", minWidth: 220 }}>Actions</th>
@@ -708,12 +728,40 @@ export default function PoliciesView({
                   <tbody>
                     {filteredPolicies.map((policy: any, idx: number) => {
                       const status = (policy.status || "active").toLowerCase()
+                      const masterFileName = policy.attachment_file_name || policy.file_name || `${policy.bank_name}_Master_Policy.txt`
                       return (
                         <tr key={policy.bank_id || policy.id || idx}>
+                          <td style={{ color: "var(--ink-muted)", fontWeight: 500 }}>{idx + 1}</td>
                           <td style={{ fontWeight: 600, color: "var(--ink)" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                               <i className="bi bi-bank" style={{ color: "var(--accent)" }} />
                               {policy.bank_name || policy.bank_code || "Partner Bank"}
+                            </div>
+                          </td>
+                          <td>
+                            <div
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.4rem",
+                                fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                fontSize: "0.8125rem",
+                                color: "var(--ink)",
+                                background: "var(--surface-2)",
+                                padding: "0.25rem 0.6rem",
+                                borderRadius: "var(--radius-sm)",
+                                border: "1px solid var(--border)",
+                                maxWidth: "320px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              title={masterFileName}
+                            >
+                              <i className="bi bi-file-earmark-text" style={{ color: "var(--accent)", flexShrink: 0 }} />
+                              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {masterFileName}
+                              </span>
                             </div>
                           </td>
                           <td style={{ color: "var(--accent)", fontWeight: 500 }}>
@@ -734,7 +782,7 @@ export default function PoliciesView({
                                   if (!user?.role) {
                                     checkAuth()
                                   }
-                                  const fileName = policy.attachment_file_name || policy.file_name || `${policy.bank_name}_Master_Policy.txt`
+                                  const fileName = masterFileName
                                   const extractedText = policy.attachment_extracted_text || ""
                                   if (extractedText) {
                                     setActiveViewerFile({
@@ -825,34 +873,66 @@ export default function PoliciesView({
                 <table className="table table-hover">
                   <thead>
                     <tr>
-                      <th style={{ width: 40 }}>#</th>
+                      <th style={{ width: 45 }}>#</th>
                       <th>Bank Name</th>
-                      <th>File Name</th>
-                      <th style={{ width: 120 }}>Size</th>
-                      <th style={{ width: 260, textAlign: "right" }}>Actions</th>
+                      <th>Master Policy File</th>
+                      <th style={{ width: 110 }}>Size</th>
+                      <th style={{ textAlign: "right", minWidth: 260 }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredPolicyFiles.map((file: any, idx: number) => {
-                      const kbSize = file.text_length ? (file.text_length / 1024).toFixed(1) + " KB" : "0 KB"
+                      const kbSize = file.file_size_bytes
+                        ? file.file_size_bytes > 1024 * 1024
+                          ? (file.file_size_bytes / (1024 * 1024)).toFixed(1) + " MB"
+                          : (file.file_size_bytes / 1024).toFixed(1) + " KB"
+                        : file.text_length
+                        ? (file.text_length / 1024).toFixed(1) + " KB"
+                        : "0 KB"
                       return (
-                        <tr key={file.id || idx}>
-                          <td style={{ color: "var(--ink-muted)" }}>{idx + 1}</td>
+                        <tr key={file.bank_id || file.id || idx}>
+                          <td style={{ color: "var(--ink-muted)", fontWeight: 500 }}>{idx + 1}</td>
                           <td style={{ fontWeight: 600, color: "var(--ink)" }}>
-                            <i className="bi bi-bank" style={{ color: "var(--accent)", marginRight: "0.5rem" }} />
-                            {file.bank_name}
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              <i className="bi bi-bank" style={{ color: "var(--accent)" }} />
+                              {file.bank_name}
+                            </div>
                           </td>
-                          <td style={{ color: "var(--ink-soft)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                            {file.file_name}
+                          <td>
+                            <div
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.4rem",
+                                fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                fontSize: "0.8125rem",
+                                color: "var(--ink)",
+                                background: "var(--surface-2)",
+                                padding: "0.25rem 0.6rem",
+                                borderRadius: "var(--radius-sm)",
+                                border: "1px solid var(--border)",
+                                maxWidth: "340px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              title={file.file_name}
+                            >
+                              <i className="bi bi-file-earmark-text" style={{ color: "var(--accent)", flexShrink: 0 }} />
+                              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {file.file_name}
+                              </span>
+                            </div>
                           </td>
                           <td>
                             <span className="badge">{kbSize}</span>
                           </td>
                           <td style={{ textAlign: "right" }}>
-                            <div style={{ display: "inline-flex", gap: "0.375rem" }}>
+                            <div style={{ display: "inline-flex", gap: "0.375rem", alignItems: "center", justifyContent: "flex-end" }}>
                               <button
                                 type="button"
                                 className="btn btn-secondary btn-sm"
+                                title="View Master Document"
                                 onClick={() => handleOpenViewer(file.id, file)}
                               >
                                 <i className="bi bi-eye" /> View
@@ -860,22 +940,36 @@ export default function PoliciesView({
                               <button
                                 type="button"
                                 className="btn btn-secondary btn-sm"
-                                onClick={async () => {
-                                  const res = await fetch(`/api/policies/extracted-files/${file.id}`)
-                                  const data = await res.json()
-                                  if (data.success && data.file?.extracted_text) {
-                                    handleDownloadText(file.file_name, data.file.extracted_text)
-                                  }
-                                }}
+                                title="Edit Policy Rule"
+                                onClick={() => handleOpenEdit(file)}
                               >
-                                <i className="bi bi-download" /> Download
+                                <i className="bi bi-pencil" /> Edit
                               </button>
                               <button
                                 type="button"
                                 className="btn btn-outline-danger btn-sm"
-                                onClick={() => triggerReplace(file.id)}
+                                title="Delete Policy Rule & File"
+                                onClick={() => handleOpenDelete(file)}
                               >
-                                <i className="bi bi-arrow-repeat" /> Replace
+                                <i className="bi bi-trash3" /> Delete
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                title="Download .txt File"
+                                onClick={async () => {
+                                  if (file.extracted_text) {
+                                    handleDownloadText(file.file_name, file.extracted_text)
+                                  } else {
+                                    const res = await fetch(`/api/policies/extracted-files/${file.id}`)
+                                    const data = await res.json()
+                                    if (data.success && data.file?.extracted_text) {
+                                      handleDownloadText(file.file_name, data.file.extracted_text)
+                                    }
+                                  }
+                                }}
+                              >
+                                <i className="bi bi-download" /> Download
                               </button>
                             </div>
                           </td>

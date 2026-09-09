@@ -228,9 +228,19 @@ export default function HomePage() {
     try {
       const res = await fetch("/api/conversations", { credentials: "include" })
       const data = await res.json()
-      const hasLocal = Boolean(localStorage.getItem(STORAGE_KEY))
-      if (data.conversations && data.conversations.length > 0 && !hasLocal) {
-        setConversations(data.conversations)
+      if (Array.isArray(data.conversations)) {
+        setConversations((prev) => {
+          const map = new Map<string, any>()
+          for (const c of data.conversations) {
+            if (c?.id) map.set(String(c.id), c)
+          }
+          for (const c of prev) {
+            if (c?.id && !map.has(String(c.id))) {
+              map.set(String(c.id), c)
+            }
+          }
+          return Array.from(map.values())
+        })
       }
     } catch (e) {
       console.error("Failed to load conversations", e)
@@ -286,34 +296,43 @@ export default function HomePage() {
       })
       const data = await res.json()
       if (data.success) {
-        if (data.title && !currentConvId) {
-          const newId = data.conversation_id || "conv_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
-          const conversation = {
-            id: newId,
-            title: data.title,
-            pinned: false,
-            createdAt: new Date().toISOString(),
-          }
-          setConversations((prev) => {
-            if (prev.some((c) => c.id === newId)) return prev
-            return [conversation, ...prev]
-          })
-          messagesByConvRef.current[newId] = [...messages, userMessage]
-          activeConvIdRef.current = newId
-          setActiveConversationId(newId)
-          fetch("/api/conversations", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(conversation),
-            credentials: "include",
-          }).catch(() => {})
+        const returnedConvId = data.conversation_id ? String(data.conversation_id) : null
+        const effectiveConvId = returnedConvId || currentConvId
+
+        if (returnedConvId && returnedConvId !== currentConvId) {
+          activeConvIdRef.current = returnedConvId
+          setActiveConversationId(returnedConvId)
         }
+
+        const convTitle = data.title || "Loan Assistant"
+        setConversations((prev) => {
+          const targetId = effectiveConvId || "default"
+          const idx = prev.findIndex((c) => String(c.id) === targetId)
+          if (idx >= 0) {
+            const updated = [...prev]
+            updated[idx] = { ...updated[idx], title: convTitle }
+            return updated
+          }
+          return [
+            {
+              id: targetId,
+              title: convTitle,
+              pinned: false,
+              createdAt: new Date().toISOString(),
+            },
+            ...prev,
+          ]
+        })
+
         if (data.ai_message) {
           setMessages((prev) => [...prev, data.ai_message])
         }
-        const activeId = activeConvIdRef.current || currentConvId
-        if (activeId) {
-          messagesByConvRef.current[activeId] = [...messages, userMessage, ...(data.ai_message ? [data.ai_message] : [])]
+        if (effectiveConvId) {
+          messagesByConvRef.current[effectiveConvId] = [
+            ...messages,
+            userMessage,
+            ...(data.ai_message ? [data.ai_message] : []),
+          ]
         }
       } else {
         throw new Error(data.error || "Failed to send message")
@@ -569,9 +588,7 @@ export default function HomePage() {
       return ""
     }
 
-    let html = `<div class="result-card" style="margin-top: 16px;">`
-    html += `<div class="result-card-body">`
-    html += `<div class="manager-grid">`
+    let html = `<div class="manager-inline-list" style="margin-top: 4px; display: flex; flex-direction: column; gap: 4px;">`
     managers.forEach((m: any) => {
       const name = escapeHtml(m.name || m.manager_name || "Manager")
       const bank = escapeHtml(m.bank_name || "Partner Bank")
@@ -581,27 +598,15 @@ export default function HomePage() {
       const email = rawEmail && !rawEmail.includes("example.com") ? escapeHtml(rawEmail) : "-"
       const rawLoc = (m.location || m.location_city || "Branch").replace(/\n/g, ", ")
       const location = escapeHtml(rawLoc)
-      const state = escapeHtml(m.state || "")
-      const isActive = !m.status || String(m.status).toLowerCase() === "active"
 
-      html += `<div class="manager-card">
-        <div class="manager-card-header">
-          <div class="manager-avatar">${name.charAt(0).toUpperCase()}</div>
-          <div class="manager-info">
-            <div class="manager-name">${name}</div>
-            <div class="manager-bank">${bank}</div>
-          </div>
-          ${isActive ? '<span class="result-badge">Active</span>' : ""}
-        </div>
-        <div class="manager-details">
-          ${designation !== "-" ? `<div class="manager-detail"><span class="detail-icon">💼</span><strong>Role:</strong> ${designation}</div>` : ""}
-          ${phone !== "-" ? `<div class="manager-detail"><span class="detail-icon">📱</span><strong>Phone:</strong> ${phone}</div>` : ""}
-          ${email !== "-" ? `<div class="manager-detail"><span class="detail-icon">✉️</span><strong>Email:</strong> ${email}</div>` : ""}
-          ${location !== "-" ? `<div class="manager-detail"><span class="detail-icon">📍</span><strong>Location:</strong> ${location}${state && state !== "-" ? ", " + state : ""}</div>` : ""}
-        </div>
+      html += `<div class="manager-inline-item" style="padding: 4px 8px; background: var(--surface-2); border-radius: 6px; font-size: 0.8125rem; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+        <strong>${name}</strong> <span style="color: var(--ink-soft);">(${bank} — ${designation})</span>
+        ${phone !== "-" ? `<span>📞 ${phone}</span>` : ""}
+        ${email !== "-" ? `<span>✉️ ${email}</span>` : ""}
+        ${location !== "-" ? `<span>📍 ${location}</span>` : ""}
       </div>`
     })
-    html += `</div></div></div>`
+    html += `</div>`
     return html
   }
 
@@ -618,10 +623,10 @@ export default function HomePage() {
       let html = renderMarkdown(message.content)
       const candidates = companyData.candidates.filter(Boolean)
       if (candidates.length > 0) {
-        html += `<div class="disambiguation-candidates" style="display: flex; flex-direction: column; gap: 8px; margin: 12px 0;">`
+        html += `<div class="disambiguation-candidates" style="display: flex; flex-direction: column; gap: 6px; margin: 8px 0;">`
         candidates.forEach((candidate: string, index: number) => {
           const escapedCandidate = escapeHtml(candidate)
-          html += `<button class="disambiguation-candidate" data-candidate="${escapedCandidate}" style="cursor: pointer; text-align: left; padding: 10px 16px; background: rgba(16, 163, 127, 0.12); border: 1px solid rgba(16, 163, 127, 0.35); border-radius: 8px; color: #10a37f; font-weight: 500; font-size: 0.9rem; transition: all 0.2s ease; width: 100%;"><strong>${index + 1}.</strong> ${escapedCandidate}</button>`
+          html += `<button class="disambiguation-candidate" data-candidate="${escapedCandidate}" style="cursor: pointer; text-align: left; padding: 6px 12px; background: rgba(16, 163, 127, 0.1); border: 1px solid rgba(16, 163, 127, 0.3); border-radius: 6px; color: #10a37f; font-weight: 500; font-size: 0.8125rem; transition: all 0.15s ease; width: 100%;"><strong>${index + 1}.</strong> ${escapedCandidate}</button>`
         })
         html += `</div>`
       }
@@ -673,16 +678,16 @@ export default function HomePage() {
     const overviewText = rawOverview.replace(/### 🏢 Corporate Intelligence:[\s\S]*?(?=📌|📊|🏦|$)/gi, "").trim()
 
     if (overviewText) {
-      html += `<div class="company-intro-box" style="margin-bottom: 1rem; padding: 1rem 1.25rem; background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: var(--radius); line-height: 1.6; font-size: 0.875rem; color: var(--ink);">`
-      html += `<div style="font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.375rem; color: var(--accent);"><i class="bi bi-building"></i> ${escapeHtml(compName)} — Overview</div>`
+      html += `<div class="company-intro-box" style="margin-bottom: 0.35rem; padding: 0.3rem 0.5rem; border-left: 2px solid var(--accent); background: var(--surface-2); border-radius: 0 4px 4px 0; font-size: 0.8125rem; line-height: 1.4;">`
+      html += `<div style="font-weight: 600; font-size: 0.8125rem; color: var(--accent); margin-bottom: 0.1rem;"><i class="bi bi-building"></i> ${escapeHtml(compName)} Overview</div>`
       html += renderMarkdown(overviewText)
       html += `</div>`
     }
 
     // 2. Basic Information Table
-    html += `<div class="company-table-section" style="margin-bottom: 1.25rem;">`
-    html += `<div class="company-table-title" style="font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.5rem; color: var(--ink); display: flex; align-items: center; gap: 0.5rem;"><i class="bi bi-info-circle" style="color: var(--accent);"></i> Basic Information</div>`
-    html += `<div class="table-wrapper"><table class="table table-hover"><tbody>`
+    html += `<div style="margin-bottom: 0.35rem;">`
+    html += `<div style="font-weight: 600; font-size: 0.8125rem; margin-bottom: 0.15rem; color: var(--ink);"><i class="bi bi-info-circle"></i> Basic Information</div>`
+    html += `<table class="table" style="width: 100%; border-collapse: collapse; font-size: 0.8125rem; margin: 0;"><tbody>`
     html += renderTableRow("Corporate Name", compName)
     html += renderTableRow("CIN Number", basic.cin || "-")
     html += renderTableRow("Registered Address", basic.address || "-")
@@ -691,7 +696,7 @@ export default function HomePage() {
     html += renderTableRow("Country of Incorporation", basic.country || "-")
     html += renderTableRow("Incorporation Date", basic.incorporation_date || "-")
     html += renderTableRow("Listing Status", basic.listing_status || "-")
-    html += `</tbody></table></div></div>`
+    html += `</tbody></table></div>`
 
     // 3. Bank Records Table
     const seenBanks = new Set<string>()
@@ -703,37 +708,35 @@ export default function HomePage() {
     })
 
     if (uniqueBankRecords.length > 0) {
-      html += `<div class="company-table-section" style="margin-bottom: 1.25rem;">`
-      html += `<div class="company-table-title" style="font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.5rem; color: var(--ink); display: flex; align-items: center; gap: 0.5rem;"><i class="bi bi-bank" style="color: var(--accent);"></i> Master Bank Category Ratings (${uniqueBankRecords.length} Partner Banks)</div>`
-      html += `<div class="table-wrapper"><table class="table table-hover">`
-      html += `<thead><tr><th style="width: 60px;">#</th><th>Bank Name</th><th>Category Rating</th><th>Remarks / Info</th></tr></thead><tbody>`
+      html += `<div style="margin-bottom: 0.35rem;">`
+      html += `<div style="font-weight: 600; font-size: 0.8125rem; margin-bottom: 0.15rem; color: var(--ink);"><i class="bi bi-bank"></i> Bank Ratings (${uniqueBankRecords.length} Partner Banks)</div>`
+      html += `<table class="table" style="width: 100%; border-collapse: collapse; font-size: 0.8125rem; margin: 0;">`
+      html += `<thead><tr><th style="width: 35px; padding: 2px 4px;">#</th><th style="padding: 2px 4px;">Bank</th><th style="padding: 2px 4px;">Rating</th><th style="padding: 2px 4px;">Remarks</th></tr></thead><tbody>`
       uniqueBankRecords.forEach((r: any, idx: number) => {
         html += `<tr>`
-        html += `<td style="color: var(--ink-muted);">${idx + 1}</td>`
-        html += `<td><strong>${escapeHtml(r.bank_name || "-")}</strong></td>`
-        html += `<td><span class="badge bg-success">${escapeHtml(r.company_category || r.category || "Approved")}</span></td>`
-        html += `<td style="color: var(--ink-soft);">${escapeHtml(r.other_info || r.remarks || "Corporate Partner")}</td>`
+        html += `<td style="color: var(--ink-muted); padding: 2px 4px;">${idx + 1}</td>`
+        html += `<td style="padding: 2px 4px;"><strong>${escapeHtml(r.bank_name || "-")}</strong></td>`
+        html += `<td style="padding: 2px 4px;"><span class="badge bg-success" style="font-size: 0.68rem; padding: 1px 4px;">${escapeHtml(r.company_category || r.category || "Approved")}</span></td>`
+        html += `<td style="color: var(--ink-soft); padding: 2px 4px;">${escapeHtml(r.other_info || r.remarks || "Corporate Partner")}</td>`
         html += `</tr>`
       })
-      html += `</tbody></table></div></div>`
+      html += `</tbody></table></div>`
     } else {
-      html += `<div class="company-table-section" style="margin-bottom: 1.25rem;">`
-      html += `<div class="company-table-title" style="font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.5rem; color: var(--ink);"><i class="bi bi-bank"></i> Bank Records</div>`
-      html += `<div class="alert alert-warning" style="margin-bottom: 0;">`
-      html += `<i class="bi bi-exclamation-triangle" style="margin-right: 0.375rem;"></i><strong>Bank Listing Note:</strong> <em>${escapeHtml(compName)}</em> is not currently listed in our uploaded partner bank records. Standard corporate loan application rules apply.`
-      html += `</div></div>`
+      html += `<div style="margin-bottom: 0.35rem;">`
+      html += `<div style="font-size: 0.78125rem; color: var(--ink-muted);"><i class="bi bi-exclamation-triangle"></i> Not listed in uploaded bank records. Standard corporate rules apply.</div>`
+      html += `</div>`
     }
 
     // 4. Financial Information Table
-    html += `<div class="company-table-section">`
-    html += `<div class="company-table-title" style="font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.5rem; color: var(--ink); display: flex; align-items: center; gap: 0.5rem;"><i class="bi bi-bar-chart" style="color: var(--accent);"></i> Financial & Operational Profile</div>`
-    html += `<div class="table-wrapper"><table class="table table-hover"><tbody>`
-    html += renderTableRow("Total Workforce / Employees", financial.employees || "-")
-    html += renderTableRow("Annual Turnover / Revenue", financial.turnover || "-")
-    html += renderTableRow("Net Profit / Loss Status", financial.profit_status || "-")
-    html += renderTableRow("Last AGM Date", financial.last_agm || "-")
-    html += renderTableRow("Profitability History & Trend", financial.profit_history || "-")
-    html += `</tbody></table></div></div>`
+    html += `<div style="margin-bottom: 0.35rem;">`
+    html += `<div style="font-weight: 600; font-size: 0.8125rem; margin-bottom: 0.15rem; color: var(--ink);"><i class="bi bi-bar-chart"></i> Financial Profile</div>`
+    html += `<table class="table" style="width: 100%; border-collapse: collapse; font-size: 0.8125rem; margin: 0;"><tbody>`
+    html += renderTableRow("Workforce", financial.employees || "-")
+    html += renderTableRow("Turnover / Revenue", financial.turnover || "-")
+    html += renderTableRow("Profit Status", financial.profit_status || "-")
+    html += renderTableRow("Last AGM", financial.last_agm || "-")
+    html += renderTableRow("Trend", financial.profit_history || "-")
+    html += `</tbody></table></div>`
 
     html += `</div>`
     return html
@@ -741,7 +744,7 @@ export default function HomePage() {
 
   function renderTableRow(label: string, value: string) {
     const escapedValue = escapeHtml(value)
-    return `<tr><td style="font-weight: 500; color: var(--ink-soft); width: 35%;">${escapeHtml(label)}</td><td style="color: var(--ink); font-weight: 600;">${escapedValue}</td></tr>`
+    return `<tr><td style="font-weight: 500; color: var(--ink-soft); width: 35%; padding: 2px 6px; font-size: 0.8125rem;">${escapeHtml(label)}</td><td style="color: var(--ink); font-weight: 600; padding: 2px 6px; font-size: 0.8125rem;">${escapedValue}</td></tr>`
   }
 
   function renderMessageActions(message: any) {
@@ -1196,38 +1199,21 @@ export default function HomePage() {
               {messages.length === 0 ? (
                 <div className="chat-welcome" id="chatWelcomeMessage">
                   <div className="chat-welcome-icon" style={{ color: "var(--accent)" }}>
-                    <i className="bi bi-chat-dots-fill" />
+                    <i className="bi bi-stars" />
                   </div>
-                  <h2>Hello! How can I help you today?</h2>
-                  <p>Ask me anything about loans, EMI calculations, bank managers, or your account.</p>
-                  <div className="chat-welcome-grid">
-                    <button className="chat-welcome-card" onClick={() => sendMessage("Calculate EMI for a home loan of 500000 at 9.5% for 60 months")}>
-                      <div className="chat-welcome-card-icon" style={{ color: "var(--accent)" }}>
-                        <i className="bi bi-calculator" />
-                      </div>
-                      <div className="chat-welcome-card-title">Calculate EMI</div>
-                      <div className="chat-welcome-card-desc">Get instant EMI calculations for home, personal, or car loans.</div>
+                  <h2>What can I help with today?</h2>
+                  <div className="chat-prompt-chips">
+                    <button type="button" className="chat-prompt-chip" onClick={() => sendMessage("Calculate EMI for a home loan of 500000 at 9.5% for 60 months")}>
+                      <i className="bi bi-calculator" style={{ color: "var(--accent)" }} /> Calculate 5L EMI at 9.5%
                     </button>
-                    <button className="chat-welcome-card" onClick={() => sendMessage("Tell me about loan processing fees")}>
-                      <div className="chat-welcome-card-icon" style={{ color: "var(--warning)" }}>
-                        <i className="bi bi-cash-coin" />
-                      </div>
-                      <div className="chat-welcome-card-title">Processing Fees</div>
-                      <div className="chat-welcome-card-desc">Learn about loan processing fees and charges across lenders.</div>
+                    <button type="button" className="chat-prompt-chip" onClick={() => sendMessage("Tell me about loan processing fees")}>
+                      <i className="bi bi-cash-coin" style={{ color: "var(--warning)" }} /> Loan processing fees
                     </button>
-                    <button className="chat-welcome-card" onClick={() => sendMessage("How can I update my profile?")}>
-                      <div className="chat-welcome-card-icon" style={{ color: "var(--info)" }}>
-                        <i className="bi bi-person-gear" />
-                      </div>
-                      <div className="chat-welcome-card-title">Profile Help</div>
-                      <div className="chat-welcome-card-desc">Get assistance with profile settings and personal details.</div>
+                    <button type="button" className="chat-prompt-chip" onClick={() => sendMessage("I want a personal loan")}>
+                      <i className="bi bi-check2-circle" style={{ color: "var(--success)" }} /> Check loan eligibility
                     </button>
-                    <button className="chat-welcome-card" onClick={() => sendMessage("Give me ICICI manager details in Pune")}>
-                      <div className="chat-welcome-card-icon" style={{ color: "var(--success)" }}>
-                        <i className="bi bi-bank2" />
-                      </div>
-                      <div className="chat-welcome-card-title">Bank Managers</div>
-                      <div className="chat-welcome-card-desc">Find verified bank manager contact details by location.</div>
+                    <button type="button" className="chat-prompt-chip" onClick={() => sendMessage("Give me ICICI manager details in Pune")}>
+                      <i className="bi bi-bank2" style={{ color: "var(--info)" }} /> ICICI bank manager in Pune
                     </button>
                   </div>
                 </div>
@@ -1237,7 +1223,7 @@ export default function HomePage() {
                   return (
                     <div key={message.id} className={`chat-message ${message.role}`} data-message-id={message.id}>
                       <div className="chat-avatar">{isUser ? "U" : <i className="bi bi-cpu" />}</div>
-                      <div style={{ maxWidth: "85%" }}>
+                      <div className="chat-message-content">
                         <div
                           className="chat-bubble"
                           dangerouslySetInnerHTML={{ __html: renderMessageContent(message) }}
@@ -1286,7 +1272,7 @@ export default function HomePage() {
           <div className="chat-composer">
             <form className="chat-composer-form" onSubmit={(e) => { e.preventDefault(); sendMessage(input) }} autoComplete="off">
               <button type="button" className="chat-attachment-btn" title="Attach file" onClick={() => {}}>
-                <i className="bi bi-paperclip" style={{ fontSize: "1.125rem" }} />
+                <i className="bi bi-paperclip" style={{ fontSize: "1rem" }} />
               </button>
               <div className="chat-input-wrap">
                 <textarea
@@ -1312,11 +1298,11 @@ export default function HomePage() {
                     <div className="chat-typing-dot"></div>
                   </div>
                 ) : (
-                  <i className="bi bi-arrow-up" style={{ fontSize: "1rem" }} />
+                  <i className="bi bi-arrow-up" style={{ fontSize: "0.9375rem" }} />
                 )}
               </button>
             </form>
-            <div className="chat-disclaimer" style={{ textAlign: "center", fontSize: "0.72rem", color: "var(--ink-muted)", marginTop: "8px", width: "100%", display: "block" }}>
+            <div className="chat-disclaimer" style={{ textAlign: "center", fontSize: "0.6875rem", color: "var(--ink-muted)", marginTop: "4px", width: "100%", display: "block" }}>
               AI can make mistakes. Please verify important loan and policy details.
             </div>
           </div>
