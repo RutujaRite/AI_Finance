@@ -1,0 +1,41 @@
+{
+  "name": "node-login-direct",
+  "version": "1.0.0",
+  "description": "AI-powered loan assistant platform",
+  "scripts": {
+    "dev": "node scripts/kill-port-then-dev.js",
+    "start": "next start",
+    "build": "next build"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.6",
+    "csv-parse": "^7.0.2",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "express-session": "^1.17.3",
+    "jose": "^6.2.12",
+    "jsonwebtoken": "^9.0.3",
+    "mammoth": "^1.12.2",
+    "next": "^15.3.4",
+    "node-fetch": "^3.3.2",
+    "pg": "^8.14.0",
+    "pg-hstore": "^2.3.0",
+    "tesseract.js": "^7.0.0",
+    "ws": "^8.18.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.19.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.5.0",
+    "@types/pg": "^8.23.1",
+    "@types/react": "19.2.18",
+    "@types/ws": "^8.18.1",
+    "playwright": "^1.63.0",
+    "typescript": "^5.0.0"
+  }
+}

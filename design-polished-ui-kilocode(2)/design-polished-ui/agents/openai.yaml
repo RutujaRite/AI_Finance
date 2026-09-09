@@ -1,0 +1,12 @@
+interface:
+  display_name: Adaptive UI/UX Designer
+  short_description: Design, review, and polish adaptive interfaces
+  default_prompt: Use $design-polished-ui to create or improve a polished, responsive
+    interface for this product.
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true

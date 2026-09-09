@@ -1,0 +1,527 @@
+================================================================================
+ICICI BANK PERSONAL LOAN - POLICY RULEBOOK
+Generated: 2026-09-01
+Source Bank: ICICI Bank
+Primary Source: Rate 18-02-25.jpeg
+================================================================================
+
+PURPOSE:
+This is a structured eligibility and pricing rulebook for ICICI Bank Personal Loan.
+It follows the same sectioned rulebook style as the supplied Axis Finance reference.
+
+SOURCE-SAFETY RULES:
+- Use only values explicitly present in the supplied ICICI rate card.
+- Do not invent age, salary/NTH, FOIR, tenure, employment, document, BT/CCBT,
+  or other eligibility values that are not present in the source.
+- Green ROI / Amber ROI / Red ROI are pricing columns, not approval statuses.
+- A CIBIL pricing band is not automatically an absolute eligibility cutoff.
+- Never borrow rules across categories, programs, loan bands, or banks.
+- Missing mandatory eligibility information must remain NEEDS_REVIEW.
+
+SECTIONS:
+1. PROGRAM OVERVIEW
+2. ELIGIBILITY CRITERIA
+3. COMPANY / CUSTOMER CATEGORIES
+4. PRICING & ROI GRIDS
+5. LOAN PARAMETERS
+6. FOIR & MULTIPLIER RULES
+7. NTH / SALARY REQUIREMENTS
+8. BT / CCBT / APP LOAN RULES
+9. DOCUMENT REQUIREMENTS
+10. EXCEPTIONS & DEVIATIONS
+11. CONFLICTS / REVIEW ITEMS
+
+================================================================================
+1. PROGRAM OVERVIEW
+================================================================================
+
+Primary Product:
+- ICICI Bank Personal Loan
+
+Verified pricing/customer segments visible in the supplied rate card:
+- ICICI Group
+- Infosys Group
+- CITI Group
+- Top Corporate
+- Elite
+- Super-Prime
+- Preferred
+- Defense, Doctors, Professionals, NRIs and Pensioners
+- Open Market, Government 1, Teachers
+- Government 2 - MP, AP, J&K, Punjab and Haryana only
+- FD Backed Personal Loan
+
+Pricing dimensions visible in source:
+- Loan amount band
+- CIBIL band
+- Customer/category segment
+- Green ROI
+- Amber ROI
+- Red ROI
+- Processing Fee (PF)
+- Funded / unfunded scope where specifically stated
+
+================================================================================
+2. ELIGIBILITY CRITERIA
+================================================================================
+
+CIBIL:
+- Pricing bands visible in source include:
+  * >= 770
+  * >= 725 to 769 / 0 / -1
+  * < 725
+- Absolute Minimum CIBIL for approval: NOT_DEFINED / NEEDS_REVIEW
+
+Age:
+- Minimum Age: NOT_DEFINED / NEEDS_REVIEW
+- Maximum Age: NOT_DEFINED / NEEDS_REVIEW
+- Maximum Age at Maturity: NOT_DEFINED / NEEDS_REVIEW
+
+Employment:
+- Complete employment-type eligibility: NOT_DEFINED / NEEDS_REVIEW
+
+Work Experience:
+- Minimum work experience: NOT_DEFINED / NEEDS_REVIEW
+
+Eligibility Interpretation:
+- Pricing availability must not be treated as complete credit approval.
+- If a required eligibility field is not explicitly available, return NEEDS_REVIEW.
+
+================================================================================
+3. COMPANY / CUSTOMER CATEGORIES
+================================================================================
+
+Explicit source categories/groups:
+- ICICI Group
+- Infosys Group
+- CITI Group
+- Top Corporate
+- Elite
+- Super-Prime
+- Preferred
+- Defense, Doctors, Professionals, NRIs and Pensioners
+- Open Market, Government 1, Teachers
+- Government 2 - MP, AP, J&K, Punjab and Haryana only
+
+CATEGORY RESOLUTION RULE:
+1. Use an exact verified ICICI company/category mapping when available.
+2. Otherwise use only an explicit mapping stated by a verified ICICI policy source.
+3. Never infer a category by similarity.
+4. Never reuse another bank's company category.
+5. If unresolved: NEEDS_REVIEW with missing field company_category.
+
+================================================================================
+4. PRICING & ROI GRIDS
+================================================================================
+
+The following tables are transcribed from the supplied ICICI rate card.
+
+SECTION 1 - ICICI GROUP, INFOSYS GROUP, CITI GROUP
+===================================================
+Columns: LA Band | Green ROI | Amber ROI | Red ROI | PF
+
+>= 15L
+Green ROI: 10.90%
+Amber ROI: 10.90%
+Red ROI: 10.90%
+PF: Lower of Rs. 3,999 or 1.00% of LA
+
+>= 10L to 14.99L
+Green ROI: 11.05%
+Amber ROI: 11.05%
+Red ROI: 11.05%
+PF: Lower of Rs. 3,999 or 1.00% of LA
+
+>= 5L to 9.99L
+Green ROI: 11.25%
+Amber ROI: 11.25%
+Red ROI: 11.25%
+PF: Lower of Rs. 3,999 or 1.00% of LA
+
+< 5L
+Green ROI: 11.35%
+Amber ROI: 11.35%
+Red ROI: 11.35%
+PF: Lower of Rs. 3,999 or 1.00% of LA
+
+
+SECTION 2 - LA >= 30 LAKHS EXCEPT ICICI, INFOSYS AND CITI
+==========================================================
+Scope in source: FUNDED and UNFUNDED
+Columns: CIBIL Band | Green ROI | Amber ROI | Red ROI | PF
+
+CIBIL >= 770
+Green ROI: 11.00%
+Amber ROI: 11.10%
+Red ROI: 11.40%
+PF: Rs. 7,999.00
+
+CIBIL >= 725 to 769 / -1 / 0
+Green ROI: 11.10%
+Amber ROI: 11.20%
+Red ROI: 11.50%
+PF: Rs. 8,999.00
+
+CIBIL < 725
+Green ROI: 11.25%
+Amber ROI: 11.35%
+Red ROI: 11.65%
+PF: Rs. 9,999.00
+
+
+SECTION 3 - LA >= 20 LAKHS EXCEPT ICICI, INFOSYS AND CITI
+==========================================================
+Scope in source: FUNDED and UNFUNDED
+Columns: CIBIL Band | Green ROI | Amber ROI | Red ROI | PF
+
+CIBIL >= 770
+Green ROI: 11.00%
+Amber ROI: 11.10%
+Red ROI: 11.40%
+PF: Rs. 6,999.00
+
+CIBIL >= 725 to 769 / -1 / 0
+Green ROI: 11.10%
+Amber ROI: 11.20%
+Red ROI: 11.50%
+PF: Rs. 7,999.00
+
+CIBIL < 725
+Green ROI: 11.25%
+Amber ROI: 11.35%
+Red ROI: 11.65%
+PF: Rs. 8,999.00
+
+
+SECTION 4 - LA < 5 LAKHS EXCEPT ICICI, INFOSYS AND CITI
+========================================================
+Scope in source: FUNDED and UNFUNDED
+Columns: Loan Amount | Green ROI | Amber ROI | Red ROI | PF
+
+>= 2L to 4.99L
+Green ROI: 13.25%
+Amber ROI: 13.35%
+Red ROI: 13.65%
+PF: 1.50% of LA
+
+>= 1L to 1.99L
+Green ROI: 14.25%
+Amber ROI: 14.35%
+Red ROI: 14.65%
+PF: 1.50% of LA
+
+>= 50K to 99.99K
+Green ROI: 15.25%
+Amber ROI: 15.35%
+Red ROI: 15.65%
+PF: 1.50% of LA
+
+< 50K
+Green ROI: 16.25%
+Amber ROI: 16.35%
+Red ROI: 16.65%
+PF: 1.50% of LA
+
+
+SECTION 5 - 5L TO 19.99L, FUNDED - CIBIL < 725, ALL CATEGORIES
+===============================================================
+Columns: Loan Amount | Green ROI | Amber ROI | Red ROI | PF
+
+>= 15L to 19.99L
+Green ROI: 11.90%
+Amber ROI: 12.00%
+Red ROI: 12.30%
+PF: Rs. 9,999.00
+
+>= 10L to 14.99L
+Green ROI: 12.60%
+Amber ROI: 12.70%
+Red ROI: 13.00%
+PF: Rs. 9,499.00
+
+>= 5L to 9.99L
+Green ROI: 13.10%
+Amber ROI: 13.20%
+Red ROI: 13.50%
+PF: Rs. 8,999.00
+
+
+SECTION 6 - FD BACKED PERSONAL LOAN
+===================================
+Loan Amount: All Loan Amounts
+Green ROI: 13.25%
+Amber ROI: 13.35%
+Red ROI: 13.65%
+PF: 1.25% of LA
+
+
+SECTION 7 - LA >= 5 LAKHS TO 19.99 LAKHS - ALL CATEGORIES, FUNDED ONLY
+======================================================================
+
+CATEGORY: TOP CORPORATE
+-----------------------
+Loan Amount >= 15L to 19.99L
+  CIBIL >= 770             | Green 11.05% | Amber 11.05% | Red 11.05% | PF Rs. 8,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.15% | Amber 11.15% | Red 11.15% | PF Rs. 9,499.00
+
+Loan Amount >= 10L to 14.99L
+  CIBIL >= 770             | Green 11.65% | Amber 11.65% | Red 11.65% | PF Rs. 8,499.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.75% | Amber 11.75% | Red 11.75% | PF Rs. 8,999.00
+
+Loan Amount >= 5L to 9.99L
+  CIBIL >= 770             | Green 11.95% | Amber 11.95% | Red 11.95% | PF Rs. 7,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.05% | Amber 12.05% | Red 12.05% | PF Rs. 8,499.00
+
+
+CATEGORY: ELITE
+---------------
+Loan Amount >= 15L to 19.99L
+  CIBIL >= 770             | Green 11.15% | Amber 11.15% | Red 11.15% | PF Rs. 8,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.25% | Amber 11.25% | Red 11.25% | PF Rs. 9,499.00
+
+Loan Amount >= 10L to 14.99L
+  CIBIL >= 770             | Green 11.75% | Amber 11.75% | Red 11.75% | PF Rs. 8,499.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.85% | Amber 11.85% | Red 11.85% | PF Rs. 8,999.00
+
+Loan Amount >= 5L to 9.99L
+  CIBIL >= 770             | Green 12.00% | Amber 12.00% | Red 12.00% | PF Rs. 7,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.10% | Amber 12.10% | Red 12.10% | PF Rs. 8,499.00
+
+
+CATEGORY: SUPER-PRIME
+---------------------
+Loan Amount >= 15L to 19.99L
+  CIBIL >= 770             | Green 11.20% | Amber 11.30% | Red 11.60% | PF Rs. 8,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.35% | Amber 11.45% | Red 11.75% | PF Rs. 9,499.00
+
+Loan Amount >= 10L to 14.99L
+  CIBIL >= 770             | Green 11.80% | Amber 11.90% | Red 12.20% | PF Rs. 8,499.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.95% | Amber 12.05% | Red 12.35% | PF Rs. 8,999.00
+
+Loan Amount >= 5L to 9.99L
+  CIBIL >= 770             | Green 12.05% | Amber 12.15% | Red 12.45% | PF Rs. 7,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.20% | Amber 12.30% | Red 12.60% | PF Rs. 8,499.00
+
+
+CATEGORY: PREFERRED
+-------------------
+Loan Amount >= 15L to 19.99L
+  CIBIL >= 770             | Green 11.25% | Amber 11.35% | Red 11.65% | PF Rs. 8,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.45% | Amber 11.55% | Red 11.85% | PF Rs. 9,499.00
+
+Loan Amount >= 10L to 14.99L
+  CIBIL >= 770             | Green 11.85% | Amber 11.95% | Red 12.25% | PF Rs. 8,499.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.05% | Amber 12.15% | Red 12.45% | PF Rs. 8,999.00
+
+Loan Amount >= 5L to 9.99L
+  CIBIL >= 770             | Green 12.15% | Amber 12.25% | Red 12.55% | PF Rs. 7,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.35% | Amber 12.45% | Red 12.75% | PF Rs. 8,499.00
+
+
+CATEGORY: DEFENSE, DOCTORS, PROFESSIONALS, NRIs AND PENSIONERS
+--------------------------------------------------------------
+Loan Amount >= 15L to 19.99L
+  CIBIL >= 770             | Green 11.35% | Amber 11.45% | Red 11.75% | PF Rs. 8,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.60% | Amber 11.70% | Red 12.00% | PF Rs. 9,499.00
+
+Loan Amount >= 10L to 14.99L
+  CIBIL >= 770             | Green 11.95% | Amber 12.05% | Red 12.35% | PF Rs. 8,499.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.20% | Amber 12.30% | Red 12.60% | PF Rs. 8,999.00
+
+Loan Amount >= 5L to 9.99L
+  CIBIL >= 770             | Green 12.25% | Amber 12.35% | Red 12.65% | PF Rs. 7,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.50% | Amber 12.60% | Red 12.90% | PF Rs. 8,499.00
+
+
+CATEGORY: OPEN MARKET, GOVERNMENT 1, TEACHERS
+---------------------------------------------
+Loan Amount >= 15L to 19.99L
+  CIBIL >= 770             | Green 11.45% | Amber 11.55% | Red 11.85% | PF Rs. 8,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.60% | Amber 11.70% | Red 12.00% | PF Rs. 9,499.00
+
+Loan Amount >= 10L to 14.99L
+  CIBIL >= 770             | Green 12.05% | Amber 12.15% | Red 12.45% | PF Rs. 8,499.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.20% | Amber 12.30% | Red 12.60% | PF Rs. 8,999.00
+
+Loan Amount >= 5L to 9.99L
+  CIBIL >= 770             | Green 12.45% | Amber 12.55% | Red 12.85% | PF Rs. 7,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.60% | Amber 12.70% | Red 13.00% | PF Rs. 8,499.00
+
+
+CATEGORY: GOVERNMENT 2 - MP, AP, J&K, PUNJAB AND HARYANA ONLY
+--------------------------------------------------------------
+Loan Amount >= 15L to 19.99L
+  CIBIL >= 770             | Green 11.65% | Amber 11.75% | Red 12.05% | PF Rs. 8,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.85% | Amber 11.95% | Red 12.25% | PF Rs. 9,499.00
+
+Loan Amount >= 10L to 14.99L
+  CIBIL >= 770             | Green 12.25% | Amber 12.35% | Red 12.65% | PF Rs. 8,499.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.45% | Amber 12.55% | Red 12.85% | PF Rs. 8,999.00
+
+Loan Amount >= 5L to 9.99L
+  CIBIL >= 770             | Green 12.75% | Amber 12.85% | Red 13.15% | PF Rs. 7,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.95% | Amber 13.05% | Red 13.35% | PF Rs. 8,499.00
+
+
+================================================================================
+5. LOAN PARAMETERS
+================================================================================
+
+Pricing loan-amount bands are defined in Section 4.
+
+IMPORTANT:
+- Pricing bands are not automatically absolute Personal Loan product limits.
+- Absolute Minimum Loan Amount: NOT_DEFINED / NEEDS_REVIEW
+- Absolute Maximum Loan Amount: NOT_DEFINED / NEEDS_REVIEW
+- Minimum Tenure: NOT_DEFINED / NEEDS_REVIEW
+- Maximum Tenure: NOT_DEFINED / NEEDS_REVIEW
+
+Do not infer an absolute maximum from the highest displayed pricing band.
+
+================================================================================
+6. FOIR & MULTIPLIER RULES
+================================================================================
+
+FOIR:
+- NOT_DEFINED / NEEDS_REVIEW
+
+Multiplier:
+- NOT_DEFINED / NEEDS_REVIEW
+
+Do not infer FOIR or multiplier from ROI, PF, CIBIL, loan amount, or category.
+
+================================================================================
+7. NTH / SALARY REQUIREMENTS
+================================================================================
+
+Minimum Salary / NTH:
+- NOT_DEFINED / NEEDS_REVIEW
+
+Salary Credit Rule:
+- NOT_DEFINED / NEEDS_REVIEW
+
+Income Proof Rule:
+- NOT_DEFINED / NEEDS_REVIEW
+
+Do not derive salary eligibility from a pricing table.
+
+================================================================================
+8. BT / CCBT / APP LOAN RULES
+================================================================================
+
+Balance Transfer (BT):
+- NOT_DEFINED / NEEDS_REVIEW
+
+Credit Card Balance Transfer (CCBT):
+- NOT_DEFINED / NEEDS_REVIEW
+
+App Loan:
+- NOT_DEFINED / NEEDS_REVIEW
+
+Never reuse BT / CCBT / App Loan rules from another bank or unrelated source.
+
+================================================================================
+9. DOCUMENT REQUIREMENTS
+================================================================================
+
+Mandatory Personal Loan documents:
+- NOT_DEFINED / NEEDS_REVIEW in the supplied rate-card image.
+
+A separate Aadhaar Consent Letter may be used for Aadhaar authentication /
+verification consent handling, but it must not be treated as a Personal Loan
+pricing or eligibility criterion.
+
+================================================================================
+10. EXCEPTIONS & DEVIATIONS
+================================================================================
+
+General policy exceptions:
+- NOT_DEFINED / NEEDS_REVIEW
+
+Bureau delinquency rules:
+- NOT_DEFINED / NEEDS_REVIEW
+
+Leverage / unsecured exposure rules:
+- NOT_DEFINED / NEEDS_REVIEW
+
+Residence / negative-area rules:
+- NOT_DEFINED / NEEDS_REVIEW
+
+================================================================================
+11. CONFLICTS / REVIEW ITEMS
+================================================================================
+
+1. CIBIL:
+   Pricing bands are present, but no absolute approval cutoff is explicitly stated.
+   [REVIEW]
+
+2. AGE:
+   Minimum and maximum age are not defined.
+   [REVIEW]
+
+3. SALARY / NTH:
+   Minimum income requirement is not defined.
+   [REVIEW]
+
+4. FOIR:
+   No FOIR rule is defined.
+   [REVIEW]
+
+5. TENURE:
+   No minimum or maximum tenure is defined.
+   [REVIEW]
+
+6. ABSOLUTE LOAN LIMIT:
+   Pricing bands exist, but a universal Personal Loan minimum/maximum is not
+   explicitly stated.
+   [REVIEW]
+
+7. EMPLOYMENT:
+   Some customer groups are named, but complete employment eligibility is not defined.
+   [REVIEW]
+
+8. CATEGORY MAPPING:
+   Category names are present; company-to-category mapping must be explicitly verified.
+   [REVIEW]
+
+9. FUNDED / UNFUNDED SCOPE:
+   Apply scope exactly where the source states FUNDED ONLY or FUNDED AND UNFUNDED.
+   [REVIEW]
+
+10. CATEGORY ISOLATION:
+    Never borrow values between Top Corporate, Elite, Super-Prime, Preferred,
+    Open Market, Government, or other categories.
+    [REVIEW]
+
+================================================================================
+AI / BACKEND POLICY EVALUATION RULES
+================================================================================
+
+Evaluation path:
+ICICI Bank
+-> Personal Loan
+-> exact resolved company/customer category
+-> exact funding scope
+-> exact loan-amount band
+-> exact CIBIL band
+-> applicable verified pricing/rules
+
+STATUS LOGIC:
+
+ELIGIBLE
+- Only when all mandatory verified eligibility criteria are available and passed.
+
+NOT_ELIGIBLE
+- Only when an explicit verified applicable policy rule fails.
+
+NEEDS_REVIEW
+- Company/category unresolved.
+- Mandatory eligibility field missing.
+- Required policy rule not explicitly defined.
+- Source applicability is ambiguous.
+
+Never invent missing values or borrow another category/bank's rules.
+
+================================================================================
+END OF ICICI BANK PERSONAL LOAN POLICY RULEBOOK
+================================================================================

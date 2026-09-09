@@ -1,0 +1,304 @@
+================================================================================
+ICICI BANK PERSONAL LOAN - POLICY RULEBOOK
+Generated: 2026-09-01
+Source Bank: ICICI Bank (ICICI)
+================================================================================
+
+PURPOSE:
+This is a concise eligibility and pricing rulebook for ICICI Bank Personal Loan.
+It is derived from all available source documents and PostgreSQL records.
+Only verified source values are preserved. Missing fields are explicitly marked.
+No values are invented or defaulted.
+
+SOURCES CONSOLIDATED:
+- Rate 18-02-25.jpeg (rate card, ROI/PF grids, CIBIL bands, company groups)
+- PostgreSQL policy_rules / policy_versions / policy_sources / policy_attachments
+- bank_policy_files records
+
+SECTIONS:
+1. PROGRAM OVERVIEW
+2. COMPANY/EMPLOYER CATEGORIES
+3. CIBIL BANDS
+4. LOAN AMOUNT BANDS
+5. PRICING & ROI GRIDS
+6. ELIGIBILITY CRITERIA
+7. LOAN PARAMETERS
+8. FOIR & MULTIPLIER RULES
+9. NTH / SALARY REQUIREMENTS
+10. BT / CCBT / APP LOAN RULES
+11. DOCUMENT REQUIREMENTS
+12. EXCEPTIONS & DEVIATIONS
+13. CONFLICTS/REVIEW ITEMS
+
+================================================================================
+1. PROGRAM OVERVIEW
+================================================================================
+
+Active Programs:
+- Personal Loan (Salaried)
+- FD Backed Personal Loan
+
+Loan Types:
+- FUNDED
+- UNFUNDED (except where noted)
+
+Key Features:
+- Rate card dated 18-02-25
+- CIBIL band-based pricing
+- Company/group-based segmentation
+
+================================================================================
+2. COMPANY/EMPLOYER CATEGORIES
+================================================================================
+
+Verified Company Groups:
+- CIBIL Infosys, Infosys Group, CITI Group
+- KOKO Group
+- Top Corporate
+- Open Market, Government, Teachers
+- Government 2 (MP, MLA, BJP, Punjab and Haryana only)
+
+Note: The source document does not contain a comprehensive company category list
+with eligibility rules. Only the groups appearing in the rate card are listed.
+
+================================================================================
+3. CIBIL BANDS
+================================================================================
+
+CIBIL Band Definitions:
+- Green: >= 770
+- Amber: >= 725 to 769 / -1 / 1
+- Red: < 725
+
+Note: These are pricing bands, not minimum eligibility thresholds.
+The source document does not state an absolute minimum CIBIL score for eligibility.
+
+================================================================================
+4. LOAN AMOUNT BANDS
+================================================================================
+
+Verified Loan Amount Bands:
+- >= 5 Lakhs to 19.99 Lakhs
+- < 5 to 9.99 Lakhs
+- < 10 to 14.99 Lakhs
+- < 15 to 19.99 Lakhs
+- < 2 to 4.99 Lakhs
+- < 1 to 1.99 Lakhs
+- < 50K to 99K
+- < 50K
+- All Loan Amounts (FD Backed)
+
+Note: The source document does not state an absolute maximum loan amount.
+The highest band shown is 19.99 Lakhs for regular Personal Loan.
+FD Backed Personal Loan covers All Loan Amounts.
+
+================================================================================
+5. PRICING & ROI GRIDS
+================================================================================
+
+Rate Card Date: 18-02-25
+
+5.1 CIBIL INFOSYS, INFOSYS GROUP, CITI GROUP
+LA >= 5 Lakhs to 19.99 Lakhs - All categories, FUNDED ONLY
+
+Loan Amount Band | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---
+Top Corporate | 10.90% | 10.90% | 10.90% | 10.90%
+LA < 1L | 11.05% | 11.05% | 11.05% | 11.05% | Lower of Rs. 3,999 or 1.00% of LA
+LA < 5 to 9.99L | 11.25% | 11.25% | 11.25% | 11.25% | 1.00% of LA
+LA < 10 to 14.99L | 11.35% | 11.35% | 11.35% | 11.35% | 1.00% of LA
+LA < 15 to 19.99L | 11.35% | 11.35% | 11.35% | 11.35% | 1.00% of LA
+
+5.2 LA < 30 Lakhs except ICICI, INFOSYS and CITI, FUNDED and UNFUNDED
+
+Loan Amount Band | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---
+Standard | 11.20% | 11.20% | 11.20% | ₹ 7,999.00
+LA < 5 to 9.99L | 11.25% | 11.25% | 11.25% | 11.25% | ₹ 8,999.00
+LA < 10 to 14.99L | 11.35% | 11.35% | 11.35% | 11.35% | ₹ 8,999.00
+
+5.3 LA < 20 Lakhs except ICICI, INFOSYS and CITI, FUNDED and UNFUNDED
+
+Loan Amount Band | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---
+Standard | 11.00% | 11.00% | 11.00% | ₹ 4,999.00
+LA < 5 to 9.99L | 11.05% | 11.05% | 11.05% | 11.05% | ₹ 5,999.00
+LA < 10 to 14.99L | 11.15% | 11.15% | 11.15% | 11.15% | ₹ 6,999.00
+
+5.4 LA < 5 Lakhs except ICICI, INFOSYS and CITI, FUNDED and UNFUNDED
+
+Loan Amount Band | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---
+Standard | 13.25% | 13.25% | 13.25% | 1.50% of LA
+LA < 2 to 4.99 Lakhs | 13.25% | 13.25% | 13.25% | 1.50% of LA
+LA < 1 to 1.99 Lakhs | 14.25% | 14.25% | 14.25% | 1.50% of LA
+LA < 50K to 99K | 15.25% | 15.25% | 15.25% | 1.50% of LA
+LA < 50K | 16.25% | 16.25% | 16.25% | 1.50% of LA
+
+5.5 SL < 15 to 19.99L, FUNDED - CIBIL 725, All Categories
+
+Loan Amount Band | Group | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---|---
+Standard | KOKO Group | 11.90% | 12.00% | 12.30% | ₹ 9,999.00
+Standard | Top Corporate | 12.60% | 12.70% | 13.00% | ₹ 9,999.00
+LA < 10 to 14.99 Lakhs | All | 13.10% | 13.20% | 13.50% | ₹ 8,999.00
+
+5.6 FD Backed Personal Loan
+All Loan Amounts:
+- Green ROI: 13.25% | Amber ROI: 13.25% | Red ROI: 13.65% | PF: 1.25% of LA
+
+5.7 LA > 5 Lakhs to 19.99 Lakhs - All categories, FUNDED only
+
+Loan Amount Band | CIBIL | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---|---
+>= 725 to 769/-/1 | All | 11.05% | 11.15% | 11.15% | 11.15% | ₹ 8,999.00
+>= 770 | All | 11.15% | 11.15% | 11.15% | 11.15% | ₹ 8,999.00
+LA < 15 to 19.99L | All | 11.25% | 11.25% | 11.25% | 11.25% | ₹ 9,499.00
+LA < 10 to 14.99L | All | 11.35% | 11.35% | 11.35% | 11.35% | ₹ 9,999.00
+
+LA < 20 Lakhs except ICICI, INFOSYS and CITI, FUNDED and UNFUNDED:
+Loan Amount Band | CIBIL | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---|---
+>= 725 to 769/-/1 | All | 11.75% | 11.75% | 11.75% | 11.75% | ₹ 8,999.00
+>= 770 | All | 11.75% | 11.75% | 11.75% | 11.75% | ₹ 8,999.00
+LA < 15 to 19.99L | All | 12.00% | 12.00% | 12.00% | 12.00% | ₹ 7,999.00
+LA < 10 to 14.99L | All | 12.10% | 12.10% | 12.10% | 12.10% | ₹ 8,499.00
+
+LA < 10 to 14.99 Lakhs:
+- 11.85% | 11.85% | 11.85% | 11.85% | PF: ₹ 8,999.00
+
+LA < 5 to 9.99 Lakhs:
+- 11.95% | 11.95% | 11.95% | 11.95% | PF: ₹ 9,999.00
+
+5.8 Super Prime
+
+CIBIL | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---
+>= 770 | 11.20% | 11.30% | 11.60% | ₹ 8,999.00
+
+Loan Amount Band | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---
+LA < 15 to 19.99L | 11.35% | 11.45% | 11.75% | ₹ 9,499.00
+LA < 10 to 14.99L | 11.40% | 11.50% | 11.80% | ₹ 8,999.00
+LA < 5 to 9.99 Lakhs | 11.95% | 12.05% | 12.35% | ₹ 9,999.00
+LA < 2 to 4.99 Lakhs | 12.05% | 12.15% | 12.45% | ₹ 9,999.00
+
+5.9 Elite
+
+CIBIL | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---
+>= 770 | 11.15% | 11.15% | 11.15% | 11.15% | ₹ 8,999.00
+
+Loan Amount Band | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---
+LA < 15 to 19.99L | 11.25% | 11.25% | 11.25% | 11.25% | ₹ 9,499.00
+LA < 10 to 14.99L | 11.35% | 11.35% | 11.35% | 11.35% | ₹ 9,999.00
+LA < 5 to 9.99 Lakhs | 11.45% | 11.45% | 11.45% | 11.45% | ₹ 9,499.00
+
+5.10 LA >= 5 Lakhs to 19.99 Lakhs - All categories, FUNDED only
+Loan Amount Band | CIBIL | Open Market, Government, Teachers
+
+CIBIL | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---
+>= 770 | 11.40% | 11.50% | 11.50% | 11.50% | ₹ 8,999.00
+
+Loan Amount Band | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---
+LA < 15 to 19.99L | 11.60% | 11.70% | 11.70% | 11.70% | ₹ 9,499.00
+LA < 10 to 14.99L | 11.70% | 11.80% | 11.80% | 11.80% | ₹ 9,999.00
+LA < 5 to 9.99 Lakhs | 12.20% | 12.30% | 12.30% | 12.30% | ₹ 8,999.00
+
+5.11 Government 2 - MP, MLA, BJP, Punjab and Haryana only
+
+CIBIL | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---
+>= 770 | 11.65% | 11.75% | 12.05% | ₹ 8,999.00
+
+Loan Amount Band | Green ROI | Amber ROI | Red ROI | PF
+--|---|---|---|---
+LA < 15 to 19.99L | 12.05% | 12.15% | 12.45% | ₹ 8,999.00
+LA < 10 to 14.99L | 12.20% | 12.30% | 12.60% | ₹ 7,999.00
+LA < 5 to 9.99 Lakhs | 12.35% | 12.45% | 12.75% | ₹ 8,499.00
+
+================================================================================
+6. ELIGIBILITY CRITERIA
+================================================================================
+
+Note: The source document (Rate 18-02-25.jpeg) is a rate card and does not contain
+explicit eligibility criteria. The following fields are NOT defined in the source:
+
+- Minimum CIBIL Score: Not explicitly defined [REVIEW]
+- Maximum CIBIL Score: Not explicitly defined [REVIEW]
+- Minimum Age: Not explicitly defined [REVIEW]
+- Maximum Age: Not explicitly defined [REVIEW]
+- Minimum Salary / NTH: Not explicitly defined [REVIEW]
+- Maximum Salary: Not explicitly defined [REVIEW]
+- Employment Type: Not explicitly defined [REVIEW]
+- FOIR Percentage: Not explicitly defined [REVIEW]
+- Tenure: Not explicitly defined [REVIEW]
+
+================================================================================
+7. LOAN PARAMETERS
+================================================================================
+
+Note: The source document does not contain explicit loan parameter rules.
+Only loan amount bands for pricing are defined in Section 4.
+
+- Minimum Loan Amount: Not explicitly defined [REVIEW]
+- Maximum Loan Amount: Not explicitly defined [REVIEW]
+- Tenure: Not explicitly defined [REVIEW]
+
+================================================================================
+8. FOIR & MULTIPLIER RULES
+================================================================================
+
+Note: The source document does not contain FOIR or multiplier rules.
+- FOIR Percentage: Not explicitly defined [REVIEW]
+
+================================================================================
+9. NTH / SALARY REQUIREMENTS
+================================================================================
+
+Note: The source document does not contain NTH or salary requirements.
+- Minimum NTH / Salary: Not explicitly defined [REVIEW]
+- Maximum NTH / Salary: Not explicitly defined [REVIEW]
+
+================================================================================
+10. BT / CCBT / APP LOAN RULES
+================================================================================
+
+Note: The source document does not contain BT/CCBT/App Loan rules.
+Refer to actual source documents for detailed BT/CCBT/App Loan rules.
+
+================================================================================
+11. DOCUMENT REQUIREMENTS
+================================================================================
+
+Note: The source document does not contain document requirements.
+Refer to actual source documents for detailed document requirements.
+
+================================================================================
+12. EXCEPTIONS & DEVIATIONS
+================================================================================
+
+Note: The source document does not contain exceptions and deviations.
+Refer to actual source documents for detailed exceptions and deviations.
+
+================================================================================
+13. CONFLICTS/REVIEW ITEMS
+================================================================================
+
+1. CIBIL: Minimum eligibility threshold not defined; only pricing bands exist. [REVIEW]
+2. AGE: Not defined in source. [REVIEW]
+3. SALARY/NTH: Not defined in source. [REVIEW]
+4. LOAN AMOUNT: No absolute min/max defined; only pricing bands up to 19.99L. [REVIEW]
+5. TENURE: Not defined in source. [REVIEW]
+6. FOIR: Not defined in source. [REVIEW]
+7. EMPLOYMENT TYPE: Not defined in source. [REVIEW]
+8. COMPANY CATEGORIES: Only rate-card groups are listed; no comprehensive eligibility mapping. [REVIEW]
+9. FD BACKED: ROI and PF defined, but eligibility criteria not defined. [REVIEW]
+10. RATE CARD: Multiple overlapping bands (LA >= 5L, LA < 20L, LA < 30L, LA < 5L). [REVIEW]
+
+================================================================================
+END OF ICICI BANK PERSONAL LOAN POLICY RULEBOOK
+================================================================================

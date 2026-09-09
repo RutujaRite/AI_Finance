@@ -1,0 +1,221 @@
+================================================================================
+CHOLAMANDALAM INVESTMENT & FINANCE PERSONAL LOAN - POLICY RULEBOOK
+Generated: 2026-08-27
+Source Bank: Cholamandalam Investment & Finance (CHOLA)
+================================================================================
+
+PURPOSE:
+This is a concise eligibility and pricing rulebook for Cholamandalam Personal Loan.
+It is derived from all source documents and PostgreSQL policy records.
+Use this for AI decision-making, eligibility checks, and policy validation.
+
+SECTIONS:
+1. PROGRAM OVERVIEW
+2. ELIGIBILITY CRITERIA
+3. COMPANY/EMPLOYER CATEGORIES
+4. PRICING & ROI
+5. LOAN PARAMETERS
+6. FOIR & MULTIPLIER RULES
+7. NTH / SALARY REQUIREMENTS
+8. BT / CCBT / APP LOAN RULES
+9. DOCUMENT REQUIREMENTS
+10. EXCEPTIONS & DEVIATIONS
+11. CONFLICTS/REVIEW ITEMS
+
+================================================================================
+1. PROGRAM OVERVIEW
+================================================================================
+
+Active Programs:
+- Personal Loan - Salaried
+- Personal Loan - Self-Employed
+- Personal Loan - Any/General
+- Business Loan
+
+================================================================================
+2. ELIGIBILITY CRITERIA
+================================================================================
+
+CIBIL Score Requirements:
+- Minimum CIBIL: 675
+- CIBIL < 700: Loan amount up to ₹5,00,000 only
+- CIBIL > 700: Loan amount up to ₹20,00,000
+- CIBIL vintage: 6 months mandatory
+- CIBIL -1 will be considered for Govt Employees
+- New to CIBIL (0/-1): Max loan cap ₹5,00,000
+- Max 5 CIBIL enquiries in last 1 month accepted
+- No CIBIL enquiries in last 30 days (some versions) [REVIEW]
+
+Age Requirements:
+- Minimum Age: 25 years (applicant)
+- Co-applicant Minimum Age: 23 years
+- Maximum Age: 60 years at time of loan
+- Max Age at loan maturity: 70 years (some versions) [REVIEW]
+
+Employment Types:
+- Salaried
+- Self-Employed
+
+Work Experience / Business Stability:
+- Total Experience: Pvt Ltd - 1 year, Govt - 6 months
+- Work from Home profile: HR confirmation mandatory irrespective of company categorization
+- CAT C/D employer with restricted office entry: HI confirmation mandatory
+- CAT A/B employer with restricted office entry: Confirmation email or Chola Staff visit confirming customer employment required
+- All non-govt cases: EPFO check and official email ID check mandatory, result to be positive
+- All salaried due diligence checks to be ensured
+- If norms not met: Empowerment at NCM level
+- Office FH can be done by FI agency and Chola employee (COE/BCOM/ACOM/RCOM/ZCOM/RM/SEE/ABM/ASM/RSM/ARM/RRM)
+
+================================================================================
+3. COMPANY/EMPLOYER CATEGORIES
+================================================================================
+
+Company Categories:
+- CAT A: Government employees, listed companies, A to AAA rated
+- CAT B: Listed Pvt Ltd companies
+- CAT C: Unlisted companies with required vintage
+- CAT D: Other salaried profiles
+
+Company Restrictions:
+- Unlisted company not doable
+- Manpower & Client location case not doable
+
+Negative Profiles/Industries:
+- Minors, Entertainment & Leisure-Hotel
+- Leasing Business / Small Financiers
+- Lawyers/Lawyers in the family
+- Plantation Companies / Agro companies
+- Time Share Companies & Holiday resorts
+- Production or trade in tobacco
+- Politicians/Persons in politically sensitive areas
+- Property brokers, Scrap Merchants
+- Association of persons, HUF & Trusts
+- Stockbrokers
+- Liquor and Wine Business
+- Civil & Government Contractors
+- DSA/DMA of other Finance Companies
+- Traders in Animals/Sand/Timber/Sea Food
+- Coaching Center/Classes
+- Gambling, casinos
+- Butchers & Poultry Farm industry
+- Milk trading
+- Bar owners
+- Manpower agencies
+- Coal trading
+- Advertisement Bulk SMS & Email
+
+================================================================================
+4. PRICING & ROI
+================================================================================
+
+ROI Pricing Grid:
+- ROI starting 16% to 19% (system approval, no deviation)
+
+Processing Fees:
+- As per policy
+
+================================================================================
+5. LOAN PARAMETERS
+================================================================================
+
+Loan Amount Limits:
+- Minimum: ₹1,00,000
+- Maximum: ₹20,00,000
+- CIBIL < 700: Maximum ₹5,00,000
+- CIBIL > 700: Maximum ₹20,00,000
+- New to CIBIL (0/-1): Maximum ₹5,00,000
+
+Tenure:
+- Minimum: 12 months
+- Maximum: 84 months
+- Tenure up to 84 months across all categories for salary above ₹40,000
+- Maximum tenure 48 months for CIBIL score < 750
+
+================================================================================
+6. FOIR & MULTIPLIER RULES
+================================================================================
+
+FOIR Limits:
+NMI Band           | CAT A/Govt/B | CAT C/D
+Up to ₹50,000      | 65%          | 55%
+Above ₹50,000      | 70%          | 65%
+
+Existing Obligations:
+- All loans reflecting in CIBIL, banking and all loans confirmed during PD to be obligated for eligibility calculations
+- Any existing loan getting over within 6 months whose loan tenure is >18 months: need not be obligated for arriving total obligations
+- Credit Card Obligations: Gross salary * 5 times CC outstanding = Nil obligations
+- Nil obligations for Gold loan irrespective of outstanding
+- Joint HL not to be obligated if spouse is serving EMI from their account and sufficient to cover all EMIs
+
+================================================================================
+7. NTH / SALARY REQUIREMENTS
+================================================================================
+
+Monthly NTH Requirements:
+- General: Above ₹25,000
+- Tier 1 Locations: Minimum NMI ₹25,000
+- Tier 2 Locations: Minimum NMI ₹20,000
+- Salary above ₹40,000: Tenure up to 84 months across all categories
+
+Salary Considerations:
+- 3 months Incentive (Average 50%) can be considered for NMI
+- Clubbing of income accepted
+
+================================================================================
+8. BT / CCBT / APP LOAN RULES
+================================================================================
+
+Balance Transfer (BT) Rules:
+- Max takeover 6 BT (including CC BT)
+- Minimum tenure for BT is 6 EMI
+- BT allowed from all banks except co-operative banks/rural banks
+- Personal Loan BT FC letter mandatory
+
+Credit Card BT:
+- Gross salary * 5 times CC outstanding = Nil obligations
+
+================================================================================
+9. DOCUMENT REQUIREMENTS
+================================================================================
+
+Mandatory Documents:
+- KYC: PAN, Aadhaar (Mask)
+- Address proof: AADHAR RECEIPT, Govt ID, Gas Bill and Rental Agreement bond ₹100 with notary with 2 witness signature required
+- Ownership proof
+- Live Photo (both applicant)
+- Banking: 6 months
+- Latest 3 months Salary Slip
+- Business proof (for Business Loan): GST / Gumasta / Shop & Establishment Act (min 3 years business vintage)
+- Professional Degree Certificate / Registration Certificate (SEP)
+
+================================================================================
+10. EXCEPTIONS & DEVIATIONS
+================================================================================
+
+Bounce & Delinquency Norms:
+- No EMI bounce in last 3 months (non-technical)
+- 1 bounced allowed in last 6 months
+
+Other Exceptions:
+- Govt Grade 4 employees (including Driver, Technician, Sub staff, Attenders & Corporation employees) can be funded up to ₹5,00,000
+- Work from Home & Bachelor's: Co-applicant and HR mail confirmation mandatory
+- OHP compulsory
+- Loan amount between ₹10L to ₹20L: 5 years exp proof mandatory
+- No deviation allowed on ROI, PF & Insurance
+- Unlisted company not doable
+- Manpower & Client location case not doable
+
+================================================================================
+11. CONFLICTS/REVIEW ITEMS
+================================================================================
+
+1. AGE: Multiple values found across versions (25, 23, 60, 70). [REVIEW]
+2. CIBIL INQUIRY: Multiple values found across versions (5 in last 1 month, none in last 30 days). [REVIEW]
+3. CIBIL VINTAGE: Multiple values found across versions (6 months, 12 months). [REVIEW]
+4. SALARY: Multiple values found across versions (25000, 40000). [REVIEW]
+5. LOAN AMOUNT: Multiple values found across versions (50000, 500000, 2000000). [REVIEW]
+6. MAX AGE: Multiple values found across versions (60, 70). [REVIEW]
+
+================================================================================
+END OF CHOLAMANDALAM INVESTMENT & FINANCE PERSONAL LOAN POLICY RULEBOOK
+================================================================================

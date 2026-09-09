@@ -1,0 +1,286 @@
+================================================================================
+SBM BANK (INDIA) PERSONAL LOAN - MASTER POLICY
+================================================================================
+
+BANK: SBM Bank (India)
+PRODUCT: Personal Loan
+
+================================================================================
+1. ELIGIBILITY
+================================================================================
+
+Minimum Salary:
+- Listed Company: Rs. 50,000 per month
+- Non-Listed Company: Rs. 50,000 per month
+- Company approval to be taken prior to login where applicable
+
+Age:
+- Minimum: 25 years
+- Maximum: 60 years
+
+PF Deduction:
+- Mandatory
+- Must be verified in Payslip or EPFO Statement
+
+================================================================================
+2. CIBIL / NTC
+================================================================================
+
+Standard CIBIL:
+- Minimum CIBIL Score: 720+
+
+CIBIL 0 / -1:
+- Allowed
+- Maximum Loan Amount: Rs. 5 Lakhs
+- Non-Listed Company: Allowed under the newer policy
+
+================================================================================
+3. LOAN AMOUNT
+================================================================================
+
+- Minimum Loan Amount: Rs. 5 Lakhs
+- Maximum Loan Amount: Rs. 30 Lakhs
+
+Loan Amount Capping:
+- Listed Company: Up to Rs. 30 Lakhs
+- SBM Group: Up to Rs. 30 Lakhs
+- Government: Up to Rs. 30 Lakhs
+- Non-Listed Company: Up to Rs. 30 Lakhs
+- CIBIL 0 / -1: Up to Rs. 5 Lakhs
+
+================================================================================
+4. TENURE
+================================================================================
+
+- Minimum Tenure: 12 months
+- Maximum Tenure: 60 months
+
+================================================================================
+5. FOIR
+================================================================================
+
+Salary Rs. 30,000 to Rs. 50,000:
+- Maximum FOIR: 50%
+
+Salary above Rs. 50,000 to Rs. 1,00,000:
+- Maximum FOIR: 60%
+
+Salary above Rs. 1,00,000:
+- Maximum FOIR: 65%
+
+================================================================================
+6. CREDIT CARD OBLIGATION
+================================================================================
+
+Salary Below Rs. 1 Lakh:
+- Credit Card outstanding up to 3 times salary: NIL obligation
+- Credit Card outstanding above 3 times salary:
+  5% of total outstanding to be considered as obligation
+
+Salary Rs. 1 Lakh and Above:
+- Credit Card outstanding up to 5 times salary: NIL obligation
+- Credit Card outstanding above 5 times salary:
+  5% of total outstanding to be considered as obligation
+
+================================================================================
+7. BALANCE TRANSFER
+================================================================================
+
+Balance Transfer Allowed For:
+- Personal Loan
+- Credit Card
+- Overdraft
+- Jumbo Loan
+- App Loan
+
+Tradeline Limit:
+- Maximum 5 tradelines including applicable:
+  - App Loans
+  - Credit Cards
+  - Personal Loans
+  - Overdrafts
+
+================================================================================
+8. PART PAYMENT / FORECLOSURE
+================================================================================
+
+Part Payment:
+- Allowed after 12 months
+- Applicable charge: 4% plus taxes as stated in policy
+
+Foreclosure:
+- Allowed after 12 EMIs
+- Closure charge: 4% plus taxes
+
+================================================================================
+9. PROCESSING FEE / INSURANCE
+================================================================================
+
+Processing Fee:
+- 2%
+
+Insurance:
+- Mandatory
+
+================================================================================
+10. CURRENT ROI PRICING GRID
+================================================================================
+
+SOURCE: SBM New Pricing Grid - 06-May-2025
+
+Rates are linked to current EBLR and may vary with changes in EBLR.
+
+IMPORTANT:
+The source uses the following CIBIL headings exactly:
+- CIBIL >750
+- CIBIL >720 to <=750
+- CIBIL below 730
+
+The last two source labels overlap for CIBIL 721-729.
+Do not guess which pricing column applies in that overlap without a verified
+clarification.
+
+--------------------------------------------------------------------------------
+GRID 1 - NET MONTHLY INCOME > Rs. 1,00,000
+--------------------------------------------------------------------------------
+
+CIBIL >750:
+- ROI: 11.25%
+
+CIBIL >720 to <=750:
+- ROI: 11.50%
+
+CIBIL below 730:
+- ROI: 12.25%
+
+GRID 1 APPLICABILITY:
+- Net monthly salary must be above Rs. 1 Lakh
+- Loan Amount must be >= Rs. 10 Lakhs
+- No App Loan BT
+- No Credit Card BT
+- Applicant must be employed with a Listed Company
+- Private / Partnership employer profiles excluded from Grid 1 as stated
+- Employer turnover must be more than Rs. 250 Crores
+- Not more than 6 CIBIL enquiries in the last 30 days from login date
+- Self-owned house required
+- Minimum 5 years stability in the same city
+
+If any Grid 1 condition is not satisfied:
+- Do not apply Grid 1 pricing
+
+--------------------------------------------------------------------------------
+GRID 2 - NET MONTHLY INCOME > Rs. 75,000 TO <= Rs. 1,00,000
+--------------------------------------------------------------------------------
+
+CIBIL >750:
+- ROI: 13.00%
+
+CIBIL >720 to <=750:
+- ROI: 14.00%
+
+CIBIL below 730:
+- ROI: 15.00%
+
+--------------------------------------------------------------------------------
+GRID 3 - NET MONTHLY INCOME > Rs. 50,000 TO <= Rs. 75,000
+--------------------------------------------------------------------------------
+
+CIBIL >750:
+- ROI: 13.50%
+
+CIBIL >720 to <=750:
+- ROI: 14.50%
+
+CIBIL below 730:
+- ROI: 15.50%
+
+--------------------------------------------------------------------------------
+GRID 4 - NET MONTHLY INCOME > Rs. 35,000 TO <= Rs. 50,000
+--------------------------------------------------------------------------------
+
+CIBIL >750:
+- ROI: 14.50%
+
+CIBIL >720 to <=750:
+- ROI: 15.75%
+
+CIBIL below 730:
+- ROI: 16.75%
+
+--------------------------------------------------------------------------------
+GRID 5 - NET MONTHLY INCOME BELOW Rs. 35,000
+--------------------------------------------------------------------------------
+
+CIBIL >750:
+- ROI: 16.75%
+
+CIBIL >720 to <=750:
+- ROI: 17.75%
+
+CIBIL below 730:
+- ROI: 19.75%
+
+================================================================================
+11. ADDITIONAL INCOME
+================================================================================
+
+Annual Bonus:
+- Can be considered as per applicable calculation
+
+Incentive:
+- 50% can be considered
+
+Applicant / Co-Applicant:
+- Allowed
+
+================================================================================
+12. ADDRESS PROOF
+================================================================================
+
+Accepted:
+- Government-issued IDs
+- Utility Bill
+- Employer Letterhead
+- Acknowledgement Slip for login, where applicable
+
+Not Accepted as Address Proof:
+- Rent Agreement
+- Bank Statement
+
+================================================================================
+13. MANDATORY DOCUMENTS
+================================================================================
+
+- Signed KYC Documents
+- Duly Filled Application Form
+- Valid Address Proof
+- Last 3 Months Salary Slips
+- Last 6 Months Salary Account Bank Statement
+- 2 Year JCP
+- Latest Form 16
+- PF deduction evidence through Payslip or EPFO Statement
+
+================================================================================
+14. POLICY VERSION NOTES
+================================================================================
+
+Older supplied SBM policy versions had different values, including:
+- Listed-company salary Rs. 30,000
+- Non-listed salary Rs. 50,000
+- Age 23 to 58 years
+- Minimum loan Rs. 2 Lakhs
+- Minimum tenure 6 months
+- Non-listed NTC not allowed
+- Non-listed maximum funding Rs. 20 Lakhs
+- Part payment not allowed
+- Older ROI ranges of approximately 13.5% to 16%
+
+The newer SBM PL One Pager dated 12-Mar-2025 and the pricing grid dated
+06-May-2025 should be used for the rules above unless the backend has an
+explicitly different active policy version.
+
+Do not mix older values with the newer policy.
+
+================================================================================
+END OF SBM BANK (INDIA) PERSONAL LOAN MASTER POLICY
+================================================================================
