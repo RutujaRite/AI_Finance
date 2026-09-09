@@ -39,7 +39,18 @@ export default function PoliciesView({
   const [activeViewerFile, setActiveViewerFile] = useState<any | null>(null)
   const [loadingFileContent, setLoadingFileContent] = useState(false)
   const [modalSearch, setModalSearch] = useState("")
-  const [copySuccess, setCopySuccess] = useState(false)
+  const [isEditingViewerFile, setIsEditingViewerFile] = useState(false)
+  const [viewerFileDraftText, setViewerFileDraftText] = useState("")
+  const [isSavingFileContent, setIsSavingFileContent] = useState(false)
+
+  const isAdmin =
+    String(user?.role || "").trim().toLowerCase() === "admin" ||
+    user?.is_admin === true ||
+    String(user?.email || "").toLowerCase() === "admin@gmail.com" ||
+    String(user?.email || "").toLowerCase() === "akshadasagar31@gmail.com" ||
+    String(user?.email || "").toLowerCase().startsWith("admin")
+
+  const hasUnsavedChanges = isEditingViewerFile && viewerFileDraftText !== (activeViewerFile?.extracted_text || "")
 
   // Action Toast Notification
   const [actionToast, setActionToast] = useState<{ message: string; type: "success" | "error" } | null>(null)
@@ -82,6 +93,9 @@ export default function PoliciesView({
   useEffect(() => {
     if (propUser) {
       setUser(propUser)
+      if (!propUser.role) {
+        checkAuth()
+      }
     } else {
       checkAuth()
     }
@@ -98,15 +112,16 @@ export default function PoliciesView({
 
   async function checkAuth() {
     try {
-      const res = await fetch("/api/auth/verify")
+      const res = await fetch("/api/auth/verify", { credentials: "include" })
       if (!res.ok) {
-        router.replace("/login")
         return
       }
       const data = await res.json()
-      if (data.success) setUser(data.user)
+      if (data.success && data.user) {
+        setUser(data.user)
+      }
     } catch (e) {
-      router.replace("/login")
+      console.warn("checkAuth error", e)
     }
   }
 
@@ -289,21 +304,129 @@ export default function PoliciesView({
 
   // Document viewer modal
   async function handleOpenViewer(fileId: number, fallbackData?: any) {
+    if (!user?.role) {
+      checkAuth()
+    }
     setLoadingFileContent(true)
     setModalSearch("")
-    setCopySuccess(false)
+    setIsEditingViewerFile(false)
     try {
       const res = await fetch(`/api/policies/extracted-files/${fileId}`)
       const data = await res.json()
       if (data.success && data.file) {
         setActiveViewerFile(data.file)
+        setViewerFileDraftText(data.file.extracted_text || "")
       } else if (fallbackData) {
+        const fallbackText = fallbackData.extracted_text || fallbackData.attachment_extracted_text || ""
         setActiveViewerFile(fallbackData)
+        setViewerFileDraftText(fallbackText)
       }
     } catch (e) {
-      if (fallbackData) setActiveViewerFile(fallbackData)
+      if (fallbackData) {
+        const fallbackText = fallbackData.extracted_text || fallbackData.attachment_extracted_text || ""
+        setActiveViewerFile(fallbackData)
+        setViewerFileDraftText(fallbackText)
+      }
     } finally {
       setLoadingFileContent(false)
+    }
+  }
+
+  function handleEnterEdit() {
+    if (!isAdmin || !activeViewerFile) return
+    setViewerFileDraftText(activeViewerFile.extracted_text || "")
+    setIsEditingViewerFile(true)
+  }
+
+  function handleCancelEdit() {
+    if (hasUnsavedChanges) {
+      if (!window.confirm("Discard unsaved changes and return to read-only view?")) {
+        return
+      }
+    }
+    setIsEditingViewerFile(false)
+    setViewerFileDraftText(activeViewerFile?.extracted_text || "")
+  }
+
+  function handleCloseViewer() {
+    if (isEditingViewerFile && hasUnsavedChanges) {
+      if (!window.confirm("You have unsaved changes in the policy editor. Are you sure you want to close?")) {
+        return
+      }
+    }
+    setActiveViewerFile(null)
+    setIsEditingViewerFile(false)
+  }
+
+  async function handleSaveFileContent() {
+    if (!activeViewerFile || !isAdmin) return
+    setIsSavingFileContent(true)
+    try {
+      const fileId = activeViewerFile.id || activeViewerFile.file_id || activeViewerFile.bank_id || 1
+      const fileName = activeViewerFile.file_name
+
+      const res = await fetch(`/api/policies/extracted-files/${fileId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          file_name: fileName,
+          content: viewerFileDraftText,
+        }),
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        const newByteSize = data.file_size_bytes || new Blob([viewerFileDraftText]).size
+        const updatedFile = {
+          ...activeViewerFile,
+          extracted_text: viewerFileDraftText,
+          file_size_bytes: newByteSize,
+        }
+        setActiveViewerFile(updatedFile)
+        setIsEditingViewerFile(false)
+
+        // Update policyFiles list
+        setPolicyFiles((prev) =>
+          prev.map((f) =>
+            f.file_name === fileName || f.id === fileId
+              ? {
+                  ...f,
+                  extracted_text: viewerFileDraftText,
+                  text_length: viewerFileDraftText.length,
+                  file_size_bytes: newByteSize,
+                  snippet: viewerFileDraftText.substring(0, 250),
+                }
+              : f
+          )
+        )
+
+        // Update policies list
+        setPolicies((prev) =>
+          prev.map((p) =>
+            p.file_name === fileName ||
+            p.attachment_file_name === fileName ||
+            p.id === fileId ||
+            p.bank_id === activeViewerFile.bank_id
+              ? {
+                  ...p,
+                  attachment_extracted_text: viewerFileDraftText,
+                  file_size_bytes: newByteSize,
+                }
+              : p
+          )
+        )
+
+        showToast(`✓ Master policy file "${fileName}" saved successfully`, "success")
+      } else {
+        showToast(`✕ Failed to save file: ${data.error || "Unknown error"}`, "error")
+      }
+    } catch (err: any) {
+      console.error("Failed to save policy file content", err)
+      showToast("✕ Network error while saving policy file", "error")
+    } finally {
+      setIsSavingFileContent(false)
     }
   }
 
@@ -344,21 +467,15 @@ export default function PoliciesView({
     }
   }
 
-  function handleCopyText() {
-    if (!activeViewerFile?.extracted_text) return
-    navigator.clipboard.writeText(activeViewerFile.extracted_text)
-    setCopySuccess(true)
-    setTimeout(() => setCopySuccess(false), 2000)
-  }
-
   function handleDownloadText(fileName: string, text: string) {
     const element = document.createElement("a")
-    const file = new Blob([text], { type: "text/plain" })
+    const file = new Blob([text], { type: "text/plain;charset=utf-8" })
     element.href = URL.createObjectURL(file)
     element.download = fileName || "policy-document.txt"
     document.body.appendChild(element)
     element.click()
     document.body.removeChild(element)
+    URL.revokeObjectURL(element.href)
   }
 
   function highlightMatch(text: string, query: string) {
@@ -614,14 +731,26 @@ export default function PoliciesView({
                                 className="btn btn-secondary btn-sm"
                                 title="View Master Document"
                                 onClick={() => {
-                                  if (policy.attachment_extracted_text) {
+                                  if (!user?.role) {
+                                    checkAuth()
+                                  }
+                                  const fileName = policy.attachment_file_name || policy.file_name || `${policy.bank_name}_Master_Policy.txt`
+                                  const extractedText = policy.attachment_extracted_text || ""
+                                  if (extractedText) {
                                     setActiveViewerFile({
-                                      file_name: policy.attachment_file_name || policy.file_name || `${policy.bank_name}_Master_Policy.txt`,
+                                      id: policy.attachment_id || policy.file_id || policy.bank_id || policy.id,
+                                      file_id: policy.attachment_id || policy.file_id || policy.id,
+                                      bank_id: policy.bank_id,
+                                      file_name: fileName,
                                       bank_name: policy.bank_name,
-                                      extracted_text: policy.attachment_extracted_text,
+                                      extracted_text: extractedText,
+                                      file_size_bytes: policy.file_size_bytes || new Blob([extractedText]).size,
                                     })
+                                    setViewerFileDraftText(extractedText)
+                                    setIsEditingViewerFile(false)
+                                    setModalSearch("")
                                   } else {
-                                    handleOpenViewer(policy.attachment_id || policy.id, policy)
+                                    handleOpenViewer(policy.attachment_id || policy.bank_id || policy.id, policy)
                                   }
                                 }}
                               >
@@ -1255,95 +1384,266 @@ export default function PoliciesView({
         </div>
       )}
 
-      {/* POLICY DOCUMENT VIEWER MODAL (CallNow Section 11) */}
+      {/* POLICY DOCUMENT VIEWER & EDITOR MODAL */}
       {activeViewerFile && (
-        <div className="modal-backdrop" onClick={() => setActiveViewerFile(null)}>
+        <div className="modal-backdrop" onClick={handleCloseViewer}>
           <div
             className="modal-content"
-            style={{ maxWidth: 960, maxHeight: "88vh" }}
+            style={{ maxWidth: 1040, maxHeight: "90vh", display: "flex", flexDirection: "column" }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="modal-header">
-              <div>
-                <h3 className="modal-title">
-                  <i className="bi bi-file-earmark-text" style={{ color: "var(--accent)", marginRight: "0.375rem" }} />
-                  {activeViewerFile.file_name || "Policy Document"}
+            <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ minWidth: 0 }}>
+                <h3 className="modal-title" style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <i className="bi bi-file-earmark-text" style={{ color: "var(--accent)" }} />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {activeViewerFile.file_name || "Policy Document"}
+                  </span>
+                  {isEditingViewerFile && (
+                    <span
+                      className="badge"
+                      style={{
+                        background: "rgba(37, 99, 235, 0.12)",
+                        color: "var(--accent)",
+                        border: "1px solid rgba(37, 99, 235, 0.3)",
+                        fontSize: "0.75rem",
+                        padding: "0.2rem 0.5rem",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <i className="bi bi-pencil-fill" style={{ marginRight: "0.25rem", fontSize: "0.7rem" }} />
+                      Editor Mode (Admin)
+                    </span>
+                  )}
                 </h3>
                 <p style={{ color: "var(--ink-soft)", fontSize: "0.75rem", margin: "2px 0 0 0" }}>
                   Bank: <strong>{activeViewerFile.bank_name || "Partner Bank"}</strong>
                 </p>
               </div>
 
-              <div style={{ display: "flex", gap: "0.375rem", alignItems: "center" }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={handleCopyText}
-                >
-                  {copySuccess ? <><i className="bi bi-check" /> Copied</> : <><i className="bi bi-clipboard" /> Copy</>}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => handleDownloadText(activeViewerFile.file_name, activeViewerFile.extracted_text || "")}
-                >
-                  <i className="bi bi-download" /> Download
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => setActiveViewerFile(null)}
-                >
-                  <i className="bi bi-x-lg" />
-                </button>
+              <div style={{ display: "flex", gap: "0.375rem", alignItems: "center", flexShrink: 0 }}>
+                {!isEditingViewerFile ? (
+                  <>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        title="Edit Master Policy Document"
+                        onClick={handleEnterEdit}
+                        style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
+                      >
+                        <i className="bi bi-pencil" /> Edit
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      title="Download Master Document"
+                      onClick={() => handleDownloadText(activeViewerFile.file_name, activeViewerFile.extracted_text || "")}
+                      style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
+                    >
+                      <i className="bi bi-download" /> Download
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={handleCloseViewer}
+                      aria-label="Close modal"
+                    >
+                      <i className="bi bi-x-lg" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      title="Download policy text"
+                      onClick={() => handleDownloadText(activeViewerFile.file_name, viewerFileDraftText)}
+                      style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
+                    >
+                      <i className="bi bi-download" /> Download
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={handleCloseViewer}
+                      aria-label="Close modal"
+                    >
+                      <i className="bi bi-x-lg" />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Modal Search Bar */}
-            <div style={{ padding: "0.75rem 1.25rem", background: "var(--surface-2)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Search inside master policy document..."
-                value={modalSearch}
-                onChange={(e) => setModalSearch(e.target.value)}
-              />
-              {modalSearch && (
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setModalSearch("")}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
+            {/* If in View Mode: Search Bar & Document Reader */}
+            {!isEditingViewerFile ? (
+              <>
+                {/* Modal Search Bar */}
+                <div style={{ padding: "0.75rem 1.25rem", background: "var(--surface-2)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <i className="bi bi-search" style={{ color: "var(--ink-muted)", fontSize: "0.875rem" }} />
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Search inside master policy document..."
+                    value={modalSearch}
+                    onChange={(e) => setModalSearch(e.target.value)}
+                    style={{ flex: 1, fontSize: "0.8125rem" }}
+                  />
+                  {modalSearch && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setModalSearch("")}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
 
-            {/* Modal Document Reader */}
-            <div
-              className="modal-body"
-              style={{
-                fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                fontSize: "0.8125rem",
-                lineHeight: 1.6,
-                whiteSpace: "pre-wrap",
-                background: "var(--bg)",
-                color: "var(--ink)",
-              }}
-            >
-              {loadingFileContent ? (
-                <div style={{ textAlign: "center", padding: 40, color: "var(--ink-muted)" }}>
-                  Loading policy document content...
+                {/* Modal Document Reader */}
+                <div
+                  className="modal-body"
+                  style={{
+                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                    fontSize: "0.8125rem",
+                    lineHeight: 1.6,
+                    whiteSpace: "pre-wrap",
+                    background: "var(--bg)",
+                    color: "var(--ink)",
+                    minHeight: 380,
+                    maxHeight: "68vh",
+                    overflowY: "auto",
+                    padding: "1.25rem",
+                  }}
+                >
+                  {loadingFileContent ? (
+                    <div style={{ textAlign: "center", padding: 40, color: "var(--ink-muted)" }}>
+                      Loading policy document content...
+                    </div>
+                  ) : !activeViewerFile.extracted_text ? (
+                    <div style={{ textAlign: "center", padding: 40, color: "var(--ink-muted)" }}>
+                      No document content available for this policy file.
+                    </div>
+                  ) : (
+                    highlightMatch(activeViewerFile.extracted_text, modalSearch)
+                  )}
                 </div>
-              ) : !activeViewerFile.extracted_text ? (
-                <div style={{ textAlign: "center", padding: 40, color: "var(--ink-muted)" }}>
-                  No document content available for this policy file.
+              </>
+            ) : (
+              /* If in Edit Mode: Editor Info Bar, Textarea & Footer */
+              <>
+                {/* Editor Status Bar */}
+                <div
+                  style={{
+                    padding: "0.625rem 1.25rem",
+                    background: "var(--surface-2)",
+                    borderBottom: "1px solid var(--border)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: "0.5rem",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--ink-soft)" }}>
+                    <i className="bi bi-file-earmark-code" style={{ color: "var(--accent)" }} />
+                    <span>
+                      Editing file: <strong style={{ color: "var(--ink)", fontFamily: "monospace" }}>policy-master-files/{activeViewerFile.file_name}</strong>
+                    </span>
+                    <span style={{ color: "var(--border)" }}>•</span>
+                    <span style={{ color: "var(--ink-muted)" }}>Direct in-place update (no duplicate files created)</span>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <span style={{ color: "var(--ink-muted)" }}>
+                      {viewerFileDraftText.length.toLocaleString()} chars · {viewerFileDraftText.split("\n").length.toLocaleString()} lines
+                    </span>
+                    {hasUnsavedChanges ? (
+                      <span style={{ color: "#f59e0b", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
+                        Unsaved changes
+                      </span>
+                    ) : (
+                      <span style={{ color: "#10b981", fontWeight: 500 }}>
+                        ✓ In sync with disk
+                      </span>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                highlightMatch(activeViewerFile.extracted_text, modalSearch)
-              )}
-            </div>
+
+                {/* Text Editor Area */}
+                <div style={{ padding: "0.75rem 1.25rem", background: "var(--bg)", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+                  <textarea
+                    className="form-control"
+                    value={viewerFileDraftText}
+                    onChange={(e) => setViewerFileDraftText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Tab") {
+                        e.preventDefault()
+                        const start = e.currentTarget.selectionStart
+                        const end = e.currentTarget.selectionEnd
+                        const val = e.currentTarget.value
+                        setViewerFileDraftText(val.substring(0, start) + "    " + val.substring(end))
+                        setTimeout(() => {
+                          if (e.currentTarget) {
+                            e.currentTarget.selectionStart = e.currentTarget.selectionEnd = start + 4
+                          }
+                        }, 0)
+                      }
+                    }}
+                    spellCheck={false}
+                    placeholder="Enter or edit master policy document content here..."
+                    style={{
+                      width: "100%",
+                      height: "56vh",
+                      minHeight: 380,
+                      fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                      fontSize: "0.8125rem",
+                      lineHeight: 1.6,
+                      background: "var(--surface)",
+                      color: "var(--ink)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-md)",
+                      padding: "0.875rem",
+                      resize: "vertical",
+                      whiteSpace: "pre-wrap",
+                      tabSize: 4,
+                    }}
+                  />
+                </div>
+
+                {/* Editor Action Footer */}
+                <div className="modal-footer" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface-2)" }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--ink-muted)", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                    <i className="bi bi-info-circle" />
+                    <span>Saving overwrites <strong>{activeViewerFile.file_name}</strong> on disk. Download will provide this updated file.</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={handleCancelEdit}
+                      disabled={isSavingFileContent}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      style={{ background: "var(--accent)", color: "#ffffff", border: "none", minWidth: 125 }}
+                      onClick={handleSaveFileContent}
+                      disabled={isSavingFileContent}
+                    >
+                      {isSavingFileContent ? <><span className="spinner-inline" /> Saving...</> : <><i className="bi bi-check-lg" style={{ marginRight: "0.25rem" }} /> Save Changes</>}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

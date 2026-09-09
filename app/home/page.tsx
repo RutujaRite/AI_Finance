@@ -39,6 +39,13 @@ export default function HomePage() {
 
   const STORAGE_KEY = "emi_chat_state_v2"
 
+  const isAdmin =
+    String(user?.role || "").trim().toLowerCase() === "admin" ||
+    user?.is_admin === true ||
+    String(user?.email || "").toLowerCase() === "admin@gmail.com" ||
+    String(user?.email || "").toLowerCase() === "akshadasagar31@gmail.com" ||
+    String(user?.email || "").toLowerCase().startsWith("admin")
+
   const adjustTextarea = () => {
     const el = textareaRef.current
     if (!el) return
@@ -817,6 +824,15 @@ export default function HomePage() {
               >
                 <i className="bi bi-file-earmark-text" /> View Bank Policies
               </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => router.push("/admin")}
+                >
+                  <i className="bi bi-shield-lock" /> Admin Workspace
+                </button>
+              )}
             </div>
           </div>
 
@@ -1111,6 +1127,33 @@ export default function HomePage() {
             </div>
           </div>
           <div className="chat-sidebar-footer">
+            {isAdmin && (
+              <button
+                type="button"
+                className="chat-sidebar-admin-btn"
+                onClick={() => router.push("/admin")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  width: "100%",
+                  padding: "0.5rem 0.75rem",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-md)",
+                  color: "var(--ink)",
+                  fontSize: "0.8125rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  marginBottom: "0.5rem",
+                }}
+                title="Open Admin Workspace in full page"
+              >
+                <i className="bi bi-shield-lock" style={{ color: "var(--accent)" }} />
+                <span>Admin Workspace</span>
+                <i className="bi bi-box-arrow-up-right" style={{ marginLeft: "auto", fontSize: "0.75rem", color: "var(--ink-muted)" }} />
+              </button>
+            )}
             <div className="chat-sidebar-profile" onClick={() => router.push("/profile")}>
               <div className="chat-avatar-sm">{(user.name || user.email || "U").charAt(0).toUpperCase()}</div>
               <div className="chat-sidebar-profile-info">

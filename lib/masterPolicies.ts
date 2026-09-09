@@ -587,3 +587,50 @@ export async function updateBankMasterPolicy(
   return { success: true, message: `Bank #${bankId} policy updated successfully` };
 }
 
+/**
+ * Saves/updates the content of an existing master policy .txt file directly back to the same file.
+ * Overwrites the exact file on disk without creating duplicate files, updates in-memory cache,
+ * and synchronizes database records.
+ */
+export function saveMasterPolicyContent(
+  fileName: string,
+  newContent: string
+): { success: boolean; byteSize: number; targetPath: string } {
+  const safeBase = path.basename(fileName);
+  const dirPath = path.join(process.cwd(), "policy-master-files");
+
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+
+  const filePath = path.join(dirPath, safeBase);
+
+  // Write directly back to the same file - do NOT create duplicate files
+  fs.writeFileSync(filePath, newContent, "utf-8");
+  masterTextCache.set(safeBase, newContent);
+  const byteSize = Buffer.byteLength(newContent, "utf-8");
+
+  // Sync with DB if available
+  try {
+    if (pool) {
+      pool.query(
+        `UPDATE bank_policy_files 
+         SET extracted_text = $1, file_size_bytes = $2, uploaded_at = NOW() 
+         WHERE file_name = $3 OR file_name = $4`,
+        [newContent, byteSize, safeBase, fileName]
+      ).catch((err: any) => console.warn("bank_policy_files update non-fatal error:", err));
+
+      pool.query(
+        `UPDATE policy_attachments 
+         SET extracted_text = $1, file_size_bytes = $2 
+         WHERE file_name = $3 OR file_name = $4`,
+        [newContent, byteSize, safeBase, fileName]
+      ).catch((err: any) => console.warn("policy_attachments update non-fatal error:", err));
+    }
+  } catch (dbErr) {
+    console.warn("DB update skipped or failed for master policy content:", dbErr);
+  }
+
+  return { success: true, byteSize, targetPath: filePath };
+}
+

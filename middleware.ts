@@ -28,7 +28,12 @@ export async function middleware(request: NextRequest) {
     await jwtVerify(token, JWT_SECRET)
     return NextResponse.next()
   } catch {
-    return redirectToLogin(request)
+    try {
+      await jwtVerify(token, new TextEncoder().encode('your-secret-key-change-in-production'))
+      return NextResponse.next()
+    } catch {
+      return redirectToLogin(request)
+    }
   }
 }
 

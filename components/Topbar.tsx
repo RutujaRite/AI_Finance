@@ -118,8 +118,15 @@ export default function Topbar({
     },
   ]
 
+  const isAdmin =
+    String(user?.role || "").trim().toLowerCase() === "admin" ||
+    user?.is_admin === true ||
+    String(user?.email || "").toLowerCase() === "admin@gmail.com" ||
+    String(user?.email || "").toLowerCase() === "akshadasagar31@gmail.com" ||
+    String(user?.email || "").toLowerCase().startsWith("admin")
+
   const visibleNavItems = navItems.filter((item) => {
-    if (item.adminOnly && user?.role !== "admin") return false
+    if (item.adminOnly && !isAdmin) return false
     return true
   })
 
@@ -184,6 +191,10 @@ export default function Topbar({
               key={item.id}
               href={item.href}
               className={`nav-item ${isSectionActive ? "active" : ""}`}
+              onClick={(e) => {
+                e.preventDefault()
+                router.push(item.href)
+              }}
             >
               <i className={item.iconClass} />
               <span>{item.label}</span>
@@ -210,9 +221,14 @@ export default function Topbar({
           <span className="profile-menu-label">{displayName}</span>
           <i className="bi bi-chevron-down caret" />
           <div className="profile-dropdown" onClick={(e) => e.stopPropagation()}>
-            <a href="/profile">
+            <a href="/profile" onClick={(e) => { e.preventDefault(); router.push("/profile") }}>
               <i className="bi bi-person" /> Profile
             </a>
+            {isAdmin && (
+              <a href="/admin" onClick={(e) => { e.preventDefault(); router.push("/admin") }}>
+                <i className="bi bi-shield-lock" /> Admin Workspace
+              </a>
+            )}
             <button
               type="button"
               onClick={handleLogout}

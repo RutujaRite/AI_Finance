@@ -2890,3 +2890,16 @@ a:hover {
     transform: translateY(1px);
 }
 
+/* Admin Workspace Full Width Layout */
+.admin-workspace-fullwidth {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.chat-sidebar-admin-btn:hover {
+    background: var(--surface-3, rgba(94, 106, 210, 0.08)) !important;
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+}
+
