@@ -466,10 +466,11 @@ async function runToolCallingAgent(
 const isManagerQuery = /manager|contact|phone|mobile|email|number|\basm\b|\brsm\b|\bzsm\b|\brh\b|\brm\b|branch manager|contact details/i.test(userMessage);
 
 // BASIC LOAN/EMI QUESTIONS: never trigger banking/company tool calls
-const isBasicLoanEmiQuery = /(emi|emi\s+calculator|calculate.*emi|emi.*amount|what.*emi|how.*emi)/i.test(userMessage) ||
+isBasicLoanEmiQuery: /(emi|emi\s+calculator|calculate.*emi|emi.*amount|what.*emi|how.*emi)/i.test(userMessage) ||
   /(loan.*interest|interest.*rate|rate.*loan|loan.*rate)/i.test(userMessage) ||
   /(how.*much.*loan|loan.*how.*much|max.*loan|loan.*max)/i.test(userMessage) ||
-  /(personal.*loan.*eligib|eligib.*personal.*loan)/i.test(userMessage);
+  /(personal.*loan.*eligib|eligib.*personal.*loan)/i.test(userMessage) ||
+  /(for\s+\d+\s+months?)/i.test(userMessage);
 
 const isCompanyQuery = /company|employer|category|rating|listing/i.test(userMessage) && !isManagerQuery && !isBasicLoanEmiQuery;
 const isPolicyQuery = /approval|eligibility|salary|cibil|emi|income|foir|interest|roi|tenure|policy|rate|multiplier|assessment|summary|criteria/i.test(userMessage) && !isManagerQuery && !isBasicLoanEmiQuery && !isCompanyQuery;
@@ -672,7 +673,7 @@ export async function runCentralAgent(opts: {
   // deterministic eligibility engine against active policy_rules +
   // policy_versions tables to evaluate the answer.
   const lowerMessage = normalizedMsg;
-  const isLoanIntentMsg = /(?:want|need|looking|interested|apply)\s+(?:a\s+|for\s+)?personal\s*loan|personal\s*loan\s*(?:eligibility|check|apply|needed)|\bi\s+want\s+(?:a\s+)?personal\s*loan|\bget\s+(?:a\s+)?personal\s*loan|\bcheck\s+loan\s+eligibility|\bloan\s+eligibility|\bemi\s+calculator|\bcalculate\s+emi|\bi\s+need\s+(?:a\s+)?loan\b|need\s+a\s+loan|\bi\s+want\s+to\s+check\s+eligibility\s+for\s+(?:a\s+)?personal\s*loan|\bi\s+want\s+to\s+check\s+my\s+eligibility\s+for\s+(?:a\s+)?personal\s*loan|\bi\s+want\s+to\s+check\s+loan\s+eligibility|\bcan\s+i\s+get\s+(?:a\s+)?personal\s*loan|\bam\s+i\s+eligible\s+for\s+(?:a\s+)?personal\s*loan|\bhow\s+to\s+get\s+(?:a\s+)?personal\s*loan|\bapply\s+for\s+(?:a\s+)?personal\s*loan|\bpersonal\s+loan\s+eligibility\b/i.test(lowerMessage);
+  const isLoanIntentMsg = /(?:want|need|looking|interested|apply)\s+(?:a\s+|for\s+)?personal\s*loan|personal\s*loan\s*(?:eligibility|check|apply|needed)|\bi\s+want\s+(?:a\s+)?personal\s*loan|\bget\s+(?:a\s+)?personal\s*loan|\bcheck\s+loan\s+eligibility|\bloan\s+eligibility|\bemi\s+calculator|\bcalculate\s+emi|\bi\s+need\s+(?:a\s+)?loan\b|need\s+a\s+loan|\bi\s+want\s+to\s+check\s+eligibility\s+for\s+(?:a\s+)?personal\s*loan|\bi\s+want\s+to\s+check\s+my\s+eligibility\s+for\s+(?:a\s+)?personal\s*loan|\bi\s+want\s+to\s+check\s+loan\s+eligibility|\bcan\s+i\s+get\s+(?:a\s+)?personal\s*loan|\bam\s+i\s+eligible\s+for\s+(?:a\s+)?personal\s*loan|\bhow\s+to\s+get\s+(?:a\s+)?personal\s*loan|\bapply\s+for\s+(?:a\s+)?personal\s*loan|\bpersonal\s+loan\s+eligibility\b|\bfor\s+\d+\s+months?\b/i.test(lowerMessage);
 
   if (isLoanIntentMsg) {
     let reply = "";
@@ -699,7 +700,7 @@ export async function runCentralAgent(opts: {
 
     // No active flow — start a lightweight loan flow from conversation state
     try {
-      const { createLoanIntentFlow } = require("./eligibilityWizard");
+      const { createLoanIntentFlow } = require("../eligibilityWizard");
       const flowResult = await createLoanIntentFlow(pool, conversationId, message);
       reply = flowResult.reply || "";
       if (reply) {
