@@ -1,5 +1,3 @@
-export {};
-
 async function testChatApi() {
   const url = "http://localhost:3001/api/chat";
   const convId = "conv-" + Date.now();
