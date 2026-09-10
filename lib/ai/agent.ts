@@ -27,6 +27,8 @@ import {
 } from "@/lib/dynamicEligibilityEngine";
 import { resolveCompanyCategories } from "@/lib/companyCategoryResolver";
 import { classifyIntentWithLLM, IntentClassificationResult } from "@/lib/ai/intentClassifier";
+import { getResolvedMasterPolicies } from "@/lib/masterPolicies";
+import { getMasterPolicyFileContent } from "@/lib/masterPolicyParser";
 
 const LLM_TIMEOUT_MS = 60000;
 
@@ -132,22 +134,133 @@ const ASSISTANT_TOOLS = [
 ];
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openrouter/free";
+const OPENROUTER_MODEL = (process.env.OPENROUTER_MODEL || "openrouter/auto").replace(/^["']|["']$/g, "").trim();
+const getApiKey = () => process.env.OPENROUTER_API_KEY || OPENROUTER_API_KEY;
+const getModel = () => (process.env.OPENROUTER_MODEL || OPENROUTER_MODEL || "openrouter/auto").replace(/^["']|["']$/g, "").trim();
+
+/**
+ * Answers bank-specific policy questions using ONLY that bank's official Master Policy document.
+ * Strictly adheres to policy text without guessing, defaults, or borrowing from other banks.
+ */
+async function answerBankPolicyWithMasterPolicy(
+  bankName: string,
+  userMessage: string,
+  modelOverride?: string
+): Promise<string> {
+  const norm = (bankName || "").toLowerCase().replace(/bank|finance|limited|ltd/gi, "").trim();
+  const allPolicies = getResolvedMasterPolicies();
+
+  const matchedBank =
+    allPolicies.find((p) => {
+      const pNorm = p.bank_name.toLowerCase().replace(/bank|finance|limited|ltd/gi, "").trim();
+      return pNorm.includes(norm) || norm.includes(pNorm) || p.bank_code.toLowerCase() === norm;
+    }) ||
+    allPolicies.find((p) => p.bank_name.toLowerCase().includes(norm));
+
+  if (!matchedBank) {
+    return `I could not locate an official Master Policy for "${bankName}". Please verify the bank name.`;
+  }
+
+  const policyContent = getMasterPolicyFileContent(matchedBank.file_name);
+  if (!policyContent) {
+    return `The Master Policy file for ${matchedBank.bank_name} (${matchedBank.file_name}) is currently unavailable.`;
+  }
+
+  const apiKey = getApiKey();
+  if (apiKey) {
+    const modelsToTry = [
+      modelOverride,
+      getModel(),
+      "openrouter/auto",
+      "openrouter/free",
+    ].filter(Boolean) as string[];
+    const uniqueModels = Array.from(new Set(modelsToTry));
+
+    for (const model of uniqueModels) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://localhost:3001",
+            "X-Title": "CreditWise AI",
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 500,
+            temperature: 0.1,
+            messages: [
+              {
+                role: "system",
+                content:
+                  `You are CreditWise AI, a verified banking and policy intelligence assistant.\n` +
+                  `The user is asking a question about ${matchedBank.bank_name}'s Master Policy: "${userMessage}".\n\n` +
+                  `STRICT MASTER POLICY AUDIT RULES:\n` +
+                  `- Answer STRICTLY and ONLY based on the official ${matchedBank.bank_name} Master Policy text provided below.\n` +
+                  `- Do NOT guess, invent criteria, use defaults, or borrow rules from any other bank.\n` +
+                  `- For CIBIL: Distinguish pricing bands from absolute approval cutoffs. If a value is not explicitly defined in the Master Policy, state clearly that it is not specified in ${matchedBank.bank_name}'s Master Policy.\n` +
+                  `- For Tenure & FOIR: Quote the exact category-wise figures from the Master Policy.\n` +
+                  `- Format your answer in clean GitHub Markdown without thinking preambles.\n\n` +
+                  `--- OFFICIAL ${matchedBank.bank_name.toUpperCase()} MASTER POLICY (${matchedBank.file_name}) ---\n` +
+                  policyContent.slice(0, 15000),
+              },
+              { role: "user", content: userMessage },
+            ],
+          }),
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const content = (await response.json()).choices?.[0]?.message?.content;
+          if (typeof content === "string" && content.trim().length > 0) {
+            return stripReasoningPreamble(content.trim());
+          }
+        }
+      } catch (e) {
+        console.warn(`[Bank Policy LLM] Failed with model ${model}:`, e);
+      }
+    }
+  }
+
+  return extractPolicyAnswerFromLines(policyContent, userMessage, matchedBank.bank_name);
+}
+
+function extractPolicyAnswerFromLines(policyContent: string, question: string, bankName: string): string {
+  const lines = policyContent.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const q = question.toLowerCase();
+  const keywords: string[] = [];
+  if (/cibil|credit\s*score|cutoff/i.test(q)) keywords.push("cibil", "credit score", "bureau", "cutoff");
+  if (/tenure|tenor|duration/i.test(q)) keywords.push("tenure", "tenor", "months", "years");
+  if (/foir|dbr|obligation/i.test(q)) keywords.push("foir", "dbr", "obligation");
+  if (/salary|income|nmi|nth/i.test(q)) keywords.push("salary", "income", "nmi", "nth");
+  if (/age/i.test(q)) keywords.push("age");
+  if (/roi|interest|rate/i.test(q)) keywords.push("roi", "interest", "pricing", "rate");
+
+  if (keywords.length === 0) {
+    return `Found the official Master Policy for ${bankName}, but could not identify the specific criterion asked.`;
+  }
+
+  const matching = lines.filter((l) => {
+    const lower = l.toLowerCase();
+    return keywords.some((k) => lower.includes(k));
+  });
+
+  if (matching.length === 0) {
+    return `No explicit mention of "${question}" was found in the official Master Policy for ${bankName}.`;
+  }
+
+  const clean = matching.slice(0, 8).map((l) => (l.length > 200 ? l.slice(0, 200) + "..." : l));
+  return `### 🏦 ${bankName} Master Policy Guidelines\n\n` + clean.map((l) => `• ${l}`).join("\n");
+}
 
 async function searchPoliciesForBank(bankName: string, question: string): Promise<string> {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001"}/api/policy-search`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: `${bankName} ${question}` }),
-    });
-    if (!res.ok) return "Policy search service is currently unavailable.";
-    const data = await res.json();
-    return data.answer || "I couldn't find specific policy information for that query.";
-  } catch (e) {
-    console.error("Policy search error", e);
-    return "Policy search failed. Please try again later.";
-  }
+  return answerBankPolicyWithMasterPolicy(bankName, question);
 }
 
 const FALLBACK_GREETING =
@@ -497,7 +610,10 @@ const isPolicyQuery = /approval|eligibility|salary|cibil|emi|income|foir|interes
     if (!fallbackData && isPolicyQuery) {
       fallbackData = await searchPoliciesForBank(bankName, userMessage);
     }
-    if (!fallbackData) return { reply: FALLBACK_GREETING };
+    if (!fallbackData) {
+      const generalReply = await answerGeneralQuestionWithLLM(userMessage, modelOverride);
+      return { reply: generalReply };
+    }
 
     const reply = await finalizeWithLlm(userMessage, fallbackData);
     return { reply, ...fallbackDataObj };
@@ -687,7 +803,7 @@ async function handleCasualMessage(message: string, modelOverride?: string): Pro
     return "Goodbye! Have a great day ahead. Feel free to return anytime you need financial or loan guidance.";
   }
 
-  return FALLBACK_GREETING;
+  return answerGeneralQuestionWithLLM(message, modelOverride);
 }
 
 /**
@@ -776,61 +892,102 @@ async function handleCalculationIntent(
 
 /**
  * Answers general banking questions, concept definitions, or FAQs using the LLM.
+ * For concepts like FOIR, gives a natural explanation without generic eligibility percentages.
+ * Never returns hardcoded greeting/fallback responses for valid questions.
  */
 async function answerGeneralQuestionWithLLM(userMessage: string, modelOverride?: string): Promise<string> {
-  if (!OPENROUTER_API_KEY) {
-    return "I am CreditWise AI, your banking & financial intelligence assistant. I can help answer questions regarding bank personal loan policies, CIBIL score guidelines, FOIR formulas, and connect you with official bank managers.";
-  }
+  const apiKey = getApiKey();
 
-  const modelsToTry = [modelOverride || OPENROUTER_MODEL];
-  if ((modelOverride || OPENROUTER_MODEL) !== "openrouter/free") {
-    modelsToTry.push("openrouter/free");
-  }
+  if (apiKey) {
+    const modelsToTry = [
+      modelOverride,
+      getModel(),
+      "openrouter/auto",
+      "openrouter/free",
+    ].filter(Boolean) as string[];
+    const uniqueModels = Array.from(new Set(modelsToTry));
 
-  for (const model of modelsToTry) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+    for (const model of uniqueModels) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "http://localhost:3001",
-          "X-Title": "CreditWise AI",
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 450,
-          temperature: 0.2,
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are CreditWise AI, an expert banking and financial intelligence assistant. " +
-                "Answer the user's banking or loan question clearly, accurately, and informatively. " +
-                "If explaining terms like FOIR, CIBIL, debt ratios, loan norms, or interest calculation, provide a clear, concise explanation. " +
-                "Format your answer cleanly in GitHub Markdown. Do not include thinking or analysis preambles.",
-            },
-            { role: "user", content: userMessage },
-          ],
-        }),
-      });
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://localhost:3001",
+            "X-Title": "CreditWise AI",
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 500,
+            temperature: 0.2,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are CreditWise AI, an expert banking and financial intelligence assistant.\n" +
+                  "Answer the user's banking, loan, or financial question clearly, accurately, and naturally in GitHub Markdown.\n\n" +
+                  "CRITICAL CONCEPT EXPLANATION RULES:\n" +
+                  "- For concepts like FOIR (Fixed Obligation to Income Ratio), CIBIL score, debt ratios, EMI, or borrowing capacity:\n" +
+                  "  Give a clear, natural explanation of what the term stands for, how it is calculated, and what lenders evaluate.\n" +
+                  "- Do NOT include generic eligibility percentage thresholds (e.g. do NOT claim 'you are eligible if under 50%').\n" +
+                  "- Explicitly clarify that permissible FOIR caps and eligibility criteria vary strictly by each individual bank's Master Policy based on salary tier and company category.\n" +
+                  "- Do NOT include generic greeting preambles (such as 'I am CreditWise AI, your banking assistant...'). Go straight to the helpful explanation.",
+              },
+              { role: "user", content: userMessage },
+            ],
+          }),
+        });
 
-      clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-      if (response.ok) {
-        const content = (await response.json()).choices?.[0]?.message?.content;
-        if (typeof content === "string" && content.trim().length > 0) {
-          return stripReasoningPreamble(content.trim());
+        if (response.ok) {
+          const content = (await response.json()).choices?.[0]?.message?.content;
+          if (typeof content === "string" && content.trim().length > 0) {
+            return stripReasoningPreamble(content.trim());
+          }
         }
+      } catch (err: any) {
+        console.warn(`[General QA LLM] Failed with model ${model}:`, err?.message || err);
       }
-    } catch {}
+    }
   }
 
-  return "I am CreditWise AI, your banking & financial intelligence assistant. How can I help you today?";
+  // Resilient natural conceptual fallback if LLM network call fails
+  if (/foir|fixed\s*obligation/i.test(userMessage)) {
+    return (
+      `### What is FOIR (Fixed Obligation to Income Ratio)?\n\n` +
+      `**FOIR** stands for **Fixed Obligation to Income Ratio**. In banking, it measures the proportion of a borrower's net monthly take-home income committed toward existing fixed recurring debts and loan EMIs.\n\n` +
+      `#### Formula\n` +
+      `$$\\text{FOIR} = \\left( \\frac{\\text{Total Fixed Monthly Obligations / EMIs}}{\\text{Net Monthly Take-Home Income}} \\right) \\times 100$$\n\n` +
+      `#### What Lenders Evaluate\n` +
+      `• **Fixed Obligations**: Existing loan EMIs (home, personal, car, education) and credit card obligations.\n` +
+      `• **Net Monthly Income**: In-hand salary credited to your bank account after statutory taxes and PF deductions.\n` +
+      `• **Bank-Specific Policies**: Permissible FOIR limits are not generic. Each partner bank defines its own maximum permissible FOIR limits in its official Master Policy, calibrated to your net salary slab and employer category rating (e.g., Cat A, Diamond, Government).\n\n` +
+      `*Would you like to check the permissible FOIR limit for a specific partner bank?*`
+    );
+  }
+
+  if (/cibil|credit\s*score/i.test(userMessage)) {
+    return (
+      `### Understanding CIBIL Score in Loan Approvals\n\n` +
+      `A **CIBIL Score** is a 3-digit numerical summary (ranging from 300 to 900) reflecting an individual's credit history and repayment discipline, generated by TransUnion CIBIL.\n\n` +
+      `#### Key Considerations\n` +
+      `• **Repayment Discipline**: Timely repayment of loans and credit cards.\n` +
+      `• **Credit Utilization**: Keeping revolving credit card balances low.\n` +
+      `• **Bank Policy Cutoffs**: Each partner bank sets its own approval thresholds in its Master Policy (some banks require 700+, others 730+, while certain lenders define pricing bands rather than strict entry cutoffs).\n\n` +
+      `*Would you like to check the CIBIL cutoff for a specific partner bank?*`
+    );
+  }
+
+  return (
+    `I can help explain banking terms, look up partner bank Master Policies (CIBIL cutoffs, tenure, FOIR, multipliers), ` +
+    `search 339,000+ employer listings, calculate EMIs, or evaluate your personal loan eligibility. What specific details would you like to explore?`
+  );
 }
 
 /**
@@ -868,10 +1025,24 @@ async function handleGeneralInformationIntent(
     };
   }
 
-  // 2. Corporate Employer Rating / Category Query
+  // 2. Bank Policy Query: For bank-specific questions, use ONLY that bank's Master Policy!
+  const bankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|tata|poonawalla|yes|bandhan|chola|fibe|finnable|smfg|utkarsh|sbm/i.exec(userMessage);
+  const targetBank = classification.extracted?.targetBank || (bankMatch ? bankMatch[0] : "");
+  if (
+    targetBank &&
+    (classification.subIntent === "POLICY_INQUIRY" ||
+      /policy|cibil|cutoff|foir|interest|rate|multiplier|age|salary|tenure|rule|criteria|minimum|maximum|limit|band|document|doc|cat|category|tier/i.test(norm))
+  ) {
+    const policyResult = await answerBankPolicyWithMasterPolicy(targetBank, userMessage, modelOverride);
+    if (policyResult) {
+      return { reply: policyResult };
+    }
+  }
+
+  // 3. Corporate Employer Rating / Category Query
   if (
     classification.subIntent === "COMPANY_SEARCH" ||
-    (/(?:company|employer|category|rating|listing|tier|listed)/i.test(norm) && !/policy|rule|cutoff|foir/i.test(norm))
+    (/(?:company|employer|category\s*rating|company\s*tier|corporate\s*listing|is.*listed)/i.test(norm) && !/policy|rule|cutoff|foir|tenure|cibil/i.test(norm))
   ) {
     const compQuery =
       classification.extracted?.companyName ||
@@ -900,17 +1071,7 @@ async function handleGeneralInformationIntent(
     }
   }
 
-  // 3. Bank Policy Query
-  const bankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|tata|poonawalla|yes/i.exec(userMessage);
-  const targetBank = classification.extracted?.targetBank || (bankMatch ? bankMatch[0].toUpperCase() : "");
-  if (targetBank && /policy|cibil|cutoff|foir|interest|rate|multiplier|age|salary|tenure/i.test(norm)) {
-    const policyResult = await searchPoliciesForBank(targetBank, userMessage);
-    if (policyResult && !policyResult.includes("unavailable") && !policyResult.includes("couldn't find")) {
-      return { reply: policyResult };
-    }
-  }
-
-  // 4. General Banking Concept / FAQ / AI answer
+  // 4. General Banking Concept / FAQ / AI answer (e.g. "What is FOIR?")
   const llmReply = await answerGeneralQuestionWithLLM(userMessage, modelOverride);
   return { reply: llmReply };
 }
@@ -931,31 +1092,31 @@ async function handleChangingDetailsIntent(
 
   const updatedFields: string[] = [];
 
-  if (classification.extracted?.monthlyIncome && classification.extracted.monthlyIncome > 0) {
+  if (typeof classification.extracted?.monthlyIncome === "number" && classification.extracted.monthlyIncome > 0) {
     applicant.monthlyIncome = classification.extracted.monthlyIncome;
     updatedFields.push(`Monthly Salary to ₹${applicant.monthlyIncome.toLocaleString("en-IN")}`);
   }
-  if (classification.extracted?.loanAmount && classification.extracted.loanAmount > 0) {
+  if (typeof classification.extracted?.loanAmount === "number" && classification.extracted.loanAmount > 0) {
     applicant.loanAmount = classification.extracted.loanAmount;
     updatedFields.push(`Loan Amount to ₹${applicant.loanAmount.toLocaleString("en-IN")}`);
   }
-  if (classification.extracted?.tenureMonths && classification.extracted.tenureMonths > 0) {
+  if (typeof classification.extracted?.tenureMonths === "number" && classification.extracted.tenureMonths > 0) {
     applicant.tenureMonths = classification.extracted.tenureMonths;
     updatedFields.push(`Tenure to ${applicant.tenureMonths} months`);
   }
-  if (classification.extracted?.cibil !== undefined && classification.extracted.cibil > 0) {
+  if (typeof classification.extracted?.cibil === "number" && classification.extracted.cibil > 0) {
     applicant.cibil = classification.extracted.cibil;
     updatedFields.push(`CIBIL Score to ${applicant.cibil}`);
   }
-  if (classification.extracted?.existingEmi !== undefined) {
+  if (typeof classification.extracted?.existingEmi === "number") {
     applicant.existingEmi = classification.extracted.existingEmi;
     updatedFields.push(`Existing Monthly EMIs to ₹${applicant.existingEmi.toLocaleString("en-IN")}`);
   }
-  if (classification.extracted?.age && classification.extracted.age > 0) {
+  if (typeof classification.extracted?.age === "number" && classification.extracted.age > 0) {
     applicant.age = classification.extracted.age;
     updatedFields.push(`Age to ${applicant.age} years`);
   }
-  if (classification.extracted?.companyName && !isInvalidCompanyName(classification.extracted.companyName)) {
+  if (typeof classification.extracted?.companyName === "string" && !isInvalidCompanyName(classification.extracted.companyName)) {
     const resolved = await resolveCompanyCategories(classification.extracted.companyName);
     applicant.companyName = resolved.matchedName || classification.extracted.companyName;
     updatedFields.push(`Employer to ${applicant.companyName}`);
@@ -964,36 +1125,48 @@ async function handleChangingDetailsIntent(
   // Complement with regex parsing from message if needed
   const regexUpdated = extractApplicantDetails(userMessage, applicant, []);
   if (
-    regexUpdated.monthlyIncome &&
-    !classification.extracted?.monthlyIncome &&
+    typeof regexUpdated.monthlyIncome === "number" &&
+    regexUpdated.monthlyIncome > 0 &&
+    typeof classification.extracted?.monthlyIncome !== "number" &&
     regexUpdated.monthlyIncome !== applicant.monthlyIncome
   ) {
     applicant.monthlyIncome = regexUpdated.monthlyIncome;
     updatedFields.push(`Monthly Salary to ₹${applicant.monthlyIncome.toLocaleString("en-IN")}`);
   }
   if (
-    regexUpdated.loanAmount &&
-    !classification.extracted?.loanAmount &&
+    typeof regexUpdated.loanAmount === "number" &&
+    regexUpdated.loanAmount > 0 &&
+    typeof classification.extracted?.loanAmount !== "number" &&
     regexUpdated.loanAmount !== applicant.loanAmount
   ) {
     applicant.loanAmount = regexUpdated.loanAmount;
     updatedFields.push(`Loan Amount to ₹${applicant.loanAmount.toLocaleString("en-IN")}`);
   }
   if (
-    regexUpdated.tenureMonths &&
-    !classification.extracted?.tenureMonths &&
+    typeof regexUpdated.tenureMonths === "number" &&
+    regexUpdated.tenureMonths > 0 &&
+    typeof classification.extracted?.tenureMonths !== "number" &&
     regexUpdated.tenureMonths !== applicant.tenureMonths
   ) {
     applicant.tenureMonths = regexUpdated.tenureMonths;
     updatedFields.push(`Tenure to ${applicant.tenureMonths} months`);
   }
   if (
-    regexUpdated.cibil !== undefined &&
-    !classification.extracted?.cibil &&
+    typeof regexUpdated.cibil === "number" &&
+    regexUpdated.cibil > 0 &&
+    typeof classification.extracted?.cibil !== "number" &&
     regexUpdated.cibil !== applicant.cibil
   ) {
     applicant.cibil = regexUpdated.cibil;
     updatedFields.push(`CIBIL Score to ${applicant.cibil}`);
+  }
+  if (
+    typeof regexUpdated.existingEmi === "number" &&
+    typeof classification.extracted?.existingEmi !== "number" &&
+    regexUpdated.existingEmi !== applicant.existingEmi
+  ) {
+    applicant.existingEmi = regexUpdated.existingEmi;
+    updatedFields.push(`Existing Monthly EMIs to ₹${applicant.existingEmi.toLocaleString("en-IN")}`);
   }
 
   const updateAck =

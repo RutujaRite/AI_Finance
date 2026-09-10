@@ -1,8 +1,8 @@
 // lib/ai/intentClassifier.ts
 import { parseFinancialAmount } from "@/lib/dynamicEligibilityEngine";
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openrouter/free";
+const getApiKey = () => process.env.OPENROUTER_API_KEY || "";
+const getModel = () => (process.env.OPENROUTER_MODEL || "openrouter/auto").replace(/^["']|["']$/g, "").trim();
 const LLM_TIMEOUT_MS = 12000;
 
 export type UserIntentType =
@@ -80,7 +80,7 @@ export async function classifyIntentWithLLM(
   },
   modelOverride?: string
 ): Promise<IntentClassificationResult> {
-  const primaryModel = modelOverride || OPENROUTER_MODEL;
+  const primaryModel = modelOverride || getModel();
   const messageText = String(userMessage || "").trim();
 
   if (!messageText) {
@@ -160,14 +160,18 @@ export async function classifyIntentWithLLM(
     }
   ];
 
-  if (OPENROUTER_API_KEY) {
-    // Attempt primary model first, fallback to openrouter/free if needed
-    const modelsToTry = [primaryModel];
-    if (primaryModel !== "openrouter/free") {
-      modelsToTry.push("openrouter/free");
-    }
+  const apiKey = getApiKey();
+  if (apiKey) {
+    const rawEnv = getModel();
+    const modelsToTry = [
+      primaryModel,
+      rawEnv,
+      "openrouter/auto",
+      "openrouter/free",
+    ].filter(Boolean) as string[];
+    const uniqueModels = Array.from(new Set(modelsToTry));
 
-    for (const model of modelsToTry) {
+    for (const model of uniqueModels) {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
@@ -176,14 +180,14 @@ export async function classifyIntentWithLLM(
           method: "POST",
           signal: controller.signal,
           headers: {
-            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
             "HTTP-Referer": "http://localhost:3001",
             "X-Title": "CreditWise AI",
           },
           body: JSON.stringify({
             model,
-            max_tokens: 300,
+            max_tokens: 600,
             temperature: 0.1,
             messages: prompt,
           }),
@@ -195,8 +199,24 @@ export async function classifyIntentWithLLM(
           const json = await res.json();
           const content = json.choices?.[0]?.message?.content;
           if (content) {
-            const cleaned = cleanLlmJsonOutput(content);
-            const parsed = JSON.parse(cleaned);
+            let parsed: any = null;
+            try {
+              const cleaned = cleanLlmJsonOutput(content);
+              parsed = JSON.parse(cleaned);
+            } catch {
+              const intentMatch = content.match(/"intent"\s*:\s*"([A-Za-z_]+)"/i);
+              if (intentMatch) {
+                const topicMatch = content.match(/"questionTopic"\s*:\s*"([^"]+)"/i);
+                const bankMatch = content.match(/"targetBank"\s*:\s*"([^"]+)"/i);
+                parsed = {
+                  intent: intentMatch[1],
+                  extracted: {
+                    questionTopic: topicMatch ? topicMatch[1] : undefined,
+                    targetBank: bankMatch ? bankMatch[1] : undefined,
+                  },
+                };
+              }
+            }
             if (parsed && parsed.intent) {
               const normalizedIntent = normalizeIntentName(parsed.intent);
               const extracted: ExtractedEntities = parsed.extracted || {};
