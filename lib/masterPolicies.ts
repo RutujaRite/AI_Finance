@@ -452,7 +452,8 @@ export function getAllMasterPolicies() {
 }
 
 /**
- * Deletes a bank master policy and removes its associated text file.
+ * Deletes only the associated Master Policy text file/attachment.
+ * Preserves the bank database record so the bank remains in the list.
  */
 export async function deleteBankMasterPolicy(bankId: number, fileName?: string) {
   // 1. Delete associated text file from policy-master-files directory
@@ -478,40 +479,32 @@ export async function deleteBankMasterPolicy(bankId: number, fileName?: string) 
     }
   }
 
-  // 2. Persist deletion in deleted banks list
-  saveDeletedBankId(bankId);
-  if (def && def.id !== bankId) {
-    saveDeletedBankId(def.id);
-  }
-
-  // 3. Delete from database if connected
+  // 2. Remove file attachment records from database if connected
+  // (Do NOT delete bank, policy_rules, or policy_versions records!)
   try {
     if (pool) {
       await pool.query(
-        `DELETE FROM policy_attachments WHERE policy_rule_id IN (
+        `DELETE FROM policy_attachments WHERE file_name = ANY($1::text[]) OR policy_rule_id IN (
           SELECT pr.id FROM policy_rules pr
           JOIN policy_versions pv ON pr.policy_version_id = pv.id
-          WHERE pv.bank_id = $1
-        ) OR file_name = ANY($2::text[])`,
-        [bankId, Array.from(filesToDelete)]
-      );
-      await pool.query(
-        `DELETE FROM policy_rules WHERE policy_version_id IN (
-          SELECT id FROM policy_versions WHERE bank_id = $1
+          WHERE pv.bank_id = $2
         )`,
-        [bankId]
+        [Array.from(filesToDelete), bankId]
       );
-      await pool.query(`DELETE FROM policy_versions WHERE bank_id = $1`, [bankId]);
       await pool.query(
         `DELETE FROM bank_policy_files WHERE bank_id = $1 OR file_name = ANY($2::text[])`,
         [bankId, Array.from(filesToDelete)]
       );
     }
   } catch (dbErr) {
-    console.warn("DB delete operation skipped or failed:", dbErr);
+    console.warn("DB attachment delete operation skipped or failed:", dbErr);
   }
 
-  return { success: true, message: `Bank #${bankId} and associated text file deleted successfully` };
+  // NOTE: Bank database record is preserved and remains active in the list.
+  return {
+    success: true,
+    message: `Master policy text file for Bank #${bankId} deleted successfully. Bank remains in the list.`,
+  };
 }
 
 /**

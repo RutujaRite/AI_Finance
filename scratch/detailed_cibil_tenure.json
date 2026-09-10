@@ -1,0 +1,1619 @@
+[
+  {
+    "file": "ABFL_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 84,
+        "text": "3 Higher Bureau Surrogate Offers:"
+      },
+      {
+        "line": 91,
+        "text": "+ Permitted fo customers with strong bureau history."
+      },
+      {
+        "line": 111,
+        "text": "Bureau Derog Norms"
+      },
+      {
+        "line": 179,
+        "text": "CIBIL"
+      },
+      {
+        "line": 182,
+        "text": ">> NO ABB REQUIRD FOR fresh loan up to 10 lacs ( * for Cat A and Cat B - cibil require >725)"
+      },
+      {
+        "line": 183,
+        "text": "*CIBIL Inquiries - 5 in last 3 months *"
+      },
+      {
+        "line": 184,
+        "text": "🎯Cibil 700 compulsory"
+      },
+      {
+        "line": 185,
+        "text": "6)  -1 CIBIL score with owned house*"
+      },
+      {
+        "line": 186,
+        "text": "* Existing-to-credit customers allowed CIBIL score < 700."
+      },
+      {
+        "line": 187,
+        "text": "and CIBIL score >725."
+      },
+      {
+        "line": 210,
+        "text": "Ever HL defined as Joint/ Individual HL/Property Loan/ PMAY HL seen in bureau. Both Live & Closed a lowed |"
+      },
+      {
+        "line": 235,
+        "text": "«cibil score required 720 above and lentra hit score 610 has to"
+      },
+      {
+        "line": 289,
+        "text": "🎯in -1 cibil we can do banking surrogate too"
+      },
+      {
+        "line": 436,
+        "text": "4. CIBIL SCORE: Policy.txt mentions >725 for Cat A/B. Policy 23-12-24.jpeg allows <700 for existing-to-credit customers. [REVIEW]"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 157,
+        "text": "LOAN AMOUNT & TENURE"
+      },
+      {
+        "line": 161,
+        "text": ">> for 7 years Tenor Eligibility will considered for 6 years and same way for 6 years Tenor Eligibility will consider 5 years"
+      },
+      {
+        "line": 163,
+        "text": "Loan Tenure- Min 12 months Max 60 Months"
+      },
+      {
+        "line": 165,
+        "text": "Rate  14% -20% Tenure max 84 months"
+      },
+      {
+        "line": 166,
+        "text": "maximum Tenure 5 year"
+      },
+      {
+        "line": 168,
+        "text": "Tenure - 5 years"
+      },
+      {
+        "line": 169,
+        "text": "Tenure  - 5 Year"
+      }
+    ]
+  },
+  {
+    "file": "AXIS_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 105,
+        "text": "NMI/CIBIL THRESHOLDS"
+      },
+      {
+        "line": 138,
+        "text": "CIBIL"
+      },
+      {
+        "line": 141,
+        "text": "= = cases, based on Net Monthly Income (NMI) and CIBIL score thresholds. ="
+      },
+      {
+        "line": 142,
+        "text": "== | CSG- Hit NMI 35k & Cibil >=700 >=740 OR -—"
+      },
+      {
+        "line": 143,
+        "text": "— i NMI >85k & cibil >=700 — ——"
+      },
+      {
+        "line": 144,
+        "text": "&rReg.. — NCSG-HIT | NMi 50k & Cibil >=700 NMI 50K & Cibil >=740 —"
+      },
+      {
+        "line": 145,
+        "text": "—— f MI 75k-100k & Cibil >=780 —"
+      },
+      {
+        "line": 146,
+        "text": "— = Mi 75k & Cibil >=740 OR —"
+      },
+      {
+        "line": 147,
+        "text": "= IMI > 100k & cibil >+740 Il IN ="
+      },
+      {
+        "line": 154,
+        "text": "1.   Agent will be shown ALL running Obligations fetched from Bureau."
+      },
+      {
+        "line": 397,
+        "text": "1. NMI THRESHOLDS: Multiple thresholds found (NMI 35k-85k & CIBIL >=700 vs NMI 50k & CIBIL >=740 vs NMI 75k-100k & CIBIL >=780). [REVIEW]"
+      },
+      {
+        "line": 398,
+        "text": "2. CIBIL SCORE: Different thresholds for different NMI ranges. [REVIEW]"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 127,
+        "text": "LOAN AMOUNT & TENURE"
+      },
+      {
+        "line": 130,
+        "text": "——= 1. Change in policy norms for Physical Vanilla PL and MLP Assisted High tenure Cases ——"
+      },
+      {
+        "line": 131,
+        "text": "ShahD. : The following revisions have been implemented for Physical Vanilla PL and MLP Assisted HighTenure = —"
+      }
+    ]
+  },
+  {
+    "file": "Axis_Finance_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 46,
+        "text": "CIBIL/ICS Requirements:"
+      },
+      {
+        "line": 47,
+        "text": "- Minimum CIBIL: 720"
+      },
+      {
+        "line": 48,
+        "text": "- CIBIL range across versions: 720 - 750 [REVIEW]"
+      },
+      {
+        "line": 94,
+        "text": "- CIBIL Score: 730+"
+      },
+      {
+        "line": 211,
+        "text": "- CIBIL: >=720"
+      },
+      {
+        "line": 234,
+        "text": "- PAN mandatory (Bureau No-hit program)"
+      },
+      {
+        "line": 235,
+        "text": "- Mobile verification from Karza (Bureau No-hit program)"
+      },
+      {
+        "line": 261,
+        "text": "- Bureau thick file mandatory"
+      },
+      {
+        "line": 275,
+        "text": "6. CIBIL: Multiple thresholds found across versions (720, 730, 750). [REVIEW]"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 40,
+        "text": "- Tenure up to 84 months"
+      },
+      {
+        "line": 149,
+        "text": "Tenure:"
+      },
+      {
+        "line": 150,
+        "text": "- Standard tenure: Up to 60 months"
+      },
+      {
+        "line": 151,
+        "text": "- Maximum tenure: 84 months"
+      }
+    ]
+  },
+  {
+    "file": "Bajaj_Finserv_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 33,
+        "text": "- Bureau No-Hit (CIBIL 0/-1)"
+      },
+      {
+        "line": 47,
+        "text": "CIBIL/PL Score Requirements:"
+      },
+      {
+        "line": 48,
+        "text": "- CIBIL: As per annexure 14.1"
+      },
+      {
+        "line": 51,
+        "text": "- Bureau No-Hit program: CIBIL 0/-1 with CRIF score trigger"
+      },
+      {
+        "line": 97,
+        "text": "- CIBIL Score: 730+"
+      },
+      {
+        "line": 185,
+        "text": "- Offer letter-based processing: Not allowed in Bureau No-Hit program"
+      },
+      {
+        "line": 203,
+        "text": "- CIBIL: >=720"
+      },
+      {
+        "line": 229,
+        "text": "- PAN mandatory (Bureau No-hit program)"
+      },
+      {
+        "line": 230,
+        "text": "- Mobile verification from Karza (Bureau No-hit program)"
+      },
+      {
+        "line": 259,
+        "text": "- Bureau thick file mandatory"
+      },
+      {
+        "line": 264,
+        "text": "- Bureau No-Hit: Offer letter-based processing not allowed"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 138,
+        "text": "Tenure:"
+      },
+      {
+        "line": 139,
+        "text": "- Standard tenure: Up to 60 months"
+      },
+      {
+        "line": 140,
+        "text": "- Maximum tenure: 84 months"
+      },
+      {
+        "line": 266,
+        "text": "- No deviation allowed in Hybrid Flexi tenure combination"
+      }
+    ]
+  },
+  {
+    "file": "Bajaj_Markets_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 45,
+        "text": "CIBIL Score Requirements:"
+      },
+      {
+        "line": 46,
+        "text": "- Minimum CIBIL: 700"
+      },
+      {
+        "line": 47,
+        "text": "- PS-1: CIBIL 700+"
+      },
+      {
+        "line": 48,
+        "text": "- Pocket Personal Loan (PPL): CIBIL 700+"
+      },
+      {
+        "line": 49,
+        "text": "- Bureau thick file mandatory"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 114,
+        "text": "Tenure:"
+      },
+      {
+        "line": 151,
+        "text": "- Highest tenure up to 8 years in BT program"
+      }
+    ]
+  },
+  {
+    "file": "Bandhan_Bank_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 45,
+        "text": "CIBIL Score Requirements:"
+      },
+      {
+        "line": 46,
+        "text": "- Minimum CIBIL: 731"
+      },
+      {
+        "line": 47,
+        "text": "- PL CIBIL inquiry not more than 5 in last 30 days"
+      },
+      {
+        "line": 48,
+        "text": "- CAT D with CIBIL 750 and salary 75k: eligible for higher loan amount"
+      },
+      {
+        "line": 49,
+        "text": "- CIBIL <730 (Banking Surrogate Programme): Either office or residence must be owned"
+      },
+      {
+        "line": 112,
+        "text": "- CAT A/B/Govt, LA 25L, CIBIL >750: 10.25%"
+      },
+      {
+        "line": 113,
+        "text": "- CAT A/B/Govt, LA 20L, CIBIL >750: 10.50%"
+      },
+      {
+        "line": 117,
+        "text": "- LA 25L, CIBIL >750: 10.50%"
+      },
+      {
+        "line": 118,
+        "text": "- LA 20L, CIBIL >750: 10.75%"
+      },
+      {
+        "line": 142,
+        "text": "- CAT D: Maximum ₹5,00,000 (Max ₹10,00,000 if salary >= ₹75K & CIBIL >=750)"
+      },
+      {
+        "line": 188,
+        "text": "- CAT D: Salary 75k+ & CIBIL 750 allows max LA 10L"
+      },
+      {
+        "line": 196,
+        "text": "- Recent funding: Co-applicant must be in CAT A/B with CIBIL 750 and salary 50k"
+      },
+      {
+        "line": 227,
+        "text": "- CAT D with salary 75k+ & CIBIL 750: max ₹10,00,000"
+      },
+      {
+        "line": 229,
+        "text": "- PL CIBIL inquiry not more than 5 in last 30 days"
+      },
+      {
+        "line": 237,
+        "text": "3. CIBIL: Multiple thresholds found across versions (731, 750). [REVIEW]"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 149,
+        "text": "Tenure:"
+      },
+      {
+        "line": 219,
+        "text": "- Flexible part payment options with no part payment charges up to 25% after 12 months, twice in loan tenure"
+      },
+      {
+        "line": 242,
+        "text": "8. TENURE: Multiple values found across versions (3, 60, 84). [REVIEW]"
+      }
+    ]
+  },
+  {
+    "file": "Chola_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 39,
+        "text": "CIBIL Score Requirements:"
+      },
+      {
+        "line": 40,
+        "text": "- Minimum CIBIL: 675"
+      },
+      {
+        "line": 41,
+        "text": "- CIBIL < 700: Loan amount up to ₹5,00,000 only"
+      },
+      {
+        "line": 42,
+        "text": "- CIBIL > 700: Loan amount up to ₹20,00,000"
+      },
+      {
+        "line": 43,
+        "text": "- CIBIL vintage: 6 months mandatory"
+      },
+      {
+        "line": 44,
+        "text": "- CIBIL -1 will be considered for Govt Employees"
+      },
+      {
+        "line": 45,
+        "text": "- New to CIBIL (0/-1): Max loan cap ₹5,00,000"
+      },
+      {
+        "line": 124,
+        "text": "- CIBIL < 700: Maximum ₹5,00,000"
+      },
+      {
+        "line": 125,
+        "text": "- CIBIL > 700: Maximum ₹20,00,000"
+      },
+      {
+        "line": 126,
+        "text": "- New to CIBIL (0/-1): Maximum ₹5,00,000"
+      },
+      {
+        "line": 132,
+        "text": "- Maximum tenure 48 months for CIBIL score < 750"
+      },
+      {
+        "line": 144,
+        "text": "- All loans reflecting in CIBIL, banking and all loans confirmed during PD to be obligated for eligibility calculations"
+      },
+      {
+        "line": 213,
+        "text": "2. CIBIL INQUIRY: Multiple values found across versions (5 in last 1 month, none in last 30 days). [REVIEW]"
+      },
+      {
+        "line": 214,
+        "text": "3. CIBIL VINTAGE: Multiple values found across versions (6 months, 12 months). [REVIEW]"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 128,
+        "text": "Tenure:"
+      },
+      {
+        "line": 131,
+        "text": "- Tenure up to 84 months across all categories for salary above ₹40,000"
+      },
+      {
+        "line": 132,
+        "text": "- Maximum tenure 48 months for CIBIL score < 750"
+      },
+      {
+        "line": 145,
+        "text": "- Any existing loan getting over within 6 months whose loan tenure is >18 months: need not be obligated for arriving total obligations"
+      },
+      {
+        "line": 158,
+        "text": "- Salary above ₹40,000: Tenure up to 84 months across all categories"
+      },
+      {
+        "line": 170,
+        "text": "- Minimum tenure for BT is 6 EMI"
+      }
+    ]
+  },
+  {
+    "file": "Fibe_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 48,
+        "text": "CIBIL/Bureau Requirements:"
+      },
+      {
+        "line": 49,
+        "text": "- Minimum CIBIL: 700"
+      },
+      {
+        "line": 50,
+        "text": "- CIBIL -1 / NTC doable for age 19 to 35 years only"
+      },
+      {
+        "line": 51,
+        "text": "- Bureau score threshold across sources: 680, 650, 700 [REVIEW]"
+      },
+      {
+        "line": 67,
+        "text": "Bureau / Delinquency Norms:"
+      },
+      {
+        "line": 176,
+        "text": "- -1 CIBIL / NTC doable only for age 19 to 35 years"
+      },
+      {
+        "line": 186,
+        "text": "1. CIBIL: Multiple thresholds found across sources (680, 650, 700). [REVIEW]"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 62,
+        "text": "Work Experience / Employer Tenure:"
+      },
+      {
+        "line": 63,
+        "text": "- Minimum employer tenure for 18 Months Loan: > 2 Years"
+      },
+      {
+        "line": 64,
+        "text": "- Minimum employer tenure for 24 & 36 Months Loan: > 3 Years"
+      },
+      {
+        "line": 81,
+        "text": "- Active PL/HL track customers (for higher tenure/amount)"
+      },
+      {
+        "line": 112,
+        "text": "Tenure:"
+      },
+      {
+        "line": 115,
+        "text": "- 18 Months Loan: requires employer tenure > 2 Years"
+      },
+      {
+        "line": 116,
+        "text": "- 24 Months Loan: requires employer tenure > 3 Years"
+      },
+      {
+        "line": 117,
+        "text": "- 36 Months Loan: requires employer tenure > 3 Years"
+      },
+      {
+        "line": 136,
+        "text": "- 18M / 24M Tenure: ₹25,000"
+      },
+      {
+        "line": 137,
+        "text": "- 36M Tenure (Active PL/HL Track): ₹30,000"
+      },
+      {
+        "line": 138,
+        "text": "- 36M Tenure (Thin Customer): ₹35,000"
+      },
+      {
+        "line": 188,
+        "text": "3. EMPLOYER TENURE: Multiple values found across sources (2 Years, 3 Years). [REVIEW]"
+      }
+    ]
+  },
+  {
+    "file": "Finnable_Credit_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 44,
+        "text": "CIBIL/Bureau Requirements:"
+      },
+      {
+        "line": 45,
+        "text": "- Minimum CIBIL Score: 700"
+      },
+      {
+        "line": 46,
+        "text": "- CIBIL -1 / 0 / NTC doable"
+      },
+      {
+        "line": 65,
+        "text": "Bureau / Delinquency Norms:"
+      },
+      {
+        "line": 188,
+        "text": "- CIBIL -1 / 0 / NTC doable"
+      },
+      {
+        "line": 207,
+        "text": "1. CIBIL: Multiple thresholds found across sources (700, -1, 0, 650, 680). [REVIEW]"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 59,
+        "text": "Work Experience / Employer Tenure:"
+      },
+      {
+        "line": 119,
+        "text": "Tenure:"
+      },
+      {
+        "line": 210,
+        "text": "4. TENURE: Multiple values found across sources (1-3 years, 4 years for >=3L). [REVIEW]"
+      }
+    ]
+  },
+  {
+    "file": "HDFC_Bank_Master_Policy_CIBIL_Updated.txt",
+    "cibilLines": [
+      {
+        "line": 47,
+        "text": "CIBIL/Bureau Requirements (Rate Card dated 07-03-25):"
+      },
+      {
+        "line": 48,
+        "text": "- CIBIL >730: Rate-card pricing applies under the CIBIL >730 slab."
+      },
+      {
+        "line": 49,
+        "text": "- CIBIL <=730 / No Hit: Rate-card pricing applies under the CIBIL <=730 / No Hit slab."
+      },
+      {
+        "line": 50,
+        "text": "- The uploaded rate card does not specify a separate minimum CIBIL score threshold."
+      },
+      {
+        "line": 72,
+        "text": "Bureau / Delinquency Norms:"
+      },
+      {
+        "line": 73,
+        "text": "- CIBIL slabs in the rate card are: CIBIL >730 and CIBIL <=730 / No Hit."
+      },
+      {
+        "line": 145,
+        "text": "5. CIBIL RATE CARD - 07-03-25"
+      },
+      {
+        "line": 151,
+        "text": "- Monthly Income >= ₹100,000: CIBIL >730 = 11.15%; CIBIL <=730 / No Hit = 11.40%; Rack PF = ₹6,500"
+      },
+      {
+        "line": 152,
+        "text": "- Monthly Income >= ₹75,000 to ₹100,000: CIBIL >730 = 11.25%; CIBIL <=730 / No Hit = 11.50%; Rack PF = ₹6,500"
+      },
+      {
+        "line": 153,
+        "text": "- Monthly Income >= ₹50,000 to ₹75,000: CIBIL >730 = 11.75%; CIBIL <=730 / No Hit = 12.00%; Rack PF = ₹6,500"
+      },
+      {
+        "line": 154,
+        "text": "- Monthly Income >= ₹35,000 to ₹50,000: CIBIL >730 = 12.00%; CIBIL <=730 / No Hit = 12.25%; Rack PF = ₹3,499"
+      },
+      {
+        "line": 155,
+        "text": "- Monthly Income < ₹35,000: CIBIL >730 = 13.25%; CIBIL <=730 / No Hit = 13.50%; Rack PF = ₹3,499"
+      },
+      {
+        "line": 158,
+        "text": "- Monthly Income >= ₹100,000: CIBIL >730 = 11.25%; CIBIL <=730 / No Hit = 11.50%; Rack PF = ₹6,500"
+      },
+      {
+        "line": 159,
+        "text": "- Monthly Income >= ₹75,000 to ₹100,000: CIBIL >730 = 11.50%; CIBIL <=730 / No Hit = 11.75%; Rack PF = ₹6,500"
+      },
+      {
+        "line": 160,
+        "text": "- Monthly Income >= ₹50,000 to ₹75,000: CIBIL >730 = 12.00%; CIBIL <=730 / No Hit = 12.25%; Rack PF = ₹6,500"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 57,
+        "text": "- Current Age + Tenure should not be greater than retirement Age"
+      },
+      {
+        "line": 65,
+        "text": "Work Experience / Employer Tenure:"
+      },
+      {
+        "line": 199,
+        "text": "Tenure:"
+      },
+      {
+        "line": 204,
+        "text": "- Current Age + Tenure should not be greater than retirement Age"
+      },
+      {
+        "line": 349,
+        "text": "- Current Age + Tenure > retirement Age"
+      },
+      {
+        "line": 364,
+        "text": "5. TENURE: Multiple values found across sources (60, 72, 84 months). [REVIEW]"
+      }
+    ]
+  },
+  {
+    "file": "home_loan_eligibility_policy_rules.txt",
+    "cibilLines": [
+      {
+        "line": 173,
+        "text": "- Starting from 7.25%, depending on profile, CIBIL, and loan amount."
+      },
+      {
+        "line": 351,
+        "text": "- CIBIL / credit profile, where specified."
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 9,
+        "text": "- Where a source gives a maximum, minimum, FOIR, LTV, tenure, profile, property, or program condition, it is retained."
+      },
+      {
+        "line": 140,
+        "text": "- Maximum tenure: 30 years."
+      },
+      {
+        "line": 145,
+        "text": "- Maximum tenure: 25 years."
+      },
+      {
+        "line": 187,
+        "text": "- Loan tenure up to 32 years."
+      },
+      {
+        "line": 352,
+        "text": "- Loan tenure."
+      }
+    ]
+  },
+  {
+    "file": "ICICI_Bank_Personal_Loan_Policy_Rulebook.txt",
+    "cibilLines": [
+      {
+        "line": 17,
+        "text": "- A CIBIL pricing band is not automatically an absolute eligibility cutoff."
+      },
+      {
+        "line": 56,
+        "text": "- CIBIL band"
+      },
+      {
+        "line": 68,
+        "text": "CIBIL:"
+      },
+      {
+        "line": 73,
+        "text": "- Absolute Minimum CIBIL for approval: NOT_DEFINED / NEEDS_REVIEW"
+      },
+      {
+        "line": 151,
+        "text": "Columns: CIBIL Band | Green ROI | Amber ROI | Red ROI | PF"
+      },
+      {
+        "line": 153,
+        "text": "CIBIL >= 770"
+      },
+      {
+        "line": 159,
+        "text": "CIBIL >= 725 to 769 / -1 / 0"
+      },
+      {
+        "line": 165,
+        "text": "CIBIL < 725"
+      },
+      {
+        "line": 175,
+        "text": "Columns: CIBIL Band | Green ROI | Amber ROI | Red ROI | PF"
+      },
+      {
+        "line": 177,
+        "text": "CIBIL >= 770"
+      },
+      {
+        "line": 183,
+        "text": "CIBIL >= 725 to 769 / -1 / 0"
+      },
+      {
+        "line": 189,
+        "text": "CIBIL < 725"
+      },
+      {
+        "line": 226,
+        "text": "SECTION 5 - 5L TO 19.99L, FUNDED - CIBIL < 725, ALL CATEGORIES"
+      },
+      {
+        "line": 264,
+        "text": "CIBIL >= 770             | Green 11.05% | Amber 11.05% | Red 11.05% | PF Rs. 8,999.00"
+      },
+      {
+        "line": 265,
+        "text": "CIBIL >= 725 to 769/0/-1 | Green 11.15% | Amber 11.15% | Red 11.15% | PF Rs. 9,499.00"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 14,
+        "text": "- Do not invent age, salary/NTH, FOIR, tenure, employment, document, BT/CCBT,"
+      },
+      {
+        "line": 376,
+        "text": "- Minimum Tenure: NOT_DEFINED / NEEDS_REVIEW"
+      },
+      {
+        "line": 377,
+        "text": "- Maximum Tenure: NOT_DEFINED / NEEDS_REVIEW"
+      },
+      {
+        "line": 470,
+        "text": "5. TENURE:"
+      },
+      {
+        "line": 471,
+        "text": "No minimum or maximum tenure is defined."
+      }
+    ]
+  },
+  {
+    "file": "IDFC_FIRST_Bank_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 11,
+        "text": "tenure, banking, bureau, verification, document, BT, deviation, and special"
+      },
+      {
+        "line": 67,
+        "text": "- PL SCORECARD"
+      },
+      {
+        "line": 106,
+        "text": "Bureau:"
+      },
+      {
+        "line": 107,
+        "text": "- Salaried CIBIL: 690+"
+      },
+      {
+        "line": 160,
+        "text": "- For Silver, waiver is basis Bureau Based Norms."
+      },
+      {
+        "line": 225,
+        "text": "Bureau:"
+      },
+      {
+        "line": 226,
+        "text": "- CIBIL >= 700"
+      },
+      {
+        "line": 295,
+        "text": "self-employed scorecard image also states latest 3 months statement not older"
+      },
+      {
+        "line": 309,
+        "text": "- Ownership waiver for selected profile is mentioned in the scorecard image"
+      },
+      {
+        "line": 445,
+        "text": "Self-Employed scorecard image:"
+      },
+      {
+        "line": 452,
+        "text": "Self-Employed scorecard lower table displays:"
+      },
+      {
+        "line": 458,
+        "text": "Main Ready Reckoner/poster states 1L-9L while scorecard image shows revised"
+      },
+      {
+        "line": 461,
+        "text": "Other scorecard remark:"
+      },
+      {
+        "line": 478,
+        "text": "Scorecard image shows equivalent bands:"
+      },
+      {
+        "line": 593,
+        "text": "- PL SCORECARD"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 11,
+        "text": "tenure, banking, bureau, verification, document, BT, deviation, and special"
+      },
+      {
+        "line": 116,
+        "text": "Tenure:"
+      },
+      {
+        "line": 137,
+        "text": "Tenure:"
+      },
+      {
+        "line": 171,
+        "text": "Tenure:"
+      },
+      {
+        "line": 257,
+        "text": "Loan Tenure:"
+      },
+      {
+        "line": 421,
+        "text": "- Tenure: 12 to 60 months"
+      },
+      {
+        "line": 426,
+        "text": "- Tenure: 12 to 60 months"
+      },
+      {
+        "line": 443,
+        "text": "- Standard Tenure: 12 to 48 months"
+      },
+      {
+        "line": 446,
+        "text": "- Tenure Minimum: 12 months"
+      },
+      {
+        "line": 447,
+        "text": "- Tenure Maximum: 48 months"
+      },
+      {
+        "line": 448,
+        "text": "- BT: Up to 60 months where original tenure is >48 months"
+      },
+      {
+        "line": 450,
+        "text": "* Eligibility to be calculated as per 48 months tenure"
+      },
+      {
+        "line": 455,
+        "text": "- Max Tenor: 48 months"
+      },
+      {
+        "line": 985,
+        "text": "- Invent age, CIBIL, salary, ABB, tenure, loan limit, ROI, PF or category."
+      }
+    ]
+  },
+  {
+    "file": "IndusInd_Bank_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 14,
+        "text": "- CIBIL / bureau rules"
+      },
+      {
+        "line": 50,
+        "text": "3. Never mix NTC with normal bureau cases."
+      },
+      {
+        "line": 62,
+        "text": "4. NTC / NEW-TO-CIBIL POLICY"
+      },
+      {
+        "line": 82,
+        "text": "- New-to-CIBIL (NTC)"
+      },
+      {
+        "line": 91,
+        "text": "- CIBIL / bureau status"
+      },
+      {
+        "line": 92,
+        "text": "- CIBIL vintage"
+      },
+      {
+        "line": 130,
+        "text": "3.1 CIBIL SCORE"
+      },
+      {
+        "line": 134,
+        "text": "- CIBIL Score: >= 700"
+      },
+      {
+        "line": 137,
+        "text": "- CAT A+ / A / B / G policy described for CIBIL >= 700."
+      },
+      {
+        "line": 139,
+        "text": "Therefore verified general bureau threshold in supplied rules:"
+      },
+      {
+        "line": 140,
+        "text": "- CIBIL >= 700 for standard bureau cases."
+      },
+      {
+        "line": 143,
+        "text": "- New-to-CIBIL (0 / -1) is handled separately under Section 4."
+      },
+      {
+        "line": 144,
+        "text": "- Do not apply CIBIL >=700 to NTC profiles."
+      },
+      {
+        "line": 147,
+        "text": "3.2 CIBIL VINTAGE"
+      },
+      {
+        "line": 151,
+        "text": "- Minimum CIBIL vintage: >= 6 months"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 19,
+        "text": "- Tenure"
+      },
+      {
+        "line": 63,
+        "text": "5. LOAN AMOUNT & TENURE"
+      },
+      {
+        "line": 86,
+        "text": "- Longer-tenure Personal Loan (72 / 84 month conditions)"
+      },
+      {
+        "line": 209,
+        "text": "General minimum / maximum age for ordinary standard tenure:"
+      },
+      {
+        "line": 212,
+        "text": "Long-tenure specific age condition:"
+      },
+      {
+        "line": 216,
+        "text": "Do not infer a universal minimum age from the long-tenure rule."
+      },
+      {
+        "line": 250,
+        "text": "5. LOAN AMOUNT & TENURE"
+      },
+      {
+        "line": 288,
+        "text": "5.3 LONG TENURE - 72 MONTHS"
+      },
+      {
+        "line": 292,
+        "text": "Highest Tenure:"
+      },
+      {
+        "line": 304,
+        "text": "5.4 LONG TENURE - 84 MONTHS"
+      },
+      {
+        "line": 308,
+        "text": "Highest Tenure:"
+      },
+      {
+        "line": 319,
+        "text": "- A supplied IndusInd \"84 Advantage Personal Loans\" image advertises tenure"
+      },
+      {
+        "line": 445,
+        "text": "- Minimum BT seasoning / tenure: 3 EMIs"
+      },
+      {
+        "line": 662,
+        "text": "4. 72 / 84 MONTH TENURE"
+      },
+      {
+        "line": 663,
+        "text": "These are conditional longer-tenure programs."
+      }
+    ]
+  },
+  {
+    "file": "Kotak_Mahindra_Bank_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 16,
+        "text": "- CIBIL / bureau rules"
+      },
+      {
+        "line": 60,
+        "text": "Army, Government, NTC/CIBIL 0/-1, or special-promo programs."
+      },
+      {
+        "line": 73,
+        "text": "5. CIBIL / BUREAU RULES"
+      },
+      {
+        "line": 109,
+        "text": "- CIBIL 0 / -1 fresh loan"
+      },
+      {
+        "line": 161,
+        "text": "- Core salary / category / bureau / loan rules are defined for salaried profiles."
+      },
+      {
+        "line": 264,
+        "text": "5. CIBIL / BUREAU RULES"
+      },
+      {
+        "line": 268,
+        "text": "5.1 STANDARD CIBIL"
+      },
+      {
+        "line": 272,
+        "text": "- CIBIL Score: > 700 (V3)"
+      },
+      {
+        "line": 278,
+        "text": "5.2 CIBIL 0 / -1"
+      },
+      {
+        "line": 282,
+        "text": "- Maximum tenure for CIBIL 0 / -1: 3 years"
+      },
+      {
+        "line": 285,
+        "text": "- CIBIL 0 / -1 fresh loan up to Rs. 10 Lakhs"
+      },
+      {
+        "line": 295,
+        "text": "- Do not reject CIBIL 0 / -1 by applying the normal CIBIL >700 rule."
+      },
+      {
+        "line": 296,
+        "text": "- Use the specific NTC / CIBIL 0/-1 policy path."
+      },
+      {
+        "line": 301,
+        "text": "5.3 6-YEAR TENURE BUREAU MITIGANTS"
+      },
+      {
+        "line": 305,
+        "text": "- CIBIL > 750"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 19,
+        "text": "- Tenure"
+      },
+      {
+        "line": 74,
+        "text": "6. LOAN AMOUNT & TENURE"
+      },
+      {
+        "line": 102,
+        "text": "- Standard tenure: 1 year to 5 years in the 24-06-24 policy"
+      },
+      {
+        "line": 282,
+        "text": "- Maximum tenure for CIBIL 0 / -1: 3 years"
+      },
+      {
+        "line": 301,
+        "text": "5.3 6-YEAR TENURE BUREAU MITIGANTS"
+      },
+      {
+        "line": 304,
+        "text": "For tenure of 6 years, 24-06-24 policy requires:"
+      },
+      {
+        "line": 310,
+        "text": "Eligibility calculation for 6-year tenure:"
+      },
+      {
+        "line": 311,
+        "text": "- Calculate eligibility on 5-year tenure basis."
+      },
+      {
+        "line": 314,
+        "text": "6. LOAN AMOUNT & TENURE"
+      },
+      {
+        "line": 333,
+        "text": "6.2 STANDARD TENURE"
+      },
+      {
+        "line": 341,
+        "text": "- 6-year flexible tenure basis profile"
+      },
+      {
+        "line": 342,
+        "text": "- Special Government policy allowed for 6-year tenure, fresh funding as per policy"
+      },
+      {
+        "line": 349,
+        "text": "- Eligibility calculated on 5-year tenure basis"
+      },
+      {
+        "line": 352,
+        "text": "- Maximum tenure: 3 years"
+      },
+      {
+        "line": 1030,
+        "text": "- Bank may modify limit / tenure or discontinue facility based on review."
+      }
+    ]
+  },
+  {
+    "file": "LT_Finance_Master_Policy_Clean.txt",
+    "cibilLines": [
+      {
+        "line": 79,
+        "text": "5. CIBIL / NTC"
+      },
+      {
+        "line": 82,
+        "text": "Standard CIBIL:"
+      },
+      {
+        "line": 83,
+        "text": "- CIBIL V3 >= 700"
+      },
+      {
+        "line": 85,
+        "text": "NTC / CIBIL -1:"
+      },
+      {
+        "line": 173,
+        "text": "CIBIL 700 - 750"
+      },
+      {
+        "line": 272,
+        "text": "CIBIL 750+"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 104,
+        "text": "7. TENURE"
+      },
+      {
+        "line": 107,
+        "text": "- Minimum Tenure: 12 months"
+      },
+      {
+        "line": 108,
+        "text": "- Maximum Tenure: 72 months"
+      },
+      {
+        "line": 111,
+        "text": "- Maximum Tenure: 48 months"
+      },
+      {
+        "line": 114,
+        "text": "- Tenure may go up to 72 months where applicable."
+      }
+    ]
+  },
+  {
+    "file": "Piramal_Capital__Housing_Finance_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 18,
+        "text": "- NTC / CIBIL -1:"
+      },
+      {
+        "line": 88,
+        "text": "4. CIBIL / SCORECARD / VENTILE"
+      },
+      {
+        "line": 91,
+        "text": "Standard CIBIL:"
+      },
+      {
+        "line": 92,
+        "text": "- CIBIL 650 can be considered as stated in supplied policy text"
+      },
+      {
+        "line": 94,
+        "text": "NTC / CIBIL 0 / -1:"
+      },
+      {
+        "line": 99,
+        "text": "- Based on Scorecard / Ventile"
+      },
+      {
+        "line": 103,
+        "text": "- Good CIBIL history required"
+      },
+      {
+        "line": 189,
+        "text": "- CIBIL -1 cases: 50% FOIR can be considered in supplied policy text"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 22,
+        "text": "Tenure:"
+      },
+      {
+        "line": 332,
+        "text": "2. Tenure:"
+      }
+    ]
+  },
+  {
+    "file": "Poonawalla_Fincorp_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 104,
+        "text": "CAT D maximum funding 10 Lakhs (750 CIBIL & OWN House Required)"
+      },
+      {
+        "line": 285,
+        "text": "CAT D maximum funding 10 Lakhs (750 CIBIL & OWN House Required)"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 101,
+        "text": "6) Super CAT A ,CAT A, GOVT - Max Capping 50 Lakh (Tenure up to 7 Years)"
+      },
+      {
+        "line": 102,
+        "text": "Cat B - 30 Lakh Max Funding  (Tenure Up to 6 Years)"
+      },
+      {
+        "line": 216,
+        "text": "For   alt other company category max loan tenure"
+      },
+      {
+        "line": 291,
+        "text": "For   alt other company category max loan tenure"
+      }
+    ]
+  },
+  {
+    "file": "SBM_Bank_India_Master_Policy_Clean.txt",
+    "cibilLines": [
+      {
+        "line": 26,
+        "text": "2. CIBIL / NTC"
+      },
+      {
+        "line": 29,
+        "text": "Standard CIBIL:"
+      },
+      {
+        "line": 30,
+        "text": "- Minimum CIBIL Score: 720+"
+      },
+      {
+        "line": 32,
+        "text": "CIBIL 0 / -1:"
+      },
+      {
+        "line": 49,
+        "text": "- CIBIL 0 / -1: Up to Rs. 5 Lakhs"
+      },
+      {
+        "line": 134,
+        "text": "The source uses the following CIBIL headings exactly:"
+      },
+      {
+        "line": 135,
+        "text": "- CIBIL >750"
+      },
+      {
+        "line": 136,
+        "text": "- CIBIL >720 to <=750"
+      },
+      {
+        "line": 137,
+        "text": "- CIBIL below 730"
+      },
+      {
+        "line": 139,
+        "text": "The last two source labels overlap for CIBIL 721-729."
+      },
+      {
+        "line": 147,
+        "text": "CIBIL >750:"
+      },
+      {
+        "line": 150,
+        "text": "CIBIL >720 to <=750:"
+      },
+      {
+        "line": 153,
+        "text": "CIBIL below 730:"
+      },
+      {
+        "line": 175,
+        "text": "CIBIL >750:"
+      },
+      {
+        "line": 178,
+        "text": "CIBIL >720 to <=750:"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 52,
+        "text": "4. TENURE"
+      },
+      {
+        "line": 55,
+        "text": "- Minimum Tenure: 12 months"
+      },
+      {
+        "line": 56,
+        "text": "- Maximum Tenure: 60 months"
+      },
+      {
+        "line": 272,
+        "text": "- Minimum tenure 6 months"
+      }
+    ]
+  },
+  {
+    "file": "SMFG_India_Credit_Fullerton_Master_Policy_Clean.txt",
+    "cibilLines": [
+      {
+        "line": 34,
+        "text": "3. CIBIL"
+      },
+      {
+        "line": 37,
+        "text": "- Minimum CIBIL Score: 705+"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 47,
+        "text": "5. TENURE"
+      },
+      {
+        "line": 50,
+        "text": "- Minimum Tenure: 1 year"
+      },
+      {
+        "line": 51,
+        "text": "- Maximum Tenure: 5 years"
+      }
+    ]
+  },
+  {
+    "file": "Tata_Capital_Master_Policy_Clean.txt",
+    "cibilLines": [
+      {
+        "line": 50,
+        "text": "CIBIL:"
+      },
+      {
+        "line": 52,
+        "text": "- Updated policy separately allows CIBIL 0 / -1 under applicable programs"
+      },
+      {
+        "line": 53,
+        "text": "- Do not apply CIBIL 0 / -1 to programs that explicitly exclude it"
+      },
+      {
+        "line": 115,
+        "text": "- CIBIL CC outstanding may be mitigated where valid proof establishes that"
+      },
+      {
+        "line": 126,
+        "text": "CIBIL Velocity:"
+      },
+      {
+        "line": 262,
+        "text": "- CIBIL -1"
+      },
+      {
+        "line": 291,
+        "text": "CIBIL:"
+      },
+      {
+        "line": 293,
+        "text": "- CIBIL -1: Not allowed"
+      },
+      {
+        "line": 320,
+        "text": "- CIBIL -1"
+      },
+      {
+        "line": 338,
+        "text": "CIBIL adjustment is applied separately."
+      },
+      {
+        "line": 405,
+        "text": "12. CIBIL ADJUSTMENT OVER TERM-LOAN RAAC"
+      },
+      {
+        "line": 409,
+        "text": "- CIBIL >=775: -0.25%"
+      },
+      {
+        "line": 410,
+        "text": "- CIBIL >=725 to <775: +0.00%"
+      },
+      {
+        "line": 411,
+        "text": "- CIBIL >=700 to <725: +0.25%"
+      },
+      {
+        "line": 412,
+        "text": "- CIBIL <700 including 0 / -1: +1.00%"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 55,
+        "text": "Tenure:"
+      },
+      {
+        "line": 206,
+        "text": "Maximum Tenure:"
+      },
+      {
+        "line": 241,
+        "text": "Maximum Tenure:"
+      },
+      {
+        "line": 288,
+        "text": "Tenure:"
+      }
+    ]
+  },
+  {
+    "file": "Utkarsh_Small_Finance_Bank_Master_Policy_Clean.txt",
+    "cibilLines": [
+      {
+        "line": 46,
+        "text": "CIBIL:"
+      },
+      {
+        "line": 47,
+        "text": "- Minimum CIBIL Score: 650+"
+      },
+      {
+        "line": 75,
+        "text": "CIBIL:"
+      },
+      {
+        "line": 76,
+        "text": "- Minimum CIBIL Score: 675+"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 38,
+        "text": "Tenure:"
+      },
+      {
+        "line": 71,
+        "text": "Tenure:"
+      }
+    ]
+  },
+  {
+    "file": "Yes_Bank_Master_Policy.txt",
+    "cibilLines": [
+      {
+        "line": 43,
+        "text": "- CIBIL band-based eligibility"
+      },
+      {
+        "line": 52,
+        "text": "Minimum CIBIL Score:"
+      },
+      {
+        "line": 64,
+        "text": "- NTC (New to CIBIL) max age 35 at time of sourcing"
+      },
+      {
+        "line": 74,
+        "text": "- Pristine Segment: D/Platinum and Gold segments, bureau > 730"
+      },
+      {
+        "line": 78,
+        "text": "- NTC (New to CIBIL)"
+      },
+      {
+        "line": 132,
+        "text": "- New to CIBIL (NTC): 35,000"
+      },
+      {
+        "line": 183,
+        "text": "- NTC (New to CIBIL): Max age 35 at time of sourcing"
+      },
+      {
+        "line": 190,
+        "text": "1. CIBIL: Minimum score stated as -1 and above 731, but detailed band structure not defined. [REVIEW]"
+      }
+    ],
+    "tenureLines": [
+      {
+        "line": 14,
+        "text": "- Do not invent age, salary/NTH, FOIR, tenure, employment, document, BT/CCBT,"
+      },
+      {
+        "line": 106,
+        "text": "Tenure:"
+      },
+      {
+        "line": 135,
+        "text": "NTH Requirement for 72-month Tenure:"
+      },
+      {
+        "line": 192,
+        "text": "3. TENURE: 72 months offered only for specific conditions; 60 months for others. [REVIEW]"
+      },
+      {
+        "line": 193,
+        "text": "4. SALARY: NTC norm (35k) vs Other norm (25k); threshold for 72-month tenure (50k). [REVIEW]"
+      },
+      {
+        "line": 197,
+        "text": "8. MAX TENURE: 72 months conditional; exact conditions and verification not defined. [REVIEW]"
+      }
+    ]
+  }
+]

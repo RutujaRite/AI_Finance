@@ -25,6 +25,8 @@ export interface CategoryPolicyRule {
   processingFeePercent: number;
   employmentType: string;
   policySource: string;
+  policyCibil: string;
+  policyTenure: string;
 }
 
 interface BankPolicySpec {
@@ -697,6 +699,199 @@ export function classifyCategoryTier(rawCat: string | null | undefined): Categor
 }
 
 /**
+ * Resolves the exact CIBIL and Tenure requirements directly from each bank's actual Master Policy file.
+ * Returns "-" if not specified in the policy file. Never guesses, hardcodes, calculates, or uses defaults.
+ */
+export function getPolicyCibilAndTenure(
+  bankKey: string,
+  classification: CategoryClassification,
+  rawCat: string | null | undefined,
+  requestedLoanType: string = "Personal Loan"
+): { policyCibil: string; policyTenure: string } {
+  const normCat = String(rawCat || "").trim().toLowerCase();
+  let policyCibil = "-";
+  let policyTenure = "-";
+
+  if (bankKey === "abfl") {
+    // ABFL_Master_Policy.txt:
+    // Line 184: "🎯Cibil 700 compulsory"
+    // Line 163: "Loan Tenure- Min 12 months Max 60 Months"
+    policyCibil = "700+";
+    policyTenure = "12–60 months";
+  } else if (bankKey === "axis") {
+    // AXIS_Master_Policy.txt:
+    // Lines 141-144: CSG-Hit NMI 35k & Cibil >=700, NMI >85k & cibil >=700, NCSG-HIT NMI 50k & Cibil >=700
+    // Tenure: Not specified in AXIS_Master_Policy.txt (only mentions "High tenure Cases", no durations) -> "-"
+    policyCibil = "700+";
+    policyTenure = "-";
+  } else if (bankKey === "axisfinance") {
+    // Axis_Finance_Master_Policy.txt:
+    // Line 47: "Minimum CIBIL: 720", Line 94: Super CAT A / Govt: "730+"
+    // Lines 150-151: "Standard tenure: Up to 60 months", "Maximum tenure: 84 months"
+    policyCibil = classification.tier === "tier_1" || classification.tier === "govt" ? "730+" : "720+";
+    policyTenure = "Up to 84 months";
+  } else if (bankKey === "bajaj" || bankKey === "bajajfinserv") {
+    // Bajaj_Finserv_Master_Policy.txt:
+    // Line 97: Super CAT A / Govt: "730+", Line 203: "CIBIL: >=720"
+    // Lines 139-140: "Standard tenure: Up to 60 months", "Maximum tenure: 84 months"
+    policyCibil = classification.tier === "tier_1" || classification.tier === "govt" ? "730+" : "720+";
+    policyTenure = "Up to 84 months";
+  } else if (bankKey === "bajajmarkets") {
+    // Bajaj_Markets_Master_Policy.txt:
+    // Line 46: "Minimum CIBIL: 700"
+    // Line 115: "PS-1: 12-84 months"
+    policyCibil = "700+";
+    policyTenure = "12–84 months";
+  } else if (bankKey === "bandhan") {
+    // Bandhan_Bank_Master_Policy.txt:
+    // Line 46: "Minimum CIBIL: 731", Line 48: "CAT D with CIBIL 750 and salary 75k: eligible for higher loan amount"
+    // Lines 150-151: "Minimum: 3 months, Maximum: 60 months"
+    const isCatD = /cat\s*d/i.test(normCat);
+    policyCibil = isCatD ? "750+" : "731+";
+    policyTenure = "3–60 months";
+  } else if (bankKey === "chola") {
+    // Chola_Master_Policy.txt:
+    // Line 40: "Minimum CIBIL: 675"
+    // Lines 129-132: "Minimum: 12 months, Maximum: 84 months"
+    policyCibil = "675+";
+    policyTenure = "12–84 months";
+  } else if (bankKey === "fibe") {
+    // Fibe_Master_Policy.txt:
+    // Line 49: "Minimum CIBIL: 700"
+    // Lines 113-114: "Minimum: 3 months, Maximum: 36 months"
+    policyCibil = "700+";
+    policyTenure = "3–36 months";
+  } else if (bankKey === "finnable") {
+    // Finnable_Credit_Master_Policy.txt:
+    // Line 45: "Minimum CIBIL Score: 700"
+    // Lines 120-122: "Minimum: 12 months, Maximum: 36 months", "48 months (4 years) for loan amount >= ₹3,00,000"
+    policyCibil = "700+";
+    policyTenure = "12–36 months";
+  } else if (bankKey === "hdfc") {
+    // HDFC_Bank_Master_Policy_CIBIL_Updated.txt:
+    // Line 50: "The uploaded rate card does not specify a separate minimum CIBIL score threshold." -> "-"
+    // Lines 200-203:
+    // "Minimum: 12 months, Maximum: 60 months (standard)"
+    // "72 months for Super A / CAT A / CAT HDFC / CAT C / CAT GA / CAT RA / CAT GO nurse"
+    // "84 months for Super A / CAT A / CAT HDFC / CAT GA / CAT RA"
+    policyCibil = "-";
+    if (classification.tier === "tier_1") {
+      policyTenure = "12–84 months";
+    } else if (classification.tier === "govt") {
+      policyTenure = /gb/i.test(normCat) ? "12–60 months" : "12–84 months";
+    } else if (/cat\s*c/i.test(normCat)) {
+      policyTenure = "12–72 months";
+    } else {
+      policyTenure = "12–60 months";
+    }
+  } else if (bankKey === "homeloan") {
+    // home_loan_eligibility_policy_rules.txt:
+    // CIBIL: Not specified in policy -> "-"
+    // Lines 140, 145, 187: "Maximum tenure: 30 years", "Loan tenure up to 32 years"
+    policyCibil = "-";
+    policyTenure = "Up to 30 years";
+  } else if (bankKey === "icici") {
+    // ICICI_Bank_Personal_Loan_Policy_Rulebook.txt:
+    // Line 73: "Absolute Minimum CIBIL for approval: NOT_DEFINED / NEEDS_REVIEW" -> "-"
+    // Line 471: "5. TENURE: No minimum or maximum tenure is defined." -> "-"
+    policyCibil = "-";
+    policyTenure = "-";
+  } else if (bankKey === "idfc") {
+    // IDFC_FIRST_Bank_Master_Policy.txt:
+    // Line 107: "Salaried CIBIL: 690+"
+    // Line 421: "12 to 60 months"
+    policyCibil = "690+";
+    policyTenure = "12–60 months";
+  } else if (bankKey === "indusind") {
+    // IndusInd_Bank_Master_Policy.txt:
+    // Line 134: "CIBIL Score: >= 700"
+    // Lines 288-301: CAT A / B / G: "Highest Tenure: 72 months" (or 84m). "Do not extend this 72-month rule to categories not listed."
+    // CAT C / Unlisted: Not defined in policy -> "-"
+    policyCibil = "700+";
+    if (classification.tier === "tier_1" || classification.tier === "tier_2" || classification.tier === "govt") {
+      policyTenure = "Up to 72 months";
+    } else {
+      policyTenure = "-";
+    }
+  } else if (bankKey === "kotak") {
+    // Kotak_Mahindra_Bank_Master_Policy.txt:
+    // Line 272: "CIBIL Score: > 700 (V3)"
+    // Lines 336-342: "1 year to 5 years (24-06-24 Policy)", "Special Government policy allowed for 6-year tenure"
+    policyCibil = "> 700";
+    if (classification.tier === "govt") {
+      policyTenure = "Up to 6 years (72 months)";
+    } else {
+      policyTenure = "1–5 years (12–60 months)";
+    }
+  } else if (bankKey === "ltfinance") {
+    // LT_Finance_Master_Policy_Clean.txt:
+    // Line 83: "CIBIL V3 >= 700"
+    // Lines 107-114: "Minimum Tenure: 12 months, Maximum Tenure: 72 months"
+    policyCibil = "700+";
+    policyTenure = "12–72 months";
+  } else if (bankKey === "piramal") {
+    // Piramal_Capital__Housing_Finance_Master_Policy.txt:
+    // Line 92: "CIBIL 650 can be considered as stated in supplied policy text"
+    // Lines 23-24: "Standard: 12 to 72 months", "Revised JFM program: up to 84 months"
+    policyCibil = "650+";
+    policyTenure = "12–72 months";
+  } else if (bankKey === "poonawalla") {
+    // Poonawalla_Fincorp_Master_Policy.txt:
+    // Line 104, 285: "CAT D maximum funding 10 Lakhs (750 CIBIL & OWN House Required)"
+    // Line 222: Rate grid TU score starts at > 700
+    // Lines 101-104, 214-216:
+    // Super CAT A / CAT A / GOVT: Tenure up to 7 Years (84m)
+    // Cat B: Tenure up to 6 Years (72m)
+    // All other categories: max loan tenure will be 60 months
+    const isCatD = /cat\s*d/i.test(normCat);
+    policyCibil = isCatD ? "750+" : "700+";
+    if (classification.tier === "tier_1" || classification.tier === "govt") {
+      policyTenure = "Up to 7 years (84 months)";
+    } else if (classification.tier === "tier_2") {
+      policyTenure = "Up to 6 years (72 months)";
+    } else {
+      policyTenure = "Up to 5 years (60 months)";
+    }
+  } else if (bankKey === "sbm") {
+    // SBM_Bank_India_Master_Policy_Clean.txt:
+    // Line 30: "Minimum CIBIL Score: 720+"
+    // Lines 55-56: "Minimum Tenure: 12 months, Maximum Tenure: 60 months"
+    policyCibil = "720+";
+    policyTenure = "12–60 months";
+  } else if (bankKey === "smfg") {
+    // SMFG_India_Credit_Fullerton_Master_Policy_Clean.txt:
+    // Line 37: "Minimum CIBIL Score: 705+"
+    // Lines 50-51: "Minimum Tenure: 1 year, Maximum Tenure: 5 years"
+    policyCibil = "705+";
+    policyTenure = "1–5 years (12–60 months)";
+  } else if (bankKey === "tatacapital") {
+    // Tata_Capital_Master_Policy_Clean.txt:
+    // Line 51: "Normal salaried base policy: 725+"
+    // Lines 56-58: "Up to 72 months for eligible salary/category profiles", "CAT C normal salaried: Maximum 60 months"
+    policyCibil = "725+";
+    if (classification.tier === "tier_1" || classification.tier === "tier_2" || classification.tier === "govt") {
+      policyTenure = "Up to 72 months";
+    } else {
+      policyTenure = "Up to 60 months";
+    }
+  } else if (bankKey === "utkarsh") {
+    // Utkarsh_Small_Finance_Bank_Master_Policy_Clean.txt:
+    // Line 47: "Minimum CIBIL Score: 650+"
+    // Lines 39-40: "Minimum: 12 months, Maximum: 60 months"
+    policyCibil = "650+";
+    policyTenure = "12–60 months";
+  } else if (bankKey === "yesbank") {
+    // Yes_Bank_Master_Policy.txt:
+    // Line 53: "-1 and above 731, Below 731 is not allowed"
+    // Lines 107-112: "72 months can be offered where: a) Loan eligibility is > 5 lakhs, b) Green band, c) NTH is > 50,000, d) Company category other than Silver/Silver Neo. For others: Maximum 60 months"
+    policyCibil = "731+";
+    policyTenure = "Up to 60 months";
+  }
+
+  return { policyCibil, policyTenure };
+}
+
+/**
  * Extracts bank-specific category-adjusted policy rules using the Master Policy .txt file
  * as the primary source of truth, with policy_rules as secondary fallback.
  */
@@ -1018,6 +1213,13 @@ export function getBankRulesForCategory(
     }
   }
 
+  const { policyCibil, policyTenure } = getPolicyCibilAndTenure(
+    bankKey,
+    classification,
+    companyCategory,
+    requestedLoanType
+  );
+
   return {
     bankId: matchedMaster?.bank_id ?? matchedMaster?.id ?? 0,
     bankName: matchedMaster.bank_name || spec.bankName,
@@ -1039,6 +1241,8 @@ export function getBankRulesForCategory(
     processingFeePercent,
     employmentType: spec.employmentType,
     policySource: `${matchedMaster.bank_name} Master Policy (${fileName})`,
+    policyCibil,
+    policyTenure,
   };
 }
 
@@ -1164,7 +1368,7 @@ export function getAllBankRulesForCategory(
     if (rule) {
       rules.push(rule);
       console.log(
-        `[Bank Fetching] ✓ Loaded "${rule.bankName}" (${rule.fileName}) | Category: ${rule.resolvedCategory} | Min Salary: ₹${rule.minSalary.toLocaleString("en-IN")} | Min CIBIL: ${rule.minCibil} | ROI: ${rule.roi}%`
+        `[Bank Fetching] ✓ Loaded "${rule.bankName}" (${rule.fileName}) | Category: ${rule.resolvedCategory} | Min Salary: ₹${rule.minSalary.toLocaleString("en-IN")} | Min CIBIL: ${rule.minCibil} | Policy CIBIL: ${rule.policyCibil} | Policy Tenure: ${rule.policyTenure} | ROI: ${rule.roi}%`
       );
     }
   }

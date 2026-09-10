@@ -269,7 +269,53 @@ export default function PoliciesView({
     }
   }
 
-  // Delete Policy & Associated File Confirmation
+  // Open Viewer for policy text file
+  function handleOpenViewerFile(policy: any) {
+    if (!user?.role) {
+      checkAuth()
+    }
+    const fileName = policy.attachment_file_name || policy.file_name || `${policy.bank_name || "Bank"}_Master_Policy.txt`
+    const extractedText = policy.attachment_extracted_text || ""
+    if (extractedText) {
+      setActiveViewerFile({
+        id: policy.attachment_id || policy.file_id || policy.bank_id || policy.id,
+        file_id: policy.attachment_id || policy.file_id || policy.id,
+        bank_id: policy.bank_id,
+        file_name: fileName,
+        bank_name: policy.bank_name,
+        extracted_text: extractedText,
+        file_size_bytes: policy.file_size_bytes || new Blob([extractedText]).size,
+      })
+      setViewerFileDraftText(extractedText)
+      setIsEditingViewerFile(false)
+      setModalSearch("")
+    } else {
+      handleOpenViewer(policy.attachment_id || policy.file_id || policy.bank_id || policy.id, policy)
+    }
+  }
+
+  // Open Editor for policy text file
+  function handleOpenEditorFile(policy: any) {
+    if (!user?.role) {
+      checkAuth()
+    }
+    const fileName = policy.attachment_file_name || policy.file_name || `${policy.bank_name || "Bank"}_Master_Policy.txt`
+    const extractedText = policy.attachment_extracted_text || ""
+    setActiveViewerFile({
+      id: policy.attachment_id || policy.file_id || policy.bank_id || policy.id,
+      file_id: policy.attachment_id || policy.file_id || policy.id,
+      bank_id: policy.bank_id,
+      file_name: fileName,
+      bank_name: policy.bank_name,
+      extracted_text: extractedText,
+      file_size_bytes: policy.file_size_bytes || new Blob([extractedText]).size,
+    })
+    setViewerFileDraftText(extractedText)
+    setIsEditingViewerFile(true)
+    setModalSearch("")
+  }
+
+  // Delete Policy Text File Confirmation (Deletes text file only, keeps bank database record)
   function handleOpenDelete(policy: any) {
     setDeleteConfirmPolicy(policy)
   }
@@ -290,7 +336,7 @@ export default function PoliciesView({
       const data = await res.json()
       if (data.success) {
         showToast(
-          `✓ Deleted policy rule for ${deleteConfirmPolicy.bank_name} and associated master text file (${fileName})`,
+          `✓ Deleted master policy file (${fileName}) for ${deleteConfirmPolicy.bank_name}. Bank remains in the list.`,
           "success"
         )
         setDeleteConfirmPolicy(null)
@@ -298,11 +344,11 @@ export default function PoliciesView({
         loadPolicies()
         loadPolicyFiles()
       } else {
-        showToast(`✕ Failed to delete policy: ${data.error || "Unknown error"}`, "error")
+        showToast(`✕ Failed to delete policy file: ${data.error || "Unknown error"}`, "error")
       }
     } catch (err) {
-      console.error("Failed to delete policy", err)
-      showToast("✕ Failed to delete policy rule", "error")
+      console.error("Failed to delete policy file", err)
+      showToast("✕ Failed to delete policy file", "error")
     } finally {
       setIsDeletingPolicy(false)
     }
@@ -719,16 +765,14 @@ export default function PoliciesView({
                     <tr>
                       <th style={{ width: 45 }}>#</th>
                       <th>Bank Name</th>
-                      <th>Master Policy File</th>
                       <th>Loan Category</th>
                       <th>Status</th>
-                      <th style={{ textAlign: "right", minWidth: 220 }}>Actions</th>
+                      <th style={{ textAlign: "right", minWidth: 200 }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredPolicies.map((policy: any, idx: number) => {
                       const status = (policy.status || "active").toLowerCase()
-                      const masterFileName = policy.attachment_file_name || policy.file_name || `${policy.bank_name}_Master_Policy.txt`
                       return (
                         <tr key={policy.bank_id || policy.id || idx}>
                           <td style={{ color: "var(--ink-muted)", fontWeight: 500 }}>{idx + 1}</td>
@@ -736,32 +780,6 @@ export default function PoliciesView({
                             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                               <i className="bi bi-bank" style={{ color: "var(--accent)" }} />
                               {policy.bank_name || policy.bank_code || "Partner Bank"}
-                            </div>
-                          </td>
-                          <td>
-                            <div
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "0.4rem",
-                                fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                                fontSize: "0.8125rem",
-                                color: "var(--ink)",
-                                background: "var(--surface-2)",
-                                padding: "0.25rem 0.6rem",
-                                borderRadius: "var(--radius-sm)",
-                                border: "1px solid var(--border)",
-                                maxWidth: "320px",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                              title={masterFileName}
-                            >
-                              <i className="bi bi-file-earmark-text" style={{ color: "var(--accent)", flexShrink: 0 }} />
-                              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                                {masterFileName}
-                              </span>
                             </div>
                           </td>
                           <td style={{ color: "var(--accent)", fontWeight: 500 }}>
@@ -777,45 +795,23 @@ export default function PoliciesView({
                               <button
                                 type="button"
                                 className="btn btn-secondary btn-sm"
-                                title="View Master Document"
-                                onClick={() => {
-                                  if (!user?.role) {
-                                    checkAuth()
-                                  }
-                                  const fileName = masterFileName
-                                  const extractedText = policy.attachment_extracted_text || ""
-                                  if (extractedText) {
-                                    setActiveViewerFile({
-                                      id: policy.attachment_id || policy.file_id || policy.bank_id || policy.id,
-                                      file_id: policy.attachment_id || policy.file_id || policy.id,
-                                      bank_id: policy.bank_id,
-                                      file_name: fileName,
-                                      bank_name: policy.bank_name,
-                                      extracted_text: extractedText,
-                                      file_size_bytes: policy.file_size_bytes || new Blob([extractedText]).size,
-                                    })
-                                    setViewerFileDraftText(extractedText)
-                                    setIsEditingViewerFile(false)
-                                    setModalSearch("")
-                                  } else {
-                                    handleOpenViewer(policy.attachment_id || policy.bank_id || policy.id, policy)
-                                  }
-                                }}
+                                title="View Master Policy Text File"
+                                onClick={() => handleOpenViewerFile(policy)}
                               >
                                 <i className="bi bi-eye" /> View
                               </button>
                               <button
                                 type="button"
                                 className="btn btn-secondary btn-sm"
-                                title="Edit Policy Rule"
-                                onClick={() => handleOpenEdit(policy)}
+                                title="Edit Master Policy Text File"
+                                onClick={() => handleOpenEditorFile(policy)}
                               >
                                 <i className="bi bi-pencil" /> Edit
                               </button>
                               <button
                                 type="button"
                                 className="btn btn-outline-danger btn-sm"
-                                title="Delete Policy Rule & File"
+                                title="Delete Master Policy Text File"
                                 onClick={() => handleOpenDelete(policy)}
                               >
                                 <i className="bi bi-trash3" /> Delete
@@ -940,15 +936,15 @@ export default function PoliciesView({
                               <button
                                 type="button"
                                 className="btn btn-secondary btn-sm"
-                                title="Edit Policy Rule"
-                                onClick={() => handleOpenEdit(file)}
+                                title="Edit Master Policy Text File"
+                                onClick={() => handleOpenEditorFile(file)}
                               >
                                 <i className="bi bi-pencil" /> Edit
                               </button>
                               <button
                                 type="button"
                                 className="btn btn-outline-danger btn-sm"
-                                title="Delete Policy Rule & File"
+                                title="Delete Master Policy Text File"
                                 onClick={() => handleOpenDelete(file)}
                               >
                                 <i className="bi bi-trash3" /> Delete
@@ -1440,15 +1436,15 @@ export default function PoliciesView({
                 <i className="bi bi-trash3" />
               </div>
               <h3 style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.5rem" }}>
-                Delete Policy Rule?
+                Delete Master Policy File?
               </h3>
               <p style={{ fontSize: "0.875rem", color: "var(--ink-soft)", lineHeight: 1.5, margin: "0 auto 1.5rem", maxWidth: 380 }}>
-                Are you sure you want to delete the policy rule for{" "}
-                <strong style={{ color: "var(--ink)" }}>{deleteConfirmPolicy.bank_name || "this bank"}</strong> and remove its associated master text file{" "}
-                <strong style={{ color: "var(--ink)" }}>({deleteConfirmPolicy.file_name || deleteConfirmPolicy.attachment_file_name || "master document"})</strong>?
+                Are you sure you want to delete the master policy text file{" "}
+                <strong style={{ color: "var(--ink)" }}>({deleteConfirmPolicy.file_name || deleteConfirmPolicy.attachment_file_name || "master document"})</strong> for{" "}
+                <strong style={{ color: "var(--ink)" }}>{deleteConfirmPolicy.bank_name || "this bank"}</strong>?
                 <br />
-                <span style={{ color: "#ef4444", fontWeight: 600, fontSize: "0.8125rem", display: "inline-block", marginTop: "0.5rem" }}>
-                  This action cannot be undone.
+                <span style={{ color: "var(--ink-muted)", fontSize: "0.8125rem", display: "inline-block", marginTop: "0.5rem" }}>
+                  The bank database record will remain active in the list.
                 </span>
               </p>
 

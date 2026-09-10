@@ -33,6 +33,8 @@ export interface BankEvaluationResult {
   requestedLoanAmount: number; // ₹
   processingFeePercent: number;
   tenureMonths: number;
+  policyCibil: string;
+  policyTenure: string;
   foirPercent: number;
   calculatedFoir: number;
   verifiedChecks: string[];
@@ -906,6 +908,8 @@ export async function evaluateApplicantAgainstAllBanks(
       requestedLoanAmount: loanAmount,
       processingFeePercent: rule.processingFeePercent,
       tenureMonths,
+      policyCibil: rule.policyCibil || "-",
+      policyTenure: rule.policyTenure || "-",
       foirPercent: rule.foirPercent,
       calculatedFoir: Number(calculatedFoir.toFixed(1)),
       verifiedChecks,
@@ -970,7 +974,7 @@ export async function evaluateApplicantAgainstAllBanks(
  * CIBIL, loan amount, tenure, salary when relevant, and FOIR.
  * Strictly excludes any internal filenames, database details, internal category codes, or technical checklists.
  */
-function buildConciseEligibilityReason(applicant: ApplicantProfile, b: BankEvaluationResult): string {
+export function buildConciseEligibilityReason(applicant: ApplicantProfile, b: BankEvaluationResult): string {
   const parts: string[] = [];
 
   // CIBIL factor
@@ -1055,22 +1059,21 @@ export function formatDynamicEligibilityReport(
   // Top Recommendation Highlight
   if (recommendedBank) {
     const isSole = eligibleBanks.length === 1;
-    const recReason = buildConciseEligibilityReason(applicant, recommendedBank);
 
     lines.push(`### 🏆 ${isSole ? "Approved Partner Bank" : "Top Recommended Bank"}: **${recommendedBank.bankName}**`);
     lines.push(`> [!TIP]`);
     if (isSole) {
-      lines.push(`> **${recommendedBank.bankName}** is your **sole qualifying partner bank**, offering an interest rate of **${recommendedBank.roi}% p.a.** with an estimated monthly EMI of **₹${recommendedBank.monthlyEmi.toLocaleString("en-IN")}/month**.`);
+      lines.push(`> **${recommendedBank.bankName}** is your **sole qualifying partner bank**, with an estimated monthly EMI of **₹${recommendedBank.monthlyEmi.toLocaleString("en-IN")}/month**.`);
     } else {
-      lines.push(`> **${recommendedBank.bankName}** is selected as your **#1 Best Match** among **${eligibleBanks.length} approved partner banks**, offering the lowest interest rate of **${recommendedBank.roi}% p.a.** with an estimated monthly EMI of **₹${recommendedBank.monthlyEmi.toLocaleString("en-IN")}/month**.`);
+      lines.push(`> **${recommendedBank.bankName}** is selected as your **#1 Best Match** among **${eligibleBanks.length} approved partner banks**, with an estimated monthly EMI of **₹${recommendedBank.monthlyEmi.toLocaleString("en-IN")}/month**.`);
     }
     lines.push("");
-    lines.push(`**Approved Loan Terms**:`);
-    lines.push(`- **Annual Interest Rate (ROI)**: **${recommendedBank.roi}% p.a.**`);
+    lines.push(`**Recommendation Details**:`);
+    lines.push(`- **Bank Name**: **${recommendedBank.bankName}**`);
+    lines.push(`- **Status**: ✅ **Approved / Eligible**`);
     lines.push(`- **Estimated Monthly EMI**: **₹${recommendedBank.monthlyEmi.toLocaleString("en-IN")} / month**`);
-    lines.push(`- **Maximum Eligible Loan Capacity**: **₹${recommendedBank.maxLoanEligible.toLocaleString("en-IN")}**`);
-    lines.push(`- **Processing Fee**: **${recommendedBank.processingFeePercent}%**`);
-    lines.push(`- **Key Eligibility Reason**: ${recReason}`);
+    lines.push(`- **CIBIL**: **${recommendedBank.policyCibil || "-"}**`);
+    lines.push(`- **Tenure**: **${recommendedBank.policyTenure || "-"}**`);
     lines.push("");
   }
 
@@ -1081,24 +1084,16 @@ export function formatDynamicEligibilityReport(
     if (isSole) {
       lines.push(`Based on your profile and verified financial parameters, **${eligibleBanks[0].bankName}** has approved your loan application:`);
     } else {
-      lines.push(`The following **${eligibleBanks.length} partner banks** have approved your profile, ranked from lowest to highest interest rate:`);
+      lines.push(`The following **${eligibleBanks.length} partner banks** have approved your profile:`);
     }
     lines.push("");
-    lines.push(`| # | Bank Name | Interest Rate (ROI) | Estimated Monthly EMI | Maximum Loan Limit | Processing Fee |`);
-    lines.push(`| :--- | :--- | :--- | :--- | :--- | :--- |`);
+    lines.push(`| # | Bank Name | Estimated Monthly EMI | CIBIL | Tenure |`);
+    lines.push(`| :--- | :--- | :--- | :--- | :--- |`);
 
     eligibleBanks.forEach((b, idx) => {
       lines.push(
-        `| ${idx + 1} | **${b.bankName}** | **${b.roi}%** | ₹${b.monthlyEmi.toLocaleString("en-IN")} | ₹${b.maxLoanEligible.toLocaleString("en-IN")} | ${b.processingFeePercent}% |`
+        `| ${idx + 1} | **${b.bankName}** | ₹${b.monthlyEmi.toLocaleString("en-IN")} | ${b.policyCibil || "-"} | ${b.policyTenure || "-"} |`
       );
-    });
-    lines.push("");
-
-    // Concise 1–2 sentence reasons per bank based on CIBIL, loan amount, tenure, salary, and FOIR
-    lines.push(`### 📋 Key Eligibility Reasons`);
-    eligibleBanks.forEach((b, idx) => {
-      const reason = buildConciseEligibilityReason(applicant, b);
-      lines.push(`${idx + 1}. **${b.bankName}**: ${reason}`);
     });
     lines.push("");
 

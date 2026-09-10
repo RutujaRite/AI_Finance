@@ -1,0 +1,1725 @@
+================================================================
+FILE: ABFL_Master_Policy.txt
+[CIBIL SECTION]:
+ABFL MASTER POLICY CONSOLIDATION
+Generated: 2026-08-25
+Source Bank: Aditya Birla Finance Ltd
+INSTRUCTIONS:
+- This file consolidates ALL policy information from every source file in the ABFL bank folder.
+- Data is organized program-wise where identifiable.
+- Source filenames are preserved for each data point.
+- [REQUIRES ADMIN REVIEW] marks conflicting information across sources.
+- No values are invented or defaulted.
+>> No ABB required for BT Loan up to 15 lacs
+
+[TENURE SECTION]:
+>> loan amount for  CAT A - maximum cap - 40 lacs
+>> for 7 years Tenor Eligibility will considered for 6 years and same way for 6 years Tenor Eligibility will consider 5 years
+Loan Amount - Min 1 lac to 40 lac
+Loan Tenure- Min 12 months Max 60 Months
+(84 Months Cat A ,B,C & D, => NTH 75K & loan amount 5 lacs above
+Rate  14% -20% Tenure max 84 months
+maximum Tenure 5 year
+Minimum Loan amount 15 lakh Required with 1 year clear track
+Tenure - 5 years
+Tenure  - 5 Year
+
+[CIBIL SECTION]:
+>> NO ABB REQUIRD FOR fresh loan up to 10 lacs ( * for Cat A and Cat B - cibil require >725)
+*CIBIL Inquiries - 5 in last 3 months *
+🎯Cibil 700 compulsory
+6)  -1 CIBIL score with owned house*
+* Existing-to-credit customers allowed CIBIL score < 700.
+and CIBIL score >725.
+
+[CIBIL SECTION]:
+FOIR NORMS - AS PER SHEET
+Required Personal loan track minimum 1 year (maximum Foir 100% )
+over obligations case we can do in this program.
+BT Norms on Unsecured FOIR:
+Non-BT Norms on Unsecured FOIR:
+, | Unsecured FOIR Capping based on the <=3 unsecured Enquiry: No Cap
+Rest: Unsecured FOIR<=40%
+Note - For any breach on unsecured FOIR from above norms, maximum cap of 60% on Total FOIR with Loan amount
+RREMSGACA
+|p EE ER il i fh il |
+
+[CIBIL SECTION]:
+BT Program - PL & CC BT max 6 in normal cases
+2) BT SURROGATE
+ABFL Policy Update § §
+Happy to announce we have started Paperless *_BT surrogate
+program _*
+*BT program updates* :
+«Maximum 2 BT we can do under this program
+«1year PL track (12mob) has to be completed no bounce in
+entire track no DPD acceptable.
+«no foir restriction on BT program
+
+[CIBIL SECTION]:
+1. AGE NORMS: Policy.txt says 23-60 years. Policy 23-12-24.jpeg says revised to 62 years. [REVIEW]
+2. CO-APPLICANT INCOME: Policy 23-12-24.jpeg specifies Tier 1/2 cities: ₹25,000 (not in Policy.txt). [REVIEW]
+3. MAXIMUM LOAN CAP: Policy.txt says 40 lacs. Policy 23-12-24.jpeg mentions ₹15 Lacs for Category 0. [REVIEW]
+4. CIBIL SCORE: Policy.txt mentions >725 for Cat A/B. Policy 23-12-24.jpeg allows <700 for existing-to-credit customers. [REVIEW]
+
+================================================================
+FILE: AXIS_Master_Policy.txt
+[CIBIL SECTION]:
+= = cases, based on Net Monthly Income (NMI) and CIBIL score thresholds. =
+== | CSG- Hit NMI 35k & Cibil >=700 >=740 OR -—
+— i NMI >85k & cibil >=700 — ——
+&rReg.. — NCSG-HIT | NMi 50k & Cibil >=700 NMI 50K & Cibil >=740 —
+—— f MI 75k-100k & Cibil >=780 —
+— = Mi 75k & Cibil >=740 OR —
+= IMI > 100k & cibil >+740 Il IN =
+
+[CIBIL SECTION]:
+1. NMI THRESHOLDS: Multiple thresholds found (NMI 35k-85k & CIBIL >=700 vs NMI 50k & CIBIL >=740 vs NMI 75k-100k & CIBIL >=780). [REVIEW]
+2. CIBIL SCORE: Different thresholds for different NMI ranges. [REVIEW]
+3. LOAN AMOUNT: Policy.txt says 40 lacs, Policy 23-12-24.jpeg mentions Rs15 Lacs for Category 0. [REVIEW]
+4. ERROR CODES: Some MLP error codes may indicate policy thresholds. [REVIEW]
+
+================================================================
+FILE: Axis_Finance_Master_Policy.txt
+[TENURE SECTION]:
+Key Features:
+- FOIR up to 75%
+- 30 mins disbursal
+- Loan multiplier up to 30x
+- Tenure up to 84 months
+
+[CIBIL SECTION]:
+CIBIL/ICS Requirements:
+- Minimum CIBIL: 720
+- CIBIL range across versions: 720 - 750 [REVIEW]
+
+[CIBIL SECTION]:
+Super CAT A / Super Edge Eligibility:
+- A to AAA CRISIL-rated companies
+- Fortune 500 / BSE 500 / NSE 500 companies
+- Govt. employees and Govt. teachers (NTH > ₹50K/month)
+- CIBIL Score: 730+
+- Minimum Age: 24 years
+- Minimum NTH: > ₹350,000 per month
+
+[TENURE SECTION]:
+Tenure:
+- Standard tenure: Up to 60 months
+- Maximum tenure: 84 months
+- Bharat Program: 48 months
+- Skilled Worker: Up to 36 months (Cat C/D)
+- 96 Month Program: Up to 96 months
+- All-in-One Program: Up to 60 months
+
+[CIBIL SECTION]:
+Credit Card BT (CCBT):
+- Program cap: ₹25 Cr (Prime), ₹10 Cr (Growth), ₹5 Cr (Prof SAL)
+- CIBIL: >=720
+- Allowed only in Prime market & G1 locations
+- Late fee/over limit fee in last 3 months: Not allowed
+- CC limit <₹1L: Not allowed
+- CC outstanding <₹50k: Not allowed
+
+[CIBIL SECTION]:
+Mandatory Documents:
+- 1 Year bank statement in PDF
+- 3 months payslip
+- Minimum 6 months bank statement (AA/Perfios verified)
+- EPFO validation for employment confirmation
+- Email & Domain check mandatory
+- Geo-tagging mandatory (BFL ON ROLL employee only)
+- PAN mandatory (Bureau No-hit program)
+- Mobile verification from Karza (Bureau No-hit program)
+- TAN check or Online website check (if employment check not verified through Email/EPFO)
+
+[CIBIL SECTION]:
+Bounce & Delinquency Norms:
+- No DPD in bureau in last 12 months
+- EMI bounce in last 6 months banking: Not allowed
+- As per Annexure 14.2
+
+[CIBIL SECTION]:
+Other Exceptions:
+- Current outstanding on all Credit cards >= ₹10 Lacs: Not allowed
+- Owned house mandatory OR Ever HL mandatory
+- Bureau thick file mandatory
+- Negative area/OGL not allowed
+- Applicant should not be promoter of company/partner in firm
+- No funding for customer staying in PG/Hostel/Guest house
+- Contractual employees: Not allowed
+- Proprietorships/Partnerships/HUF/Trusts/Co-operative societies: Not to be funded
+
+================================================================
+FILE: Bajaj_Finserv_Master_Policy.txt
+[CIBIL SECTION]:
+CIBIL/PL Score Requirements:
+- CIBIL: As per annexure 14.1
+- PL Score >650 allowed
+- PL Score <650 allowed with conditions (ABB >15k in Prime/G1/G2, >12k in G3/G4)
+- Bureau No-Hit program: CIBIL 0/-1 with CRIF score trigger
+
+[CIBIL SECTION]:
+Super Edge / Super CAT A Eligibility:
+- A to AAA CRISIL-rated companies
+- Fortune 500 / BSE 500 / NSE 500 companies
+- Govt. employees and Govt. teachers (NTH > ₹50K/month)
+- CIBIL Score: 730+
+- Minimum Age: 24 years
+- Minimum NTH: > ₹350,000 per month
+
+[TENURE SECTION]:
+Tenure:
+- Standard tenure: Up to 60 months
+- Maximum tenure: 84 months
+- 96 Month Program: Up to 96 months
+- Bharat Program: 48 months
+- ABB Program: As per FUW program
+- Hybrid Flexi: Only 84 months allowed for LA > 5L
+
+[CIBIL SECTION]:
+Salary Considerations:
+- Monthly/Quarterly incentive: Considered as recurring income with deviation capture
+- NTH norms: Fixed salary with fixed components
+- CAT C/D/U: Can process cases basis NTH norms
+- Salary credit date: Latest month first, then previous month
+- Offer letter-based processing: Not allowed in Bureau No-Hit program
+
+[CIBIL SECTION]:
+Credit Card BT (CCBT):
+- Program cap: ₹25 Cr (Prime), ₹10 Cr (Growth), ₹5 Cr (Prof SAL)
+- CIBIL: >=720
+- Allowed only in Prime market & G1 locations of Growth market
+- Late fee/over limit fee in last 3 months: Not allowed
+- CC limit <₹1L: Not allowed
+- CC outstanding <₹50k: Not allowed
+- Overutilized card BT: Not allowed
+- Last 3 months CC Statement mandatory
+- 5% of CC outstanding not obligated while computing eligibility
+
+[CIBIL SECTION]:
+Mandatory Documents:
+- 1 Year bank statement in PDF
+- 3 months payslip
+- Minimum 6 months bank statement (AA/Perfios verified)
+- EPFO validation for employment confirmation
+- Email & Domain check mandatory
+- Geo-tagging mandatory (BFL ON ROLL employee only)
+- PAN mandatory (Bureau No-hit program)
+- Mobile verification from Karza (Bureau No-hit program)
+- TAN check or Online website check (if employment check not verified through Email/EPFO)
+
+[CIBIL SECTION]:
+Bounce & Delinquency Norms:
+- No DPD in bureau in last 12 months
+- EMI bounce in last 6 months banking: Not allowed
+- As per Annexure 14.2
+
+[CIBIL SECTION]:
+Other Exceptions:
+- Current outstanding on all Credit cards >= ₹10 Lacs: Not allowed
+- Owned house mandatory OR Ever HL mandatory
+- Bureau thick file mandatory
+- Negative area/OGL not allowed
+- No funding for customer staying in PG/Hostel/Guest house
+- Contractual employees: Not allowed
+- Proprietorships/Partnerships/HUF/Trusts/Co-operative societies: Not to be funded
+- Bureau No-Hit: Offer letter-based processing not allowed
+- No deviation on age norms in Credit Card BT program
+
+[TENURE SECTION]:
+Other Exceptions:
+- Current outstanding on all Credit cards >= ₹10 Lacs: Not allowed
+- Owned house mandatory OR Ever HL mandatory
+- Bureau thick file mandatory
+- Negative area/OGL not allowed
+- No funding for customer staying in PG/Hostel/Guest house
+- Contractual employees: Not allowed
+- Proprietorships/Partnerships/HUF/Trusts/Co-operative societies: Not to be funded
+- Bureau No-Hit: Offer letter-based processing not allowed
+- No deviation on age norms in Credit Card BT program
+
+================================================================
+FILE: Bajaj_Markets_Master_Policy.txt
+[CIBIL SECTION]:
+CIBIL Score Requirements:
+- Minimum CIBIL: 700
+- PS-1: CIBIL 700+
+- Pocket Personal Loan (PPL): CIBIL 700+
+- Bureau thick file mandatory
+
+[TENURE SECTION]:
+Tenure:
+- PS-1: 12-84 months
+- PPL: As per eligibility
+- BT Program: Up to 8 years (96 months)
+
+[TENURE SECTION]:
+Balance Transfer (BT) Rules:
+- Pure BT and BT + Top-up allowed
+- Loan amount up to 105% of outstanding loan POS
+- Multiple PL BT allowed
+- 6 EMIs must be completed for BT
+- No bounces in last 12 months
+- FOIR: 100% / Up to 75%
+- Highest tenure up to 8 years in BT program
+- Convert PL to Overdraft
+- EPFO/Official mail accepted as employment proof
+
+================================================================
+FILE: Bandhan_Bank_Master_Policy.txt
+[CIBIL SECTION]:
+CIBIL Score Requirements:
+- Minimum CIBIL: 731
+- PL CIBIL inquiry not more than 5 in last 30 days
+- CAT D with CIBIL 750 and salary 75k: eligible for higher loan amount
+- CIBIL <730 (Banking Surrogate Programme): Either office or residence must be owned
+- NTC (New to Credit): Max loan amount ₹3,00,000
+
+[CIBIL SECTION]:
+Special Rates (Salaried):
+- CAT A/B/Govt, LA 25L, CIBIL >750: 10.25%
+- CAT A/B/Govt, LA 20L, CIBIL >750: 10.50%
+- CAT A/B/Govt/C, LA 10-15L: 10.99%
+
+[CIBIL SECTION]:
+Special Rates (SEP):
+- LA 25L, CIBIL >750: 10.50%
+- LA 20L, CIBIL >750: 10.75%
+- LA 10-15L: 10.99%
+
+[CIBIL SECTION]:
+Loan Amount Limits:
+- Minimum: ₹1,00,000 (Bandhan employees: ₹10,000)
+- CAT A/B/Govt: Maximum ₹25,00,000
+- CAT C: Maximum ₹15,00,000 (Max ₹20,00,000 if salary >= ₹75K)
+- CAT D: Maximum ₹5,00,000 (Max ₹10,00,000 if salary >= ₹75K & CIBIL >=750)
+- SEP (Doctor/MBBS+): Maximum ₹40,00,000
+- Salaried Doctor: Maximum ₹25,00,000
+- NTC: Maximum ₹3,00,000
+- Banking Surrogate Programme: Maximum ₹20,00,000
+- Loan >₹15L: Only for PL focus locations with mandatory Credit PD
+
+[TENURE SECTION]:
+Tenure:
+- Minimum: 3 months
+- Maximum: 60 months
+- Doctor Loan: 3-60 months
+
+[CIBIL SECTION]:
+Salary Considerations:
+- All salary bands based on Eligible Considered Income of main Applicant
+- CAT C: Salary 75k+ allows max LA 20L
+- CAT D: Salary 75k+ & CIBIL 750 allows max LA 10L
+
+[CIBIL SECTION]:
+Balance Transfer (BT) Rules:
+- No recent funding availed within last 6 months
+- Recent funding: Co-applicant must be in CAT A/B with CIBIL 750 and salary 50k
+- Existing BFL SALPL loan: Process in BTTP only, parallel funding not allowed
+
+[TENURE SECTION]:
+Part Payment:
+- Flexible part payment options with no part payment charges up to 25% after 12 months, twice in loan tenure
+
+================================================================
+FILE: Chola_Master_Policy.txt
+[CIBIL SECTION]:
+CIBIL Score Requirements:
+- Minimum CIBIL: 675
+- CIBIL < 700: Loan amount up to ₹5,00,000 only
+- CIBIL > 700: Loan amount up to ₹20,00,000
+- CIBIL vintage: 6 months mandatory
+- CIBIL -1 will be considered for Govt Employees
+- New to CIBIL (0/-1): Max loan cap ₹5,00,000
+- Max 5 CIBIL enquiries in last 1 month accepted
+- No CIBIL enquiries in last 30 days (some versions) [REVIEW]
+
+[CIBIL SECTION]:
+Loan Amount Limits:
+- Minimum: ₹1,00,000
+- Maximum: ₹20,00,000
+- CIBIL < 700: Maximum ₹5,00,000
+- CIBIL > 700: Maximum ₹20,00,000
+- New to CIBIL (0/-1): Maximum ₹5,00,000
+
+[CIBIL SECTION]:
+Tenure:
+- Minimum: 12 months
+- Maximum: 84 months
+- Tenure up to 84 months across all categories for salary above ₹40,000
+- Maximum tenure 48 months for CIBIL score < 750
+
+[TENURE SECTION]:
+Tenure:
+- Minimum: 12 months
+- Maximum: 84 months
+- Tenure up to 84 months across all categories for salary above ₹40,000
+- Maximum tenure 48 months for CIBIL score < 750
+
+[CIBIL SECTION]:
+Existing Obligations:
+- All loans reflecting in CIBIL, banking and all loans confirmed during PD to be obligated for eligibility calculations
+- Any existing loan getting over within 6 months whose loan tenure is >18 months: need not be obligated for arriving total obligations
+- Credit Card Obligations: Gross salary * 5 times CC outstanding = Nil obligations
+- Nil obligations for Gold loan irrespective of outstanding
+- Joint HL not to be obligated if spouse is serving EMI from their account and sufficient to cover all EMIs
+
+[TENURE SECTION]:
+Existing Obligations:
+- All loans reflecting in CIBIL, banking and all loans confirmed during PD to be obligated for eligibility calculations
+- Any existing loan getting over within 6 months whose loan tenure is >18 months: need not be obligated for arriving total obligations
+- Credit Card Obligations: Gross salary * 5 times CC outstanding = Nil obligations
+- Nil obligations for Gold loan irrespective of outstanding
+- Joint HL not to be obligated if spouse is serving EMI from their account and sufficient to cover all EMIs
+
+[TENURE SECTION]:
+Monthly NTH Requirements:
+- General: Above ₹25,000
+- Tier 1 Locations: Minimum NMI ₹25,000
+- Tier 2 Locations: Minimum NMI ₹20,000
+- Salary above ₹40,000: Tenure up to 84 months across all categories
+
+[TENURE SECTION]:
+Balance Transfer (BT) Rules:
+- Max takeover 6 BT (including CC BT)
+- Minimum tenure for BT is 6 EMI
+- BT allowed from all banks except co-operative banks/rural banks
+- Personal Loan BT FC letter mandatory
+
+================================================================
+FILE: Fibe_Master_Policy.txt
+[CIBIL SECTION]:
+CIBIL/Bureau Requirements:
+- Minimum CIBIL: 700
+- CIBIL -1 / NTC doable for age 19 to 35 years only
+- Bureau score threshold across sources: 680, 650, 700 [REVIEW]
+
+[TENURE SECTION]:
+Work Experience / Employer Tenure:
+- Minimum employer tenure for 18 Months Loan: > 2 Years
+- Minimum employer tenure for 24 & 36 Months Loan: > 3 Years
+- Salary should be credited to bank account
+
+[TENURE SECTION]:
+Tenure:
+- Minimum: 3 months
+- Maximum: 36 months
+- 18 Months Loan: requires employer tenure > 2 Years
+- 24 Months Loan: requires employer tenure > 3 Years
+- 36 Months Loan: requires employer tenure > 3 Years
+
+[TENURE SECTION]:
+Monthly NTH Requirements:
+- Tier 1 Cities: ₹18,000
+- Tier 2 & 3 Cities: ₹15,000
+- 18M / 24M Tenure: ₹25,000
+- 36M Tenure (Active PL/HL Track): ₹30,000
+- 36M Tenure (Thin Customer): ₹35,000
+
+[TENURE SECTION]:
+1. CIBIL: Multiple thresholds found across sources (680, 650, 700). [REVIEW]
+2. ROI: Multiple ranges found across sources (15%-30%, starting from 17%). [REVIEW]
+3. EMPLOYER TENURE: Multiple values found across sources (2 Years, 3 Years). [REVIEW]
+4. MAX AGE: Multiple values found across sources (55, 35 for NTC). [REVIEW]
+5. SALARY: Multiple values found across sources (15000, 18000, 25000, 30000, 35000). [REVIEW]
+6. LOAN AMOUNT: Multiple values found across sources (5000, 400000, 500000, 200000). [REVIEW]
+
+================================================================
+FILE: Finnable_Credit_Master_Policy.txt
+[CIBIL SECTION]:
+CIBIL/Bureau Requirements:
+- Minimum CIBIL Score: 700
+- CIBIL -1 / 0 / NTC doable
+- No 30 DPD in latest month
+- No 90 DPD in last 3 months
+
+[TENURE SECTION]:
+Work Experience / Employer Tenure:
+- Total minimum 6 months continuous employment required
+- 1 year company vintage in MCA if PF not debited
+- Company vintage not mandatory if PF debited
+- 3 months salary credit in bank account mandatory for current company
+
+[TENURE SECTION]:
+Tenure:
+- Minimum: 12 months
+- Maximum: 36 months
+- 48 months (4 years) for loan amount >= ₹3,00,000
+
+[CIBIL SECTION]:
+Other Exceptions:
+- CIBIL -1 / 0 / NTC doable
+- Partnership / Proprietorship firms: PF Required OR 1 PL track with minimum ₹50,000 loan
+- Age > 45 and salary < ₹30,000: Not allowed
+- PF not compulsory for Pvt Ltd, LLP and limited companies
+- 1 year company vintage in MCA if PF not debited
+- Company vintage not mandatory if PF debited
+- Total minimum 6 months continuous employment required
+
+[CIBIL SECTION]:
+1. CIBIL: Multiple thresholds found across sources (700, -1, 0, 650, 680). [REVIEW]
+2. ROI: Multiple ranges found across sources (15%-30%, starting from 15%). [REVIEW]
+3. LOAN AMOUNT: Multiple values found across sources (50000, 450000, 1000000, 50000000, 1000000000). [REVIEW]
+4. TENURE: Multiple values found across sources (1-3 years, 4 years for >=3L). [REVIEW]
+5. SALARY: Multiple values found across sources (15000, 20000, 25000, 30000). [REVIEW]
+6. AGE: Maximum age 60 years, but age >45 with salary <30K not allowed. [REVIEW]
+7. EMPLOYER TYPE: Mixed values found (Pvt Ltd, LLP, School, Govt, College, Hospital, Partnership, Proprietorship, Construction, Builder). [REVIEW]
+
+[TENURE SECTION]:
+1. CIBIL: Multiple thresholds found across sources (700, -1, 0, 650, 680). [REVIEW]
+2. ROI: Multiple ranges found across sources (15%-30%, starting from 15%). [REVIEW]
+3. LOAN AMOUNT: Multiple values found across sources (50000, 450000, 1000000, 50000000, 1000000000). [REVIEW]
+4. TENURE: Multiple values found across sources (1-3 years, 4 years for >=3L). [REVIEW]
+5. SALARY: Multiple values found across sources (15000, 20000, 25000, 30000). [REVIEW]
+6. AGE: Maximum age 60 years, but age >45 with salary <30K not allowed. [REVIEW]
+7. EMPLOYER TYPE: Mixed values found (Pvt Ltd, LLP, School, Govt, College, Hospital, Partnership, Proprietorship, Construction, Builder). [REVIEW]
+
+================================================================
+FILE: HDFC_Bank_Master_Policy_CIBIL_Updated.txt
+[CIBIL SECTION]:
+CIBIL/Bureau Requirements (Rate Card dated 07-03-25):
+- CIBIL >730: Rate-card pricing applies under the CIBIL >730 slab.
+- CIBIL <=730 / No Hit: Rate-card pricing applies under the CIBIL <=730 / No Hit slab.
+- The uploaded rate card does not specify a separate minimum CIBIL score threshold.
+- No loan availed or cancelled in last 30/31 days
+- CIC Positive / Hunter match required
+
+[TENURE SECTION]:
+Age Requirements:
+- Minimum Age: 21 years
+- Maximum Age: 60 years
+- Current Age + Tenure should not be greater than retirement Age
+- Maximum Age should not be greater than retirement Age (max 60 years)
+
+[TENURE SECTION]:
+Work Experience / Employer Tenure:
+- Super A, A, B, C: 1 year current & 2 years total employment
+- RA (Railway): 3 years
+- GA (Govt): 2 years
+- Current Employment: 50% of age OR 3 years (post TDS) / 12 months
+- 3 months salary credit in bank account mandatory
+
+[CIBIL SECTION]:
+Bureau / Delinquency Norms:
+- CIBIL slabs in the rate card are: CIBIL >730 and CIBIL <=730 / No Hit.
+- No loan availed or cancelled in last 30/31 days
+
+[CIBIL SECTION]:
+Customer Profile: CAT SUPER A / CAT A / CAT HDFC
+- Monthly Income >= ₹100,000: CIBIL >730 = 11.15%; CIBIL <=730 / No Hit = 11.40%; Rack PF = ₹6,500
+- Monthly Income >= ₹75,000 to ₹100,000: CIBIL >730 = 11.25%; CIBIL <=730 / No Hit = 11.50%; Rack PF = ₹6,500
+- Monthly Income >= ₹50,000 to ₹75,000: CIBIL >730 = 11.75%; CIBIL <=730 / No Hit = 12.00%; Rack PF = ₹6,500
+- Monthly Income >= ₹35,000 to ₹50,000: CIBIL >730 = 12.00%; CIBIL <=730 / No Hit = 12.25%; Rack PF = ₹3,499
+- Monthly Income < ₹35,000: CIBIL >730 = 13.25%; CIBIL <=730 / No Hit = 13.50%; Rack PF = ₹3,499
+
+[CIBIL SECTION]:
+Customer Profile: CAT B / CAT C / CAT D / CAT E / CAT EDU / CAT ALPA & BETA / CAT NRI / CAT NEW
+- Monthly Income >= ₹100,000: CIBIL >730 = 11.25%; CIBIL <=730 / No Hit = 11.50%; Rack PF = ₹6,500
+- Monthly Income >= ₹75,000 to ₹100,000: CIBIL >730 = 11.50%; CIBIL <=730 / No Hit = 11.75%; Rack PF = ₹6,500
+- Monthly Income >= ₹50,000 to ₹75,000: CIBIL >730 = 12.00%; CIBIL <=730 / No Hit = 12.25%; Rack PF = ₹6,500
+- Monthly Income >= ₹35,000 to ₹50,000: CIBIL >730 = 12.25%; CIBIL <=730 / No Hit = 12.50%; Rack PF = ₹3,499
+- Monthly Income < ₹35,000: CIBIL >730 = 13.75%; CIBIL <=730 / No Hit = 14.00%; Rack PF = ₹3,499
+
+[CIBIL SECTION]:
+Customer Profile: CAT GA / CAT GB / CAT GC / CAT RA / CAT RB / CAT RC / CAT GD / CAT GE / CAT GF / CAT GP / CAT PEN
+- Monthly Income >= ₹100,000: CIBIL >730 = 11.50%; CIBIL <=730 / No Hit = 11.75%; Rack PF = ₹6,500
+- Monthly Income >= ₹75,000 to ₹100,000: CIBIL >730 = 12.25%; CIBIL <=730 / No Hit = 12.50%; Rack PF = ₹6,500
+- Monthly Income >= ₹50,000 to ₹75,000: CIBIL >730 = 12.50%; CIBIL <=730 / No Hit = 12.75%; Rack PF = ₹6,500
+- Monthly Income >= ₹35,000 to ₹50,000: CIBIL >730 = 13.50%; CIBIL <=730 / No Hit = 13.75%; Rack PF = ₹3,499
+- Monthly Income < ₹35,000: CIBIL >730 = 14.00%; CIBIL <=730 / No Hit = 14.50%; Rack PF = ₹3,499
+
+[CIBIL SECTION]:
+Special Pricing - Loan Amount:
+- Loan Amount ₹15 Lakhs+: CIBIL >730 = 11.00%; CIBIL <=730 / No Hit = 11.15%; Rack PF = ₹6,500
+- Loan Amount ₹10 Lakhs to ₹15 Lakhs: CIBIL >730 = 11.15%; CIBIL <=730 / No Hit = 11.40%; Rack PF = ₹6,500
+
+[TENURE SECTION]:
+Tenure:
+- Minimum: 12 months
+- Maximum: 60 months (standard)
+- 72 months for Super A / CAT A / CAT HDFC / CAT C / CAT GA / CAT RA / CAT GO nurse
+- 84 months for Super A / CAT A / CAT HDFC / CAT GA / CAT RA
+- Current Age + Tenure should not be greater than retirement Age
+- Maximum Age should not be greater than retirement Age (max 60 years)
+
+[TENURE SECTION]:
+Rejection Rules:
+- No loan availed or cancelled in last 30/31 days
+- Current Age + Tenure > retirement Age
+- Maximum Age > 60 years
+- Salary not meeting minimum NTH requirements
+- Employment stability not met
+- FOIR exceeding permissible limit
+- Product cap exceeded
+
+[CIBIL SECTION]:
+1. CIBIL: Threshold not explicitly defined in all sources (0/-1 doable, minimum not specified). [REVIEW]
+2. ROI: Multiple ranges found across sources (13.75%-14%, 13.75%-16%). [REVIEW]
+3. MINIMUM SALARY: Multiple values found across sources (25000, 35000, 50000, 75000, 100000). [REVIEW]
+4. LOAN AMOUNT: Multiple values found across sources (50000, 500000, 1000000, 4000000, 10000000, 40000000). [REVIEW]
+5. TENURE: Multiple values found across sources (60, 72, 84 months). [REVIEW]
+6. MAX AGE: Multiple values found across sources (60, 60 for retirement). [REVIEW]
+7. FOIR: Multiple values found across sources (55%, 60%, 70%, 75%). [REVIEW]
+8. EMPLOYMENT STABILITY: Mixed values found (12 months, 2 years, 3 years). [REVIEW]
+9. CATEGORY CLASSIFICATION: Multiple overlapping categories (Super A, A, B, C, D, E, F, GA, GB, GO, GP, PEN, RA, RB, RC, GD, GE, GF). [REVIEW]
+10. GOLDEN EDGE: Minimum salary and loan amount vary by location (Prime vs Emerging). [REVIEW]
+
+[TENURE SECTION]:
+1. CIBIL: Threshold not explicitly defined in all sources (0/-1 doable, minimum not specified). [REVIEW]
+2. ROI: Multiple ranges found across sources (13.75%-14%, 13.75%-16%). [REVIEW]
+3. MINIMUM SALARY: Multiple values found across sources (25000, 35000, 50000, 75000, 100000). [REVIEW]
+4. LOAN AMOUNT: Multiple values found across sources (50000, 500000, 1000000, 4000000, 10000000, 40000000). [REVIEW]
+5. TENURE: Multiple values found across sources (60, 72, 84 months). [REVIEW]
+6. MAX AGE: Multiple values found across sources (60, 60 for retirement). [REVIEW]
+7. FOIR: Multiple values found across sources (55%, 60%, 70%, 75%). [REVIEW]
+8. EMPLOYMENT STABILITY: Mixed values found (12 months, 2 years, 3 years). [REVIEW]
+9. CATEGORY CLASSIFICATION: Multiple overlapping categories (Super A, A, B, C, D, E, F, GA, GB, GO, GP, PEN, RA, RB, RC, GD, GE, GF). [REVIEW]
+10. GOLDEN EDGE: Minimum salary and loan amount vary by location (Prime vs Emerging). [REVIEW]
+
+================================================================
+FILE: ICICI_Bank_Personal_Loan_Policy_Rulebook.txt
+[CIBIL SECTION]:
+SOURCE-SAFETY RULES:
+- Use only values explicitly present in the supplied ICICI rate card.
+- Do not invent age, salary/NTH, FOIR, tenure, employment, document, BT/CCBT,
+  or other eligibility values that are not present in the source.
+- Green ROI / Amber ROI / Red ROI are pricing columns, not approval statuses.
+- A CIBIL pricing band is not automatically an absolute eligibility cutoff.
+- Never borrow rules across categories, programs, loan bands, or banks.
+- Missing mandatory eligibility information must remain NEEDS_REVIEW.
+
+[CIBIL SECTION]:
+Pricing dimensions visible in source:
+- Loan amount band
+- CIBIL band
+- Customer/category segment
+- Green ROI
+- Amber ROI
+- Red ROI
+- Processing Fee (PF)
+- Funded / unfunded scope where specifically stated
+
+[CIBIL SECTION]:
+CIBIL:
+- Pricing bands visible in source include:
+  * >= 770
+  * >= 725 to 769 / 0 / -1
+  * < 725
+- Absolute Minimum CIBIL for approval: NOT_DEFINED / NEEDS_REVIEW
+
+[CIBIL SECTION]:
+SECTION 2 - LA >= 30 LAKHS EXCEPT ICICI, INFOSYS AND CITI
+==========================================================
+Scope in source: FUNDED and UNFUNDED
+Columns: CIBIL Band | Green ROI | Amber ROI | Red ROI | PF
+
+[CIBIL SECTION]:
+CIBIL >= 770
+Green ROI: 11.00%
+Amber ROI: 11.10%
+Red ROI: 11.40%
+PF: Rs. 7,999.00
+
+[CIBIL SECTION]:
+CIBIL >= 725 to 769 / -1 / 0
+Green ROI: 11.10%
+Amber ROI: 11.20%
+Red ROI: 11.50%
+PF: Rs. 8,999.00
+
+[CIBIL SECTION]:
+SECTION 3 - LA >= 20 LAKHS EXCEPT ICICI, INFOSYS AND CITI
+==========================================================
+Scope in source: FUNDED and UNFUNDED
+Columns: CIBIL Band | Green ROI | Amber ROI | Red ROI | PF
+
+[CIBIL SECTION]:
+CIBIL >= 770
+Green ROI: 11.00%
+Amber ROI: 11.10%
+Red ROI: 11.40%
+PF: Rs. 6,999.00
+
+[CIBIL SECTION]:
+CIBIL >= 725 to 769 / -1 / 0
+Green ROI: 11.10%
+Amber ROI: 11.20%
+Red ROI: 11.50%
+PF: Rs. 7,999.00
+
+[CIBIL SECTION]:
+CATEGORY: TOP CORPORATE
+-----------------------
+Loan Amount >= 15L to 19.99L
+  CIBIL >= 770             | Green 11.05% | Amber 11.05% | Red 11.05% | PF Rs. 8,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.15% | Amber 11.15% | Red 11.15% | PF Rs. 9,499.00
+
+[CIBIL SECTION]:
+Loan Amount >= 10L to 14.99L
+  CIBIL >= 770             | Green 11.65% | Amber 11.65% | Red 11.65% | PF Rs. 8,499.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.75% | Amber 11.75% | Red 11.75% | PF Rs. 8,999.00
+
+[CIBIL SECTION]:
+Loan Amount >= 5L to 9.99L
+  CIBIL >= 770             | Green 11.95% | Amber 11.95% | Red 11.95% | PF Rs. 7,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.05% | Amber 12.05% | Red 12.05% | PF Rs. 8,499.00
+
+[CIBIL SECTION]:
+CATEGORY: ELITE
+---------------
+Loan Amount >= 15L to 19.99L
+  CIBIL >= 770             | Green 11.15% | Amber 11.15% | Red 11.15% | PF Rs. 8,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.25% | Amber 11.25% | Red 11.25% | PF Rs. 9,499.00
+
+[CIBIL SECTION]:
+Loan Amount >= 10L to 14.99L
+  CIBIL >= 770             | Green 11.75% | Amber 11.75% | Red 11.75% | PF Rs. 8,499.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.85% | Amber 11.85% | Red 11.85% | PF Rs. 8,999.00
+
+[CIBIL SECTION]:
+Loan Amount >= 5L to 9.99L
+  CIBIL >= 770             | Green 12.00% | Amber 12.00% | Red 12.00% | PF Rs. 7,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.10% | Amber 12.10% | Red 12.10% | PF Rs. 8,499.00
+
+[CIBIL SECTION]:
+CATEGORY: SUPER-PRIME
+---------------------
+Loan Amount >= 15L to 19.99L
+  CIBIL >= 770             | Green 11.20% | Amber 11.30% | Red 11.60% | PF Rs. 8,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.35% | Amber 11.45% | Red 11.75% | PF Rs. 9,499.00
+
+[CIBIL SECTION]:
+Loan Amount >= 10L to 14.99L
+  CIBIL >= 770             | Green 11.80% | Amber 11.90% | Red 12.20% | PF Rs. 8,499.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.95% | Amber 12.05% | Red 12.35% | PF Rs. 8,999.00
+
+[CIBIL SECTION]:
+Loan Amount >= 5L to 9.99L
+  CIBIL >= 770             | Green 12.05% | Amber 12.15% | Red 12.45% | PF Rs. 7,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.20% | Amber 12.30% | Red 12.60% | PF Rs. 8,499.00
+
+[CIBIL SECTION]:
+CATEGORY: PREFERRED
+-------------------
+Loan Amount >= 15L to 19.99L
+  CIBIL >= 770             | Green 11.25% | Amber 11.35% | Red 11.65% | PF Rs. 8,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.45% | Amber 11.55% | Red 11.85% | PF Rs. 9,499.00
+
+[CIBIL SECTION]:
+Loan Amount >= 10L to 14.99L
+  CIBIL >= 770             | Green 11.85% | Amber 11.95% | Red 12.25% | PF Rs. 8,499.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.05% | Amber 12.15% | Red 12.45% | PF Rs. 8,999.00
+
+[CIBIL SECTION]:
+Loan Amount >= 5L to 9.99L
+  CIBIL >= 770             | Green 12.15% | Amber 12.25% | Red 12.55% | PF Rs. 7,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.35% | Amber 12.45% | Red 12.75% | PF Rs. 8,499.00
+
+[CIBIL SECTION]:
+CATEGORY: DEFENSE, DOCTORS, PROFESSIONALS, NRIs AND PENSIONERS
+--------------------------------------------------------------
+Loan Amount >= 15L to 19.99L
+  CIBIL >= 770             | Green 11.35% | Amber 11.45% | Red 11.75% | PF Rs. 8,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.60% | Amber 11.70% | Red 12.00% | PF Rs. 9,499.00
+
+[CIBIL SECTION]:
+Loan Amount >= 10L to 14.99L
+  CIBIL >= 770             | Green 11.95% | Amber 12.05% | Red 12.35% | PF Rs. 8,499.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.20% | Amber 12.30% | Red 12.60% | PF Rs. 8,999.00
+
+[CIBIL SECTION]:
+Loan Amount >= 5L to 9.99L
+  CIBIL >= 770             | Green 12.25% | Amber 12.35% | Red 12.65% | PF Rs. 7,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.50% | Amber 12.60% | Red 12.90% | PF Rs. 8,499.00
+
+[CIBIL SECTION]:
+CATEGORY: OPEN MARKET, GOVERNMENT 1, TEACHERS
+---------------------------------------------
+Loan Amount >= 15L to 19.99L
+  CIBIL >= 770             | Green 11.45% | Amber 11.55% | Red 11.85% | PF Rs. 8,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.60% | Amber 11.70% | Red 12.00% | PF Rs. 9,499.00
+
+[CIBIL SECTION]:
+Loan Amount >= 10L to 14.99L
+  CIBIL >= 770             | Green 12.05% | Amber 12.15% | Red 12.45% | PF Rs. 8,499.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.20% | Amber 12.30% | Red 12.60% | PF Rs. 8,999.00
+
+[CIBIL SECTION]:
+Loan Amount >= 5L to 9.99L
+  CIBIL >= 770             | Green 12.45% | Amber 12.55% | Red 12.85% | PF Rs. 7,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.60% | Amber 12.70% | Red 13.00% | PF Rs. 8,499.00
+
+[CIBIL SECTION]:
+CATEGORY: GOVERNMENT 2 - MP, AP, J&K, PUNJAB AND HARYANA ONLY
+--------------------------------------------------------------
+Loan Amount >= 15L to 19.99L
+  CIBIL >= 770             | Green 11.65% | Amber 11.75% | Red 12.05% | PF Rs. 8,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 11.85% | Amber 11.95% | Red 12.25% | PF Rs. 9,499.00
+
+[CIBIL SECTION]:
+Loan Amount >= 10L to 14.99L
+  CIBIL >= 770             | Green 12.25% | Amber 12.35% | Red 12.65% | PF Rs. 8,499.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.45% | Amber 12.55% | Red 12.85% | PF Rs. 8,999.00
+
+[CIBIL SECTION]:
+Loan Amount >= 5L to 9.99L
+  CIBIL >= 770             | Green 12.75% | Amber 12.85% | Red 13.15% | PF Rs. 7,999.00
+  CIBIL >= 725 to 769/0/-1 | Green 12.95% | Amber 13.05% | Red 13.35% | PF Rs. 8,499.00
+
+[TENURE SECTION]:
+IMPORTANT:
+- Pricing bands are not automatically absolute Personal Loan product limits.
+- Absolute Minimum Loan Amount: NOT_DEFINED / NEEDS_REVIEW
+- Absolute Maximum Loan Amount: NOT_DEFINED / NEEDS_REVIEW
+- Minimum Tenure: NOT_DEFINED / NEEDS_REVIEW
+- Maximum Tenure: NOT_DEFINED / NEEDS_REVIEW
+
+[CIBIL SECTION]:
+1. CIBIL:
+   Pricing bands are present, but no absolute approval cutoff is explicitly stated.
+   [REVIEW]
+
+[TENURE SECTION]:
+5. TENURE:
+   No minimum or maximum tenure is defined.
+   [REVIEW]
+
+[CIBIL SECTION]:
+Evaluation path:
+ICICI Bank
+-> Personal Loan
+-> exact resolved company/customer category
+-> exact funding scope
+-> exact loan-amount band
+-> exact CIBIL band
+-> applicable verified pricing/rules
+
+================================================================
+FILE: IDFC_FIRST_Bank_Master_Policy.txt
+[CIBIL SECTION]:
+SALARIED LOAN SEGMENTS:
+- Personal Loan for Salaried: 1 Lac to 15 Lacs
+- Personal Loan for Salaried: 15 Lacs to 1 Crore
+- PL SCORECARD
+- PL - PL HIGHEND TICKET
+- PL SALARIED ST (Small Ticket)
+
+[TENURE SECTION]:
+Tenure:
+- 12 to 60 months.
+
+[TENURE SECTION]:
+Tenure:
+- 12 to 60 months
+
+[TENURE SECTION]:
+Tenure:
+- 12 to 60 months
+
+[CIBIL SECTION]:
+Bureau:
+- CIBIL >= 700
+
+[TENURE SECTION]:
+Loan Tenure:
+- Standard: 12 to 48 months
+
+[CIBIL SECTION]:
+[REVIEW:
+ Ready Reckoner requires latest 6 months banking, while another supplied
+ self-employed scorecard image also states latest 3 months statement not older
+ than 10 days. Do not silently replace one with the other.]
+
+[CIBIL SECTION]:
+Own House Proof:
+- Ownership proof of either office or residence is mandatory
+- Ownership waiver for selected profile is mentioned in the scorecard image
+
+[TENURE SECTION]:
+1L-15L:
+- Loan Amount: 1 Lac to 15 Lacs
+- Tenure: 12 to 60 months
+- MUE: 40 Lakhs
+
+[TENURE SECTION]:
+15L-1Cr:
+- Loan Amount: 15 Lacs to 1 Crore
+- Tenure: 12 to 60 months
+- 15L-25L segment: MUE 40 Lakhs
+- 25L+ segment: MUE 1 Crore
+
+[TENURE SECTION]:
+Ready Reckoner / poster:
+- Loan Amount: 1 Lac to 9 Lacs
+- Standard Tenure: 12 to 48 months
+
+[CIBIL SECTION]:
+Self-Employed scorecard image:
+- Tenure Minimum: 12 months
+- Tenure Maximum: 48 months
+- BT: Up to 60 months where original tenure is >48 months
+- For BT extension to 60 months:
+  * Eligibility to be calculated as per 48 months tenure
+
+[TENURE SECTION]:
+Self-Employed scorecard image:
+- Tenure Minimum: 12 months
+- Tenure Maximum: 48 months
+- BT: Up to 60 months where original tenure is >48 months
+- For BT extension to 60 months:
+  * Eligibility to be calculated as per 48 months tenure
+
+[CIBIL SECTION]:
+Self-Employed scorecard lower table displays:
+- Rs. 75,000* as revised minimum loan amount
+- Rs. 9,00,000 as the other displayed loan amount limit
+- Max Tenor: 48 months
+
+[TENURE SECTION]:
+Self-Employed scorecard lower table displays:
+- Rs. 75,000* as revised minimum loan amount
+- Rs. 9,00,000 as the other displayed loan amount limit
+- Max Tenor: 48 months
+
+[CIBIL SECTION]:
+[REVIEW:
+ Main Ready Reckoner/poster states 1L-9L while scorecard image shows revised
+ minimum amount Rs.75,000*. Use the currently verified applicable version.]
+
+[CIBIL SECTION]:
+Other scorecard remark:
+- Loan < Rs. 40,000 will not be considered in live loan.
+
+[CIBIL SECTION]:
+Scorecard image shows equivalent bands:
+- 5K-10K ABB: 45%
+- 10K-30K ABB: 40%
+- 30K+ ABB: 35%
+
+[CIBIL SECTION]:
+Scheme:
+- PL SCORECARD
+
+[CIBIL SECTION]:
+Scheme:
+- PL SCORECARD
+
+[CIBIL SECTION]:
+Scorecard image additionally states:
+- Latest 3 months Bank Statement not older than 10 days from CPA login date
+- Savings / Current Account allowed
+- Minimum 3 transactions each month
+- ABB >= Rs. 5,000
+- No recent loan disbursement in last 3 months
+
+[CIBIL SECTION]:
+Scorecard image:
+- Business Proof may be waived subject to repayment from current account and
+  business name confirmed through CPV.
+- For savings account, business proof is mandatory.
+- Where vintage is not confirmed in CPV, business proof is mandatory.
+- For low-stock/low-activity and contractor profiles, business proof is
+  indicated as mandatory in the source image.
+
+[CIBIL SECTION]:
+Scorecard image:
+- Personal Discussion may be waived where office CPV is positive
+- Residence CPV:
+  * Waived for Platinum & Gold
+  * Silver waiver basis Bureau Based Norms
+- Office CPV:
+  * Mandatory for all
+  * Customer must meet during office CPV
+
+[CIBIL SECTION]:
+[REVIEW:
+ Ready Reckoner says Tele/Video PD in all cases, while scorecard image allows PD
+ waiver where office CPV is positive.]
+
+[CIBIL SECTION]:
+Self-Employed:
+- Own house OR office/business premises mandatory in the supplied poster
+- Ready Reckoner: either residence or business premises owned in applicant's name
+- Scorecard: ownership proof of either office or residence mandatory
+- Selected-profile ownership waiver is mentioned
+- Derived ownership can be case-to-case
+
+[CIBIL SECTION]:
+1. SELF-EMPLOYED MINIMUM ABB
+   - General gating table: Min ABB Rs. 5,000
+   - Self-Employed Ready Reckoner: Min ABB Rs. 8,000
+   - Scorecard uses ABB >= Rs. 5,000 for transaction condition
+   STATUS: [REVIEW]
+   Do not silently choose one value without source/version applicability.
+
+[CIBIL SECTION]:
+2. SELF-EMPLOYED BANK STATEMENT PERIOD
+   - Ready Reckoner: latest 6 months banking
+   - Scorecard image: latest 3 months statement not older than 10 days
+   STATUS: [REVIEW]
+
+[CIBIL SECTION]:
+4. SELF-EMPLOYED MINIMUM LOAN AMOUNT
+   - Ready Reckoner/poster: 1 Lac
+   - Scorecard lower table displays revised minimum Rs. 75,000*
+   STATUS: [REVIEW]
+
+[CIBIL SECTION]:
+5. SELF-EMPLOYED PD RULE
+   - Ready Reckoner: Tele PD / Video PD in all cases
+   - Scorecard: PD can be waived where office CPV positive
+   STATUS: [REVIEW]
+
+[CIBIL SECTION]:
+SELF-EMPLOYED EVALUATION PATH:
+IDFC FIRST Bank
+-> Personal Loan
+-> Self-Employed
+-> exact applicable self-employed program/version
+-> loan amount
+-> age
+-> CIBIL
+-> ABB
+-> banking conduct
+
+================================================================
+FILE: IndusInd_Bank_Master_Policy.txt
+[TENURE SECTION]:
+Profiles / policy paths explicitly visible in supplied sources:
+- Standard salaried Personal Loan
+- New-to-CIBIL (NTC)
+- Balance Transfer (BT)
+- App Loan BT
+- Overdraft BT
+- Longer-tenure Personal Loan (72 / 84 month conditions)
+
+[CIBIL SECTION]:
+Core underwriting dimensions:
+- Company Category
+- NMI / income band
+- CIBIL / bureau status
+- CIBIL vintage
+- Employment stability
+- Age
+- Loan amount
+- FOIR / DBR
+- Housing / ownership condition where specified
+
+[CIBIL SECTION]:
+--------------------------------------------------------------------------------
+3.1 CIBIL SCORE
+--------------------------------------------------------------------------------
+
+[CIBIL SECTION]:
+Revised PL Policy Norms:
+- CIBIL Score: >= 700
+
+[CIBIL SECTION]:
+Policy 16-07-22:
+- CAT A+ / A / B / G policy described for CIBIL >= 700.
+
+[CIBIL SECTION]:
+Therefore verified general bureau threshold in supplied rules:
+- CIBIL >= 700 for standard bureau cases.
+
+[CIBIL SECTION]:
+IMPORTANT:
+- New-to-CIBIL (0 / -1) is handled separately under Section 4.
+- Do not apply CIBIL >=700 to NTC profiles.
+
+[CIBIL SECTION]:
+Revised PL Policy Norms:
+- Minimum CIBIL vintage: >= 6 months
+
+[CIBIL SECTION]:
+This applies to normal bureau cases shown in the revised scorecard.
+NTC cases use separate rules.
+
+[CIBIL SECTION]:
+General minimum / maximum age for ordinary standard tenure:
+- NOT fully defined in the supplied core scorecards.
+
+[TENURE SECTION]:
+General minimum / maximum age for ordinary standard tenure:
+- NOT fully defined in the supplied core scorecards.
+
+[TENURE SECTION]:
+Long-tenure specific age condition:
+- For 72-month policy: Age > 25 years
+- For 84-month policy: Age > 25 years
+
+[TENURE SECTION]:
+Do not infer a universal minimum age from the long-tenure rule.
+
+[CIBIL SECTION]:
+NTC SAFETY RULE:
+- Do not apply normal CIBIL>=700 eligibility to an NTC (0/-1) profile.
+- Apply only NTC-specific loan caps and conditions.
+
+[TENURE SECTION]:
+--------------------------------------------------------------------------------
+5.3 LONG TENURE - 72 MONTHS
+    UPDATED POLICY 07-11-24
+--------------------------------------------------------------------------------
+
+[TENURE SECTION]:
+Highest Tenure:
+- 72 months
+
+[TENURE SECTION]:
+--------------------------------------------------------------------------------
+5.4 LONG TENURE - 84 MONTHS
+    UPDATED POLICY 07-11-24
+--------------------------------------------------------------------------------
+
+[TENURE SECTION]:
+Highest Tenure:
+- 84 months
+
+[CIBIL SECTION]:
+Conditions:
+- NMI > Rs. 1 Lakh
+- Category: CAT A / B / G
+- Age > 25 years
+- Minimum Loan Amount > Rs. 15 Lakhs
+- CIBIL Score: 750
+
+[TENURE SECTION]:
+PROMOTIONAL CONFIRMATION:
+- A supplied IndusInd "84 Advantage Personal Loans" image advertises tenure
+  up to 84 months and loan amount up to Rs. 50 Lakhs.
+- This promotional image must NOT override the detailed 84-month eligibility
+  conditions listed above.
+
+[TENURE SECTION]:
+Policy 16-07-22:
+- Can take over from any Bank / NBFC / Fintech
+- Maximum takeover: 5 BTs
+- Minimum BT seasoning / tenure: 3 EMIs
+
+[CIBIL SECTION]:
+Updated policy 07-11-24:
+- App Loan BT allowed
+- All app loans can be sourced for BT
+- Source note indicates the relevant tradeline should appear as Personal Loan
+  in bureau/CIBIL.
+
+[TENURE SECTION]:
+4. 72 / 84 MONTH TENURE
+   These are conditional longer-tenure programs.
+   Do not treat 84 months as the default tenure for every PL case.
+
+[CIBIL SECTION]:
+9. NTC
+   CIBIL 0/-1 follows separate NTC policy.
+   Never decline an NTC case merely for not meeting the standard CIBIL>=700 rule.
+
+[CIBIL SECTION]:
+STANDARD SALARIED PATH:
+IndusInd Bank
+-> Personal Loan
+-> Standard bureau or NTC
+-> exact IndusInd company category
+-> NMI band
+-> CIBIL / CIBIL vintage
+-> employment stability
+-> requested loan amount
+-> applicable max loan cap
+
+[TENURE SECTION]:
+STANDARD SALARIED PATH:
+IndusInd Bank
+-> Personal Loan
+-> Standard bureau or NTC
+-> exact IndusInd company category
+-> NMI band
+-> CIBIL / CIBIL vintage
+-> employment stability
+-> requested loan amount
+-> applicable max loan cap
+
+[CIBIL SECTION]:
+NTC PATH:
+IndusInd Bank
+-> Personal Loan
+-> NTC (CIBIL 0/-1)
+-> exact company category
+-> NMI >=30K
+-> current employment >=1 year
+-> NTC max loan cap
+-> enhanced 5L conditions where explicitly applicable
+
+[TENURE SECTION]:
+LONG-TENURE PATH:
+- 72 months only if all 72-month conditions pass.
+- 84 months only if all 84-month conditions pass.
+- Never return 84 months only because a promotional image says "up to 84 months."
+
+================================================================
+FILE: Kotak_Mahindra_Bank_Master_Policy.txt
+[TENURE SECTION]:
+Personal Loan Offer:
+- Loan Amount: Rs. 1 Lakh to Rs. 35 Lakhs
+- Age: Minimum 21 years to Maximum 60 years
+- Standard tenure: 1 year to 5 years in the 24-06-24 policy
+- Updated policy: 1 year to 6 years for selective customers
+
+[CIBIL SECTION]:
+KMBL PL Policy 24-06-24:
+- CIBIL Score: > 700 (V3)
+
+[TENURE SECTION]:
+24-06-24:
+- Maximum tenure for CIBIL 0 / -1: 3 years
+
+[CIBIL SECTION]:
+RULE:
+- Do not reject CIBIL 0 / -1 by applying the normal CIBIL >700 rule.
+- Use the specific NTC / CIBIL 0/-1 policy path.
+- If the missing conditions are required for final eligibility:
+  NEEDS_REVIEW.
+
+[TENURE SECTION]:
+--------------------------------------------------------------------------------
+5.3 6-YEAR TENURE BUREAU MITIGANTS
+--------------------------------------------------------------------------------
+
+[CIBIL SECTION]:
+For tenure of 6 years, 24-06-24 policy requires:
+- CIBIL > 750
+- Only Green Scorecard
+- Live or Closed Auto Loan / Home Loan track in CIBIL
+- No Personal Loan taken in recent 6 months
+
+[TENURE SECTION]:
+For tenure of 6 years, 24-06-24 policy requires:
+- CIBIL > 750
+- Only Green Scorecard
+- Live or Closed Auto Loan / Home Loan track in CIBIL
+- No Personal Loan taken in recent 6 months
+
+[TENURE SECTION]:
+Eligibility calculation for 6-year tenure:
+- Calculate eligibility on 5-year tenure basis.
+
+[TENURE SECTION]:
+Updated 12-03-25 Policy:
+- 1 year to 6 years for selective customers
+- 6-year flexible tenure basis profile
+- Special Government policy allowed for 6-year tenure, fresh funding as per policy
+
+[CIBIL SECTION]:
+6-Year Mitigants from 24-06-24:
+- CIBIL >750
+- Green Scorecard only
+- Live / Closed AL or HL track in CIBIL
+- No PL in recent 6 months
+- Eligibility calculated on 5-year tenure basis
+
+[TENURE SECTION]:
+6-Year Mitigants from 24-06-24:
+- CIBIL >750
+- Green Scorecard only
+- Live / Closed AL or HL track in CIBIL
+- No PL in recent 6 months
+- Eligibility calculated on 5-year tenure basis
+
+[TENURE SECTION]:
+CIBIL 0 / -1:
+- Maximum tenure: 3 years
+
+[CIBIL SECTION]:
+- 75% FOIR allowed with Live Home Loan tracks
+- 70% FOIR allowed when staying in Owned House in base location
+- 70% FOIR allowed when staying in Rented House in base location
+  if Live or Closed Home Loan > Rs. 10 Lakhs exists in CIBIL
+
+[CIBIL SECTION]:
+--------------------------------------------------------------------------------
+8.2 GREEN SCORECARD MULTIPLIER
+--------------------------------------------------------------------------------
+
+[CIBIL SECTION]:
+Platinum / Diamond side:
+- CIBIL Score >=730
+- Salary / NTH >= Rs. 50,000
+
+[CIBIL SECTION]:
+Gold / CAT D side:
+- CIBIL Score >=730
+- Salary / NTH >= Rs. 1,00,000
+
+[CIBIL SECTION]:
+IMPORTANT:
+Hybrid OD is a separate Personal Loan Hybrid Overdraft product path.
+Do not mix its CIBIL/NTH/app-score rules into normal Personal Loan eligibility.
+
+[CIBIL SECTION]:
+CAT A / CAT B / Government:
+- App Score Green
+- CIBIL >=730
+- Allowed
+
+[CIBIL SECTION]:
+CAT A / CAT B with App Score Yellow:
+- CIBIL >=730
+- NTH >= Rs. 75,000
+- Allowed with CAT C multiplier
+
+[CIBIL SECTION]:
+CAT C - Information Technology sector:
+- App Score Green
+- CIBIL >=730
+- NTH >= Rs. 75,000
+- Allowed
+
+[CIBIL SECTION]:
+Minimum CIBIL:
+- >=730 for Kotak Salary Account
+
+[CIBIL SECTION]:
+Conditions:
+- App Score Green
+- CIBIL >=750
+
+[CIBIL SECTION]:
+Minimum CIBIL:
+- >=750
+
+[TENURE SECTION]:
+2. TENURE
+   24-06-24:
+   - Standard 1-5 years
+   - 6 years only with defined mitigants
+   12-03-25:
+   - 1-6 years for selective customers
+   STATUS: [REVIEW / PROFILE-SPECIFIC]
+
+[CIBIL SECTION]:
+STANDARD PERSONAL LOAN PATH:
+Kotak Mahindra Bank
+-> Personal Loan
+-> Salaried
+-> normal CIBIL or CIBIL 0/-1
+-> exact Kotak company category
+-> exact NTH / salary rule
+-> age
+-> loan amount
+-> tenure / 6-year mitigants
+
+[TENURE SECTION]:
+STANDARD PERSONAL LOAN PATH:
+Kotak Mahindra Bank
+-> Personal Loan
+-> Salaried
+-> normal CIBIL or CIBIL 0/-1
+-> exact Kotak company category
+-> exact NTH / salary rule
+-> age
+-> loan amount
+-> tenure / 6-year mitigants
+
+[CIBIL SECTION]:
+CIBIL 0/-1 PATH:
+- Do not apply standard CIBIL >700 decline logic.
+- Use specific CIBIL 0/-1 program.
+- If required conditions are missing:
+  NEEDS_REVIEW.
+
+[TENURE SECTION]:
+6-YEAR TENURE PATH:
+- Apply only where selective-profile / mitigant conditions are met.
+- Use 5-year tenure for eligibility calculation where the 24-06-24 rule applies.
+
+[CIBIL SECTION]:
+PRICING PATH:
+- Verify active pricing version
+- Exact category tier
+- Exact NTH band
+- Fresh vs BT
+- Exact loan amount band
+- Exact benchmark CIBIL/NTH
+- Exact deviation authority
+- Do not apply historical promo if a different current version is active
+
+[CIBIL SECTION]:
+HYBRID OD PATH:
+- Treat as separate product/program
+- Resolve Kotak vs Non-Kotak Salary account applicability from active version
+- Apply app score, category, CIBIL, NTH and repayment rules from exact OD policy
+- Do not use OD thresholds for normal PL
+
+================================================================
+FILE: LT_Finance_Master_Policy_Clean.txt
+[CIBIL SECTION]:
+Standard CIBIL:
+- CIBIL V3 >= 700
+
+[CIBIL SECTION]:
+NTC / CIBIL -1:
+- Allowed under separate NTC policy.
+
+[TENURE SECTION]:
+- Minimum Tenure: 12 months
+- Maximum Tenure: 72 months
+
+[TENURE SECTION]:
+Income up to Rs. 50,000:
+- Maximum Tenure: 48 months
+
+[TENURE SECTION]:
+For eligible CAT A / B / C / D customers with salary Rs. 50,000+:
+- Tenure may go up to 72 months where applicable.
+- Eligibility calculation may be considered on 60-month basis where the
+  applicable policy requires it.
+
+================================================================
+FILE: Piramal_Capital__Housing_Finance_Master_Policy.txt
+[TENURE SECTION]:
+Tenure:
+- Standard: 12 to 72 months
+- Revised JFM program: up to 84 months for applicable profiles
+
+[CIBIL SECTION]:
+================================================================================
+4. CIBIL / SCORECARD / VENTILE
+================================================================================
+
+[CIBIL SECTION]:
+NTC / CIBIL 0 / -1:
+- Allowed
+- Separate pricing and loan-cap rules apply
+
+[CIBIL SECTION]:
+Approval:
+- Based on Scorecard / Ventile
+
+[TENURE SECTION]:
+2. Tenure:
+   - Some supplied policy text shows maximum 60 months
+   - Later material shows 72 months
+   - Revised JFM material shows up to 84 months
+   Apply the exact current program rule.
+
+================================================================
+FILE: Poonawalla_Fincorp_Master_Policy.txt
+[TENURE SECTION]:
+6) Super CAT A ,CAT A, GOVT - Max Capping 50 Lakh (Tenure up to 7 Years)
+ Cat B - 30 Lakh Max Funding  (Tenure Up to 6 Years)
+ CAT C maximum funding 20 Lakhs.
+ CAT D maximum funding 10 Lakhs (750 CIBIL & OWN House Required)
+
+[TENURE SECTION]:
+The   Employer
+AppUcant Salary
+-84 months
+ HllxtmLNn
+ •
+as per  combined income bend.
+to  be
+ 0
+ Spouse
+(Either
+
+[TENURE SECTION]:
+--- From: Poonawalla Personal Loans one pager 28-03-25.pdf ---
+with   proof)
+For   alt other company category max loan tenure
+Cat A. Govt Ratna and Group Company max
+Company
+Company
+  is required for loan application
+companies in Tier
+•   Updated Bank Statement
+•   Permanent Address Proof to be documented.
+
+================================================================
+FILE: SBM_Bank_India_Master_Policy_Clean.txt
+[CIBIL SECTION]:
+Standard CIBIL:
+- Minimum CIBIL Score: 720+
+
+[CIBIL SECTION]:
+CIBIL 0 / -1:
+- Allowed
+- Maximum Loan Amount: Rs. 5 Lakhs
+- Non-Listed Company: Allowed under the newer policy
+
+[TENURE SECTION]:
+- Minimum Tenure: 12 months
+- Maximum Tenure: 60 months
+
+[CIBIL SECTION]:
+IMPORTANT:
+The source uses the following CIBIL headings exactly:
+- CIBIL >750
+- CIBIL >720 to <=750
+- CIBIL below 730
+
+[CIBIL SECTION]:
+CIBIL >750:
+- ROI: 11.25%
+
+[CIBIL SECTION]:
+CIBIL >720 to <=750:
+- ROI: 11.50%
+
+[CIBIL SECTION]:
+GRID 1 APPLICABILITY:
+- Net monthly salary must be above Rs. 1 Lakh
+- Loan Amount must be >= Rs. 10 Lakhs
+- No App Loan BT
+- No Credit Card BT
+- Applicant must be employed with a Listed Company
+- Private / Partnership employer profiles excluded from Grid 1 as stated
+- Employer turnover must be more than Rs. 250 Crores
+- Not more than 6 CIBIL enquiries in the last 30 days from login date
+- Self-owned house required
+
+[CIBIL SECTION]:
+CIBIL >750:
+- ROI: 13.00%
+
+[CIBIL SECTION]:
+CIBIL >720 to <=750:
+- ROI: 14.00%
+
+[CIBIL SECTION]:
+CIBIL >750:
+- ROI: 13.50%
+
+[CIBIL SECTION]:
+CIBIL >720 to <=750:
+- ROI: 14.50%
+
+[CIBIL SECTION]:
+CIBIL >750:
+- ROI: 14.50%
+
+[CIBIL SECTION]:
+CIBIL >720 to <=750:
+- ROI: 15.75%
+
+[CIBIL SECTION]:
+CIBIL >750:
+- ROI: 16.75%
+
+[CIBIL SECTION]:
+CIBIL >720 to <=750:
+- ROI: 17.75%
+
+[TENURE SECTION]:
+Older supplied SBM policy versions had different values, including:
+- Listed-company salary Rs. 30,000
+- Non-listed salary Rs. 50,000
+- Age 23 to 58 years
+- Minimum loan Rs. 2 Lakhs
+- Minimum tenure 6 months
+- Non-listed NTC not allowed
+- Non-listed maximum funding Rs. 20 Lakhs
+- Part payment not allowed
+- Older ROI ranges of approximately 13.5% to 16%
+
+================================================================
+FILE: SMFG_India_Credit_Fullerton_Master_Policy_Clean.txt
+[CIBIL SECTION]:
+- Minimum CIBIL Score: 705+
+
+[TENURE SECTION]:
+- Minimum Tenure: 1 year
+- Maximum Tenure: 5 years
+
+================================================================
+FILE: Tata_Capital_Master_Policy_Clean.txt
+[TENURE SECTION]:
+Tenure:
+- Up to 72 months for eligible salary/category profiles
+- CAT C normal salaried: Maximum 60 months
+- Salary > Rs.30,000 required where 72-month rule applies
+
+[TENURE SECTION]:
+Maximum Tenure:
+- 72 months
+
+[TENURE SECTION]:
+Maximum Tenure:
+- 60 months
+
+[CIBIL SECTION]:
+Not Allowed:
+- CIBIL -1
+- Rented Bachelor Accommodation
+- Gold Loan / CD loan history where excluded by policy
+- Real Estate
+- EdTech
+- Diamond Traders
+
+[TENURE SECTION]:
+Tenure:
+- 12 to 48 months
+
+[CIBIL SECTION]:
+CIBIL:
+- Minimum: 700+
+- CIBIL -1: Not allowed
+
+[CIBIL SECTION]:
+Not Allowed:
+- CIBIL -1
+- CCOD
+- Rented Bachelor
+- Negative Profiles
+
+[CIBIL SECTION]:
+Base pricing is determined by NTH and company category.
+CIBIL adjustment is applied separately.
+
+[CIBIL SECTION]:
+For NTH bands below Rs.75K:
+- CIBIL >=775: -0.25%
+- CIBIL >=725 to <775: +0.00%
+- CIBIL >=700 to <725: +0.25%
+- CIBIL <700 including 0 / -1: +1.00%
+
+[CIBIL SECTION]:
+For higher NTH bands shown in the rate matrix:
+- CIBIL >=775: 0.00% where specified
+- CIBIL >=725 to <775: 0.00%
+- CIBIL >=700 to <725: +0.25%
+- CIBIL <700 including 0 / -1: +1.00%
+
+[CIBIL SECTION]:
+CIBIL Adjustment:
+- CIBIL >=775: -0.25% for lower applicable bands; 0.00% where matrix specifies
+- CIBIL >=725 to <775: 0.00%
+- CIBIL >=700 to <725: +0.25%
+- CIBIL <700 including 0 / -1: +1.00%
+
+================================================================
+FILE: Utkarsh_Small_Finance_Bank_Master_Policy_Clean.txt
+[TENURE SECTION]:
+Tenure:
+- Minimum: 12 months
+- Maximum: 60 months
+
+[CIBIL SECTION]:
+CIBIL:
+- Minimum CIBIL Score: 650+
+
+[TENURE SECTION]:
+Tenure:
+- Minimum: 12 months
+- Maximum: 84 months
+
+[CIBIL SECTION]:
+CIBIL:
+- Minimum CIBIL Score: 675+
+
+================================================================
+FILE: Yes_Bank_Master_Policy.txt
+[CIBIL SECTION]:
+Key Features:
+- CIBIL band-based eligibility
+- Company category-based segmentation
+- Pristine segment for high-value profiles
+- FOIR applicable in BT cases (Green band)
+
+[CIBIL SECTION]:
+Minimum CIBIL Score:
+- -1 and above 731
+- Below 731 is not allowed
+- PL enquiries in last 3 months should not be > 6
+- Total unsecured live loans not more than 4 (including Yes Bank)
+- Live loan with Yes Bank > 3 not allowed
+
+[CIBIL SECTION]:
+Verified Company/Customer Categories:
+- Pristine Segment: D/Platinum and Gold segments, bureau > 730
+- Green Band: Up to 10 lakhs
+- Silver / Silver Neo
+- Diamond
+- NTC (New to CIBIL)
+
+[TENURE SECTION]:
+Tenure:
+- 72 months can be offered where:
+  a) Loan eligibility is > 5 lakhs
+  b) Green band
+  c) NTH is > 50,000
+  d) Company category other than Silver/Silver Neo
+- For others: Maximum 60 months
+
+[TENURE SECTION]:
+NTH Requirement for 72-month Tenure:
+- NTH > 50,000
+
+[CIBIL SECTION]:
+Exceptions:
+- Salaried doctor without Form 16: PL Diamond category
+- Age > 35 years: Not treated as bachelor/single accommodation, loan capped at 15 lakhs
+- NTC (New to CIBIL): Max age 35 at time of sourcing
+- NTC salary norm: 35,000 (higher than regular 25,000)
+
+[CIBIL SECTION]:
+1. CIBIL: Minimum score stated as -1 and above 731, but detailed band structure not defined. [REVIEW]
+2. FOIR: Only applicable in BT cases for Green band; exact percentage not defined. [REVIEW]
+3. TENURE: 72 months offered only for specific conditions; 60 months for others. [REVIEW]
+4. SALARY: NTC norm (35k) vs Other norm (25k); threshold for 72-month tenure (50k). [REVIEW]
+5. LOAN AMOUNT: Multiple caps (10L green band, 5L pristine, 15L age>35). [REVIEW]
+6. COMPANY CATEGORIES: Pristine, Green, Silver, Silver Neo, Diamond defined but detailed eligibility mapping not provided. [REVIEW]
+7. PRICING: ROI/Pricing grids not available in source documents. [REVIEW]
+8. MAX TENURE: 72 months conditional; exact conditions and verification not defined. [REVIEW]
+
+[TENURE SECTION]:
+1. CIBIL: Minimum score stated as -1 and above 731, but detailed band structure not defined. [REVIEW]
+2. FOIR: Only applicable in BT cases for Green band; exact percentage not defined. [REVIEW]
+3. TENURE: 72 months offered only for specific conditions; 60 months for others. [REVIEW]
+4. SALARY: NTC norm (35k) vs Other norm (25k); threshold for 72-month tenure (50k). [REVIEW]
+5. LOAN AMOUNT: Multiple caps (10L green band, 5L pristine, 15L age>35). [REVIEW]
+6. COMPANY CATEGORIES: Pristine, Green, Silver, Silver Neo, Diamond defined but detailed eligibility mapping not provided. [REVIEW]
+7. PRICING: ROI/Pricing grids not available in source documents. [REVIEW]
+8. MAX TENURE: 72 months conditional; exact conditions and verification not defined. [REVIEW]
+
+================================================================
+FILE: home_loan_eligibility_policy_rules.txt
+[TENURE SECTION]:
+IMPORTANT:
+- The rules below are transcribed/normalized from the supplied sources.
+- Where a source gives a maximum, minimum, FOIR, LTV, tenure, profile, property, or program condition, it is retained.
+- Final approval remains subject to the lender's credit appraisal and applicable policy.
+
+[TENURE SECTION]:
+Salaried Profile:
+- FOIR up to 80%.
+- Maximum tenure: 30 years.
+- Other CTC components considered.
+
+[TENURE SECTION]:
+Self-Employed Profile:
+- FOIR up to 150%.
+- Maximum tenure: 25 years.
+- Loan up to ₹10 crore.
+- Business Banking programs available.
+
+[TENURE SECTION]:
+Loan / Funding Rules:
+- LTV up to 90% of cost sheet for salaried profiles.
+- 100% FOIR for SENP cases.
+- 1.5x multiplier for Doctors & CA profiles.
+- Pro-rata funding available for builder transactions – SENP.
+- Surrogate programs available.
+- SENP resale funding supported.
+- Loan tenure up to 32 years.
+
+[TENURE SECTION]:
+- Bank / lender.
+- Loan product.
+- Requested loan amount.
+- Applicant profile: salaried / self-employed / professional / business / NRI where supported.
+- Monthly income or applicable income measure.
+- Existing EMI obligations.
+- FOIR, where specified by lender.
+- CIBIL / credit profile, where specified.
+- Loan tenure.
+- LTV, where specified.
+
