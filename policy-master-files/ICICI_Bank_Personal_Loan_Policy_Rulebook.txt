@@ -73,8 +73,8 @@ CIBIL:
 - Absolute Minimum CIBIL for approval: NOT_DEFINED / NEEDS_REVIEW
 
 Age:
-- Minimum Age: NOT_DEFINED / NEEDS_REVIEW
-- Maximum Age: NOT_DEFINED / NEEDS_REVIEW
+- Minimum Age: 22
+- Maximum Age: 60
 - Maximum Age at Maturity: NOT_DEFINED / NEEDS_REVIEW
 
 Employment:

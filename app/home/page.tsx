@@ -536,10 +536,365 @@ export default function HomePage() {
     return model ? model.name : "Model"
   }
 
+  async function handleDownloadPdf(buttonOrId?: HTMLElement | string | null, maybeMsgId?: string | null) {
+    let buttonEl: HTMLElement | null = null
+    let messageId: string | null = null
+
+    if (typeof buttonOrId === "string") {
+      messageId = buttonOrId
+    } else if (buttonOrId && buttonOrId instanceof HTMLElement) {
+      buttonEl = buttonOrId
+      messageId = maybeMsgId || buttonEl.getAttribute("data-message-id") || null
+    } else if (maybeMsgId) {
+      messageId = maybeMsgId
+    }
+
+    // 1. Locate the card element in the DOM
+    let card: HTMLElement | null = buttonEl ? buttonEl.closest(".eligibility-card") : null
+    if (!card && messageId) {
+      const btn = document.querySelector(`.btn-download-report[data-message-id="${messageId}"]`)
+      if (btn) {
+        card = btn.closest(".eligibility-card")
+        if (!buttonEl && btn instanceof HTMLElement) buttonEl = btn
+      }
+      if (!card) {
+        const el = document.querySelector(`[data-message-id="${messageId}"] .eligibility-card`) as HTMLElement | null
+        if (el) card = el
+      }
+    }
+    if (!card) {
+      const allCards = document.querySelectorAll(".eligibility-card")
+      if (allCards.length > 0) {
+        card = allCards[allCards.length - 1] as HTMLElement
+        if (!buttonEl) {
+          const btn = card.querySelector(".btn-download-report") as HTMLElement | null
+          if (btn) buttonEl = btn
+        }
+      }
+    }
+
+    // 2. Extract the actual rendered report content from the visible DOM card
+    let renderedReportHtml = ""
+    let isSuccess = true
+
+    if (card) {
+      isSuccess = card.classList.contains("eligibility-card-success")
+      const bodyEl = card.querySelector(".eligibility-card-body") as HTMLElement | null
+      if (bodyEl && bodyEl.innerHTML.trim().length > 20) {
+        renderedReportHtml = bodyEl.innerHTML
+      }
+    }
+
+    // Fallback to message content if DOM body is not yet populated
+    if (!renderedReportHtml) {
+      let targetMsg = messageId ? messages.find((m) => m.id === messageId) : null
+      if (!targetMsg) {
+        targetMsg = [...messages].reverse().find((m) => detectEligibilityResult(m.content))
+      }
+      if (targetMsg && targetMsg.content) {
+        const info = detectEligibilityResult(targetMsg.content)
+        isSuccess = info?.isSuccess ?? true
+        renderedReportHtml = renderMarkdown(targetMsg.content)
+      }
+    }
+
+    if (!renderedReportHtml) {
+      alert("No eligibility assessment report found to export.")
+      return
+    }
+
+    // Visual feedback on button
+    const originalBtnText = buttonEl?.innerHTML
+    if (buttonEl) {
+      buttonEl.innerHTML = `<i class="bi bi-hourglass-split"></i> Generating PDF...`
+      ;(buttonEl as HTMLButtonElement).disabled = true
+    }
+
+    const resetBtn = () => {
+      if (buttonEl && originalBtnText) {
+        buttonEl.innerHTML = originalBtnText
+        ;(buttonEl as HTMLButtonElement).disabled = false
+      }
+    }
+
+    const todayStr = new Date().toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
+    const refId = "CW-EVAL-" + Math.floor(100000 + Math.random() * 900000)
+
+    // Scrub any internal/database/debug artifacts
+    const cleanReportHtml = renderedReportHtml
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/NOT_DEFINED/gi, "Standard Bank Policy")
+      .replace(/NEEDS_REVIEW/gi, "Bank Underwriting Review")
+
+    // Dedicated, self-contained PDF HTML template with explicit inline styles (PDF-safe)
+    const reportHtmlDoc = `
+      <div id="creditwise-pdf-root" style="width: 760px; padding: 28px 32px; background: #ffffff !important; color: #0f172a !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; font-size: 13px; box-sizing: border-box;">
+        <style>
+          #creditwise-pdf-root, #creditwise-pdf-root * { box-sizing: border-box; }
+          #creditwise-pdf-root h2 { font-size: 17px !important; color: #0f172a !important; font-weight: 700 !important; margin: 0 0 12px 0 !important; padding-bottom: 6px !important; border-bottom: 1.5px solid #e2e8f0 !important; }
+          #creditwise-pdf-root h3 { font-size: 14px !important; color: #1e293b !important; font-weight: 700 !important; margin: 16px 0 8px 0 !important; }
+          #creditwise-pdf-root h4 { font-size: 13px !important; color: #334155 !important; font-weight: 600 !important; margin: 12px 0 6px 0 !important; }
+          #creditwise-pdf-root p { margin: 6px 0 10px 0 !important; line-height: 1.5 !important; color: #334155 !important; }
+          #creditwise-pdf-root table { width: 100% !important; border-collapse: collapse !important; margin: 10px 0 14px 0 !important; font-size: 11.5px !important; background: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 4px !important; }
+          #creditwise-pdf-root th { background: #f8fafc !important; color: #0f172a !important; font-weight: 700 !important; padding: 7px 10px !important; border: 1px solid #cbd5e1 !important; text-align: left !important; }
+          #creditwise-pdf-root td { padding: 6px 10px !important; border: 1px solid #e2e8f0 !important; color: #334155 !important; background: #ffffff !important; }
+          #creditwise-pdf-root tr:nth-child(even) td { background: #f8fafc !important; }
+          #creditwise-pdf-root .callout-card { border-radius: 6px !important; padding: 10px 14px !important; margin: 12px 0 !important; font-size: 12px !important; }
+          #creditwise-pdf-root .callout-success { background: #f0fdf4 !important; border: 1px solid #86efac !important; border-left: 4px solid #10b981 !important; color: #14532d !important; }
+          #creditwise-pdf-root .callout-warning { background: #fef2f2 !important; border: 1px solid #fca5a5 !important; border-left: 4px solid #ef4444 !important; color: #7f1d1d !important; }
+          #creditwise-pdf-root .callout-title { font-weight: 700 !important; font-size: 12px !important; margin-bottom: 4px !important; display: flex !important; align-items: center !important; gap: 4px !important; }
+          #creditwise-pdf-root ul, #creditwise-pdf-root ol { margin: 8px 0 !important; padding-left: 22px !important; line-height: 1.5 !important; }
+          #creditwise-pdf-root li { margin-bottom: 4px !important; color: #334155 !important; }
+          #creditwise-pdf-root hr { margin: 14px 0 !important; border: 0 !important; border-top: 1px solid #e2e8f0 !important; }
+        </style>
+
+        <!-- Executive Header -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5px solid #5e6ad2; padding-bottom: 14px; margin-bottom: 18px;">
+          <div>
+            <div style="font-size: 24px; font-weight: 800; color: #5e6ad2; letter-spacing: -0.5px;">CreditWise AI</div>
+            <div style="font-size: 11px; color: #64748b; font-weight: 600; margin-top: 3px;">Financial Intelligence Platform — Personal Loan Assessment</div>
+          </div>
+          <div style="text-align: right; font-size: 11px; color: #475569;">
+            <div>Ref: <strong style="color: #0f172a;">${refId}</strong></div>
+            <div>Date: <strong>${todayStr}</strong></div>
+            <div style="display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 10.5px; font-weight: 700; margin-top: 5px; background: ${isSuccess ? "#dcfce7" : "#fee2e2"}; color: ${isSuccess ? "#15803d" : "#b91c1c"}; border: 1px solid ${isSuccess ? "#86efac" : "#fca5a5"};">
+              ${isSuccess ? "✓ Criteria Met (Eligible)" : "⚠️ Policy Criteria Not Met"}
+            </div>
+          </div>
+        </div>
+
+        <!-- Rendered Report Content from DOM -->
+        <div class="pdf-rendered-body" style="color: #334155; font-size: 12.5px; line-height: 1.55;">
+          ${cleanReportHtml}
+        </div>
+
+        <!-- Regulatory Notice & Disclaimer -->
+        <div style="margin-top: 24px; padding: 10px 14px; background: #f8fafc; border-left: 3.5px solid #94a3b8; border-radius: 4px; font-size: 10px; color: #64748b; line-height: 1.45;">
+          <strong>Confidentiality & Underwriting Notice:</strong> This evaluation is generated by CreditWise AI strictly against official partner bank Master Policy guidelines. Loan sanction, applicable ROI, and final disbursement are subject to formal bank underwriting, KYC authentication, document submission, and credit bureau verification.
+        </div>
+        <div style="margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 9.5px; color: #94a3b8; display: flex; justify-content: space-between;">
+          <div>CreditWise AI — Official Partner Bank Advisory Report</div>
+          <div>Confidential — For Applicant Reference Only</div>
+        </div>
+      </div>
+    `
+
+    let container: HTMLElement | null = null
+    const originalScrollX = window.scrollX || window.pageXOffset || 0
+    const originalScrollY = window.scrollY || window.pageYOffset || 0
+
+    try {
+      // 1. Create dedicated, visible PDF-safe rendering container in DOM
+      container = document.createElement("div")
+      container.id = "creditwise-pdf-dedicated-stage"
+      container.style.position = "absolute"
+      container.style.top = "0px"
+      container.style.left = "0px"
+      container.style.width = "780px"
+      container.style.minHeight = "500px"
+      container.style.backgroundColor = "#ffffff"
+      container.style.zIndex = "999999"
+      container.style.visibility = "visible"
+      container.style.opacity = "1"
+      container.style.pointerEvents = "none"
+      container.innerHTML = reportHtmlDoc
+      document.body.appendChild(container)
+
+      // Scroll to origin to eliminate coordinate offsets in html2canvas
+      window.scrollTo(0, 0)
+
+      // 2. Ensure the element is actually rendered and has non-zero dimensions
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 150)))
+      )
+
+      const renderedWidth = container.offsetWidth || container.scrollWidth || 780
+      const renderedHeight = container.offsetHeight || container.scrollHeight || 600
+
+      if (renderedWidth === 0 || renderedHeight === 0) {
+        throw new Error("PDF container rendered with zero dimensions")
+      }
+
+      // 3. Dynamically import html2canvas and jsPDF (client-side safe)
+      const html2canvasModule = await import("html2canvas")
+      const html2canvas = html2canvasModule.default || html2canvasModule
+      const { jsPDF } = await import("jspdf")
+
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        width: renderedWidth,
+        height: renderedHeight,
+        windowWidth: 800,
+      })
+
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        throw new Error("html2canvas returned an empty canvas")
+      }
+
+      // 4. Construct PDF and paginate if necessary
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      })
+
+      const pageWidthMm = 210
+      const pageHeightMm = 297
+      const marginMm = 12
+      const contentWidthMm = pageWidthMm - marginMm * 2 // 186 mm
+      const contentHeightMm = (canvas.height * contentWidthMm) / canvas.width
+
+      if (contentHeightMm <= pageHeightMm - marginMm * 2) {
+        // Fits entirely on a single page
+        const imgData = canvas.toDataURL("image/jpeg", 0.95)
+        pdf.addImage(imgData, "JPEG", marginMm, marginMm, contentWidthMm, contentHeightMm)
+      } else {
+        // Multi-page slicing
+        const usablePageHeightMm = pageHeightMm - marginMm * 2
+        const usablePageHeightPx = Math.floor((usablePageHeightMm * canvas.width) / contentWidthMm)
+
+        let sourceY = 0
+        let isFirstPage = true
+
+        while (sourceY < canvas.height) {
+          const sliceHeight = Math.min(usablePageHeightPx, canvas.height - sourceY)
+
+          const sliceCanvas = document.createElement("canvas")
+          sliceCanvas.width = canvas.width
+          sliceCanvas.height = sliceHeight
+          const sliceCtx = sliceCanvas.getContext("2d")
+          if (sliceCtx) {
+            sliceCtx.fillStyle = "#ffffff"
+            sliceCtx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height)
+            sliceCtx.drawImage(
+              canvas,
+              0, sourceY, canvas.width, sliceHeight,
+              0, 0, canvas.width, sliceHeight
+            )
+          }
+
+          const sliceImgData = sliceCanvas.toDataURL("image/jpeg", 0.95)
+          const sliceHeightMm = (sliceHeight * contentWidthMm) / canvas.width
+
+          if (!isFirstPage) {
+            pdf.addPage()
+          }
+          pdf.addImage(sliceImgData, "JPEG", marginMm, marginMm, contentWidthMm, sliceHeightMm)
+
+          isFirstPage = false
+          sourceY += sliceHeight
+        }
+      }
+
+      pdf.save(`CreditWise_Loan_Eligibility_Report_${Date.now()}.pdf`)
+    } catch (err) {
+      console.error("Client-side PDF generation error, using print fallback:", err)
+      openPrintFallback(reportHtmlDoc)
+    } finally {
+      if (container && container.parentNode) {
+        container.remove()
+      }
+      window.scrollTo(originalScrollX, originalScrollY)
+      resetBtn()
+    }
+  }
+
+  function openPrintFallback(htmlDoc: string) {
+    const printWin = window.open("", "eligibility-report-preview", "width=900,height=800")
+    if (!printWin) {
+      alert("Please allow pop-ups to download or print the PDF report.")
+      return
+    }
+    printWin.document.open()
+    printWin.document.write(`<!DOCTYPE html><html><head><title>CreditWise Loan Eligibility Report</title><meta charset="utf-8"></head><body style="margin:0; background:#ffffff;">${htmlDoc}</body></html>`)
+    printWin.document.close()
+    printWin.focus()
+    setTimeout(() => {
+      printWin.print()
+    }, 400)
+  }
+
+  function detectEligibilityResult(content: string) {
+    if (!content || typeof content !== "string") return null
+
+    // Check if message is an eligibility evaluation report or result
+    const isEligibilityAssessment =
+      content.includes("Personal Loan Eligibility Assessment") ||
+      content.includes("Personal Loan Eligibility Result:") ||
+      content.includes("Personal Loan Eligibility Evaluation") ||
+      content.includes("Assessment Outcome: No Partner Banks Currently Eligible") ||
+      (content.includes("Eligible Partner Bank") &&
+        (content.includes("Applicant Summary") || content.includes("Estimated Monthly EMI") || content.includes("Criteria Met")))
+
+    if (!isEligibilityAssessment) return null
+
+    // Check if it's a warning / error / ineligible result
+    const isWarningOrError =
+      content.includes("No Partner Banks Currently Eligible") ||
+      content.includes("Policy Criteria Not Met") ||
+      content.includes("❌ NOT ELIGIBLE") ||
+      content.includes("❌ Not Eligible") ||
+      content.includes("Key Policy Constraints Identified") ||
+      content.includes("Assessment Outcome: No Partner Banks Currently Eligible") ||
+      content.includes("Input Required / Conditionally Eligible")
+
+    return {
+      isEligibility: true,
+      isSuccess: !isWarningOrError,
+    }
+  }
+
   function renderMarkdown(source: string) {
     if (typeof marked !== "undefined" && marked.parse) {
       try {
-        const html = marked.parse(source || "", { gfm: true, breaks: false })
+        let html = marked.parse(source || "", { gfm: true, breaks: false })
+
+        // 1. Transform [!TIP] and [!SUCCESS] blockquotes to light-green callout cards
+        html = html.replace(
+          /<blockquote>([\s\S]*?\[!(?:TIP|SUCCESS)\][\s\S]*?)<\/blockquote>/gi,
+          (_match: string, inner: string) => {
+            const cleanText = inner
+              .replace(/<p>\s*\[!(?:TIP|SUCCESS)\](?:\s*<br\s*\/?>)?\s*/gi, "<p>")
+              .replace(/\[!(?:TIP|SUCCESS)\]/gi, "")
+              .trim()
+            return `<div class="callout-card callout-success"><div class="callout-title"><i class="bi bi-lightbulb-fill"></i> Recommendation / Eligible Match</div>${cleanText}</div>`
+          }
+        )
+
+        // 2. Transform [!WARNING], [!CAUTION], [!DANGER] blockquotes to light-red callout cards
+        html = html.replace(
+          /<blockquote>([\s\S]*?\[!(?:WARNING|CAUTION|DANGER)\][\s\S]*?)<\/blockquote>/gi,
+          (_match: string, inner: string) => {
+            const cleanText = inner
+              .replace(/<p>\s*\[!(?:WARNING|CAUTION|DANGER)\](?:\s*<br\s*\/?>)?\s*/gi, "<p>")
+              .replace(/\[!(?:WARNING|CAUTION|DANGER)\]/gi, "")
+              .trim()
+            return `<div class="callout-card callout-warning"><div class="callout-title"><i class="bi bi-exclamation-triangle-fill"></i> Policy Notice / Criteria Not Met</div>${cleanText}</div>`
+          }
+        )
+
+        // 3. Transform [!NOTE], [!IMPORTANT], [!INFO] blockquotes
+        html = html.replace(
+          /<blockquote>([\s\S]*?\[!(?:NOTE|IMPORTANT|INFO)\][\s\S]*?)<\/blockquote>/gi,
+          (_match: string, inner: string) => {
+            const cleanText = inner
+              .replace(/<p>\s*\[!(?:NOTE|IMPORTANT|INFO)\](?:\s*<br\s*\/?>)?\s*/gi, "<p>")
+              .replace(/\[!(?:NOTE|IMPORTANT|INFO)\]/gi, "")
+              .trim()
+            return `<div class="callout-card callout-info"><div class="callout-title"><i class="bi bi-info-circle-fill"></i> Policy Detail</div>${cleanText}</div>`
+          }
+        )
+
         return html
       } catch (e) {
         console.error("Markdown parse error", e)
@@ -637,6 +992,18 @@ export default function HomePage() {
       return escapeHtml(message.content)
     }
 
+    if (isErrorMessage(message)) {
+      return `<div class="eligibility-card eligibility-card-error">
+        <div class="eligibility-card-banner">
+          <i class="bi bi-exclamation-octagon-fill"></i>
+          <span>Notice / System Error</span>
+        </div>
+        <div class="eligibility-card-body">
+          ${renderMarkdown(message.content)}
+        </div>
+      </div>`
+    }
+
     const companyData = message.company_data
 
     // Disambiguation step (multiple candidate companies found)
@@ -672,7 +1039,43 @@ export default function HomePage() {
       return html
     }
 
+    const eligibilityInfo = detectEligibilityResult(message.content)
     let html = renderMarkdown(message.content)
+
+    if (eligibilityInfo) {
+      const msgId = escapeHtml(String(message.id || ""))
+      const downloadBtnHtml = `<button type="button" class="btn-download-report" data-message-id="${msgId}" title="Download Official Eligibility PDF Report"><i class="bi bi-file-earmark-pdf-fill"></i> Download Report</button>`
+
+      if (eligibilityInfo.isSuccess) {
+        // Successful / Eligible result: Light-Green Background Card
+        html = `<div class="eligibility-card eligibility-card-success">
+          <div class="eligibility-card-banner">
+            <div class="eligibility-card-banner-left">
+              <i class="bi bi-shield-check"></i>
+              <span>Eligibility Confirmed — Qualifying Partner Banks Found</span>
+            </div>
+            ${downloadBtnHtml}
+          </div>
+          <div class="eligibility-card-body">
+            ${html}
+          </div>
+        </div>`
+      } else {
+        // Warning / Error / Ineligible result: Light-Red Background Card
+        html = `<div class="eligibility-card eligibility-card-warning">
+          <div class="eligibility-card-banner">
+            <div class="eligibility-card-banner-left">
+              <i class="bi bi-exclamation-triangle-fill"></i>
+              <span>Eligibility Assessment — Policy Criteria Not Met</span>
+            </div>
+            ${downloadBtnHtml}
+          </div>
+          <div class="eligibility-card-body">
+            ${html}
+          </div>
+        </div>`
+      }
+    }
 
     const bankData = message.bank_data
     if (bankData && (!message.content || message.content.trim().length === 0)) {
@@ -1210,10 +1613,16 @@ export default function HomePage() {
               const target = e.target as HTMLElement | null
               if (!target) return
               const candidateBtn = target.closest(".disambiguation-candidate")
-              if (!candidateBtn) return
-              const candidate = candidateBtn.getAttribute("data-candidate")
-              if (candidate) {
-                sendMessage(candidate)
+              if (candidateBtn) {
+                const candidate = candidateBtn.getAttribute("data-candidate")
+                if (candidate) {
+                  sendMessage(candidate)
+                }
+              }
+              const downloadBtn = target.closest(".btn-download-report") as HTMLElement | null
+              if (downloadBtn) {
+                const messageId = downloadBtn.getAttribute("data-message-id")
+                handleDownloadPdf(downloadBtn, messageId)
               }
             }}
           >

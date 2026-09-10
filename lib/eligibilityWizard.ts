@@ -358,13 +358,8 @@ export async function processEligibilityFlow(
       reply: dynamicOutput.formattedMarkdown || "",
       isFinished: false,
       applicant: dynamicOutput.applicant,
-      companyData: dynamicOutput.companyMatch?.isFound
-        ? {
-            company_name: dynamicOutput.companyMatch.matchedName || dynamicOutput.companyMatch.searchedName,
-            category: dynamicOutput.companyMatch.bankCategories,
-            needs_disambiguation: false,
-          }
-        : undefined,
+      // Strictly do not attach internal Corporate Intelligence data to user-facing loan flow
+      companyData: undefined,
     };
   } else {
     // If no partner bank is eligible, clear any stored conversation state and conclude

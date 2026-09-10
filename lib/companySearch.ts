@@ -152,23 +152,48 @@ export async function searchCompany(companyName: string): Promise<CompanySearchR
         `SELECT cr.bank_name, cr.company_category, cr.other_info, cr.company_name
           FROM company_records cr
           WHERE LOWER(cr.company_name) LIKE LOWER($1)
-          ORDER BY cr.company_name, cr.bank_name
+          ORDER BY 
+            CASE 
+              WHEN LOWER(cr.company_name) = LOWER($2) THEN 0
+              WHEN LOWER(cr.company_name) LIKE LOWER($2 || ' %') OR LOWER(cr.company_name) LIKE LOWER($2 || ',%') THEN 1
+              WHEN LOWER(cr.company_name) LIKE LOWER($2 || '%') THEN 2
+              ELSE 3
+            END,
+            LENGTH(cr.company_name),
+            cr.company_name,
+            cr.bank_name
           LIMIT 200`,
-        [pattern]
+        [pattern, cleaned]
       ).catch(() => ({ rows: [], rowCount: 0 })),
       client.query(
         `SELECT company_name, industry, address, website, cin, incorporation_date, listing_status, country
          FROM company_basic_info
          WHERE LOWER(company_name) LIKE LOWER($1)
+         ORDER BY 
+           CASE 
+             WHEN LOWER(company_name) = LOWER($2) THEN 0
+             WHEN LOWER(company_name) LIKE LOWER($2 || ' %') OR LOWER(company_name) LIKE LOWER($2 || ',%') THEN 1
+             WHEN LOWER(company_name) LIKE LOWER($2 || '%') THEN 2
+             ELSE 3
+           END,
+           LENGTH(company_name)
          LIMIT 1`,
-        [pattern]
+        [pattern, cleaned]
       ).catch(() => ({ rows: [], rowCount: 0 })),
       client.query(
         `SELECT company_name, employees, turnover, profit_status, last_agm, profit_history
          FROM company_financial_info
          WHERE LOWER(company_name) LIKE LOWER($1)
+         ORDER BY 
+           CASE 
+             WHEN LOWER(company_name) = LOWER($2) THEN 0
+             WHEN LOWER(company_name) LIKE LOWER($2 || ' %') OR LOWER(company_name) LIKE LOWER($2 || ',%') THEN 1
+             WHEN LOWER(company_name) LIKE LOWER($2 || '%') THEN 2
+             ELSE 3
+           END,
+           LENGTH(company_name)
          LIMIT 1`,
-        [pattern]
+        [pattern, cleaned]
       ).catch(() => ({ rows: [], rowCount: 0 })),
     ]);
 

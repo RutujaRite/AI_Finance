@@ -2,7 +2,7 @@ import { getAllMasterPolicies } from "@/lib/masterPolicies";
 import { resolveCompanyCategories, CompanyCategoryMatch } from "@/lib/companyCategoryResolver";
 import { getAllBankRulesForCategory, CategoryPolicyRule } from "@/lib/masterPolicyParser";
 import pool from "@/lib/db";
-import { classifyIntentWithLLM, IntentClassificationResult } from "@/lib/ai/intentClassifier";
+import { classifyIntentWithLLM, IntentClassificationResult, ExtractedEntities } from "@/lib/ai/intentClassifier";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openrouter/free";
@@ -327,7 +327,8 @@ function mapAnswerToTargetField(
   // C. Tenure Months
   if (field === "tenureMonths") {
     if (typeof llmExtracted?.tenureMonths === "number" && llmExtracted.tenureMonths > 0) {
-      applicant.tenureMonths = llmExtracted.tenureMonths;
+      const t = llmExtracted.tenureMonths;
+      applicant.tenureMonths = t <= 7 ? t * 12 : t;
       return;
     }
     const yMatch = text.match(/(\d+)\s*(?:years?|yrs?|y\b)/i);
@@ -434,8 +435,70 @@ function mapAnswerToTargetField(
 }
 
 /**
+ * Verifies whether the user's message explicitly mentions or targets a specific parameter.
+ * Used to ensure we never invent, default, or extract parameters not genuinely stated by the user.
+ */
+export function messageMentionsField(field: string, text: string): boolean {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+
+  switch (field) {
+    case "monthlyIncome":
+    case "salary":
+      return /(?:monthly\s*salary|monthly\s*income|salary|income|take\s*home|nmi|nth|earning|earns?|makes?|\/mo|per\s*month)/i.test(lower);
+
+    case "loanAmount":
+      return (
+        /(?:loan\s*(?:amount|ticket|size|of|need|require|want)?|borrow|ticket|need|require|want)/i.test(lower) &&
+        /(?:rs\.?|₹|\d+\s*(?:k|lakhs?|lacs?|l\b|cr|crores?))/i.test(lower)
+      ) || /(?:rs\.?|₹)\s*\d+/i.test(lower) || /\b\d+\s*(?:lakhs?|lacs?|l\b|cr|crores?)\s+(?:loan|borrow)/i.test(lower);
+
+    case "cibil":
+      return (
+        /(?:cibil|credit\s*score|score\b|bureau)/i.test(lower) ||
+        (/\b[3-9]\d{2}\b/.test(lower) && /(?:cibil|score|credit)/i.test(lower))
+      );
+
+    case "tenureMonths":
+    case "tenure":
+      return (
+        /(?:tenure|duration|term|period)/i.test(lower) ||
+        /\b\d{1,2}\s*(?:years?|yrs?|months?)\b/i.test(lower) ||
+        /\b[1-7]\s*(?:y|yr|years?)\b(?!\s*old)/i.test(lower)
+      );
+
+    case "existingEmi":
+    case "emi":
+      return (
+        /(?:existing|current|other|ongoing)?\s*emi(?:s)?/i.test(lower) ||
+        /(?:no|zero|nil|0)\s*(?:existing\s*)?emi(?:s)?/i.test(lower) ||
+        /(?:no|zero|nil|0)\s*(?:existing\s*|ongoing\s*|current\s*)?loans?/i.test(lower) ||
+        /(?:no|zero|nil|0)\s*obligations?/i.test(lower) ||
+        /paying\s*(?:rs\.?|₹)?\s*\d+\s*(?:as)?\s*emi/i.test(lower)
+      );
+
+    case "age":
+      return (
+        /(?:age|aged)\b/i.test(lower) ||
+        /\b(?:years?\s*old|yr\s*old)\b/i.test(lower) ||
+        /(?:i\s*am|im)\s+\d{2}\b/i.test(lower)
+      );
+
+    case "employmentType":
+      return /(?:salaried|self[\s-]*employed|business|proprietor|partner|freelanc|doctor|trader|govt|government|private|pvt\s*ltd|mnc|corporate|job|employee)/i.test(lower);
+
+    case "companyName":
+      return /(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is|company|firm|employer)\b/i.test(lower);
+
+    default:
+      return false;
+  }
+}
+
+/**
  * Extracts any secondary/additional parameters explicitly mentioned in the user message or by the LLM.
  * Strictly preserves all already collected values.
+ * Never extracts or sets any parameter unless the user's message explicitly mentions that parameter.
  */
 function extractSecondaryParameters(
   applicant: ApplicantProfile,
@@ -444,8 +507,12 @@ function extractSecondaryParameters(
   targetExpectedField?: string,
   llmExtracted?: any
 ): void {
-  // 1. Monthly Income (ONLY if not targetExpectedField and not already set)
-  if (targetExpectedField !== "monthlyIncome" && (applicant.monthlyIncome === undefined || applicant.monthlyIncome <= 0)) {
+  // 1. Monthly Income (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
+  if (
+    targetExpectedField !== "monthlyIncome" &&
+    (applicant.monthlyIncome === undefined || applicant.monthlyIncome <= 0) &&
+    messageMentionsField("monthlyIncome", text)
+  ) {
     if (typeof llmExtracted?.monthlyIncome === "number" && llmExtracted.monthlyIncome >= 5000) {
       applicant.monthlyIncome = llmExtracted.monthlyIncome;
     } else {
@@ -461,8 +528,12 @@ function extractSecondaryParameters(
     }
   }
 
-  // 2. Loan Amount (ONLY if not targetExpectedField and not already set)
-  if (targetExpectedField !== "loanAmount" && (applicant.loanAmount === undefined || applicant.loanAmount <= 0)) {
+  // 2. Loan Amount (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
+  if (
+    targetExpectedField !== "loanAmount" &&
+    (applicant.loanAmount === undefined || applicant.loanAmount <= 0) &&
+    messageMentionsField("loanAmount", text)
+  ) {
     if (typeof llmExtracted?.loanAmount === "number" && llmExtracted.loanAmount >= 10000) {
       applicant.loanAmount = llmExtracted.loanAmount;
     } else {
@@ -479,9 +550,13 @@ function extractSecondaryParameters(
     }
   }
 
-  // 3. CIBIL Score (ONLY if not targetExpectedField and not already set)
-  if (targetExpectedField !== "cibil" && applicant.cibil === undefined) {
-    if (typeof llmExtracted?.cibil === "number") {
+  // 3. CIBIL Score (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
+  if (
+    targetExpectedField !== "cibil" &&
+    applicant.cibil === undefined &&
+    messageMentionsField("cibil", text)
+  ) {
+    if (typeof llmExtracted?.cibil === "number" && ((llmExtracted.cibil >= 300 && llmExtracted.cibil <= 900) || llmExtracted.cibil === 0)) {
       applicant.cibil = llmExtracted.cibil;
     } else {
       const cibilMatch =
@@ -498,8 +573,12 @@ function extractSecondaryParameters(
     }
   }
 
-  // 4. Tenure Months (ONLY if not targetExpectedField and not already set)
-  if (targetExpectedField !== "tenureMonths" && (applicant.tenureMonths === undefined || applicant.tenureMonths <= 0)) {
+  // 4. Tenure Months (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
+  if (
+    targetExpectedField !== "tenureMonths" &&
+    (applicant.tenureMonths === undefined || applicant.tenureMonths <= 0) &&
+    messageMentionsField("tenureMonths", text)
+  ) {
     if (typeof llmExtracted?.tenureMonths === "number" && llmExtracted.tenureMonths > 0) {
       applicant.tenureMonths = llmExtracted.tenureMonths;
     } else if (!/(?:years?\s*old|yr\s*old|age)/i.test(text)) {
@@ -519,9 +598,13 @@ function extractSecondaryParameters(
     }
   }
 
-  // 5. Existing EMI Obligations (ONLY if not targetExpectedField and not already set)
-  if (targetExpectedField !== "existingEmi" && applicant.existingEmi === undefined) {
-    if (typeof llmExtracted?.existingEmi === "number") {
+  // 5. Existing EMI Obligations (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
+  if (
+    targetExpectedField !== "existingEmi" &&
+    applicant.existingEmi === undefined &&
+    messageMentionsField("existingEmi", text)
+  ) {
+    if (typeof llmExtracted?.existingEmi === "number" && llmExtracted.existingEmi >= 0) {
       applicant.existingEmi = llmExtracted.existingEmi;
     } else {
       const emiMatch =
@@ -536,8 +619,12 @@ function extractSecondaryParameters(
     }
   }
 
-  // 6. Applicant Age (ONLY if not targetExpectedField and not already set)
-  if (targetExpectedField !== "age" && (applicant.age === undefined || applicant.age <= 0)) {
+  // 6. Applicant Age (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
+  if (
+    targetExpectedField !== "age" &&
+    (applicant.age === undefined || applicant.age <= 0) &&
+    messageMentionsField("age", text)
+  ) {
     if (typeof llmExtracted?.age === "number" && llmExtracted.age >= 18 && llmExtracted.age <= 85) {
       applicant.age = llmExtracted.age;
     } else {
@@ -553,8 +640,8 @@ function extractSecondaryParameters(
     }
   }
 
-  // 7. Employment Type (ONLY if not already set)
-  if (!applicant.employmentType) {
+  // 7. Employment Type (ONLY if not already set AND explicitly mentioned)
+  if (!applicant.employmentType && messageMentionsField("employmentType", text)) {
     if (/salaried|govt|government|private|pvt\s*ltd|mnc|corporate|job|employee/i.test(lower)) {
       applicant.employmentType = "Salaried";
     } else if (/self\s*employed|business|proprietor|partner|freelanc|doctor|trader/i.test(lower)) {
@@ -562,8 +649,12 @@ function extractSecondaryParameters(
     }
   }
 
-  // 8. Company Name (ONLY if not targetExpectedField and not already set)
-  if (targetExpectedField !== "companyName" && !applicant.companyName) {
+  // 8. Company Name (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
+  if (
+    targetExpectedField !== "companyName" &&
+    !applicant.companyName &&
+    messageMentionsField("companyName", text)
+  ) {
     if (llmExtracted?.companyName && !isInvalidCompanyName(llmExtracted.companyName) && !isFinancialOrProfileInput(llmExtracted.companyName)) {
       applicant.companyName = normalizeCompanyName(llmExtracted.companyName);
     } else if (!isFinancialOrProfileInput(text)) {
@@ -614,7 +705,6 @@ export function extractApplicantDetails(
 }
 
 /**
-/**
  * Dynamically determines which fields are required based on active bank Master Policy rules.
  * Inspects all active partner bank rules for the applicant's company category.
  * Strictly avoids hardcoded question sequences or default values.
@@ -630,55 +720,18 @@ export function getRequiredPolicyFields(
   }
 
   // 2. Active bank policy rules evaluation:
-  // Dynamically inspect active partner bank rules for the applicant's company category
-  const bankRules = getAllBankRulesForCategory(
-    companyMatch || {
-      searchedName: applicant.companyName,
-      matchedName: applicant.companyName,
-      isFound: false,
-      overallCategoryTier: "Tier 3 / Standard",
-      overallCategoryDisplay: "Standard Corporate",
-      bankCategories: {},
-      rawRecords: [],
-    },
-    loanType
-  );
-
-  const requiredFields = new Set<string>();
-
-  for (const rule of bankRules) {
-    // Minimum Monthly Salary required if any active bank enforces minSalary
-    if (rule.minSalary && rule.minSalary > 0) {
-      requiredFields.add("monthlyIncome");
-    }
-    // Loan Amount required if any active bank enforces ticket size
-    if (rule.minLoanAmount && rule.minLoanAmount > 0) {
-      requiredFields.add("loanAmount");
-    }
-    // Tenure required if any active bank enforces tenure bounds
-    if (rule.minTenureMonths && rule.minTenureMonths > 0) {
-      requiredFields.add("tenureMonths");
-    }
-    // CIBIL score required if any active bank enforces CIBIL cut-off
-    if (rule.minCibil && rule.minCibil > 0) {
-      requiredFields.add("cibil");
-    }
-    // Existing EMI required if any active bank enforces FOIR limit (for calculating obligations)
-    if (rule.foirPercent && rule.foirPercent > 0) {
-      requiredFields.add("existingEmi");
-    }
-    // Age required if any active bank enforces age criteria
-    if (rule.minAge && rule.minAge > 0) {
-      requiredFields.add("age");
-    }
-  }
-
-  // If no bank rules loaded, default to the universal loan policy parameters
-  if (requiredFields.size === 0) {
-    ["monthlyIncome", "loanAmount", "tenureMonths", "cibil", "existingEmi", "age"].forEach((f) =>
-      requiredFields.add(f)
-    );
-  }
+  // For loan eligibility evaluation, all 6 financial & profile parameters are genuinely required:
+  // monthlyIncome, loanAmount, tenureMonths, cibil, existingEmi, age.
+  // CIBIL is unconditionally required for every loan assessment. If CIBIL was not provided,
+  // it must remain missing and be asked before eligibility evaluation!
+  const requiredFields = new Set<string>([
+    "monthlyIncome",
+    "loanAmount",
+    "tenureMonths",
+    "cibil",
+    "existingEmi",
+    "age",
+  ]);
 
   // Filter out any fields that the user has already provided in this chat
   const missing: string[] = [];
@@ -744,7 +797,7 @@ function stripReasoningPreamble(text: string): string {
 export async function generateDynamicSingleQuestionWithLLM(
   nextField: string,
   applicant: ApplicantProfile,
-  userMessage: string
+  userMessage?: string
 ): Promise<string> {
   const collectedSummary: string[] = [];
   if (applicant.companyName) collectedSummary.push(`Company: ${applicant.companyName}`);
@@ -786,16 +839,17 @@ export async function generateDynamicSingleQuestionWithLLM(
           body: JSON.stringify({
             model,
             max_tokens: 150,
-            temperature: 0.3,
+            temperature: 0.7,
             messages: [
               {
                 role: "system",
                 content:
-                  "You are CreditWise AI, a friendly, professional financial intelligence assistant. " +
+                  "You are CreditWise AI, a friendly, professional financial intelligence assistant behaving naturally like ChatGPT. " +
                   "Your goal is to guide the applicant through loan eligibility assessment by asking EXACTLY ONE question at a time. " +
+                  "Generate fresh, natural, varied conversational phrasing each time while keeping the required question crystal clear. " +
                   "Never ask multiple questions. Never repeat a question for details already known. " +
-                  "Keep your response concise (1-2 sentences), warm, and natural. " +
-                  "Never mention databases, files, tables, or backend systems.",
+                  "Keep your response concise (1-2 sentences), warm, and conversational. " +
+                  "Never mention databases, files, tables, internal tokens, or backend systems.",
               },
               {
                 role: "user",
@@ -803,7 +857,7 @@ export async function generateDynamicSingleQuestionWithLLM(
                   `The applicant said: "${userMessage}".\n` +
                   `Already known details: ${collectedSummary.length > 0 ? collectedSummary.join(", ") : "None yet"}.\n` +
                   `Next missing detail needed: ${fieldPrompts[nextField] || nextField}.\n\n` +
-                  `Respond with a friendly 1-2 sentence message acknowledging their answer (if appropriate) and asking for ONLY this missing detail.`,
+                  `Respond with a friendly 1-2 sentence message acknowledging their answer (if appropriate) and asking for ONLY this missing detail using natural, varied conversational phrasing.`,
               },
             ],
           }),
@@ -824,18 +878,89 @@ export async function generateDynamicSingleQuestionWithLLM(
     }
   }
 
-  // Graceful conversational fallbacks (warm & natural)
-  const fallbacks: Record<string, string> = {
-    companyName: `What is your company name?`,
-    monthlyIncome: `Thank you! What is your net monthly take-home salary?`,
-    loanAmount: `Got it. How much loan amount are you looking to borrow?`,
-    tenureMonths: `And what is your preferred repayment tenure (e.g. 3 years or 5 years)?`,
-    cibil: `Could you share your approximate CIBIL score? (If you're not sure, feel free to say 0 or unknown)`,
-    existingEmi: `Do you currently have any monthly loan EMIs running? (Enter the total amount in ₹, or say "none")`,
-    age: `Lastly, what is your current age in years?`,
+  // Graceful conversational fallbacks with natural, varied, contextual ChatGPT-like wording
+  return getContextualFallbackQuestion(nextField, applicant);
+}
+
+function getContextualFallbackQuestion(nextField: string, applicant: ApplicantProfile): string {
+  const salaryStr = applicant.monthlyIncome ? `₹${applicant.monthlyIncome.toLocaleString("en-IN")}` : "";
+  const loanStr = applicant.loanAmount ? `₹${applicant.loanAmount.toLocaleString("en-IN")}` : "";
+
+  const variations: Record<string, string[]> = {
+    companyName: [
+      "To check partner bank policies tailored to your organization, what is your company or employer name?",
+      "Which company or organization are you currently employed with?",
+      "May I know the name of your current employer or workplace?",
+      "To evaluate your personal loan eligibility across our partner banks, what is your company or employer name?",
+    ],
+    monthlyIncome: [
+      applicant.companyName
+        ? `Great, working at **${applicant.companyName}**! What is your approximate net monthly take-home salary?`
+        : "What is your approximate net monthly in-hand salary?",
+      applicant.companyName
+        ? `Noted, **${applicant.companyName}**. Could you share your monthly take-home income after standard deductions?`
+        : "Could you share your monthly take-home income after standard deductions?",
+      applicant.companyName
+        ? `Got it for **${applicant.companyName}**! How much is your net monthly salary credited to your bank account?`
+        : "How much is your net monthly salary credited to your bank account?",
+      applicant.companyName
+        ? `Understood, at **${applicant.companyName}**. What is your regular monthly take-home income?`
+        : "What is your regular monthly take-home income?",
+    ],
+    loanAmount: [
+      salaryStr
+        ? `Got it, noted your monthly salary of ${salaryStr}. How much loan amount are you looking to borrow?`
+        : "How much loan amount are you looking to borrow?",
+      salaryStr
+        ? `Thank you. For a take-home of ${salaryStr}, what is your desired personal loan requirement in INR?`
+        : "What is your desired personal loan requirement in INR?",
+      salaryStr
+        ? `Noted ${salaryStr} monthly income. Could you let me know the loan amount you have in mind?`
+        : "Could you let me know the loan amount you have in mind?",
+      salaryStr
+        ? `Understood! With ${salaryStr} take-home, how much financing are you looking to borrow?`
+        : "How much financing are you looking to borrow?",
+    ],
+    tenureMonths: [
+      loanStr
+        ? `Understood, for a loan of ${loanStr}, what repayment tenure would you prefer (e.g. 3 years, 5 years)?`
+        : "What repayment tenure would you prefer (e.g. 3 years, 5 years)?",
+      loanStr
+        ? `Got it for ${loanStr}. Over what duration would you like to repay the loan (e.g. 2 years, 3 years, 5 years)?`
+        : "Over what duration would you like to repay the loan (e.g. 2 years, 3 years, 5 years)?",
+      loanStr
+        ? `Noted ${loanStr} loan requirement. What repayment period or tenure works best for your monthly budget?`
+        : "What repayment period or tenure works best for your monthly budget?",
+      loanStr
+        ? `For your ${loanStr} loan request, how many months or years would you prefer for the tenure?`
+        : "How many months or years would you prefer for the repayment tenure?",
+    ],
+    cibil: [
+      "Could you share your approximate CIBIL score? (If you're not sure, feel free to say 0 or unknown.)",
+      "What is your estimated CIBIL / credit score? (You can reply with 'unknown' if you haven't checked recently.)",
+      "Do you happen to know your CIBIL score? (Feel free to say 'not sure' or 0 if you're new to credit.)",
+      "What is your approximate credit score? (Say 'unknown' if you'd like us to evaluate with standard benchmarks.)",
+    ],
+    existingEmi: [
+      "Do you currently pay any monthly loan or card EMIs? (Enter the total amount in ₹, or say 'none' if you have no active loans.)",
+      "Are there any ongoing monthly loan EMIs being deducted? (Reply with 'none' or 0 if you are debt-free.)",
+      "What is the total of your existing monthly EMI obligations, if any? (Say '0' or 'none' if you have no ongoing loans.)",
+      "Do you have any active loan EMIs running right now? (Feel free to reply with 'no EMIs' if you don't have any.)",
+    ],
+    age: [
+      "Lastly, what is your current age in years?",
+      "Could you please share your current age?",
+      "To confirm age eligibility against partner policies, how old are you?",
+      "Just to verify lender age criteria, what is your current age in years?",
+    ],
   };
 
-  return fallbacks[nextField] || `Could you please share your ${nextField}?`;
+  const list = variations[nextField];
+  if (list && list.length > 0) {
+    const idx = Math.floor(Math.random() * list.length);
+    return list[idx];
+  }
+  return `Could you please share your ${nextField}?`;
 }
 
 export const generateDynamicQuestion = generateDynamicSingleQuestionWithLLM;
@@ -898,8 +1023,17 @@ export async function evaluateApplicantAgainstAllBanks(
     const verifiedChecks: string[] = [];
     const failureReasons: string[] = [];
 
-    // Check 0: Loan Type Compatibility (Strict Master Policy check)
-    if (!rule.supportedLoanTypes || !Array.isArray(rule.supportedLoanTypes) || rule.supportedLoanTypes.length === 0 || !rule.supportedLoanTypes.includes(requestedLoanType)) {
+    const normReq = requestedLoanType.toLowerCase().replace(/\s*loan$/, "");
+    const isSupportedProduct =
+      rule.supportedLoanTypes &&
+      Array.isArray(rule.supportedLoanTypes) &&
+      rule.supportedLoanTypes.some(
+        (t) =>
+          t.toLowerCase() === requestedLoanType.toLowerCase() ||
+          t.toLowerCase().replace(/\s*loan$/, "") === normReq
+      );
+
+    if (!isSupportedProduct) {
       failureReasons.push(
         `Bank policy does not offer ${requestedLoanType} (supported product: ${rule.supportedLoanTypes ? rule.supportedLoanTypes.join(", ") : "N/A"})`
       );
@@ -1163,17 +1297,17 @@ export function formatDynamicEligibilityReport(
   if (recommendedBank) {
     const isSole = eligibleBanks.length === 1;
 
-    lines.push(`### 🏆 ${isSole ? "Approved Partner Bank" : "Top Recommended Bank"}: **${recommendedBank.bankName}**`);
+    lines.push(`### 🏆 ${isSole ? "Eligible Partner Bank" : "Top Recommended Bank"}: **${recommendedBank.bankName}**`);
     lines.push(`> [!TIP]`);
     if (isSole) {
       lines.push(`> **${recommendedBank.bankName}** is your **sole qualifying partner bank**, with an estimated monthly EMI of **₹${recommendedBank.monthlyEmi.toLocaleString("en-IN")}/month**.`);
     } else {
-      lines.push(`> **${recommendedBank.bankName}** is selected as your **#1 Best Match** among **${eligibleBanks.length} approved partner banks**, with an estimated monthly EMI of **₹${recommendedBank.monthlyEmi.toLocaleString("en-IN")}/month**.`);
+      lines.push(`> **${recommendedBank.bankName}** is selected as your **#1 Best Match** among **${eligibleBanks.length} eligible partner banks**, with an estimated monthly EMI of **₹${recommendedBank.monthlyEmi.toLocaleString("en-IN")}/month**.`);
     }
     lines.push("");
     lines.push(`**Recommendation Details**:`);
     lines.push(`- **Bank Name**: **${recommendedBank.bankName}**`);
-    lines.push(`- **Status**: ✅ **Approved / Eligible**`);
+    lines.push(`- **Status**: ✅ **Eligible / Criteria Met**`);
     lines.push(`- **Estimated Monthly EMI**: **₹${recommendedBank.monthlyEmi.toLocaleString("en-IN")} / month**`);
     lines.push(`- **CIBIL**: **${recommendedBank.policyCibil || "-"}**`);
     lines.push(`- **Tenure**: **${recommendedBank.policyTenure || "-"}**`);
@@ -1183,11 +1317,11 @@ export function formatDynamicEligibilityReport(
   // Eligible Banks Table (ONLY ELIGIBLE BANKS SHOWN - INELIGIBLE FILTERED OUT)
   if (eligibleBanks.length > 0) {
     const isSole = eligibleBanks.length === 1;
-    lines.push(`### ✅ Approved Partner Bank${isSole ? "" : "s"} (${eligibleBanks.length})`);
+    lines.push(`### 📋 Eligible Partner Bank${isSole ? "" : "s"} (${eligibleBanks.length})`);
     if (isSole) {
-      lines.push(`Based on your profile and verified financial parameters, **${eligibleBanks[0].bankName}** has approved your loan application:`);
+      lines.push(`Based on your profile and verified financial parameters, **${eligibleBanks[0].bankName}** meets all eligibility criteria for your requested loan:`);
     } else {
-      lines.push(`The following **${eligibleBanks.length} partner banks** have approved your profile:`);
+      lines.push(`The following **${eligibleBanks.length} partner banks** meet all policy criteria for your profile:`);
     }
     lines.push("");
     lines.push(`| # | Bank Name | Estimated Monthly EMI | CIBIL | Tenure |`);
@@ -1286,6 +1420,373 @@ function inferFieldFromAssistantQuestion(q?: string | null): string | null {
   return null;
 }
 
+export interface ProfileUpdateExtraction {
+  updates: Partial<ApplicantProfile>;
+  updatedFieldLabels: string[];
+}
+
+/**
+ * Extracts updated profile values for any of the 8 parameters:
+ * company, salary/monthlyIncome, cibil, age, loanAmount, tenure, employmentType, existingEmi.
+ * STRICT PROFILE INTEGRITY:
+ * - Only extracts a field if the user's message explicitly targets/mentions that field.
+ * - Unmentioned fields are NEVER invented, defaulted, or modified.
+ */
+export function extractProfileUpdates(
+  message: string,
+  llmExtracted?: ExtractedEntities
+): ProfileUpdateExtraction {
+  const updates: Partial<ApplicantProfile> = {};
+  const updatedFieldLabels: string[] = [];
+  const text = String(message || "").replace(/\s+/g, " ").trim();
+  const lower = text.toLowerCase();
+
+  // Helper: check if a field is explicitly targeted in message or in LLM changeFields
+  const isTargeted = (field: string, changeFieldAliases: string[]): boolean => {
+    if (messageMentionsField(field, text)) return true;
+    if (Array.isArray(llmExtracted?.changeFields)) {
+      return llmExtracted.changeFields.some((f) =>
+        changeFieldAliases.some((alias) => new RegExp(`^${alias}$`, "i").test(f))
+      );
+    }
+    return false;
+  };
+
+  // 1. Company Name / Employer
+  if (isTargeted("companyName", ["companyName", "company", "employer", "firm"])) {
+    if (
+      typeof llmExtracted?.companyName === "string" &&
+      !isInvalidCompanyName(llmExtracted.companyName) &&
+      !isFinancialOrProfileInput(llmExtracted.companyName)
+    ) {
+      updates.companyName = normalizeCompanyName(llmExtracted.companyName);
+      updatedFieldLabels.push(`Employer to ${updates.companyName}`);
+    } else {
+      const compMatch =
+        text.match(
+          /(?:change|update|modify|set|make|correct)?\s*(?:my\s*)?(?:company|employer|firm|workplace)(?:\s*(?:name|is|to|=|:))\s*([A-Za-z0-9\s&'.-]+?)(?=\s*[,;]|\s+(?:and|with|salary|cibil|age|loan|emi|tenure|earning)|$|[.\n])/i
+        ) ||
+        text.match(
+          /(?:work\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is)\s*[:]?\s*([A-Za-z0-9\s&'.-]+?)(?=\s*[,;]|\s+(?:and|with|salary|cibil|age|loan|emi|tenure|earning)|$|[.\n])/i
+        );
+      if (compMatch) {
+        let c = compMatch[1].trim().replace(/^(?:to|is|at|=|:)\s+/i, "");
+        if (!isInvalidCompanyName(c) && !isFinancialOrProfileInput(c)) {
+          updates.companyName = normalizeCompanyName(c);
+          updatedFieldLabels.push(`Employer to ${updates.companyName}`);
+        }
+      }
+    }
+  }
+
+  // 2. Monthly Income / Salary
+  if (isTargeted("monthlyIncome", ["monthlyIncome", "salary", "income", "takeHome"])) {
+    if (typeof llmExtracted?.monthlyIncome === "number" && llmExtracted.monthlyIncome >= 5000) {
+      updates.monthlyIncome = llmExtracted.monthlyIncome;
+      updatedFieldLabels.push(`Monthly Salary to ₹${updates.monthlyIncome.toLocaleString("en-IN")}`);
+    } else {
+      const salMatch =
+        text.match(
+          /(?:change|update|make|set)?\s*(?:my\s*)?(?:monthly\s*salary|monthly\s*income|salary|income|take\s*home|nmi|nth|earning)(?:\s*(?:is|to|=|:))\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b)?/i
+        ) ||
+        text.match(
+          /(?:salary|income|take\s*home)\s*(?:is|to|=|:)?\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b)?/i
+        ) ||
+        text.match(
+          /(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b)?\s*(?:per\s*month|\/mo|monthly|take\s*home|salary|income)/i
+        );
+      if (salMatch) {
+        const amt = parseFinancialAmount(salMatch[1] + (salMatch[2] || ""));
+        if (amt && amt >= 5000 && amt <= 50000000) {
+          updates.monthlyIncome = amt;
+          updatedFieldLabels.push(`Monthly Salary to ₹${updates.monthlyIncome.toLocaleString("en-IN")}`);
+        }
+      }
+    }
+  }
+
+  // 3. CIBIL Score
+  if (isTargeted("cibil", ["cibil", "creditScore", "score"])) {
+    if (typeof llmExtracted?.cibil === "number" && ((llmExtracted.cibil >= 300 && llmExtracted.cibil <= 900) || llmExtracted.cibil === 0)) {
+      updates.cibil = llmExtracted.cibil;
+      updatedFieldLabels.push(updates.cibil > 0 ? `CIBIL Score to ${updates.cibil}` : `CIBIL Score to 0 (No Score)`);
+    } else if (/no\s*cibil|0\s*cibil|zero\s*cibil|no\s*credit\s*(?:score|history)/i.test(lower)) {
+      updates.cibil = 0;
+      updatedFieldLabels.push(`CIBIL Score to 0 (No Score)`);
+    } else {
+      const cibilMatch =
+        text.match(
+          /(?:change|update|make|set)?\s*(?:my\s*)?(?:cibil|credit\s*score|score)(?:\s*(?:is|to|=|:)?\s*(?:of)?)\s*([3-9]\d{2})\b/i
+        ) ||
+        text.match(/\b([3-9]\d{2})\b\s*(?:cibil|credit\s*score)/i);
+      if (cibilMatch) {
+        const val = parseInt(cibilMatch[1], 10);
+        if (val >= 300 && val <= 900) {
+          updates.cibil = val;
+          updatedFieldLabels.push(`CIBIL Score to ${updates.cibil}`);
+        }
+      }
+    }
+  }
+
+  // 4. Age
+  if (isTargeted("age", ["age", "applicantAge"])) {
+    if (typeof llmExtracted?.age === "number" && llmExtracted.age >= 18 && llmExtracted.age <= 85) {
+      updates.age = llmExtracted.age;
+      updatedFieldLabels.push(`Age to ${updates.age} years`);
+    } else {
+      const ageMatch =
+        text.match(/(?:change|update|make|set)?\s*(?:my\s*)?(?:age|aged)(?:\s*(?:is|to|=|:))\s*(\d{2})\b/i) ||
+        text.match(/(?:actually\s+)?(?:i\s*am|im)\s+(\d{2})\s*(?:years?\s*old|yrs?\s*old)?\b/i) ||
+        text.match(/\b(\d{2})\s*(?:years?\s*old|yr\s*old)\b/i);
+      if (ageMatch) {
+        const ageVal = parseInt(ageMatch[1], 10);
+        if (ageVal >= 18 && ageVal <= 85) {
+          updates.age = ageVal;
+          updatedFieldLabels.push(`Age to ${updates.age} years`);
+        }
+      }
+    }
+  }
+
+  // 5. Loan Amount Needed
+  if (isTargeted("loanAmount", ["loanAmount", "loan", "amount", "ticketSize"])) {
+    if (typeof llmExtracted?.loanAmount === "number" && llmExtracted.loanAmount >= 10000) {
+      updates.loanAmount = llmExtracted.loanAmount;
+      updatedFieldLabels.push(`Loan Amount to ₹${updates.loanAmount.toLocaleString("en-IN")}`);
+    } else {
+      const loanMatch =
+        text.match(
+          /(?:change|update|make|set|increase|decrease|reduce|raise)?\s*(?:my\s*)?(?:loan\s*(?:amount|ticket|size)?|borrow|need|require)(?:\s*(?:is|to|=|:))\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?)?/i
+        ) ||
+        text.match(
+          /(?:loan\s*amount)\s*(?:is|to|=|:)?\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?)?/i
+        ) ||
+        text.match(
+          /(?:rs\.?|₹)\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?)\s*(?:loan)?/i
+        ) ||
+        text.match(
+          /(\d+(?:,\d+)*(?:\.\d+)?)\s*(lakhs?|lacs?|l\b|cr|crores?)\s+(?:loan|borrow)/i
+        );
+      if (loanMatch) {
+        const amt = parseFinancialAmount(loanMatch[1] + (loanMatch[2] || ""));
+        if (amt && amt >= 10000) {
+          updates.loanAmount = amt;
+          updatedFieldLabels.push(`Loan Amount to ₹${updates.loanAmount.toLocaleString("en-IN")}`);
+        }
+      }
+    }
+  }
+
+  // 6. Tenure
+  if (isTargeted("tenureMonths", ["tenureMonths", "tenure", "term", "duration"])) {
+    if (typeof llmExtracted?.tenureMonths === "number" && llmExtracted.tenureMonths > 0) {
+      updates.tenureMonths = llmExtracted.tenureMonths;
+      updatedFieldLabels.push(`Tenure to ${updates.tenureMonths} months (${(updates.tenureMonths / 12).toFixed(1)} years)`);
+    } else {
+      const tenureMatch =
+        text.match(
+          /(?:change|update|make|set|increase|decrease|reduce)?\s*(?:my\s*)?(?:tenure|duration|term|period)(?:\s*(?:is|to|=|:))\s*(\d{1,2})\s*(years?|yrs?|months?|m\b|y\b)?/i
+        ) ||
+        text.match(
+          /(?:tenure|duration|term|period)\s*(?:is|to|=|:)?\s*(\d{1,2})\s*(years?|yrs?|months?|m\b|y\b)?/i
+        ) ||
+        text.match(/\b([1-7])\s*(?:years?|yrs?)\b(?!\s*old)/i) ||
+        text.match(/\b(\d{2})\s*(?:months?)\b/i);
+      if (tenureMatch) {
+        const num = parseInt(tenureMatch[1], 10);
+        const unit = (tenureMatch[2] || "").toLowerCase();
+        let months = num;
+        if (unit.startsWith("y") || (!unit.startsWith("m") && num <= 7)) {
+          months = num * 12;
+        }
+        if (months > 0 && months <= 360) {
+          updates.tenureMonths = months;
+          updatedFieldLabels.push(`Tenure to ${updates.tenureMonths} months (${(updates.tenureMonths / 12).toFixed(1)} years)`);
+        }
+      }
+    }
+  }
+
+  // 7. Employment Type
+  if (isTargeted("employmentType", ["employmentType", "employment", "jobType"])) {
+    if (llmExtracted?.employmentType) {
+      const normEmp = String(llmExtracted.employmentType).toLowerCase();
+      if (/self|business|proprietor|partner|freelanc|doctor|trader/i.test(normEmp)) {
+        updates.employmentType = "Self-Employed";
+      } else if (/salaried|job|pvt|corp|employee/i.test(normEmp)) {
+        updates.employmentType = "Salaried";
+      }
+      if (updates.employmentType) {
+        updatedFieldLabels.push(`Employment Type to ${updates.employmentType}`);
+      }
+    } else {
+      const empMatch =
+        text.match(
+          /(?:change|update|make|set)?\s*(?:my\s*)?(?:employment\s*type|employment)(?:\s*(?:is|to|=|:))\s*(salaried|self[\s-]*employed|business|proprietor|freelancer)/i
+        ) ||
+        text.match(/\b(?:self[\s-]*employed|business|proprietor|partner|freelanc|doctor|trader)\b/i) ||
+        text.match(/\b(?:salaried|job|employee|corporate|pvt\s*ltd|mnc)\b/i);
+      if (empMatch) {
+        const matchStr = empMatch[1] || empMatch[0];
+        if (/self|business|proprietor|partner|freelanc|doctor|trader/i.test(matchStr)) {
+          updates.employmentType = "Self-Employed";
+        } else {
+          updates.employmentType = "Salaried";
+        }
+        updatedFieldLabels.push(`Employment Type to ${updates.employmentType}`);
+      }
+    }
+  }
+
+  // 8. Existing Monthly EMI
+  if (isTargeted("existingEmi", ["existingEmi", "emi", "obligations"])) {
+    if (typeof llmExtracted?.existingEmi === "number") {
+      updates.existingEmi = llmExtracted.existingEmi;
+      updatedFieldLabels.push(updates.existingEmi > 0 ? `Existing Monthly EMIs to ₹${updates.existingEmi.toLocaleString("en-IN")}` : `Existing Monthly EMIs to ₹0 (No EMIs)`);
+    } else if (/no\s*(?:existing\s*)?emi|0\s*emi|zero\s*emi|no\s*loans|no\s*existing\s*loans|nil\s*emi/i.test(lower)) {
+      updates.existingEmi = 0;
+      updatedFieldLabels.push(`Existing Monthly EMIs to ₹0 (No EMIs)`);
+    } else {
+      const emiMatch =
+        text.match(
+          /(?:change|update|make|set)?\s*(?:my\s*)?(?:existing|current|other|ongoing)?\s*emi(?:s)?(?:\s*(?:is|to|=|:))\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k)?/i
+        ) ||
+        text.match(
+          /(?:existing|ongoing|current)?\s*emi(?:s)?\s*(?:is|to|=|:)?\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k)?/i
+        );
+      if (emiMatch) {
+        const amt = parseFinancialAmount(emiMatch[1] + (emiMatch[2] || ""));
+        if (amt !== null && amt >= 0) {
+          updates.existingEmi = amt;
+          updatedFieldLabels.push(`Existing Monthly EMIs to ₹${updates.existingEmi.toLocaleString("en-IN")}`);
+        }
+      }
+    }
+  }
+
+  return { updates, updatedFieldLabels };
+}
+
+/**
+ * Applies profile updates by replacing old values with new values (no old values retained),
+ * re-evaluates company categories if employer changed, and recalculates eligibility against all banks
+ * using strictly active Master Policy rules.
+ */
+export async function applyProfileUpdateAndRecalculate(
+  conversationId: string,
+  userMessage: string,
+  existingApplicant: ApplicantProfile = {},
+  llmExtracted?: any,
+  modelOverride?: string
+): Promise<{
+  reply: string;
+  applicant: ApplicantProfile;
+  evalResult?: any;
+  isComplete: boolean;
+  missingFields: string[];
+  updatedFields: string[];
+}> {
+  // Start with a clean copy of the existing applicant profile
+  const applicant: ApplicantProfile = {
+    ...existingApplicant,
+    loanType: existingApplicant.loanType || "Personal Loan",
+  };
+
+  const { updates, updatedFieldLabels } = extractProfileUpdates(userMessage, llmExtracted);
+
+  // STRICT REPLACEMENT: Replace old values with new values; old values are NEVER retained for calculation
+  if (updates.monthlyIncome !== undefined) {
+    applicant.monthlyIncome = updates.monthlyIncome;
+  }
+  if (updates.loanAmount !== undefined) {
+    applicant.loanAmount = updates.loanAmount;
+  }
+  if (updates.tenureMonths !== undefined) {
+    applicant.tenureMonths = updates.tenureMonths;
+  }
+  if (updates.cibil !== undefined) {
+    applicant.cibil = updates.cibil;
+  }
+  if (updates.existingEmi !== undefined) {
+    applicant.existingEmi = updates.existingEmi;
+  }
+  if (updates.age !== undefined) {
+    applicant.age = updates.age;
+  }
+  if (updates.employmentType !== undefined) {
+    applicant.employmentType = updates.employmentType;
+  }
+  if (updates.companyName !== undefined) {
+    applicant.companyName = updates.companyName;
+  }
+
+  // If company was updated, resolve categories immediately to re-map bank tiers
+  let companyMatch = applicant.companyName
+    ? await resolveCompanyCategories(applicant.companyName)
+    : undefined;
+  if (companyMatch?.isFound && companyMatch.matchedName) {
+    applicant.companyName = companyMatch.matchedName;
+  }
+
+  // If employmentType changed to Self-Employed and companyName is empty, label company as Self-Employed
+  if (applicant.employmentType === "Self-Employed" && (!applicant.companyName || applicant.companyName === "Standard Corporate")) {
+    applicant.companyName = "Self-Employed";
+  }
+
+  const missingFields = getRequiredPolicyFields(applicant, companyMatch, applicant.loanType || "Personal Loan");
+
+  const updateAck =
+    updatedFieldLabels.length > 0
+      ? `🔄 **Details Updated**: Updated your ${updatedFieldLabels.join(", ")}.`
+      : `🔄 **Details Updated**: Recorded your updated profile details.`;
+
+  // If all required fields are complete, RECALCULATE IMMEDIATELY using the fresh profile!
+  if (missingFields.length === 0) {
+    const evalResult = await evaluateApplicantAgainstAllBanks(applicant, applicant.loanType || "Personal Loan");
+    const report = formatDynamicEligibilityReport(applicant, evalResult);
+
+    await saveEligibilityState(conversationId, {
+      applicant,
+      expectedField: "chosenBank",
+      updatedAt: Date.now(),
+      in_eligibility_flow: true,
+      eligible_banks: (evalResult.eligibleBanks || []).map((b) => b.bankName),
+    } as any);
+
+    return {
+      reply: `${updateAck}\n\n${report}`,
+      applicant,
+      evalResult,
+      isComplete: true,
+      missingFields: [],
+      updatedFields: updatedFieldLabels,
+    };
+  }
+
+  // If still missing fields, prompt for the next missing field without repeating answered ones
+  const nextField = missingFields[0];
+  const nextQuestion =
+    nextField === "companyName"
+      ? "What is your company or employer name?"
+      : await generateDynamicSingleQuestionWithLLM(nextField, applicant, userMessage);
+
+  await saveEligibilityState(conversationId, {
+    applicant,
+    expectedField: nextField,
+    missingFields,
+    updatedAt: Date.now(),
+  });
+
+  return {
+    reply: `${updateAck}\n\n${nextQuestion}`,
+    applicant,
+    isComplete: false,
+    missingFields,
+    updatedFields: updatedFieldLabels,
+  };
+}
+
 /**
  * Main entry point for conversational loan eligibility flow.
  * Strictly implements:
@@ -1339,56 +1840,25 @@ export async function processDynamicEligibility(
   // Handle changing details
   if (intentResult.intent === "CHANGING_DETAILS") {
     let applicant: ApplicantProfile = existingState?.applicant ? { ...existingState.applicant } : { loanType: "Personal Loan" };
-    const updated = extractApplicantDetails(userMessage, applicant, []);
-    if (intentResult.extracted?.monthlyIncome) updated.monthlyIncome = intentResult.extracted.monthlyIncome;
-    if (intentResult.extracted?.loanAmount) updated.loanAmount = intentResult.extracted.loanAmount;
-    if (intentResult.extracted?.tenureMonths) updated.tenureMonths = intentResult.extracted.tenureMonths;
-    if (intentResult.extracted?.cibil !== undefined) updated.cibil = intentResult.extracted.cibil;
-    if (intentResult.extracted?.existingEmi !== undefined) updated.existingEmi = intentResult.extracted.existingEmi;
-    if (intentResult.extracted?.age) updated.age = intentResult.extracted.age;
-    if (intentResult.extracted?.companyName) {
-      const resolved = await resolveCompanyCategories(intentResult.extracted.companyName);
-      updated.companyName = resolved.matchedName || intentResult.extracted.companyName;
-    }
-    const companyMatch = updated.companyName
-      ? await resolveCompanyCategories(updated.companyName)
-      : undefined;
-    const missingFields = getRequiredPolicyFields(updated, companyMatch, updated.loanType || "Personal Loan");
-
-    if (missingFields.length === 0) {
-      const evalResult = await evaluateApplicantAgainstAllBanks(updated, updated.loanType || "Personal Loan");
-      const formattedMarkdown = formatDynamicEligibilityReport(updated, evalResult);
-      await clearEligibilityState(conversationId);
-      return {
-        isComplete: true,
-        missingFields: [],
-        applicant: updated,
-        companyMatch: evalResult.companyMatch,
-        evaluations: evalResult.evaluations,
-        eligibleBanks: evalResult.eligibleBanks,
-        ineligibleBanks: evalResult.ineligibleBanks,
-        recommendedBank: evalResult.recommendedBank,
-        recommendationReason: evalResult.recommendationReason,
-        formattedMarkdown: `🔄 **Details Updated & Recalculated**\n\n${formattedMarkdown}`,
-      };
-    }
-
-    const nextField = missingFields[0];
-    const nextQuestion = nextField === "companyName"
-      ? "What is your company or employer name?"
-      : await generateDynamicSingleQuestionWithLLM(nextField, updated, userMessage);
-    await saveEligibilityState(conversationId, {
-      applicant: updated,
-      expectedField: nextField,
-      missingFields,
-      updatedAt: Date.now(),
-    });
+    const res = await applyProfileUpdateAndRecalculate(
+      conversationId,
+      userMessage,
+      applicant,
+      intentResult.extracted,
+      modelOverride
+    );
     return {
-      isComplete: false,
-      missingFields,
-      nextQuestion: `🔄 **Details Updated**\n\n${nextQuestion}`,
-      applicant: updated,
-      formattedMarkdown: `🔄 **Details Updated**\n\n${nextQuestion}`,
+      isComplete: res.isComplete,
+      missingFields: res.missingFields,
+      nextQuestion: res.reply,
+      applicant: res.applicant,
+      companyMatch: res.evalResult?.companyMatch,
+      evaluations: res.evalResult?.evaluations,
+      eligibleBanks: res.evalResult?.eligibleBanks,
+      ineligibleBanks: res.evalResult?.ineligibleBanks,
+      recommendedBank: res.evalResult?.recommendedBank,
+      recommendationReason: res.evalResult?.recommendationReason,
+      formattedMarkdown: res.reply,
     };
   }
 
@@ -1618,8 +2088,15 @@ export async function processDynamicEligibility(
   const evalResult = await evaluateApplicantAgainstAllBanks(updatedApplicant, updatedApplicant.loanType || "Personal Loan");
   const formattedMarkdown = formatDynamicEligibilityReport(updatedApplicant, evalResult);
 
-  // Clear session state upon completion
-  await clearEligibilityState(conversationId);
+  // Save completed session state so subsequent profile corrections preserve valid profile data
+  await saveEligibilityState(conversationId, {
+    applicant: updatedApplicant,
+    expectedField: "chosenBank",
+    missingFields: [],
+    updatedAt: Date.now(),
+    in_eligibility_flow: false,
+    eligible_banks: (evalResult.eligibleBanks || []).map((b) => b.bankName),
+  } as any);
 
   return {
     isComplete: true,
