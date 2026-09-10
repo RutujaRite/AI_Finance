@@ -308,8 +308,6 @@ async function runToolCallingAgent(
   customSystemPrompt?: string
 ): Promise<ToolCallingAgentResult> {
   const model = modelOverride || OPENROUTER_MODEL;
-  const bankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|tata|poonawalla/i.exec(userMessage);
-  const bankName = bankMatch ? bankMatch[0].toUpperCase() : "";
 
   try {
     if (contextData) {
@@ -459,21 +457,23 @@ async function runToolCallingAgent(
       clearTimeout(timeoutId);
     }
   } catch (error) {
-    console.error("Tool-calling agent error:", error);
-
     // LLM unavailable — run deterministic searches to get verified data, then
     // let the LLM explain it if it comes back; otherwise return the raw data.
-const isManagerQuery = /manager|contact|phone|mobile|email|number|\basm\b|\brsm\b|\bzsm\b|\brh\b|\brm\b|branch manager|contact details/i.test(userMessage);
+    const isManagerQuery = /manager|contact|phone|mobile|email|number|\basm\b|\brsm\b|\bzsm\b|\brh\b|\brm\b|branch manager|contact details/i.test(userMessage);
 
-// BASIC LOAN/EMI QUESTIONS: never trigger banking/company tool calls
-isBasicLoanEmiQuery: /(emi|emi\s+calculator|calculate.*emi|emi.*amount|what.*emi|how.*emi)/i.test(userMessage) ||
-  /(loan.*interest|interest.*rate|rate.*loan|loan.*rate)/i.test(userMessage) ||
-  /(how.*much.*loan|loan.*how.*much|max.*loan|loan.*max)/i.test(userMessage) ||
-  /(personal.*loan.*eligib|eligib.*personal.*loan)/i.test(userMessage) ||
-  /(for\s+\d+\s+months?)/i.test(userMessage);
+    const cityMatch = userMessage.match(/\bin\s+([A-Za-z\s]+?)\s*(?:for|$|\.|,|\b)/i);
+    const city = cityMatch ? cityMatch[1].trim() : null;
 
-const isCompanyQuery = /company|employer|category|rating|listing/i.test(userMessage) && !isManagerQuery && !isBasicLoanEmiQuery;
-const isPolicyQuery = /approval|eligibility|salary|cibil|emi|income|foir|interest|roi|tenure|policy|rate|multiplier|assessment|summary|criteria/i.test(userMessage) && !isManagerQuery && !isBasicLoanEmiQuery && !isCompanyQuery;
+    // BASIC LOAN/EMI QUESTIONS: never trigger banking/company tool calls
+    const isBasicLoanEmiQuery: boolean =
+      /(emi|emi\s+calculator|calculate.*emi|emi.*amount|what.*emi|how.*emi)/i.test(userMessage) ||
+      /(loan.*interest|interest.*rate|rate.*loan|loan.*rate)/i.test(userMessage) ||
+      /(how.*much.*loan|loan.*how.*much|max.*loan|loan.*max)/i.test(userMessage) ||
+      /(personal.*loan.*eligib|eligib.*personal.*loan)/i.test(userMessage) ||
+      /(for\s+\d+\s+months?)/i.test(userMessage);
+
+    const isCompanyQuery = /company|employer|category|rating|listing/i.test(userMessage) && !isManagerQuery && !isBasicLoanEmiQuery;
+    const isPolicyQuery = /approval|eligibility|salary|cibil|emi|income|foir|interest|roi|tenure|policy|rate|multiplier|assessment|summary|criteria/i.test(userMessage) && !isManagerQuery && !isBasicLoanEmiQuery && !isCompanyQuery;
 
     let fallbackData = "";
     let fallbackDataObj: any = {};
@@ -486,8 +486,13 @@ const isPolicyQuery = /approval|eligibility|salary|cibil|emi|income|foir|interes
       filters.pincode = pincodeMatch[1];
     }
     const bankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|tata|poonawalla/i.exec(userMessage);
-    if (bankMatch) {
-      filters.bank_name = bankMatch[0].toUpperCase();
+    const bankName = bankMatch ? bankMatch[0].toUpperCase() : undefined;
+    if (bankName) {
+      filters.bank_name = bankName;
+    }
+
+    if (city) {
+      filters.city = city;
     }
 
     if (isManagerQuery) {

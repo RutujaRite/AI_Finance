@@ -18,3 +18,5 @@ fix_*.js
 test_*.js
 scripts/tmp-check-*.js
 scripts/_inspect.jsnode_modules/
+ openrouter.ts
+
