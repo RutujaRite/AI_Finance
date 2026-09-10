@@ -668,56 +668,61 @@ export async function generateDynamicSingleQuestionWithLLM(
   };
 
   if (OPENROUTER_API_KEY) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const modelsToTry = [OPENROUTER_MODEL];
+    if (OPENROUTER_MODEL !== "openrouter/free") modelsToTry.push("openrouter/free");
 
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "http://localhost:3001",
-          "X-Title": "CreditWise AI",
-        },
-        body: JSON.stringify({
-          model: OPENROUTER_MODEL,
-          max_tokens: 150,
-          temperature: 0.3,
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are CreditWise AI, a friendly, professional financial intelligence assistant. " +
-                "Your goal is to guide the applicant through loan eligibility assessment by asking EXACTLY ONE question at a time. " +
-                "Never ask multiple questions. Never repeat a question for details already known. " +
-                "Keep your response concise (1-2 sentences), warm, and natural. " +
-                "Never mention databases, files, tables, or backend systems.",
-            },
-            {
-              role: "user",
-              content:
-                `The applicant said: "${userMessage}".\n` +
-                `Already known details: ${collectedSummary.length > 0 ? collectedSummary.join(", ") : "None yet"}.\n` +
-                `Next missing detail needed: ${fieldPrompts[nextField] || nextField}.\n\n` +
-                `Respond with a friendly 1-2 sentence message acknowledging their answer (if appropriate) and asking for ONLY this missing detail.`,
-            },
-          ],
-        }),
-      });
+    for (const model of modelsToTry) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      clearTimeout(timeoutId);
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://localhost:3001",
+            "X-Title": "CreditWise AI",
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 150,
+            temperature: 0.3,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are CreditWise AI, a friendly, professional financial intelligence assistant. " +
+                  "Your goal is to guide the applicant through loan eligibility assessment by asking EXACTLY ONE question at a time. " +
+                  "Never ask multiple questions. Never repeat a question for details already known. " +
+                  "Keep your response concise (1-2 sentences), warm, and natural. " +
+                  "Never mention databases, files, tables, or backend systems.",
+              },
+              {
+                role: "user",
+                content:
+                  `The applicant said: "${userMessage}".\n` +
+                  `Already known details: ${collectedSummary.length > 0 ? collectedSummary.join(", ") : "None yet"}.\n` +
+                  `Next missing detail needed: ${fieldPrompts[nextField] || nextField}.\n\n` +
+                  `Respond with a friendly 1-2 sentence message acknowledging their answer (if appropriate) and asking for ONLY this missing detail.`,
+              },
+            ],
+          }),
+        });
 
-      if (response.ok) {
-        const json = await response.json();
-        const content = json.choices?.[0]?.message?.content;
-        if (content && typeof content === "string" && content.trim().length > 10) {
-          return stripReasoningPreamble(content.trim());
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const json = await response.json();
+          const content = json.choices?.[0]?.message?.content;
+          if (content && typeof content === "string" && content.trim().length > 10) {
+            return stripReasoningPreamble(content.trim());
+          }
         }
+      } catch (e) {
+        // Try fallback model
       }
-    } catch (e) {
-      // Fall through to instant conversational fallbacks
     }
   }
 
@@ -1220,7 +1225,7 @@ export async function processDynamicEligibility(
   }
 
   // Handle explicit reset/cancellation
-  if (intentResult.intent === "CANCEL_RESET") {
+  if ((intentResult.intent as any) === "CANCEL_RESET" || (intentResult.intent === "ANOTHER_TOPIC" && intentResult.subIntent === "CANCEL_RESET")) {
     await clearEligibilityState(conversationId);
     const resetMsg =
       "🔄 **Loan Eligibility Assessment Reset**\n\nYour previous assessment has been cleared. You can start fresh anytime by asking for a loan.";
@@ -1233,8 +1238,65 @@ export async function processDynamicEligibility(
     };
   }
 
+  // Handle changing details
+  if (intentResult.intent === "CHANGING_DETAILS") {
+    let applicant: ApplicantProfile = existingState?.applicant ? { ...existingState.applicant } : { loanType: "Personal Loan" };
+    const updated = extractApplicantDetails(userMessage, applicant, []);
+    if (intentResult.extracted?.monthlyIncome) updated.monthlyIncome = intentResult.extracted.monthlyIncome;
+    if (intentResult.extracted?.loanAmount) updated.loanAmount = intentResult.extracted.loanAmount;
+    if (intentResult.extracted?.tenureMonths) updated.tenureMonths = intentResult.extracted.tenureMonths;
+    if (intentResult.extracted?.cibil !== undefined) updated.cibil = intentResult.extracted.cibil;
+    if (intentResult.extracted?.existingEmi !== undefined) updated.existingEmi = intentResult.extracted.existingEmi;
+    if (intentResult.extracted?.age) updated.age = intentResult.extracted.age;
+    if (intentResult.extracted?.companyName) {
+      const resolved = await resolveCompanyCategories(intentResult.extracted.companyName);
+      updated.companyName = resolved.matchedName || intentResult.extracted.companyName;
+    }
+    const companyMatch = updated.companyName
+      ? await resolveCompanyCategories(updated.companyName)
+      : undefined;
+    const missingFields = getRequiredPolicyFields(updated, companyMatch, updated.loanType || "Personal Loan");
+
+    if (missingFields.length === 0) {
+      const evalResult = await evaluateApplicantAgainstAllBanks(updated, updated.loanType || "Personal Loan");
+      const formattedMarkdown = formatDynamicEligibilityReport(updated, evalResult);
+      await clearEligibilityState(conversationId);
+      return {
+        isComplete: true,
+        missingFields: [],
+        applicant: updated,
+        companyMatch: evalResult.companyMatch,
+        evaluations: evalResult.evaluations,
+        eligibleBanks: evalResult.eligibleBanks,
+        ineligibleBanks: evalResult.ineligibleBanks,
+        recommendedBank: evalResult.recommendedBank,
+        recommendationReason: evalResult.recommendationReason,
+        formattedMarkdown: `🔄 **Details Updated & Recalculated**\n\n${formattedMarkdown}`,
+      };
+    }
+
+    const nextField = missingFields[0];
+    const nextQuestion = nextField === "companyName"
+      ? "What is your company or employer name?"
+      : await generateDynamicSingleQuestionWithLLM(nextField, updated, userMessage);
+    await saveEligibilityState(conversationId, {
+      applicant: updated,
+      expectedField: nextField,
+      missingFields,
+      updatedAt: Date.now(),
+    });
+    return {
+      isComplete: false,
+      missingFields,
+      nextQuestion: `🔄 **Details Updated**\n\n${nextQuestion}`,
+      applicant: updated,
+      formattedMarkdown: `🔄 **Details Updated**\n\n${nextQuestion}`,
+    };
+  }
+
   const isNewLoanIntent =
-    intentResult.intent === "PERSONAL_LOAN_REQUEST" ||
+    intentResult.intent === "LOAN_ELIGIBILITY" ||
+    (intentResult as any).intent === "PERSONAL_LOAN_REQUEST" ||
     detectLoanIntent(userMessage).isLoanIntent;
 
   // If no loan intent and no active flow, do NOT trigger company lookup or loan processing!

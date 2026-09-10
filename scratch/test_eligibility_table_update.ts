@@ -128,7 +128,7 @@ async function runTests() {
 
   // Verify that rows contain proper CIBIL and Tenure
   const lines = report.split("\n");
-  const tableRows = lines.filter(l => l.startsWith("|") && !l.includes("Bank Name") && !l.includes(":---") && !l.includes("Parameter"));
+  const tableRows = lines.filter(l => /^\s*\|\s*\d+\s*\|/.test(l));
   console.log(`\nTable row count: ${tableRows.length}`);
   assert(tableRows.length > 0, "Must have approved partner banks in table");
   tableRows.forEach(r => console.log(`  Row: ${r}`));

@@ -19,18 +19,16 @@ import {
 import { resolveCompanyCategories } from "@/lib/companyCategoryResolver";
 
 /**
- * Checks whether user message expresses loan eligibility intent.
+ * Checks whether user message expresses loan eligibility intent semantically.
  */
-export function isLoanEligibilityIntent(text: string): boolean {
-  const norm = String(text || "").toLowerCase();
-  if (/interest\s*rate|roi|rate|tenure|document|listing|manager|contact|phone|email/i.test(norm)) {
-    // Avoid hijacking specific manager/interest rate queries if not explicitly asking for eligibility
-    if (!/check|eligible|eligibility|apply|need|want/i.test(norm)) {
-      return false;
-    }
+export function isLoanEligibilityIntent(text: string, preClassifiedIntent?: any): boolean {
+  if (preClassifiedIntent?.intent) {
+    return preClassifiedIntent.intent === "LOAN_ELIGIBILITY" || preClassifiedIntent.intent === "PERSONAL_LOAN_REQUEST";
   }
-  return /(check loan eligibility|am i eligible|loan eligibility|check my eligibility|eligibility check|check eligibility|apply for loan|loan wizard|eligibility wizard|calculate eligibility|loan criteria check|i want personal loan|i need personal loan|want personal loan|need personal loan|i want a loan|i need a loan|looking for personal loan|looking for a loan|apply for personal loan|get personal loan|i want loan|want loan|need loan|apply loan|can i get.*loan)/i.test(norm);
+  const norm = String(text || "").toLowerCase();
+  return /eligib|loan|borrow|need.*money|apply/i.test(norm) && !/manager|phone|email/i.test(norm);
 }
+
 
 /**
  * Calculates monthly EMI using the standard financial formula.
@@ -179,27 +177,6 @@ export async function processEligibilityFlow(
   const isValidConvId = Number.isFinite(numConvId);
 
   // Handle reset/cancel commands
-  if (lowerMsg === "cancel" || lowerMsg === "reset" || lowerMsg === "restart" || preClassifiedIntent?.intent === "CANCEL_RESET") {
-    if (pool && isValidConvId) {
-      await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numConvId]);
-    }
-    await clearEligibilityState(conversationId);
-    return {
-      reply: "🔄 **Loan Eligibility Assessment Reset**\n\nYou can start a new eligibility evaluation anytime by typing **'Check loan eligibility'** or **'I want personal loan'**.",
-      isFinished: true,
-    };
-  }
-
-  // If user expresses new loan intent, clear any stale state to ensure a 100% fresh start
-  if (preClassifiedIntent?.intent === "PERSONAL_LOAN_REQUEST" || isLoanEligibilityIntent(userMessage)) {
-    if (pool && isValidConvId) {
-      try {
-        await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numConvId]);
-      } catch (e) {}
-    }
-    await clearEligibilityState(conversationId);
-  }
-
   // Check existing conversation state in DB or in-memory
   let activeState: any = null;
   if (pool && isValidConvId) {
@@ -217,6 +194,39 @@ export async function processEligibilityFlow(
   }
   if (!activeState) {
     activeState = await getEligibilityState(conversationId);
+  }
+
+  // Handle reset/cancel commands
+  if (
+    lowerMsg === "cancel" ||
+    lowerMsg === "reset" ||
+    lowerMsg === "restart" ||
+    (preClassifiedIntent?.intent === "ANOTHER_TOPIC" && preClassifiedIntent?.subIntent === "CANCEL_RESET") ||
+    (preClassifiedIntent?.intent as any) === "CANCEL_RESET"
+  ) {
+    if (pool && isValidConvId) {
+      await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numConvId]);
+    }
+    await clearEligibilityState(conversationId);
+    return {
+      reply: "🔄 **Loan Eligibility Assessment Reset**\n\nYou can start a new eligibility evaluation anytime by asking for a loan.",
+      isFinished: true,
+    };
+  }
+
+  // If user expresses new loan intent, clear any stale state to ensure a 100% fresh start
+  if (
+    !activeState &&
+    (preClassifiedIntent?.intent === "LOAN_ELIGIBILITY" ||
+      (preClassifiedIntent?.intent as any) === "PERSONAL_LOAN_REQUEST" ||
+      isLoanEligibilityIntent(userMessage, preClassifiedIntent))
+  ) {
+    if (pool && isValidConvId) {
+      try {
+        await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numConvId]);
+      } catch (e) {}
+    }
+    await clearEligibilityState(conversationId);
   }
 
   // 1. Bank Manager Selection Step (when user selects their preferred bank after evaluation)

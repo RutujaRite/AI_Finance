@@ -362,36 +362,8 @@ Loan Amount >= 5L to 9.99L
   CIBIL >= 770             | Green 12.75% | Amber 12.85% | Red 13.15% | PF Rs. 7,999.00
   CIBIL >= 725 to 769/0/-1 | Green 12.95% | Amber 13.05% | Red 13.35% | PF Rs. 8,499.00
 
-
 ================================================================================
-5. LOAN PARAMETERS
-================================================================================
-
-Pricing loan-amount bands are defined in Section 4.
-
-IMPORTANT:
-- Pricing bands are not automatically absolute Personal Loan product limits.
-- Absolute Minimum Loan Amount: NOT_DEFINED / NEEDS_REVIEW
-- Absolute Maximum Loan Amount: NOT_DEFINED / NEEDS_REVIEW
-- Minimum Tenure: NOT_DEFINED / NEEDS_REVIEW
-- Maximum Tenure: NOT_DEFINED / NEEDS_REVIEW
-
-Do not infer an absolute maximum from the highest displayed pricing band.
-
-================================================================================
-6. FOIR & MULTIPLIER RULES
-================================================================================
-
-FOIR:
-- NOT_DEFINED / NEEDS_REVIEW
-
-Multiplier:
-- NOT_DEFINED / NEEDS_REVIEW
-
-Do not infer FOIR or multiplier from ROI, PF, CIBIL, loan amount, or category.
-
-================================================================================
-7. NTH / SALARY REQUIREMENTS
+6. NTH / SALARY REQUIREMENTS
 ================================================================================
 
 Minimum Salary / NTH:
@@ -406,92 +378,13 @@ Income Proof Rule:
 Do not derive salary eligibility from a pricing table.
 
 ================================================================================
-8. BT / CCBT / APP LOAN RULES
-================================================================================
-
-Balance Transfer (BT):
-- NOT_DEFINED / NEEDS_REVIEW
-
-Credit Card Balance Transfer (CCBT):
-- NOT_DEFINED / NEEDS_REVIEW
-
-App Loan:
-- NOT_DEFINED / NEEDS_REVIEW
-
-Never reuse BT / CCBT / App Loan rules from another bank or unrelated source.
-
-================================================================================
-9. DOCUMENT REQUIREMENTS
+7. DOCUMENT REQUIREMENTS
 ================================================================================
 
 Mandatory Personal Loan documents:
-- NOT_DEFINED / NEEDS_REVIEW in the supplied rate-card image.
-
 A separate Aadhaar Consent Letter may be used for Aadhaar authentication /
 verification consent handling, but it must not be treated as a Personal Loan
 pricing or eligibility criterion.
-
-================================================================================
-10. EXCEPTIONS & DEVIATIONS
-================================================================================
-
-General policy exceptions:
-- NOT_DEFINED / NEEDS_REVIEW
-
-Bureau delinquency rules:
-- NOT_DEFINED / NEEDS_REVIEW
-
-Leverage / unsecured exposure rules:
-- NOT_DEFINED / NEEDS_REVIEW
-
-Residence / negative-area rules:
-- NOT_DEFINED / NEEDS_REVIEW
-
-================================================================================
-11. CONFLICTS / REVIEW ITEMS
-================================================================================
-
-1. CIBIL:
-   Pricing bands are present, but no absolute approval cutoff is explicitly stated.
-   [REVIEW]
-
-2. AGE:
-   Minimum and maximum age are not defined.
-   [REVIEW]
-
-3. SALARY / NTH:
-   Minimum income requirement is not defined.
-   [REVIEW]
-
-4. FOIR:
-   No FOIR rule is defined.
-   [REVIEW]
-
-5. TENURE:
-   No minimum or maximum tenure is defined.
-   [REVIEW]
-
-6. ABSOLUTE LOAN LIMIT:
-   Pricing bands exist, but a universal Personal Loan minimum/maximum is not
-   explicitly stated.
-   [REVIEW]
-
-7. EMPLOYMENT:
-   Some customer groups are named, but complete employment eligibility is not defined.
-   [REVIEW]
-
-8. CATEGORY MAPPING:
-   Category names are present; company-to-category mapping must be explicitly verified.
-   [REVIEW]
-
-9. FUNDED / UNFUNDED SCOPE:
-   Apply scope exactly where the source states FUNDED ONLY or FUNDED AND UNFUNDED.
-   [REVIEW]
-
-10. CATEGORY ISOLATION:
-    Never borrow values between Top Corporate, Elite, Super-Prime, Preferred,
-    Open Market, Government, or other categories.
-    [REVIEW]
 
 ================================================================================
 AI / BACKEND POLICY EVALUATION RULES
@@ -513,12 +406,6 @@ ELIGIBLE
 
 NOT_ELIGIBLE
 - Only when an explicit verified applicable policy rule fails.
-
-NEEDS_REVIEW
-- Company/category unresolved.
-- Mandatory eligibility field missing.
-- Required policy rule not explicitly defined.
-- Source applicability is ambiguous.
 
 Never invent missing values or borrow another category/bank's rules.
 

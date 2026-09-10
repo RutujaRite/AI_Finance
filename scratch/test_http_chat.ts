@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import { SignJWT } from "jose";
 
 async function getAuthToken() {
@@ -12,37 +15,42 @@ async function getAuthToken() {
 
 async function testChatEndpoint() {
   const token = await getAuthToken();
+  let convId: string | undefined = undefined;
+
   const tests = [
-    { msg: "Hi", label: "Greeting: 'Hi'" },
-    { msg: "Hello", label: "Greeting: 'Hello'" },
-    { msg: "How are you?", label: "Casual: 'How are you?'" },
-    { msg: "What can you do?", label: "Casual: 'What can you do?'" },
-    { msg: "I want a personal loan", label: "Loan Intent: 'I want a personal loan'" }
+    { msg: "Hello!", label: "1. Greeting" },
+    { msg: "I want to apply for a personal loan", label: "2. Personal Loan Intent" },
+    { msg: "What is the EMI for 10 lakhs for 5 years at 11%?", label: "3. Mid-flow EMI Calculation" },
+    { msg: "What does FOIR mean?", label: "4. Mid-flow Concept Question" },
+    { msg: "Tata Consultancy Services", label: "5. Resuming with Company Name" },
+    { msg: "Actually change my monthly salary to 200000", label: "6. Changing Details" },
   ];
 
   for (const t of tests) {
+    console.log(`Sending: "${t.msg}" (Conv ID: ${convId || "NEW"})`);
     const res = await fetch("http://localhost:3001/api/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Cookie: `token=${token}`,
       },
-      body: JSON.stringify({ message: t.msg })
+      body: JSON.stringify({ message: t.msg, conversation_id: convId }),
     });
     const text = await res.text();
     let data: any = {};
     try {
       data = JSON.parse(text);
+      if (data.conversation_id) {
+        convId = data.conversation_id;
+      }
     } catch {
       console.log(`[HTTP TEST] ${t.label} -> Status ${res.status}, Body: ${text.slice(0, 100)}`);
       continue;
     }
     console.log(`[HTTP TEST] ${t.label}`);
-    console.log(`   Status: ${res.status}`);
-    console.log(`   Has company_data: ${!!data.ai_message?.company_data}`);
-    console.log(`   Has bank_data: ${!!data.ai_message?.bank_data}`);
-    console.log(`   Reply preview: ${data.ai_message?.content?.split("\n")[0]}`);
-    console.log("");
+    console.log(`   Status: ${res.status} | Conv ID: ${convId}`);
+    console.log(`   Reply:\n${data.ai_message?.content}\n`);
+    console.log("------------------------------------------------------------\n");
   }
 }
 

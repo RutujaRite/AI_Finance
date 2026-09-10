@@ -3,19 +3,15 @@ import { parseFinancialAmount } from "@/lib/dynamicEligibilityEngine";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openrouter/free";
-const LLM_TIMEOUT_MS = 25000;
+const LLM_TIMEOUT_MS = 12000;
 
 export type UserIntentType =
-  | "PERSONAL_LOAN_REQUEST"
-  | "OTHER_LOAN_REQUEST"
-  | "BANK_MANAGER_SEARCH"
-  | "COMPANY_SEARCH"
-  | "POLICY_INQUIRY"
-  | "EMI_CALCULATION"
-  | "GREETING"
-  | "CANCEL_RESET"
-  | "PROVIDE_INFORMATION"
-  | "GENERAL_INQUIRY";
+  | "LOAN_ELIGIBILITY"
+  | "CALCULATION"
+  | "GENERAL_INFORMATION"
+  | "CHANGING_DETAILS"
+  | "GREETINGS"
+  | "ANOTHER_TOPIC";
 
 export interface ExtractedEntities {
   companyName?: string;
@@ -25,14 +21,18 @@ export interface ExtractedEntities {
   cibil?: number;
   existingEmi?: number;
   age?: number;
+  interestRate?: number;
   employmentType?: string;
   loanType?: string;
   targetBank?: string;
   city?: string;
+  changeFields?: string[];
+  questionTopic?: string;
 }
 
 export interface IntentClassificationResult {
   intent: UserIntentType;
+  subIntent?: string;
   confidence: number;
   loanType: string;
   extracted: ExtractedEntities;
@@ -40,13 +40,15 @@ export interface IntentClassificationResult {
 }
 
 /**
- * Strips reasoning tokens or thinking process preamble often emitted by free models.
+ * Strips reasoning tokens, thinking process preamble, or markdown fences emitted by LLMs.
  */
-function cleanLlmJsonOutput(raw: string): string {
+export function cleanLlmJsonOutput(raw: string): string {
+  if (!raw) return "{}";
   let cleaned = raw
     .replace(/<think>[\s\S]*?<\/think>/gi, "")
     .replace(/^Here('s| is) a thinking process[\s\S]*?\n\n/gi, "")
     .replace(/^Thinking Process:[\s\S]*?\n\n/gi, "")
+    .replace(/^User Safety:[^\n]*\n+/gi, "")
     .trim();
 
   // Extract json markdown fence if present
@@ -66,23 +68,25 @@ function cleanLlmJsonOutput(raw: string): string {
 
 /**
  * Classifies user intent using OpenRouter LLM.
- * Strictly uses the LLM to understand what the user wants without hardcoded phrases.
+ * Strictly analyzes every user message semantically before eligibility processing.
  */
 export async function classifyIntentWithLLM(
   userMessage: string,
   context?: {
     isFlowActive?: boolean;
     expectedField?: string;
+    existingApplicant?: any;
     recentMessages?: Array<{ role: string; content: string }>;
   },
   modelOverride?: string
 ): Promise<IntentClassificationResult> {
-  const model = modelOverride || OPENROUTER_MODEL;
+  const primaryModel = modelOverride || OPENROUTER_MODEL;
   const messageText = String(userMessage || "").trim();
 
   if (!messageText) {
     return {
-      intent: "GENERAL_INQUIRY",
+      intent: "ANOTHER_TOPIC",
+      subIntent: "EMPTY",
       confidence: 1.0,
       loanType: "Personal Loan",
       extracted: {},
@@ -94,33 +98,44 @@ export async function classifyIntentWithLLM(
       role: "system",
       content:
         `You are the Intent Classification and Entity Extraction Engine for CreditWise AI, a banking and loan intelligence platform.\n` +
-        `Your task is to analyze the user's message semantically and return a strictly valid JSON object.\n\n` +
-        `Possible intents:\n` +
-        `- "PERSONAL_LOAN_REQUEST": User explicitly asks to check eligibility for a personal loan, wants a personal loan, applies for a personal loan, or inquires about personal borrowing. (CRITICAL: Casual messages, hellos, and greetings are NEVER personal loan requests).\n` +
-        `- "OTHER_LOAN_REQUEST": User explicitly asks for Home Loan, Business Loan, Car / Auto Loan, or Education Loan.\n` +
-        `- "BANK_MANAGER_SEARCH": User seeks contact details, phone numbers, email addresses, or branch directory for bank managers or representatives.\n` +
-        `- "COMPANY_SEARCH": User asks whether their corporate employer is listed or what category (Cat A, Elite, Diamond) their company has.\n` +
-        `- "POLICY_INQUIRY": User asks specific questions about bank policies (e.g. CIBIL cutoffs, FOIR percentage, interest rates, age limits).\n` +
-        `- "EMI_CALCULATION": User asks to calculate monthly EMI for specific loan amount, rate, and tenure.\n` +
-        `- "GREETING": User is saying hello, hi, good morning, hey, greetings, hi there, hello there, namaste, etc. (CRITICAL: Greetings are NEVER loan requests or company searches).\n` +
-        `- "CANCEL_RESET": User wants to cancel, reset, restart, or start over.\n` +
-        `- "PROVIDE_INFORMATION": User is providing answers or profile information (e.g., providing company name, salary, cibil, etc.) in an ongoing conversation.\n` +
-        `- "GENERAL_INQUIRY": Casual pleasantries, small talk ("how are you", "what can you do", "who are you", "tell me about yourself", "thanks", "ok"), or questions about the bot capabilities.\n\n` +
-        `Context: Flow is currently ${context?.isFlowActive ? `ACTIVE (expecting: ${context?.expectedField || "next detail"})` : "INACTIVE"}.\n\n` +
-        `Entity Extraction: Extract any of the following if explicitly mentioned:\n` +
-        `- companyName: employer or corporate name (DO NOT assign greetings, casual phrases, numbers, or financial amounts as company name)\n` +
-        `- monthlyIncome: net monthly take-home salary in INR as a number\n` +
+        `Your task is to analyze the user's message semantically and classify it into EXACTLY ONE of the following 6 intent categories:\n\n` +
+        `1. "LOAN_ELIGIBILITY":\n` +
+        `   - User asks to check personal loan eligibility, apply for a personal loan, start an eligibility assessment, OR is providing personal profile details (e.g. employer name, monthly salary, CIBIL, loan amount, tenure, EMIs, age) to continue an in-progress eligibility assessment.\n\n` +
+        `2. "CALCULATION":\n` +
+        `   - User asks to calculate monthly EMI, interest payable, installment, or borrowing capacity (e.g. "What will my EMI be for 10 lakhs at 11% for 5 years?", "Calculate EMI for 500000", "What is my monthly installment?"). Supports partial calculations where only some numbers are given.\n\n` +
+        `3. "GENERAL_INFORMATION":\n` +
+        `   - User asks questions about bank policies (e.g. CIBIL cutoffs, FOIR percentage, interest rates, age limits), official bank manager contacts / branch directory, employer corporate listings or category ratings (Super Cat A, Cat A, Elite, Diamond), general banking concepts (e.g. "What is FOIR?", "How does personal loan interest work?"), or assistant capabilities / FAQs.\n\n` +
+        `4. "CHANGING_DETAILS":\n` +
+        `   - User explicitly asks to change, update, modify, or correct previously provided profile details (e.g. "Change my salary to 2 lakhs", "Actually my CIBIL is 750", "Update my company to TCS", "Make tenure 3 years", "I want to change loan amount to 15L").\n\n` +
+        `5. "GREETINGS":\n` +
+        `   - User is saying hello, hi, hey, good morning, greetings, namaste, etc. (CRITICAL: Greetings are NEVER loan requests or company searches).\n\n` +
+        `6. "ANOTHER_TOPIC":\n` +
+        `   - User is asking an off-topic question, making casual pleasantries / small talk ("who made you", "thank you", "goodbye"), or requesting to cancel/reset ("cancel", "reset", "start over").\n\n` +
+        `CRITICAL CONVERSATIONAL RULES:\n` +
+        `- NEVER use hardcoded keyword matching. Understand the user's semantic intent from the message.\n` +
+        `- If an eligibility conversation is active, but the user asks a policy question, an EMI calculation, a manager contact, a general definition, or asks to change a detail, you MUST classify that specific intent ("GENERAL_INFORMATION", "CALCULATION", "CHANGING_DETAILS"), NOT "LOAN_ELIGIBILITY".\n` +
+        `- Only classify as "LOAN_ELIGIBILITY" if the user is directly answering the expected eligibility question or asking to proceed with eligibility evaluation.\n\n` +
+        `Context:\n` +
+        `- Eligibility Flow Active: ${context?.isFlowActive ? "true" : "false"}\n` +
+        `- Expected Field: ${context?.expectedField || "none"}\n` +
+        `- Known Applicant Profile: ${JSON.stringify(context?.existingApplicant || {})}\n\n` +
+        `Entity Extraction (extract whatever parameters are explicitly mentioned):\n` +
+        `- companyName: employer or corporate name (DO NOT assign greetings, numbers, or amounts as company name)\n` +
+        `- monthlyIncome: net monthly salary in INR as a number\n` +
         `- loanAmount: loan amount needed in INR as a number\n` +
-        `- tenureMonths: tenure in months (e.g., 3 years = 36) as a number\n` +
+        `- tenureMonths: tenure in months (e.g. 3 years = 36) as a number\n` +
         `- cibil: credit score (300-900) as a number\n` +
-        `- existingEmi: ongoing monthly loan EMIs in INR as a number (0 if says none/no loans)\n` +
+        `- existingEmi: ongoing monthly loan EMIs in INR as a number (0 if none/no loans)\n` +
         `- age: applicant age in years as a number\n` +
-        `- employmentType: "Salaried" or "Self-Employed"\n` +
-        `- loanType: "Personal Loan", "Home Loan", "Business Loan", "Auto Loan"\n` +
-        `- targetBank: specific bank name if mentioned\n\n` +
-        `Return JSON ONLY in this exact structure:\n` +
+        `- interestRate: annual interest rate percentage as a number (e.g. 10.5)\n` +
+        `- targetBank: specific bank name if mentioned (e.g. HDFC, ICICI, Axis)\n` +
+        `- city: city name if mentioned (e.g. Pune, Mumbai)\n` +
+        `- changeFields: array of field names being changed if intent is CHANGING_DETAILS (e.g. ["monthlyIncome"])\n` +
+        `- questionTopic: topic of the question if GENERAL_INFORMATION\n\n` +
+        `Return strictly valid JSON only in this exact format:\n` +
         `{\n` +
-        `  "intent": "<ONE_OF_THE_INTENTS_ABOVE>",\n` +
+        `  "intent": "LOAN_ELIGIBILITY" | "CALCULATION" | "GENERAL_INFORMATION" | "CHANGING_DETAILS" | "GREETINGS" | "ANOTHER_TOPIC",\n` +
+        `  "subIntent": "...",\n` +
         `  "confidence": 0.95,\n` +
         `  "loanType": "Personal Loan",\n` +
         `  "extracted": {\n` +
@@ -131,8 +146,11 @@ export async function classifyIntentWithLLM(
         `    "cibil": null,\n` +
         `    "existingEmi": null,\n` +
         `    "age": null,\n` +
-        `    "employmentType": null,\n` +
-        `    "targetBank": null\n` +
+        `    "interestRate": null,\n` +
+        `    "targetBank": null,\n` +
+        `    "city": null,\n` +
+        `    "changeFields": [],\n` +
+        `    "questionTopic": null\n` +
         `  }\n` +
         `}`
     },
@@ -143,66 +161,108 @@ export async function classifyIntentWithLLM(
   ];
 
   if (OPENROUTER_API_KEY) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+    // Attempt primary model first, fallback to openrouter/free if needed
+    const modelsToTry = [primaryModel];
+    if (primaryModel !== "openrouter/free") {
+      modelsToTry.push("openrouter/free");
+    }
 
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "http://localhost:3001",
-          "X-Title": "CreditWise AI",
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 300,
-          temperature: 0.1,
-          messages: prompt,
-        }),
-      });
+    for (const model of modelsToTry) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
 
-      clearTimeout(timeoutId);
+        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://localhost:3001",
+            "X-Title": "CreditWise AI",
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 300,
+            temperature: 0.1,
+            messages: prompt,
+          }),
+        });
 
-      if (res.ok) {
-        const json = await res.json();
-        const content = json.choices?.[0]?.message?.content;
-        if (content) {
-          const cleaned = cleanLlmJsonOutput(content);
-          const parsed = JSON.parse(cleaned);
-          if (parsed && parsed.intent) {
-            const extracted: ExtractedEntities = parsed.extracted || {};
-            
-            // Clean up any stringified numbers
-            if (extracted.monthlyIncome && typeof extracted.monthlyIncome === "string") {
-              extracted.monthlyIncome = parseFinancialAmount(extracted.monthlyIncome) || undefined;
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const json = await res.json();
+          const content = json.choices?.[0]?.message?.content;
+          if (content) {
+            const cleaned = cleanLlmJsonOutput(content);
+            const parsed = JSON.parse(cleaned);
+            if (parsed && parsed.intent) {
+              const normalizedIntent = normalizeIntentName(parsed.intent);
+              const extracted: ExtractedEntities = parsed.extracted || {};
+
+              // Normalize numeric fields if received as strings
+              if (extracted.monthlyIncome && typeof extracted.monthlyIncome === "string") {
+                extracted.monthlyIncome = parseFinancialAmount(extracted.monthlyIncome) || undefined;
+              }
+              if (extracted.loanAmount && typeof extracted.loanAmount === "string") {
+                extracted.loanAmount = parseFinancialAmount(extracted.loanAmount) || undefined;
+              }
+              if (extracted.existingEmi && typeof extracted.existingEmi === "string") {
+                extracted.existingEmi = parseFinancialAmount(extracted.existingEmi) || 0;
+              }
+              if (extracted.tenureMonths && typeof extracted.tenureMonths === "string") {
+                const parsedTenure = parseInt(String(extracted.tenureMonths), 10);
+                extracted.tenureMonths = !isNaN(parsedTenure) ? parsedTenure : undefined;
+              }
+
+              return {
+                intent: normalizedIntent,
+                subIntent: parsed.subIntent || parsed.sub_intent,
+                confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.95,
+                loanType: parsed.loanType || "Personal Loan",
+                extracted,
+                rawResponse: content,
+              };
             }
-            if (extracted.loanAmount && typeof extracted.loanAmount === "string") {
-              extracted.loanAmount = parseFinancialAmount(extracted.loanAmount) || undefined;
-            }
-            if (extracted.existingEmi && typeof extracted.existingEmi === "string") {
-              extracted.existingEmi = parseFinancialAmount(extracted.existingEmi) || 0;
-            }
-
-            return {
-              intent: parsed.intent,
-              confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.9,
-              loanType: parsed.loanType || "Personal Loan",
-              extracted,
-              rawResponse: content,
-            };
           }
         }
+      } catch (err: any) {
+        console.warn(`LLM intent call with ${model} failed or timed out:`, err?.message || err);
       }
-    } catch (err: any) {
-      console.warn("LLM intent classification call failed or timed out:", err?.message || err);
     }
   }
 
   // Resilient fallback parser strictly in case LLM network request fails
   return fallbackIntentParser(messageText, context);
+}
+
+/**
+ * Normalizes any legacy or alternative intent names into the 6 canonical categories.
+ */
+function normalizeIntentName(raw: string): UserIntentType {
+  const norm = String(raw || "").trim().toUpperCase();
+  if (norm === "LOAN_ELIGIBILITY" || norm === "PERSONAL_LOAN_REQUEST" || norm === "PROVIDE_INFORMATION") {
+    return "LOAN_ELIGIBILITY";
+  }
+  if (norm === "CALCULATION" || norm === "EMI_CALCULATION") {
+    return "CALCULATION";
+  }
+  if (
+    norm === "GENERAL_INFORMATION" ||
+    norm === "POLICY_INQUIRY" ||
+    norm === "BANK_MANAGER_SEARCH" ||
+    norm === "COMPANY_SEARCH"
+  ) {
+    return "GENERAL_INFORMATION";
+  }
+  if (norm === "CHANGING_DETAILS") {
+    return "CHANGING_DETAILS";
+  }
+  if (norm === "GREETINGS" || norm === "GREETING") {
+    return "GREETINGS";
+  }
+  return "ANOTHER_TOPIC";
 }
 
 /**
@@ -215,16 +275,17 @@ function fallbackIntentParser(
   const norm = text.toLowerCase().trim();
 
   // 1. Cancel / Reset commands
-  if (/^(cancel|reset|restart|stop|exit)$/i.test(norm)) {
+  if (/^(cancel|reset|restart|stop|exit)\b/i.test(norm)) {
     return {
-      intent: "CANCEL_RESET",
+      intent: "ANOTHER_TOPIC",
+      subIntent: "CANCEL_RESET",
       confidence: 0.95,
       loanType: "Personal Loan",
       extracted: {},
     };
   }
 
-  // 2. Greetings (must be evaluated BEFORE active flow or loan intent)
+  // 2. Greetings
   if (
     /^(hi|hello|hey|good\s*(morning|afternoon|evening|day)|howdy|greetings|namaste|hi\s*there|hello\s*there|hey\s*there|yo)\b/i.test(
       norm
@@ -232,97 +293,86 @@ function fallbackIntentParser(
     norm.length < 35
   ) {
     return {
-      intent: "GREETING",
+      intent: "GREETINGS",
       confidence: 0.95,
       loanType: "Personal Loan",
       extracted: {},
     };
   }
 
-  // 3. Casual conversational pleasantries / small talk / bot capabilities
+  // 3. Changing details
+  if (/^(?:change|update|modify|actually|correct|edit)\b/i.test(norm) || /(?:change|update|correct)\s+(?:my|the)/i.test(norm)) {
+    return {
+      intent: "CHANGING_DETAILS",
+      confidence: 0.9,
+      loanType: "Personal Loan",
+      extracted: {},
+    };
+  }
+
+  // 4. Calculations (EMI, installment, interest)
+  if (/(?:emi|calculate|installment|monthly\s*payment|interest\s*payable)/i.test(norm)) {
+    return {
+      intent: "CALCULATION",
+      subIntent: "EMI_CALCULATION",
+      confidence: 0.9,
+      loanType: "Personal Loan",
+      extracted: {},
+    };
+  }
+
+  // 5. Bank Manager, Company, Policy, or General Information queries
+  if (
+    /(?:manager|contact|phone|mobile|email|branch\s*head|\basm\b|\brsm\b|\bzsm\b|\brh\b|\brm\b)/i.test(norm) ||
+    /(?:company|employer|category|rating|listing|tier|listed)/i.test(norm) ||
+    /(?:cibil|cutoff|foir|policy|guideline|rule|multiplier|max\s*loan)/i.test(norm) ||
+    /^(?:what|who|how|can\s*you|where|explain|tell\s*me)\b/i.test(norm)
+  ) {
+    return {
+      intent: "GENERAL_INFORMATION",
+      confidence: 0.9,
+      loanType: "Personal Loan",
+      extracted: {},
+    };
+  }
+
+  // 6. Casual pleasantries / small talk
   if (
     /^(how\s*are\s*you|hows\s*it\s*going|whats\s*up|what\s*can\s*you\s*do|who\s*are\s*you|tell\s*me\s*about\s*yourself|what\s*is\s*your\s*name|who\s*made\s*you|thanks|thank\s*you|thank\s*you\s*very\s*much|thanks\s*a\s*lot|ok|okay|sure|cool|great|awesome|understood|got\s*it|fine|bye|goodbye|see\s*you)\b/i.test(
       norm
     )
   ) {
     return {
-      intent: "GENERAL_INQUIRY",
+      intent: "ANOTHER_TOPIC",
+      subIntent: "CASUAL_CHAT",
       confidence: 0.9,
       loanType: "Personal Loan",
       extracted: {},
     };
   }
 
-  // 4. If an active eligibility session is expecting a specific field and message is an answer
+  // 7. If an active eligibility session is expecting a specific field
   if (context?.isFlowActive) {
     return {
-      intent: "PROVIDE_INFORMATION",
+      intent: "LOAN_ELIGIBILITY",
       confidence: 0.9,
       loanType: "Personal Loan",
       extracted: {},
     };
   }
 
-  // 5. Official bank manager contact searches
-  if (/(?:manager|contact|phone|mobile|email|branch\s*head|\basm\b|\brsm\b|\bzsm\b|\brh\b|\brm\b)/i.test(norm)) {
-    return {
-      intent: "BANK_MANAGER_SEARCH",
-      confidence: 0.9,
-      loanType: "Personal Loan",
-      extracted: {},
-    };
-  }
-
-  // 6. Company listing / category rating queries
-  if (/(?:company|employer|category|rating|listing|tier|listed)/i.test(norm) && !/loan|borrow/i.test(norm)) {
-    return {
-      intent: "COMPANY_SEARCH",
-      confidence: 0.9,
-      loanType: "Personal Loan",
-      extracted: {},
-    };
-  }
-
-  // 7. Non-personal loan requests
-  if (/(?:home\s*loan|housing\s*loan)/i.test(norm)) {
-    return {
-      intent: "OTHER_LOAN_REQUEST",
-      confidence: 0.9,
-      loanType: "Home Loan",
-      extracted: { loanType: "Home Loan" },
-    };
-  }
-
-  if (/(?:business\s*loan)/i.test(norm)) {
-    return {
-      intent: "OTHER_LOAN_REQUEST",
-      confidence: 0.9,
-      loanType: "Business Loan",
-      extracted: { loanType: "Business Loan" },
-    };
-  }
-
-  if (/(?:car\s*loan|auto\s*loan|vehicle\s*loan)/i.test(norm)) {
-    return {
-      intent: "OTHER_LOAN_REQUEST",
-      confidence: 0.9,
-      loanType: "Auto Loan",
-      extracted: { loanType: "Auto Loan" },
-    };
-  }
-
-  // 8. Genuine personal loan / borrowing / eligibility requests
+  // 8. Default to Loan Eligibility if loan words present
   if (/(?:personal\s*loan|loan|borrow|need\s*money|eligib)/i.test(norm)) {
     return {
-      intent: "PERSONAL_LOAN_REQUEST",
+      intent: "LOAN_ELIGIBILITY",
       confidence: 0.85,
       loanType: "Personal Loan",
-      extracted: { loanType: "Personal Loan" },
+      extracted: {},
     };
   }
 
   return {
-    intent: "GENERAL_INQUIRY",
+    intent: "ANOTHER_TOPIC",
     confidence: 0.7,
     loanType: "Personal Loan",
     extracted: {},

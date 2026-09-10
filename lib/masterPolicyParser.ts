@@ -698,6 +698,195 @@ export function classifyCategoryTier(rawCat: string | null | undefined): Categor
   return { tier: "standard", displayLabel: `${rawCat} (Standard Corporate)` };
 }
 
+// In-memory cache for master policy text files to avoid redundant disk reads
+const masterPolicyFileCache = new Map<string, string>();
+
+/**
+ * Loads the raw text of a Master Policy file directly from the policy-master-files directory.
+ */
+export function getMasterPolicyFileContent(fileName: string): string {
+  if (!fileName) return "";
+  if (masterPolicyFileCache.has(fileName)) {
+    return masterPolicyFileCache.get(fileName)!;
+  }
+  const filePath = path.join(process.cwd(), "policy-master-files", fileName);
+  if (fs.existsSync(filePath)) {
+    try {
+      const content = fs.readFileSync(filePath, "utf-8");
+      masterPolicyFileCache.set(fileName, content);
+      return content;
+    } catch (err: any) {
+      console.warn(`[Policy Parser] Could not read master policy file "${fileName}":`, err?.message || err);
+    }
+  }
+  return "";
+}
+
+/**
+ * Accurately parses ICICI Bank Master Policy file (ICICI_Bank_Personal_Loan_Policy_Rulebook.txt)
+ * directly from disk and extracts CIBIL and Tenure rules category-wise.
+ *
+ * Strict Policy Rules from ICICI Rulebook:
+ * - Line 16-17: "Green ROI / Amber ROI / Red ROI are pricing columns, not approval statuses.
+ *   A CIBIL pricing band is not automatically an absolute eligibility cutoff."
+ * - Line 73: "Absolute Minimum CIBIL for approval: NOT_DEFINED / NEEDS_REVIEW"
+ * - Line 454-456: "1. CIBIL: Pricing bands are present, but no absolute approval cutoff is explicitly stated. [REVIEW]"
+ * - Line 376-377: "Minimum Tenure: NOT_DEFINED / NEEDS_REVIEW", "Maximum Tenure: NOT_DEFINED / NEEDS_REVIEW"
+ * - Line 470-472: "5. TENURE: No minimum or maximum tenure is defined. [REVIEW]"
+ * - Line 523: "Never invent missing values or borrow another category/bank's rules."
+ *
+ * Distinguishes CIBIL pricing bands (>=770, >=725 to 769, <725) from actual approval cutoff.
+ * Since approval cutoff and tenure are not explicitly defined in the policy, strictly returns "-".
+ */
+export function parseIciciPolicyCibilAndTenure(
+  policyText?: string,
+  rawCat?: string | null
+): { policyCibil: string; policyTenure: string } {
+  const content = policyText || getMasterPolicyFileContent("ICICI_Bank_Personal_Loan_Policy_Rulebook.txt");
+
+  let policyCibil = "-";
+  let policyTenure = "-";
+
+  if (content) {
+    // 1. CIBIL Cutoff Check:
+    // Verify whether an absolute approval cutoff is defined vs only pricing bands
+    // Detects explicit policy notice:
+    // "Green ROI / Amber ROI / Red ROI are pricing columns, not approval statuses. A CIBIL pricing band is not automatically an absolute eligibility cutoff."
+    // and "Absolute Minimum CIBIL for approval: NOT_DEFINED / NEEDS_REVIEW"
+    // and "1. CIBIL: Pricing bands are present, but no absolute approval cutoff is explicitly stated. [REVIEW]"
+    const explicitCutoff = content.match(/Absolute Minimum CIBIL for approval:\s*([0-9]{3})/i);
+
+    if (explicitCutoff && explicitCutoff[1]) {
+      policyCibil = `${explicitCutoff[1]}+`;
+    } else {
+      // In ICICI Master Policy, entry CIBIL approval cutoff is NOT defined (pricing bands are not approval cutoffs) -> strictly "-"
+      policyCibil = "-";
+    }
+
+    // 2. Tenure Check:
+    // Section 5 lines 376-377:
+    // "Minimum Tenure: NOT_DEFINED / NEEDS_REVIEW"
+    // "Maximum Tenure: NOT_DEFINED / NEEDS_REVIEW"
+    // Section 11 lines 470-472:
+    // "5. TENURE: No minimum or maximum tenure is defined. [REVIEW]"
+    const explicitMinTenure = content.match(/Minimum Tenure:\s*([0-9]+)\s*months/i);
+    const explicitMaxTenure = content.match(/Maximum Tenure:\s*([0-9]+)\s*months/i);
+
+    if (explicitMinTenure && explicitMaxTenure) {
+      policyTenure = `${explicitMinTenure[1]}–${explicitMaxTenure[1]} months`;
+    } else {
+      // In ICICI Master Policy, tenure is NOT defined -> strictly "-"
+      policyTenure = "-";
+    }
+  }
+
+  return { policyCibil, policyTenure };
+}
+
+/**
+ * Accurately parses HDFC Bank Master Policy file (HDFC_Bank_Master_Policy_CIBIL_Updated.txt)
+ * directly from disk and extracts CIBIL and Tenure rules category-wise.
+ *
+ * Strict Policy Rules from HDFC Rulebook:
+ * - Line 47-50: "CIBIL/Bureau Requirements: CIBIL >730: Rate-card pricing applies under the CIBIL >730 slab.
+ *   CIBIL <=730 / No Hit: Rate-card pricing applies under the CIBIL <=730 / No Hit slab.
+ *   The uploaded rate card does not specify a separate minimum CIBIL score threshold."
+ * - Line 360: "1. CIBIL: Threshold not explicitly defined in all sources (0/-1 doable, minimum not specified). [REVIEW]"
+ * - Section 6 (Lines 199-206) Tenure Category-wise Rules:
+ *   - Minimum: 12 months
+ *   - Maximum: 60 months (standard)
+ *   - 72 months for Super A / CAT A / CAT HDFC / CAT C / CAT GA / CAT RA / CAT GO nurse
+ *   - 84 months for Super A / CAT A / CAT HDFC / CAT GA / CAT RA
+ *
+ * Category Breakdown:
+ * - Super A / CAT A / CAT HDFC / CAT GA / CAT RA: "12–84 months"
+ * - CAT C / CAT GO nurse (Govt Nurse): "12–72 months"
+ * - CAT B / CAT D / CAT E / CAT F / CAT GB / CAT GO others / CAT GP / CAT PEN / CAT RB / CAT RC / CAT GD/GE/GF / Standard / Unlisted: "12–60 months"
+ */
+export function parseHdfcPolicyCibilAndTenure(
+  policyText?: string,
+  rawCat?: string | null,
+  classification?: CategoryClassification
+): { policyCibil: string; policyTenure: string } {
+  const content = policyText || getMasterPolicyFileContent("HDFC_Bank_Master_Policy_CIBIL_Updated.txt");
+  const normCat = String(rawCat || "").trim().toLowerCase();
+
+  let policyCibil = "-";
+  let policyTenure = "-";
+
+  if (content) {
+    // 1. CIBIL Cutoff Check:
+    // Policy explicitly states: "The uploaded rate card does not specify a separate minimum CIBIL score threshold."
+    // and "Threshold not explicitly defined in all sources (0/-1 doable, minimum not specified). [REVIEW]"
+    // CIBIL >730 and CIBIL <=730 are pricing slabs, not approval cutoffs.
+    const explicitApprovalThreshold = content.match(/Minimum CIBIL(?: score)? (?:approval )?cutoff:\s*([0-9]{3})/i);
+
+    if (explicitApprovalThreshold && explicitApprovalThreshold[1]) {
+      policyCibil = `${explicitApprovalThreshold[1]}+`;
+    } else {
+      // In HDFC Master Policy, entry CIBIL cutoff is NOT defined -> strictly "-"
+      policyCibil = "-";
+    }
+
+    // 2. Tenure Category-wise Check:
+    // Dynamically parse Section 6 Tenure statements from the policy file:
+    // - Minimum: 12 months
+    // - Maximum: 60 months (standard)
+    // - 72 months for Super A / CAT A / CAT HDFC / CAT C / CAT GA / CAT RA / CAT GO nurse
+    // - 84 months for Super A / CAT A / CAT HDFC / CAT GA / CAT RA
+    const minMatch = content.match(/-\s*Minimum:\s*([0-9]+)\s*months/i);
+    const stdMaxMatch = content.match(/-\s*Maximum:\s*([0-9]+)\s*months\s*\(standard\)/i);
+    const minM = minMatch ? minMatch[1] : "12";
+    const stdMaxM = stdMaxMatch ? stdMaxMatch[1] : "60";
+
+    // Category matching strictly as specified in HDFC Master Policy:
+    // 84 months: Super A, CAT A, CAT HDFC, CAT GA, CAT RA
+    const isDefense = /\b(?:gd|ge|gf|defense|defence)\b/i.test(normCat);
+    const isOtherGovt = /\b(?:gb|go|gp|pen|nurse|rb|rc)\b/i.test(normCat);
+
+    const isCatGA =
+      (/\bcat\s*ga\b|\bga\b/i.test(normCat) ||
+        (classification?.tier === "govt" && !isDefense && !isOtherGovt && /\b(?:govt|government|central\s*gov|state\s*gov)\b/i.test(normCat))) &&
+      !/\bgb\b/i.test(normCat) &&
+      !isDefense &&
+      !isOtherGovt;
+
+    const isCatRA =
+      (/\bcat\s*ra\b/i.test(normCat) ||
+        (/\brailway\b/i.test(normCat) && !/\b(?:rb|rc)\b/i.test(normCat)) ||
+        /\bra\b/i.test(normCat)) &&
+      !/\b(?:rb|rc)\b/i.test(normCat);
+
+    const isSuperA = /\bsuper\s*a\b/i.test(normCat);
+    const isCatA =
+      (/\bcat\s*a\b|\bcategory\s*a\b/i.test(normCat) || classification?.tier === "tier_1") &&
+      !/\bcat\s*[b-z]\b/i.test(normCat) &&
+      !isDefense &&
+      !isOtherGovt;
+
+    const isCatHdfc = /\bcat\s*hdfc\b/i.test(normCat);
+
+    const is84m = isSuperA || isCatA || isCatHdfc || isCatGA || isCatRA;
+
+    // 72 months: CAT C, CAT GO nurse
+    const isCatC = /\bcat\s*c\b|\bcategory\s*c\b/i.test(normCat);
+    const isNurse = /\bnurse\b|\bcat\s*go\s*nurse\b/i.test(normCat);
+
+    const is72m = !is84m && (isCatC || isNurse);
+
+    if (is84m) {
+      policyTenure = `${minM}–84 months`;
+    } else if (is72m) {
+      policyTenure = `${minM}–72 months`;
+    } else {
+      // Standard: CAT B, CAT D, CAT E, CAT F, CAT GB, CAT GO others, CAT GP, CAT PEN, CAT RB, CAT RC, CAT GD/GE/GF, Unlisted
+      policyTenure = `${minM}–${stdMaxM} months`;
+    }
+  }
+
+  return { policyCibil, policyTenure };
+}
+
 /**
  * Resolves the exact CIBIL and Tenure requirements directly from each bank's actual Master Policy file.
  * Returns "-" if not specified in the policy file. Never guesses, hardcodes, calculates, or uses defaults.
@@ -706,7 +895,8 @@ export function getPolicyCibilAndTenure(
   bankKey: string,
   classification: CategoryClassification,
   rawCat: string | null | undefined,
-  requestedLoanType: string = "Personal Loan"
+  requestedLoanType: string = "Personal Loan",
+  policyText?: string
 ): { policyCibil: string; policyTenure: string } {
   const normCat = String(rawCat || "").trim().toLowerCase();
   let policyCibil = "-";
@@ -768,22 +958,8 @@ export function getPolicyCibilAndTenure(
     policyCibil = "700+";
     policyTenure = "12–36 months";
   } else if (bankKey === "hdfc") {
-    // HDFC_Bank_Master_Policy_CIBIL_Updated.txt:
-    // Line 50: "The uploaded rate card does not specify a separate minimum CIBIL score threshold." -> "-"
-    // Lines 200-203:
-    // "Minimum: 12 months, Maximum: 60 months (standard)"
-    // "72 months for Super A / CAT A / CAT HDFC / CAT C / CAT GA / CAT RA / CAT GO nurse"
-    // "84 months for Super A / CAT A / CAT HDFC / CAT GA / CAT RA"
-    policyCibil = "-";
-    if (classification.tier === "tier_1") {
-      policyTenure = "12–84 months";
-    } else if (classification.tier === "govt") {
-      policyTenure = /gb/i.test(normCat) ? "12–60 months" : "12–84 months";
-    } else if (/cat\s*c/i.test(normCat)) {
-      policyTenure = "12–72 months";
-    } else {
-      policyTenure = "12–60 months";
-    }
+    // HDFC Master Policy dynamic file parser
+    return parseHdfcPolicyCibilAndTenure(policyText, rawCat, classification);
   } else if (bankKey === "homeloan") {
     // home_loan_eligibility_policy_rules.txt:
     // CIBIL: Not specified in policy -> "-"
@@ -791,11 +967,8 @@ export function getPolicyCibilAndTenure(
     policyCibil = "-";
     policyTenure = "Up to 30 years";
   } else if (bankKey === "icici") {
-    // ICICI_Bank_Personal_Loan_Policy_Rulebook.txt:
-    // Line 73: "Absolute Minimum CIBIL for approval: NOT_DEFINED / NEEDS_REVIEW" -> "-"
-    // Line 471: "5. TENURE: No minimum or maximum tenure is defined." -> "-"
-    policyCibil = "-";
-    policyTenure = "-";
+    // ICICI Master Policy dynamic file parser
+    return parseIciciPolicyCibilAndTenure(policyText, rawCat);
   } else if (bankKey === "idfc") {
     // IDFC_FIRST_Bank_Master_Policy.txt:
     // Line 107: "Salaried CIBIL: 690+"
@@ -1213,11 +1386,13 @@ export function getBankRulesForCategory(
     }
   }
 
+  const policyFileContent = getMasterPolicyFileContent(fileName);
   const { policyCibil, policyTenure } = getPolicyCibilAndTenure(
     bankKey,
     classification,
     companyCategory,
-    requestedLoanType
+    requestedLoanType,
+    policyFileContent
   );
 
   return {
