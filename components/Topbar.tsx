@@ -22,6 +22,8 @@ export default function Topbar({
   onSectionChange,
   onToggleSidebar,
   sidebarOpen = true,
+  theme: controlledTheme,
+  onThemeToggle,
 }: {
   user: any
   pathname?: string
@@ -31,19 +33,26 @@ export default function Topbar({
   onSectionChange?: (section: DashboardSection) => void
   onToggleSidebar?: () => void
   sidebarOpen?: boolean
+  theme?: "light" | "dark"
+  onThemeToggle?: () => void
 }) {
   const router = useRouter()
-  const [theme, setTheme] = useState<"light" | "dark">("light")
+  const [theme, setTheme] = useState<"light" | "dark">(controlledTheme ?? "light")
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const current = (document.documentElement.getAttribute("data-bs-theme") as "light" | "dark") || "light"
-      setTheme(current)
+      const nextTheme = controlledTheme ?? current
+      setTheme(nextTheme)
     }
-  }, [])
+  }, [controlledTheme])
 
   function toggleTheme() {
     const nextTheme = theme === "dark" ? "light" : "dark"
+    if (onThemeToggle) {
+      onThemeToggle()
+      return
+    }
     setTheme(nextTheme)
     if (typeof document !== "undefined") {
       document.documentElement.setAttribute("data-bs-theme", nextTheme)

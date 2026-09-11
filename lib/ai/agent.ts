@@ -18,7 +18,7 @@ import {
  */
 const LLM_TIMEOUT_MS = 60000;
 
-const { getConversationState } = require("@/services/assistantFlowService");
+import { getConversationState } from "@/services/assistantFlowService";
 
 export interface AgentResult {
   reply: string;
@@ -124,12 +124,12 @@ const ASSISTANT_TOOLS = [
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openrouter/free";
 
-async function searchPoliciesForBank(bankName: string, question: string): Promise<string> {
+async function searchPoliciesForBank(bankName: string | undefined, question: string): Promise<string> {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3001"}/api/policy-search`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: `${bankName} ${question}` }),
+      body: JSON.stringify({ question: `${bankName || ""} ${question}`.trim() }),
     });
     if (!res.ok) return "Policy search service is currently unavailable.";
     const data = await res.json();
@@ -138,6 +138,65 @@ async function searchPoliciesForBank(bankName: string, question: string): Promis
     console.error("Policy search error", e);
     return "Policy search failed. Please try again later.";
   }
+}
+
+async function resolveDeterministicFallback(userMessage: string): Promise<ToolCallingAgentResult | null> {
+  const normalized = normalizeIntentText(userMessage);
+  if (!normalized || isSimpleGreeting(normalized) || normalized === "loan" || normalized === "loans") {
+    return null;
+  }
+
+  const companyIntent = detectCompanySearchIntent(userMessage);
+  const isManagerQuery = /manager|contact|phone|mobile|email|number|\basm\b|\brsm\b|\bzsm\b|\brh\b|\brm\b|branch manager|contact details/i.test(userMessage);
+  const isBasicLoanEmiQuery = /(emi|emi\s+calculator|calculate.*emi|emi.*amount|what.*emi|how.*emi|loan.*interest|interest.*rate|rate.*loan|loan.*rate|how.*much.*loan|loan.*how.*much|max.*loan|loan.*max|personal.*loan.*eligib|eligib.*personal.*loan|for\s+\d+\s+months?)/i.test(userMessage);
+  const isPolicyQuery = /approval|eligibility|salary|cibil|emi|income|foir|interest|roi|tenure|policy|rate|multiplier|assessment|summary|criteria/i.test(userMessage) && !isManagerQuery && !isBasicLoanEmiQuery && !companyIntent;
+
+  if (companyIntent) {
+    const companyQuery = extractCompanyQuery(userMessage);
+    const company = await searchCompany(companyQuery);
+    const result: ToolCallingAgentResult = {
+      reply: company?.found
+        ? formatCompanyResponse(company)
+        : `I couldn’t find company information for "${companyQuery}". Please check the company name or try another variation.`,
+      companyQuery,
+    };
+    if (company?.found) {
+      result.companyData = {
+        company_name: company.primaryName,
+        overview: company.overview,
+        basic_info: company.basicInfo,
+        financial_info: company.financialInfo,
+        bank_records: company.bankRecords,
+        needs_disambiguation: company.needsDisambiguation,
+        candidates: company.candidates,
+      };
+    }
+    logRoutingDebug({
+      userQuery: userMessage,
+      normalizedQuery: normalized,
+      detectedIntent: "company_search",
+      selectedTool: "search_company_eligibility",
+      toolInput: { company_name: companyQuery },
+      toolResultCount: company?.bankRecords?.length ?? 0,
+      finalResponseType: company?.found ? "company_result" : "company_not_found",
+    });
+    return result;
+  }
+
+  if (detectEmiCalculationIntent(userMessage)) {
+    const emiInputs = parseEmiInputs(userMessage) || { principal: 1000000, rate: 9.5, tenure: 60 };
+    const emiResult = calculateEmi(emiInputs);
+    return { reply: formatEmiResult(emiInputs, emiResult) };
+  }
+
+  if (isPolicyQuery) {
+    const bankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|tata|poonawalla/i.exec(userMessage);
+    const bankName = bankMatch ? bankMatch[0].toUpperCase() : undefined;
+    const policyResult = await searchPoliciesForBank(bankName, userMessage);
+    return { reply: policyResult };
+  }
+
+  return null;
 }
 
 const FALLBACK_GREETING =
@@ -149,16 +208,38 @@ const FALLBACK_GREETING =
   "- **Connect with Official Bank Managers** in your city\n\n" +
   "How can I assist you today?";
 
+function logRoutingDebug(event: {
+  userQuery: string;
+  normalizedQuery: string;
+  detectedIntent: string;
+  selectedTool: string;
+  toolInput: Record<string, unknown> | string | null;
+  toolResultCount: number;
+  finalResponseType: string;
+}) {
+  console.log("USER QUERY:", event.userQuery);
+  console.log("NORMALIZED QUERY:", event.normalizedQuery);
+  console.log("DETECTED INTENT:", event.detectedIntent);
+  console.log("SELECTED TOOL:", event.selectedTool);
+  console.log("TOOL INPUT:", JSON.stringify(event.toolInput ?? null));
+  console.log("TOOL RESULT COUNT:", event.toolResultCount);
+  console.log("FINAL RESPONSE TYPE:", event.finalResponseType);
+}
+
 /**
  * Simple greeting detection. Returns a natural greeting reply for messages
  * like "hi", "hello", "hey", "good morning", etc. without calling any tools.
  */
-function isSimpleGreeting(message: string): boolean {
-  const normalized = String(message || "")
-    .toLowerCase()
-    .replace(/[!?.]+/g, " ")
+function normalizeIntentText(message: string): string {
+  return String(message || "")
     .replace(/\s+/g, " ")
-    .trim();
+    .replace(/[!?.]+$/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function isSimpleGreeting(message: string): boolean {
+  const normalized = normalizeIntentText(message);
   if (!normalized) return false;
 
   const greetingPatterns = [
@@ -176,7 +257,6 @@ function isSimpleGreeting(message: string): boolean {
     /^hi there\b/,
     /^hello there\b/,
     /^hey there\b/,
-    /^hi there\b/,
     /^how are you\b/,
     /^how's it going\b/,
     /^what's up\b/,
@@ -188,15 +268,95 @@ function isSimpleGreeting(message: string): boolean {
   return greetingPatterns.some(p => p.test(normalized));
 }
 
-function getGreetingReply(message: string): string {
-  const normalized = String(message || "").toLowerCase();
-  let timeOfDay = "";
-  const hour = new Date().getHours();
-  if (hour < 12) timeOfDay = "Good morning";
-  else if (hour < 17) timeOfDay = "Good afternoon";
-  else timeOfDay = "Good evening";
+function extractCompanyQuery(message: string): string {
+  let query = normalizeIntentText(message);
+  query = query
+    .replace(/^(tell me about|give me information about|information about|company details of|details of|what is|who is|about|profile of|company info about|company information about)\s+/i, "")
+    .replace(/\b(company|employer|profile|details|information|info|solutions?|solution)\b/gi, "")
+    .replace(/[?!.]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  return `${timeOfDay}! I'm CreditWise AI, your financial intelligence assistant. I can help you check loan eligibility, find bank policies, search employer listings, or connect you with bank managers. What would you like to do today?`;
+  if (!query) {
+    query = normalizeIntentText(message);
+  }
+
+  return query.replace(/\s+/g, " ").trim();
+}
+
+function isCompanyLikeName(candidate: string): boolean {
+  const stripped = normalizeIntentText(candidate)
+    .replace(/^(tell me about|give me information about|information about|what is|who is|company details of|details of|company info about|company information about|about|profile of)\s+/i, "")
+    .replace(/\b(company|employer|profile|details|information|info|solution|solutions)\b/gi, "")
+    .replace(/[?!.]+$/g, "")
+    .trim();
+
+  if (!stripped || stripped.length < 2) return false;
+  if (/\d/.test(stripped)) return false;
+  if (/(loan|emi|cibil|salary|income|foir|bank manager|manager contact|bank policy|policy|interest rate|calculate emi|eligibility|approval|branch|credit score)/i.test(stripped)) return false;
+  if (/^(hi|hello|hey|thanks|thank you|good morning|good evening|good afternoon)$/i.test(stripped)) return false;
+  const tokens = stripped.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0 || tokens.length > 6) return false;
+  return /^[a-z0-9&./\-'\s]+$/i.test(stripped);
+}
+
+function parseEmiInputs(message: string): { principal: number; rate: number; tenure: number } | null {
+  const normalized = normalizeIntentText(message);
+  const amountMatch = normalized.match(/(?:principal|loan amount|amount|for)\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakh|lac|crore|cr)?/i)
+    || normalized.match(/(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakh|lac|crore|cr)\s*(?:loan|amount)?/i);
+  const rateMatch = normalized.match(/(?:rate|interest)\s*(?:is|of)?\s*(\d+(?:\.\d+)?)\s*%?/i)
+    || normalized.match(/(\d+(?:\.\d+)?)\s*%\s*(?:rate|interest)/i);
+  const tenureMatch = normalized.match(/(?:tenure|duration|for)\s*(\d+(?:\.\d+)?)\s*(months?|years?|yrs?|y)/i)
+    || normalized.match(/(\d+(?:\.\d+)?)\s*(months?|years?|yrs?|y)\s*(?:tenure|duration)?/i);
+
+  if (!amountMatch) return null;
+
+  let principal = Number(String(amountMatch[1]).replace(/,/g, ""));
+  const principalUnit = (amountMatch[2] || "").toLowerCase();
+  if (principalUnit === "k") principal *= 1000;
+  else if (principalUnit === "lakh" || principalUnit === "lac") principal *= 100000;
+  else if (principalUnit === "crore" || principalUnit === "cr") principal *= 10000000;
+
+  const rate = rateMatch ? Number(String(rateMatch[1]).replace(/,/g, "")) : 9.5;
+  const tenureText = tenureMatch ? String(tenureMatch[2] || "").toLowerCase() : "years";
+  let tenure = tenureMatch ? Number(String(tenureMatch[1]).replace(/,/g, "")) : 5;
+  if (tenureText.startsWith("m")) {
+    // months already passed in
+  } else if (tenureText.startsWith("y")) {
+    tenure *= 12;
+  }
+
+  if (!Number.isFinite(principal) || principal <= 0 || !Number.isFinite(rate) || !Number.isFinite(tenure) || tenure <= 0) {
+    return null;
+  }
+  return { principal, rate, tenure };
+}
+
+function detectEmiCalculationIntent(message: string): boolean {
+  const normalized = normalizeIntentText(message);
+  return /(emi|equated monthly installment|monthly installment|calculate.*emi|what.*emi|how.*much.*emi|emi.*amount)/i.test(normalized)
+    || /(loan.*amount.*for.*\d+.*(lakh|lac|k)|for\s+\d+\s*(lakh|lac|k).*(emi|loan))/i.test(normalized);
+}
+
+function detectCompanySearchIntent(message: string): boolean {
+  const normalized = normalizeIntentText(message);
+  if (!normalized || normalized.length < 2) return false;
+  if (isSimpleGreeting(normalized)) return false;
+  if (/(loan|emi|cibil|salary|income|foir|bank manager|manager contact|bank policy|policy|interest rate|calculate emi|eligibility|approval|branch)/i.test(normalized)) return false;
+  if (/^(hi|hello|hey|thanks|thank you|good morning|good evening|good afternoon)$/i.test(normalized)) return false;
+
+  const companySignal = /(company|employer|corporate|organization|business|firm|profile|details|tell me about|information about|what is|who is|about\s+[a-z]|\binc\b|\bltd\b|\blimited\b)/i.test(normalized);
+  if (companySignal) return true;
+
+  const candidate = extractCompanyQuery(normalized);
+  if (candidate && isCompanyLikeName(candidate)) return true;
+
+  if (!candidate || candidate.length < 2) return false;
+  const tokens = candidate.split(/\s+/).filter(Boolean);
+  if (tokens.length > 6) return false;
+  if (tokens.some(token => /\d/.test(token))) return false;
+  if (tokens.some(token => /(loan|emi|cibil|salary|bank|manager|policy|rate|approval|eligibility)/i.test(token))) return false;
+  return /^[a-z0-9&./\-\s]+$/i.test(candidate);
 }
 
 type ToolCallingAgentResult = {
@@ -350,7 +510,62 @@ async function runToolCallingAgent(
       return { reply: contextData };
     }
 
-    if (!OPENROUTER_API_KEY) return { reply: FALLBACK_GREETING };
+    const normalized = normalizeIntentText(userMessage);
+  const companyIntent = detectCompanySearchIntent(userMessage);
+  const deterministicFallback = await resolveDeterministicFallback(userMessage);
+  if (detectEmiCalculationIntent(userMessage)) {
+    const emiInputs = parseEmiInputs(userMessage) || { principal: 1000000, rate: 9.5, tenure: 60 };
+    const emiResult = calculateEmi(emiInputs);
+    const reply = formatEmiResult(emiInputs, emiResult);
+    logRoutingDebug({
+      userQuery: userMessage,
+      normalizedQuery: normalized,
+      detectedIntent: "emi_calculation",
+      selectedTool: "calculate_emi",
+      toolInput: emiInputs,
+      toolResultCount: 1,
+      finalResponseType: "emi_result",
+    });
+    return { reply };
+  }
+  if (companyIntent) {
+    const companyQuery = extractCompanyQuery(userMessage);
+    const company = await searchCompany(companyQuery);
+    const finalResult = company?.found
+      ? {
+          reply: formatCompanyResponse(company),
+          companyData: {
+            company_name: company.primaryName,
+            overview: company.overview,
+            basic_info: company.basicInfo,
+            financial_info: company.financialInfo,
+            bank_records: company.bankRecords,
+            needs_disambiguation: company.needsDisambiguation,
+            candidates: company.candidates,
+          },
+          companyQuery,
+        }
+      : {
+          reply: `I couldn’t find company information for "${companyQuery}". Please check the company name or try another variation.`,
+          companyQuery,
+        };
+    logRoutingDebug({
+      userQuery: userMessage,
+      normalizedQuery: normalized,
+      detectedIntent: "company_search",
+      selectedTool: "search_company_eligibility",
+      toolInput: { company_name: companyQuery },
+      toolResultCount: company?.bankRecords?.length ?? 0,
+      finalResponseType: company?.found ? "company_result" : "company_not_found",
+    });
+    return finalResult;
+  }
+    if (!OPENROUTER_API_KEY) {
+      if (isSimpleGreeting(normalized)) {
+        return { reply: "Hello! How can I help you today?" };
+      }
+      return deterministicFallback || { reply: FALLBACK_GREETING };
+    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
@@ -398,6 +613,14 @@ async function runToolCallingAgent(
       let args: any = {};
       try { args = JSON.parse(toolCall.function?.arguments || "{}"); } catch { /* use defaults */ }
 
+      const normalizedToolQuery = normalizeIntentText(userMessage);
+      const toolIntent = toolName === "search_company_eligibility" ? "company_search" :
+        toolName === "search_bank_managers" ? "bank_manager_search" :
+        toolName === "search_bank_policies" ? "policy_search" :
+        toolName === "check_loan_eligibility" ? "loan_eligibility" :
+        toolName === "calculate_emi" ? "emi_calculation" :
+        "other";
+
       if (toolName === "search_bank_managers") {
         const bankData = await searchBankManager({ ...args, query: userMessage });
         toolResult = bankData?.length
@@ -420,7 +643,7 @@ async function runToolCallingAgent(
           };
           toolData.companyQuery = companyQuery;
         } else {
-          toolResult = `No live company information was found for "${companyQuery}".`;
+          toolResult = `Verified live information could not be found for "${companyQuery}".`;
           toolData.companyQuery = companyQuery;
         }
       } else if (toolName === "search_bank_policies") {
@@ -451,6 +674,20 @@ async function runToolCallingAgent(
 
       // Send the tool result back to the LLM and let it generate the final
       // user-facing response. The LLM owns every final response.
+      const toolResultCount = Array.isArray(toolData.bankData)
+        ? toolData.bankData.length
+        : Array.isArray(toolData.companyData?.bank_records)
+          ? toolData.companyData.bank_records.length
+          : toolResult ? 1 : 0;
+      logRoutingDebug({
+        userQuery: userMessage,
+        normalizedQuery: normalizedToolQuery,
+        detectedIntent: toolIntent,
+        selectedTool: toolName || "none",
+        toolInput: args,
+        toolResultCount,
+        finalResponseType: "tool_summary",
+      });
       const reply = await summarizeToolResult(userMessage, toolName, toolResult);
       return { reply, ...toolData };
     } finally {
@@ -459,6 +696,7 @@ async function runToolCallingAgent(
   } catch (error) {
     // LLM unavailable — run deterministic searches to get verified data, then
     // let the LLM explain it if it comes back; otherwise return the raw data.
+    const normalized = normalizeIntentText(userMessage);
     const isManagerQuery = /manager|contact|phone|mobile|email|number|\basm\b|\brsm\b|\bzsm\b|\brh\b|\brm\b|branch manager|contact details/i.test(userMessage);
 
     const cityMatch = userMessage.match(/\bin\s+([A-Za-z\s]+?)\s*(?:for|$|\.|,|\b)/i);
@@ -507,6 +745,11 @@ async function runToolCallingAgent(
         fallbackDataObj.bankData = [];
       }
     }
+    if (!fallbackData && detectEmiCalculationIntent(userMessage)) {
+      const emiInputs = parseEmiInputs(userMessage) || { principal: 1000000, rate: 9.5, tenure: 60 };
+      fallbackData = formatEmiResult(emiInputs, calculateEmi(emiInputs));
+      fallbackDataObj.companyData = undefined;
+    }
     if (!fallbackData && (isCompanyQuery || (!isManagerQuery && !isPolicyQuery && userMessage.trim().length >= 2))) {
       const company = await searchCompany(userMessage);
       if (company?.found) {
@@ -521,13 +764,18 @@ async function runToolCallingAgent(
           candidates: company.candidates,
         };
       } else if (isCompanyQuery) {
-        fallbackData = `No corporate company records found matching "${userMessage}".`;
+        fallbackData = `Verified live information could not be found for "${userMessage}".`;
       }
     }
     if (!fallbackData && isPolicyQuery) {
       fallbackData = await searchPoliciesForBank(bankName, userMessage);
     }
-    if (!fallbackData) return { reply: FALLBACK_GREETING };
+    if (!fallbackData) {
+      if (isSimpleGreeting(normalized)) {
+        return { reply: "Hello! How can I help you today?" };
+      }
+      return { reply: FALLBACK_GREETING };
+    }
 
     const reply = await finalizeWithLlm(userMessage, fallbackData);
     return { reply, ...fallbackDataObj };
@@ -657,11 +905,8 @@ export async function runCentralAgent(opts: {
 }): Promise<AgentResult> {
   const { message, conversationId, model: requestedModel } = opts;
 
-  // Simple greetings (hi, hello, hey, good morning, etc.) return a natural
-  // greeting without calling any tools.
-  if (isSimpleGreeting(message)) {
-    return { reply: getGreetingReply(message) };
-  }
+  // Simple greetings (hi, hello, hey, good morning, etc.) now flow through to the
+  // live LLM conversation below instead of returning a canned promotional message.
 
   // If user only says "loan", ask for loan type
   const normalizedMsg = String(message || "").toLowerCase().trim();
@@ -669,6 +914,40 @@ export async function runCentralAgent(opts: {
     return {
       reply: "Sure. What type of loan do you need—Personal, Home, Business, or Car?"
     };
+  }
+
+  const directCompanyIntent = detectCompanySearchIntent(message);
+  if (directCompanyIntent) {
+    const companyQuery = extractCompanyQuery(message);
+    const company = await searchCompany(companyQuery);
+    const finalResult = company?.found
+      ? {
+          reply: formatCompanyResponse(company),
+          companyData: {
+            company_name: company.primaryName,
+            overview: company.overview,
+            basic_info: company.basicInfo,
+            financial_info: company.financialInfo,
+            bank_records: company.bankRecords,
+            needs_disambiguation: company.needsDisambiguation,
+            candidates: company.candidates,
+          },
+          companyQuery,
+        }
+      : {
+          reply: `I couldn’t find company information for "${companyQuery}". Please check the company name or try another variation.`,
+          companyQuery,
+        };
+    logRoutingDebug({
+      userQuery: message,
+      normalizedQuery: normalizeIntentText(message),
+      detectedIntent: "company_search",
+      selectedTool: "search_company_eligibility",
+      toolInput: { company_name: companyQuery },
+      toolResultCount: company?.bankRecords?.length ?? 0,
+      finalResponseType: company?.found ? "company_result" : "company_not_found",
+    });
+    return finalResult;
   }
 
   // Loan intent detection: when the user expresses intent for a personal loan,

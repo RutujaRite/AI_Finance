@@ -943,7 +943,7 @@ export function structuredToText(
   doc: StructuredDocument | null | undefined,
 ): string {
   if (!doc || typeof doc !== 'object') {
-    return doc || '';
+    return typeof doc === 'string' ? doc : '';
   }
 
   const parts: string[] = [];
@@ -1011,7 +1011,7 @@ export function getTextFromStructured(
   doc: StructuredDocument | null | undefined,
 ): string {
   if (!doc || typeof doc !== 'object') {
-    return doc || '';
+    return typeof doc === 'string' ? doc : '';
   }
 
   return doc.rawText || structuredToText(doc) || '';
@@ -1084,7 +1084,9 @@ export function extractRulesFromText(
 
   const plainText = doc
     ? getTextFromStructured(doc)
-    : text || '';
+    : typeof text === 'string'
+      ? text
+      : '';
 
   if (!plainText) {
     return null;
@@ -3264,6 +3266,8 @@ export async function scanPolicyFiles(
             file.sizeBytes,
           folder:
             file.folderName,
+          relativePath:
+            file.relativeDir,
         }),
       ),
   };

@@ -23,7 +23,7 @@ export interface CompanyBasicInfo {
   cin: string;
   incorporation_date: string;
   listing_status: string;
-  country: string;
+  country: string | null;
 }
 
 export interface CompanyFinancialInfo {
@@ -46,21 +46,7 @@ export interface CompanySearchResult {
   needsDisambiguation: boolean;
 }
 
-async function parseLiveCompanyData(liveData: string, companyName: string): {
-  company_name?: string;
-  industry?: string;
-  headquarters?: string;
-  website?: string;
-  cin?: string;
-  incorporation_date?: string;
-  listing_status?: string;
-  country?: string;
-  employees?: string;
-  turnover?: string;
-  profit_status?: string;
-  last_agm?: string;
-  profit_history?: string;
-} | null {
+async function parseLiveCompanyData(liveData: string, companyName: string): Promise<{ company_name?: string; industry?: string; headquarters?: string; website?: string; cin?: string; incorporation_date?: string; listing_status?: string; country?: string; employees?: string; turnover?: string; profit_status?: string; last_agm?: string; profit_history?: string; }> | null {
   if (!liveData) return null;
 
   // Extract company name from profile
@@ -122,9 +108,9 @@ async function parseLiveCompanyData(liveData: string, companyName: string): {
       incorporation_date: profile.overview?.includes("incorporated") ? profile.overview.match(/incorporated (?:on )?([^\n,]+)/i)?.[1]?.trim() : "",
       // Try to extract listing status from overview
       listing_status: profile.overview?.includes("listed") ? profile.overview.match(/listed (?:as )?([^\n,]+)/i)?.[1]?.trim() : "",
-      country: profile.headquarters?.includes("India") ? "India" :
-               profile.headquarters?.includes("USA") || profile.headquarters?.includes("US") ? "USA" :
-               profile.headquarters?.includes("UK") ? "UK" : "India",
+       country: profile.headquarters?.includes("India") ? "India" :
+                profile.headquarters?.includes("USA") || profile.headquarters?.includes("US") ? "USA" :
+                profile.headquarters?.includes("UK") ? "UK" : null,
       // Extract employees from locations or business info
       employees: (profile.locations && profile.locations[0]) || (profile.businessInfo && profile.businessInfo[0]) || "",
       // Extract turnover from business info
@@ -249,7 +235,13 @@ export async function searchCompany(companyName: string): Promise<CompanySearchR
     /^(i want personal loan|i want loan|i need personal loan|i need loan|want personal loan|want loan|need loan|personal loan|loan eligibility|check eligibility|check loan eligibility|apply loan|apply for loan|salaried|self-employed|self employed|hello|hi|hey|reset|restart|cancel|help)$/i.test(normInput) ||
     /^(i want|i need|want|need|looking for|apply for)\s*(a|personal)?\s*loan$/i.test(normInput)
   ) {
-    return { found: false, primaryName: companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], candidates: [], needsDisambiguation: false };
+    const client = await pool.connect();
+    try {
+      // Return empty result for generic queries
+      return { found: false, primaryName: companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], candidates: [], needsDisambiguation: false };
+    } finally {
+      client.release();
+    }
   }
 
   const client = await pool.connect();
@@ -289,13 +281,13 @@ export async function searchCompany(companyName: string): Promise<CompanySearchR
     try {
       liveData = await fetchLiveCompanySummary(primaryName);
     } catch (e) {
-      console.log("[companySearch] Live API unavailable:", e.message);
+      console.log("[companySearch] Live API unavailable:", e instanceof Error ? e.message : String(e));
       liveData = "";
     }
 
     if (liveData && liveData !== "") {
       // Parse live data to extract basic and financial information
-      const profile = parseLiveCompanyData(liveData, primaryName);
+      const profile = await parseLiveCompanyData(liveData, primaryName);
       if (profile) {
         basicInfo = {
           company_name: profile.company_name || primaryName,
@@ -305,7 +297,7 @@ export async function searchCompany(companyName: string): Promise<CompanySearchR
           cin: profile.cin || "",
           incorporation_date: profile.incorporation_date || "",
           listing_status: profile.listing_status || "",
-          country: profile.country || "India"
+           country: profile.country || null,
         };
 
         financialInfo = {
@@ -331,7 +323,9 @@ export async function searchCompany(companyName: string): Promise<CompanySearchR
     }
 
     // If no live data, fall back to bank records only (but still return basicInfo and financialInfo as null)
-    if (!basicInfo && !financialInfo) {
+    // Only generate synthetic data when the company IS in the bank records.
+    // For companies NOT in the database, never invent data.
+    if (bankRecords.length > 0 && !basicInfo && !financialInfo) {
       // Try to extract CIN from bank records
       const cinMatch = extractCinFromOtherInfo(bankRecords);
       let incYear = "2005";
@@ -457,34 +451,79 @@ export function formatCompanyResponse(compRes: CompanySearchResult): string {
   // 1. BASIC INFORMATION BLOCK
   if (compRes.basicInfo) {
     const b = compRes.basicInfo;
-    lines.push(`#### 📌 Basic Information`);
-    lines.push(`| Property | Details |`);
-    lines.push(`| :--- | :--- |`);
-    lines.push(`| **Corporate Name** | ${b.company_name || compRes.primaryName} |`);
-    lines.push(`| **CIN Number** | \`${b.cin || "N/A"}\` |`);
-    lines.push(`| **Industry / Sector** | ${b.industry || "N/A"} |`);
-    lines.push(`| **Listing Status** | ${b.listing_status || "N/A"} |`);
-    lines.push(`| **Incorporation Date** | ${b.incorporation_date || "N/A"} |`);
-    lines.push(`| **Headquarters** | ${b.address || "India"} |`);
-    lines.push(`| **Country** | ${b.country || "India"} |`);
-    if (b.website) {
-      lines.push(`| **Official Website** | ${b.website} |`);
+    const isLiveOnly = (compRes.bankRecords || []).length === 0;
+
+    if (isLiveOnly) {
+      // LIVE-ONLY: show only fields with verified values. No placeholders.
+      const liveRows: string[] = [];
+      if (b.company_name) liveRows.push(`| **Corporate Name** | ${b.company_name} |`);
+      if (b.cin) liveRows.push(`| **CIN Number** | \`${b.cin}\` |`);
+      if (b.industry) liveRows.push(`| **Industry / Sector** | ${b.industry} |`);
+      if (b.listing_status) liveRows.push(`| **Listing Status** | ${b.listing_status} |`);
+      if (b.incorporation_date) liveRows.push(`| **Incorporation Date** | ${b.incorporation_date} |`);
+      if (b.address) liveRows.push(`| **Headquarters** | ${b.address} |`);
+      if (b.country) liveRows.push(`| **Country** | ${b.country} |`);
+      if (b.website) liveRows.push(`| **Official Website** | ${b.website} |`);
+
+      if (liveRows.length > 0) {
+        lines.push(`#### 📌 Live Basic Information`);
+        lines.push(`| Property | Details |`);
+        lines.push(`| :--- | :--- |`);
+        liveRows.forEach((row) => lines.push(row));
+        lines.push("");
+      }
+    } else {
+      // DB-LISTED: existing behavior unchanged
+      lines.push(`#### 📌 Basic Information`);
+      lines.push(`| Property | Details |`);
+      lines.push(`| :--- | :--- |`);
+      lines.push(`| **Corporate Name** | ${b.company_name || compRes.primaryName} |`);
+      lines.push(`| **CIN Number** | \`${b.cin || "N/A"}\` |`);
+      lines.push(`| **Industry / Sector** | ${b.industry || "N/A"} |`);
+      lines.push(`| **Listing Status** | ${b.listing_status || "N/A"} |`);
+      lines.push(`| **Incorporation Date** | ${b.incorporation_date || "N/A"} |`);
+      lines.push(`| **Headquarters** | ${b.address || "India"} |`);
+      lines.push(`| **Country** | ${b.country || "India"} |`);
+      if (b.website) {
+        lines.push(`| **Official Website** | ${b.website} |`);
+      }
+      lines.push("");
     }
-    lines.push("");
   }
 
   // 2. FINANCIAL INFORMATION BLOCK
   if (compRes.financialInfo) {
     const f = compRes.financialInfo;
-    lines.push(`#### 📊 Financial & Operational Profile`);
-    lines.push(`| Metric | Value / Status |`);
-    lines.push(`| :--- | :--- |`);
-    lines.push(`| **Workforce / Employees** | ${f.employees || "N/A"} |`);
-    lines.push(`| **Annual Turnover** | ${f.turnover || "N/A"} |`);
-    lines.push(`| **Financial Performance** | ${f.profit_status || "N/A"} |`);
-    lines.push(`| **Revenue & Cash Flow** | ${f.profit_history || "N/A"} |`);
-    lines.push(`| **Last AGM Date** | ${f.last_agm || "N/A"} |`);
-    lines.push("");
+    const isLiveOnly = (compRes.bankRecords || []).length === 0;
+
+    if (isLiveOnly) {
+      // LIVE-ONLY: show only fields with verified values. No placeholders.
+      const liveRows: string[] = [];
+      if (f.employees) liveRows.push(`| **Workforce / Employees** | ${f.employees} |`);
+      if (f.turnover) liveRows.push(`| **Annual Turnover** | ${f.turnover} |`);
+      if (f.profit_status) liveRows.push(`| **Financial Performance** | ${f.profit_status} |`);
+      if (f.profit_history) liveRows.push(`| **Revenue & Cash Flow** | ${f.profit_history} |`);
+      if (f.last_agm) liveRows.push(`| **Last AGM Date** | ${f.last_agm} |`);
+
+      if (liveRows.length > 0) {
+        lines.push(`#### 📊 Live Financial & Operational Profile`);
+        lines.push(`| Metric | Value / Status |`);
+        lines.push(`| :--- | :--- |`);
+        liveRows.forEach((row) => lines.push(row));
+        lines.push("");
+      }
+    } else {
+      // DB-LISTED: existing behavior unchanged
+      lines.push(`#### 📊 Financial & Operational Profile`);
+      lines.push(`| Metric | Value / Status |`);
+      lines.push(`| :--- | :--- |`);
+      lines.push(`| **Workforce / Employees** | ${f.employees || "N/A"} |`);
+      lines.push(`| **Annual Turnover** | ${f.turnover || "N/A"} |`);
+      lines.push(`| **Financial Performance** | ${f.profit_status || "N/A"} |`);
+      lines.push(`| **Revenue & Cash Flow** | ${f.profit_history || "N/A"} |`);
+      lines.push(`| **Last AGM Date** | ${f.last_agm || "N/A"} |`);
+      lines.push("");
+    }
   }
 
   // 3. BANK APPROVED CATEGORY RATINGS BLOCK

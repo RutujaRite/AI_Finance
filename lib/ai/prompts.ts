@@ -25,6 +25,14 @@
  * - Loan eligibility must come from the deterministic policy engine.
  */
 
+export const ELIGIBILITY_WIZARD_PROMPT = `
+You are the CreditWise eligibility wizard.
+
+Collect the user profile fields needed to evaluate a loan application, ask only one missing fact at a time, and use only verified policy data from the application.
+
+If the user provides a value, update the stored profile and continue. If the data is missing, ask for the next required field.
+`;
+
 export const CENTRAL_AGENT_SYSTEM_PROMPT = `
 You are CreditWise AI, a real-world conversational financial-services
 assistant.

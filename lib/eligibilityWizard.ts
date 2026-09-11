@@ -399,7 +399,7 @@ export async function createLoanIntentFlow(
   pool: any,
   conversationId: string,
   userMessage: string
-): Promise<{ reply: string }> {
+): Promise<{ reply: string; isFinished: boolean }> {
   // First ask the user for loan type
   const normalized = String(userMessage || "").toLowerCase().trim();
   let loanType = "Personal";
