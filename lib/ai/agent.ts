@@ -268,6 +268,63 @@ function isSimpleGreeting(message: string): boolean {
   return greetingPatterns.some(p => p.test(normalized));
 }
 
+function isGeneralConversationQuery(message: string): boolean {
+  const normalized = normalizeIntentText(message);
+  if (!normalized) return false;
+
+  const directGeneralPatterns = [
+    /^who are you\b/,
+    /^who are u\b/,
+    /^who r u\b/,
+    /^what are you\b/,
+    /^what are u\b/,
+    /^what r u\b/,
+    /^how are you\b/,
+    /^how are u\b/,
+    /^how can you help me\b/,
+    /^how can u help me\b/,
+    /^what can you do\b/,
+    /^what can u do\b/,
+    /^tell me about yourself\b/,
+    /^what is your name\b/,
+    /^who are you\?$/,
+    /^who are u\?$/,
+    /^who r u\?$/,
+    /^what are you\?$/,
+    /^what are u\?$/,
+    /^what r u\?$/,
+    /^how are you\?$/,
+    /^how are u\?$/,
+    /^how can you help me\?$/,
+    /^how can u help me\?$/,
+    /^what can you do\?$/,
+    /^what can u do\?$/,
+    /^tell me about yourself\?$/,
+    /^what is your name\?$/,
+  ];
+
+  if (directGeneralPatterns.some(pattern => pattern.test(normalized))) {
+    return true;
+  }
+
+  const profilePatterns = [
+    /update.*profile/i,
+    /change.*profile/i,
+    /modify.*profile/i,
+    /profile settings/i,
+    /my profile/i,
+    /how can i update my profile/i,
+    /how can i change my profile/i,
+    /how can i modify my profile/i,
+    /how can i edit my profile/i,
+    /update my account/i,
+    /change my account/i,
+    /edit my account/i,
+  ];
+
+  return profilePatterns.some(pattern => pattern.test(normalized));
+}
+
 function extractCompanyQuery(message: string): string {
   let query = normalizeIntentText(message);
   query = query
@@ -342,10 +399,11 @@ function detectCompanySearchIntent(message: string): boolean {
   const normalized = normalizeIntentText(message);
   if (!normalized || normalized.length < 2) return false;
   if (isSimpleGreeting(normalized)) return false;
+  if (isGeneralConversationQuery(normalized)) return false;
   if (/(loan|emi|cibil|salary|income|foir|bank manager|manager contact|bank policy|policy|interest rate|calculate emi|eligibility|approval|branch)/i.test(normalized)) return false;
   if (/^(hi|hello|hey|thanks|thank you|good morning|good evening|good afternoon)$/i.test(normalized)) return false;
 
-  const companySignal = /(company|employer|corporate|organization|business|firm|profile|details|tell me about|information about|what is|who is|about\s+[a-z]|\binc\b|\bltd\b|\blimited\b)/i.test(normalized);
+  const companySignal = /(company|employer|corporate|organization|business|firm|details|tell me about|information about|what is|who is|about\s+[a-z]|\binc\b|\bltd\b|\blimited\b)/i.test(normalized);
   if (companySignal) return true;
 
   const candidate = extractCompanyQuery(normalized);
@@ -355,7 +413,7 @@ function detectCompanySearchIntent(message: string): boolean {
   const tokens = candidate.split(/\s+/).filter(Boolean);
   if (tokens.length > 6) return false;
   if (tokens.some(token => /\d/.test(token))) return false;
-  if (tokens.some(token => /(loan|emi|cibil|salary|bank|manager|policy|rate|approval|eligibility)/i.test(token))) return false;
+  if (tokens.some(token => /(loan|emi|cibil|salary|bank|manager|policy|rate|approval|eligibility|who|what|how|you|your|profile)/i.test(token))) return false;
   return /^[a-z0-9&./\-\s]+$/i.test(candidate);
 }
 
@@ -511,6 +569,12 @@ async function runToolCallingAgent(
     }
 
     const normalized = normalizeIntentText(userMessage);
+  if (isGeneralConversationQuery(userMessage)) {
+    if (!OPENROUTER_API_KEY) {
+      return { reply: "Hello! How can I help you today?" };
+    }
+  }
+
   const companyIntent = detectCompanySearchIntent(userMessage);
   const deterministicFallback = await resolveDeterministicFallback(userMessage);
   if (detectEmiCalculationIntent(userMessage)) {
