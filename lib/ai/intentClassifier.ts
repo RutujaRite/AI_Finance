@@ -100,7 +100,8 @@ export async function classifyIntentWithLLM(
         `You are the Intent Classification and Entity Extraction Engine for CreditWise AI, a banking and loan intelligence platform.\n` +
         `Your task is to analyze the user's message semantically and classify it into EXACTLY ONE of the following 6 intent categories:\n\n` +
         `1. "LOAN_ELIGIBILITY":\n` +
-        `   - User asks to check personal loan eligibility, apply for a personal loan, start an eligibility assessment, OR is providing personal profile details (e.g. employer name, monthly salary, CIBIL, loan amount, tenure, EMIs, age) to continue an in-progress eligibility assessment.\n\n` +
+        `   - User asks to check personal loan eligibility, apply for a personal loan, start an eligibility assessment, OR expresses loan intent naturally (e.g. "I need a loan", "I want a personal loan", "I want to apply for a loan", "Can I get a loan?", "I need ₹5 lakh loan", "Need a personal loan", "Looking for a loan", "Can I get credit/loan?").\n` +
+        `   - Also includes providing personal profile details (e.g. employer name, monthly salary, CIBIL, loan amount, tenure, EMIs, age) to advance an in-progress eligibility assessment.\n\n` +
         `2. "CALCULATION":\n` +
         `   - User asks to calculate monthly EMI, interest payable, installment, or borrowing capacity (e.g. "What will my EMI be for 10 lakhs at 11% for 5 years?", "Calculate EMI for 500000", "What is my monthly installment?"). Supports partial calculations where only some numbers are given.\n\n` +
         `3. "GENERAL_INFORMATION":\n` +
@@ -113,8 +114,9 @@ export async function classifyIntentWithLLM(
         `   - User is asking an off-topic question, making casual pleasantries / small talk ("who made you", "thank you", "goodbye"), or requesting to cancel/reset ("cancel", "reset", "start over").\n\n` +
         `CRITICAL CONVERSATIONAL RULES:\n` +
         `- NEVER use hardcoded keyword matching. Understand the user's semantic intent from the message.\n` +
+        `- User phrases expressing personal loan intent like "I need a loan", "I want a personal loan", "I want to apply for a loan", "Can I get a loan?", "I need ₹5 lakh loan" MUST be classified as "LOAN_ELIGIBILITY", NOT "GENERAL_INFORMATION".\n` +
         `- If an eligibility conversation is active, but the user asks a policy question, an EMI calculation, a manager contact, a general definition, or asks to change a detail, you MUST classify that specific intent ("GENERAL_INFORMATION", "CALCULATION", "CHANGING_DETAILS"), NOT "LOAN_ELIGIBILITY".\n` +
-        `- Only classify as "LOAN_ELIGIBILITY" if the user is directly answering the expected eligibility question or asking to proceed with eligibility evaluation.\n\n` +
+        `- Only classify as "LOAN_ELIGIBILITY" if the user is expressing loan intent, directly answering the expected eligibility question, or asking to proceed with eligibility evaluation.\n\n` +
         `Context:\n` +
         `- Eligibility Flow Active: ${context?.isFlowActive ? "true" : "false"}\n` +
         `- Expected Field: ${context?.expectedField || "none"}\n` +
@@ -572,7 +574,32 @@ function fallbackIntentParser(
     };
   }
 
-  // 6. Bank Manager, Company, Policy, or General Information queries
+  // 6. Natural Loan Intent phrases (MUST be checked before generic question words!)
+  const isBankPolicyQuery =
+    /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata|idfc|indusind|bandhan|yes\s*bank|bank)\s*(?:'s)?\s*(?:policy|guideline|rules?|criteria|cutoff|cut-off|foir\s*norm)/i.test(norm) ||
+    (/(?:policy|guidelines?|rules?|cut-off|cutoff)\b/i.test(norm) && /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata|idfc|indusind|bandhan|yes\s*bank|bank)/i.test(norm));
+
+  const isNaturalLoanIntent =
+    !isBankPolicyQuery &&
+    (/(?:i\s*(?:need|want|require|wish|am\s*looking\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
+     /(?:apply\s*(?:for)?\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
+     /(?:can\s*i\s*(?:get|have|avail|take|apply\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
+     /(?:can\s*i\s*get\s*(?:a\s*)?loan)/i.test(norm) ||
+     /(?:(?:need|want|require)\s*(?:rs\.?|₹)?\s*[\d,]+(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr)?\s*loan)/i.test(norm) ||
+     /(?:check\s*(?:my\s*)?(?:loan\s*)?eligib)/i.test(norm) ||
+     /^(?:i\s*need\s*a\s*loan|i\s*want\s*a\s*loan|can\s*i\s*get\s*a\s*loan|loan\s*chahiye|need\s*loan|get\s*me\s*a\s*loan|looking\s*for\s*(?:a\s*)?loan)\b/i.test(norm));
+
+  if (isNaturalLoanIntent) {
+    const extracted = extractEntitiesFromText(text, context);
+    return {
+      intent: "LOAN_ELIGIBILITY",
+      confidence: 0.95,
+      loanType: "Personal Loan",
+      extracted,
+    };
+  }
+
+  // 7. Bank Manager, Company, Policy, or General Information queries
   const isManagerQuery =
     /(?:manager|contact|phone|mobile|branch\s*head|\basm\b|\brsm\b|\bzsm\b|\brh\b|\brm\b)/i.test(norm) &&
     !/(?:salary|cibil|age|tenure|existing)/i.test(norm);

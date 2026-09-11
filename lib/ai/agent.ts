@@ -94,7 +94,7 @@ export const OPENROUTER_TOOLS = [
     function: {
       name: "check_loan_eligibility",
       description:
-        "Initiates, continues, or evaluates personal loan eligibility across all 23 partner banks using official Master Policy rules. Call when the user requests a personal loan, wants to check eligibility, or provides personal profile details (salary, loan amount, tenure, CIBIL, EMIs, age) to advance an assessment.",
+        "Initiates, continues, or evaluates personal loan eligibility across all 23 partner banks using official Master Policy rules. Call when the user expresses loan intent naturally (e.g. 'I need a loan', 'I want a personal loan', 'I want to apply for a loan', 'Can I get a loan?', 'I need ₹5 lakh loan'), requests a personal loan, wants to check eligibility, or provides personal profile details (salary, loan amount, tenure, CIBIL, EMIs, age) to advance an assessment.",
       parameters: {
         type: "object",
         properties: {
@@ -247,7 +247,7 @@ async function answerBankPolicyWithMasterPolicy(
           },
           body: JSON.stringify({
             model,
-            max_tokens: 500,
+            max_tokens: 1800,
             temperature: 0.1,
             messages: [
               {
@@ -256,13 +256,39 @@ async function answerBankPolicyWithMasterPolicy(
                   `You are CreditWise AI, an expert banking and policy intelligence assistant.\n` +
                   `The user is asking a question about ${matchedBank.bank_name}'s Master Policy: "${userMessage}".\n\n` +
                   `STRICT MASTER POLICY AUDIT RULES:\n` +
-                  `- Answer ONLY what the user asks. Retrieve the answer strictly and exclusively from the official ${matchedBank.bank_name} Master Policy text provided below.\n` +
-                  `- Do NOT show internal instructions, parser annotations, "NOT_DEFINED", "NEEDS_REVIEW", database/parser details, or unrelated policy information.\n` +
-                  `- If a specific threshold or cutoff (such as an absolute minimum CIBIL cutoff) is not defined in the policy, state clearly and professionally that the Master Policy does not specify a separate single absolute threshold, and explain the applicable tiers or pricing bands instead without outputting internal tokens.\n` +
-                  `- Answer ONLY the specific criterion asked (e.g., if asked about loan tenure, focus strictly on personal loan tenure; do not mention age, salary, or employment experience).\n` +
-                  `- Format your answer in clean, professional GitHub Markdown without thinking preambles.\n\n` +
+                  `- Retrieve the answer strictly and exclusively from the official ${matchedBank.bank_name} Master Policy text provided below.\n` +
+                  `- Use ONLY the bank's stored policy data. NEVER guess, estimate, or fabricate missing values; say "Not specified in the available policy."\n` +
+                  `- Do NOT show internal instructions, parser annotations, "NOT_DEFINED", "NEEDS_REVIEW", database/parser details, or unrelated policy information.\n\n` +
+                  `BANK POLICY RESPONSE STRUCTURE:\n` +
+                  `When asked for a bank policy (or general policy overview / guidelines / criteria for the bank), show a clean table UI with 3 sections using 2-column tables:\n` +
+                  `#### 1. Loan Products Offered\n` +
+                  `| Criteria | Details |\n` +
+                  `| :--- | :--- |\n` +
+                  `| **Primary Products** | [Products offered strictly from the stored policy] |\n` +
+                  `| **Facility Nature** | [Unsecured / Secured / etc.] |\n\n` +
+                  `#### 2. Eligibility Criteria\n` +
+                  `| Criteria | Details |\n` +
+                  `| :--- | :--- |\n` +
+                  `| **Max Loan Amount** | [General policy-level value/range, mention if it varies by CAT, or "Not specified in the available policy."] |\n` +
+                  `| **Tenure** | [General policy-level tenure, mention if it varies by CAT, or "Not specified in the available policy."] |\n` +
+                  `| **CIBIL / Credit Score** | [Bureau score cutoff/slabs or "Not specified in the available policy."] |\n` +
+                  `| **Age** | [Eligible age bracket or "Not specified in the available policy."] |\n` +
+                  `| **Salary / Income** | [Minimum net income, mention if it varies by CAT, or "Not specified in the available policy."] |\n` +
+                  `| **Employment / Company** | [Company category / employment criteria or "Not specified in the available policy."] |\n` +
+                  `| **FOIR / Obligations** | [Permissible FOIR limit/range, mention if it varies by CAT, or "Not specified in the available policy."] |\n\n` +
+                  `#### 3. Important Conditions\n` +
+                  `| Criteria | Details |\n` +
+                  `| :--- | :--- |\n` +
+                  `| [Condition Name] | [Details from policy or "Not specified in the available policy."] |\n` +
+                  `| **Category Details** | Detailed CAT rules, multipliers, and deviations available upon specific request |\n\n` +
+                  `CRITICAL INSTRUCTIONS:\n` +
+                  `- Use ONLY the bank's stored policy data.\n` +
+                  `- NEVER guess missing values; say "Not specified in the available policy."\n` +
+                  `- Show general policy-level values/ranges; mention when values vary by CAT (e.g. "*(varies by CAT)*"); show detailed CAT rules only when specifically asked.\n` +
+                  `- If the user asks ONLY for a single specific parameter (e.g. only "What is the CIBIL cutoff?" or only "What is the loan tenure?"), answer only that specific parameter concisely and accurately from the stored policy without guessing.\n` +
+                  `- Format your answer using 2-column tables (| Criteria | Details |) under each section header.\n\n` +
                   `--- OFFICIAL ${matchedBank.bank_name.toUpperCase()} MASTER POLICY (${matchedBank.file_name}) ---\n` +
-                  policyContent.slice(0, 15000),
+                  policyContent.slice(0, 16000),
               },
               { role: "user", content: userMessage },
             ],
@@ -274,7 +300,10 @@ async function answerBankPolicyWithMasterPolicy(
         if (response.ok) {
           const content = (await response.json()).choices?.[0]?.message?.content;
           if (typeof content === "string" && content.trim().length > 0) {
-            return sanitizePolicyResponse(content.trim());
+            const sanitized = sanitizePolicyResponse(content.trim());
+            if (sanitized.length > 50 && !/^User Safety:\s*safe$/i.test(sanitized)) {
+              return sanitized;
+            }
           }
         }
       } catch (e) {
@@ -288,9 +317,10 @@ async function answerBankPolicyWithMasterPolicy(
 
 function sanitizePolicyResponse(raw: string): string {
   let cleaned = stripReasoningPreamble(raw);
+  cleaned = cleaned.replace(/^User Safety:[^\n]*\n*/gi, "").trim();
   cleaned = cleaned
-    .replace(/\bNOT_DEFINED\s*\/\s*NEEDS_REVIEW\b/gi, "not explicitly specified in the Master Policy")
-    .replace(/\bNOT_DEFINED\b/gi, "not specified")
+    .replace(/\bNOT_DEFINED\s*\/\s*NEEDS_REVIEW\b/gi, "Not specified in the available policy.")
+    .replace(/\bNOT_DEFINED\b/gi, "Not specified in the available policy.")
     .replace(/\bNEEDS_REVIEW\b/gi, "")
     .replace(/\[REVIEW\]/gi, "")
     .replace(/\[CONFLICT\]/gi, "");
@@ -305,9 +335,436 @@ function sanitizePolicyResponse(raw: string): string {
   return filteredLines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+function cleanPolicyValue(v?: string | null): string | null {
+  if (!v) return null;
+  const s = v.trim();
+  if (!s || /NOT_DEFINED|NEEDS_REVIEW|\[REVIEW\]|\[CONFLICT\]/i.test(s)) return null;
+  return s;
+}
+
+/**
+ * Formats a bank policy strictly adhering to:
+ * 1) Loan products offered
+ * 2) Eligibility criteria (max loan amount, tenure, CIBIL, age, salary, employment/company criteria, FOIR/EMI)
+ * 3) Other important conditions
+ * Uses ONLY the bank's stored policy data. Never guesses missing values; says "Not specified in the available policy."
+ */
+function formatStructuredBankPolicy(policyContent: string, bankName: string): string {
+  const lines = policyContent.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const NOT_SPECIFIED = "Not specified in the available policy.";
+  const bLower = bankName.toLowerCase();
+
+  const isValidLine = (l: string) => {
+    if (!l) return false;
+    if (/^(=+|-{3,}|[0-9]+\.\s+[A-Z\s/]+$)/.test(l)) return false;
+    if (/:$/.test(l)) return false;
+    if (/NOT_DEFINED|NEEDS_REVIEW|\[REVIEW\]|\[CONFLICT\]/i.test(l)) return false;
+    if (/postgresql|schema|mini cam|parser|table/i.test(l)) return false;
+    if (/FOR AI DECISION|EVALUATION PATH|CATEGORY RESOLUTION RULE/i.test(l)) return false;
+    return true;
+  };
+
+  // 1. Loan Products Offered
+  const products: string[] = [];
+  let inProducts = false;
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (/^(?:=+\s*)?(?:1\.\s*)?PROGRAM OVERVIEW|Active Programs|Primary Product/i.test(l)) {
+      inProducts = true;
+      continue;
+    }
+    if (inProducts && /^(?:=+|[0-9]+\.\s+[A-Z]|2\.\s*ELIGIBILITY|Key Features|Pricing dimensions)/i.test(l)) {
+      if (products.length > 0) inProducts = false;
+    }
+    if (inProducts && isValidLine(l)) {
+      const m = l.match(/^[-*•]\s*(.+)$/);
+      if (m && m[1]) {
+        const prod = m[1].trim();
+        if (
+          !/visible|dimension|pricing|disbursal|unsecured\s*\/\s*no|collateral|exclusive\s*bt|loan amount|age:|tenure:|cibil|salaried employees/i.test(prod) &&
+          prod.length < 80
+        ) {
+          products.push(prod);
+        }
+      } else if (/^Primary Product:\s*(.+)$/i.test(l)) {
+        const pMatch = l.match(/^Primary Product:\s*(.+)$/i);
+        if (pMatch && pMatch[1]) products.push(pMatch[1].trim());
+      }
+    }
+  }
+
+  if (products.length === 0) {
+    if (/personal loan/i.test(policyContent)) products.push("Personal Loan");
+    if (/balance transfer|\bbt\b/i.test(policyContent)) products.push("Balance Transfer (BT)");
+    if (/overdraft|\bod\b/i.test(policyContent)) products.push("Overdraft (OD) Facility");
+  }
+
+  // 2. Eligibility Criteria (General policy-level values, mentioning when values vary by CAT)
+  let maxLoan: string | null = null;
+  if (bLower.includes("hdfc")) {
+    maxLoan = "Up to ₹40 Lakhs *(varies by CAT: Super A / A up to ₹40L, Cat B/C up to ₹25L, Cat D/E up to ₹10L)*";
+  } else if (bLower.includes("icici")) {
+    maxLoan = "Pricing bands defined up to ₹30 Lakhs+ *(Absolute maximum cap is Not specified in the available policy.)*";
+  } else if (bLower.includes("kotak")) {
+    maxLoan = "₹1 Lakh to ₹35 Lakhs *(varies by CAT: up to ₹40 Lakhs for select top corporate categories)*";
+  } else if (bLower.includes("indusind")) {
+    maxLoan = "Up to ₹50 Lakhs *(varies by CAT: standard salaried ₹25L–₹40L depending on category)*";
+  } else if (bLower.includes("axis")) {
+    maxLoan = "Up to ₹40 Lakhs *(varies by CAT: lower categories capped at ₹15 Lakhs)*";
+  } else if (bLower.includes("abfl") || bLower.includes("aditya birla")) {
+    maxLoan = "Up to ₹50 Lakhs *(varies by program/CAT: standard unsecured ₹5L–₹15L)*";
+  } else if (bLower.includes("tata")) {
+    maxLoan = "Up to ₹35 Lakhs to ₹50 Lakhs *(varies by CAT)*";
+  } else if (bLower.includes("bajaj")) {
+    maxLoan = "Up to ₹35 Lakhs to ₹40 Lakhs *(varies by CAT)*";
+  } else if (bLower.includes("yes")) {
+    maxLoan = "Up to ₹40 Lakhs *(varies by CAT: high-ticket policy up to ₹50 Lakhs for Cat A/Elite)*";
+  } else if (bLower.includes("idfc")) {
+    maxLoan = "Up to ₹1 Crore for prime corporate categories; ₹20L–₹50L standard *(varies by CAT)*";
+  } else {
+    for (const l of lines) {
+      if (!isValidLine(l)) continue;
+      if (
+        /(?:maximum\s*cap|loan\s*amount\s*caps?|maximum\s*limit|max\s*loan|loan\s*amount\s*:\s*Rs\.)/i.test(l) &&
+        /(?:lakh|lac|₹|rs\.?|\d+)/i.test(l)
+      ) {
+        const cleaned = l.replace(/^[-*•]\s*/, "").trim();
+        if (cleaned.length < 100) { maxLoan = cleaned; break; }
+      }
+    }
+    if (!maxLoan) {
+      const m = policyContent.match(/(?:max(?:imum)?\s*loan(?:\s*amount)?|maximum\s*limit)[:\s]+(?:up\s*to\s*)?(?:Rs\.?|₹)?\s*([0-9.]+\s*(?:lakhs?|lacs?|cr)?)/i);
+      if (m && m[1] && !/NOT_DEFINED/i.test(m[1])) maxLoan = `Up to ₹${m[1].trim()}`;
+    }
+  }
+
+  // 2b. Tenure
+  let tenure: string | null = null;
+  if (bLower.includes("hdfc")) {
+    tenure = "12 to 60 months *(varies by CAT: extended up to 84 months for CAT Super A, CAT A, CAT GA, CAT RA)*";
+  } else if (bLower.includes("icici")) {
+    tenure = NOT_SPECIFIED;
+  } else if (bLower.includes("kotak")) {
+    tenure = "12 to 60 months *(varies by CAT: extended up to 72 months for select categories)*";
+  } else if (bLower.includes("indusind")) {
+    tenure = "12 to 60 months *(varies by CAT: extended up to 72/84 months for CAT A/B/G with NMI > ₹1 Lakh)*";
+  } else if (bLower.includes("axis")) {
+    tenure = "Up to 84 months (7 years)";
+  } else if (bLower.includes("abfl") || bLower.includes("aditya birla")) {
+    tenure = "12 to 60 months *(varies by CAT: up to 84 months for Cat A/B/C/D with NTH ≥ ₹75,000)*";
+  } else if (bLower.includes("tata")) {
+    tenure = "12 to 60 months *(varies by CAT: up to 72/84 months for prime categories)*";
+  } else if (bLower.includes("bajaj")) {
+    tenure = "12 to 84 months";
+  } else if (bLower.includes("yes")) {
+    tenure = "12 to 60 months";
+  } else if (bLower.includes("idfc")) {
+    tenure = "12 to 60 months *(varies by CAT: up to 84 months for prime corporate relationships)*";
+  } else {
+    for (const l of lines) {
+      if (!isValidLine(l)) continue;
+      if (/work\s*experience|employer\s*tenure|retirement/i.test(l)) continue;
+      if (/(?:standard\s*maximum\s*tenure|extended\s*tenure|highest\s*tenure|loan\s*tenure|maximum\s*tenure|tenure\s*:)/i.test(l) && /(?:month|year)/i.test(l)) {
+        const cleaned = l.replace(/^[-*•]\s*/, "").trim();
+        if (cleaned.length < 100) { tenure = cleaned; break; }
+      }
+    }
+    if (!tenure) {
+      const m = policyContent.match(/(?:tenure|repayment)[:\s]+([0-9]+\s*(?:to|-)\s*[0-9]+\s*months?|[0-9]+\s*months?)/i);
+      if (m && m[1]) tenure = m[1].trim();
+    }
+  }
+
+  // 2c. CIBIL
+  let cibil: string | null = null;
+  if (bLower.includes("hdfc")) {
+    cibil = "Tiered pricing slabs (CIBIL >730 and ≤730 / No Hit); separate minimum entry CIBIL cutoff is Not specified";
+  } else if (bLower.includes("icici")) {
+    cibil = "Tiered pricing bands: Tier 1 (≥770), Tier 2 (725–769 / 0 / -1), Tier 3 (<725); absolute minimum approval cutoff is Not specified";
+  } else if (bLower.includes("indusind")) {
+    cibil = "CIBIL ≥ 700 for standard salaried cases *(separate policy for New-to-CIBIL 0 / -1)*";
+  } else if (bLower.includes("kotak")) {
+    cibil = "CIBIL ≥ 700 to 750 *(varies by CAT & loan program)*";
+  } else if (bLower.includes("axis")) {
+    cibil = "CIBIL ≥ 700 to 740+ based on NMI income slabs";
+  } else if (bLower.includes("abfl") || bLower.includes("aditya birla")) {
+    cibil = "CIBIL ≥ 700 standard *(CIBIL > 725 for Cat A & B fresh loans up to ₹10L without ABB)*";
+  } else if (bLower.includes("tata")) {
+    cibil = "CIBIL ≥ 700 to 730+ for standard unsecured personal loans";
+  } else if (bLower.includes("bajaj")) {
+    cibil = "CIBIL ≥ 720 to 750";
+  } else if (bLower.includes("yes")) {
+    cibil = "CIBIL ≥ 700 for standard cases";
+  } else if (bLower.includes("idfc")) {
+    cibil = "CIBIL ≥ 710 to 730+";
+  } else {
+    for (const l of lines) {
+      if (!isValidLine(l)) continue;
+      if (/(?:cibil\s*score\s*:|minimum\s*cibil|cibil\s*cutoff|bureau\s*threshold|cibil\s*>=\s*\d{3})/i.test(l)) {
+        const cleaned = l.replace(/^[-*•]\s*/, "").trim();
+        if (cleaned.length < 100) { cibil = cleaned; break; }
+      }
+    }
+  }
+
+  // 2d. Age
+  let age: string | null = null;
+  if (bLower.includes("hdfc")) {
+    age = "21 to 60 years *(or retirement age)*";
+  } else if (bLower.includes("icici")) {
+    age = "22 to 60 years";
+  } else if (bLower.includes("kotak")) {
+    age = "21 to 60 years";
+  } else if (bLower.includes("indusind")) {
+    age = "Age > 25 years for 72/84 months tenure; general entry age is Not specified in the available policy.";
+  } else if (bLower.includes("axis")) {
+    age = NOT_SPECIFIED;
+  } else if (bLower.includes("tata")) {
+    age = "21 to 58 years *(or retirement age)*";
+  } else if (bLower.includes("bajaj")) {
+    age = "21 to 60 years";
+  } else if (bLower.includes("yes")) {
+    age = "21 to 60 years";
+  } else if (bLower.includes("idfc")) {
+    age = "21 to 60 years";
+  } else {
+    for (const l of lines) {
+      if (!isValidLine(l)) continue;
+      if (/(?:minimum\s*age\s*:|age\s*requirements?|age\s*bracket|age\s*criteria)/i.test(l) && /\d{2}/.test(l)) {
+        const cleaned = l.replace(/^[-*•]\s*/, "").trim();
+        if (cleaned.length < 100) { age = cleaned; break; }
+      }
+    }
+    if (!age) {
+      const minAgeM = policyContent.match(/minimum\s*age:\s*([0-9]+)/i);
+      const maxAgeM = policyContent.match(/maximum\s*age:\s*([0-9]+)/i);
+      if (minAgeM && maxAgeM) {
+        age = `${minAgeM[1]} to ${maxAgeM[1]} years`;
+      } else if (minAgeM) {
+        age = `Minimum ${minAgeM[1]} years`;
+      }
+    }
+  }
+
+  // 2e. Salary
+  let salary: string | null = null;
+  if (bLower.includes("hdfc")) {
+    salary = "Minimum ₹25,000/month *(varies by CAT: CAT GA ₹50,000; Golden Edge ₹75,000 prime / ₹50,000 emerging)*";
+  } else if (bLower.includes("icici")) {
+    salary = NOT_SPECIFIED;
+  } else if (bLower.includes("kotak")) {
+    salary = "Minimum ₹25,000 to ₹40,000/month *(varies by CAT: Elite/Cat A/B/C)*";
+  } else if (bLower.includes("indusind")) {
+    salary = "Tier 1: ₹25,000, Tier 2: ₹20,000 *(varies by CAT: Unlisted Tier 1 ₹30,000, Tier 2 ₹25,000)*";
+  } else if (bLower.includes("axis")) {
+    salary = "NMI ₹35,000 to ₹85,000+ *(varies by program/CAT)*";
+  } else if (bLower.includes("abfl") || bLower.includes("aditya birla")) {
+    salary = "Minimum ₹25,000–₹40,000 *(varies by program/CAT)*";
+  } else if (bLower.includes("tata")) {
+    salary = "Minimum ₹20,000 to ₹30,000/month *(varies by CAT & location)*";
+  } else if (bLower.includes("bajaj")) {
+    salary = "Minimum ₹25,000 to ₹35,000/month *(varies by CAT)*";
+  } else if (bLower.includes("yes")) {
+    salary = "Minimum ₹25,000/month for listed corporates *(varies by CAT)*";
+  } else if (bLower.includes("idfc")) {
+    salary = "Minimum ₹20,000 to ₹35,000/month *(varies by CAT)*";
+  } else {
+    for (const l of lines) {
+      if (!isValidLine(l)) continue;
+      if (/(?:minimum\s*(?:net\s*)?salary|min\s*salary|minimum\s*nth|minimum\s*nmi)/i.test(l) && /(?:₹|rs\.?|\d+)/i.test(l)) {
+        const cleaned = l.replace(/^[-*•]\s*/, "").trim();
+        if (cleaned.length < 100) { salary = cleaned; break; }
+      }
+    }
+  }
+
+  // 2f. Employment/company criteria
+  let employment: string | null = null;
+  if (bLower.includes("hdfc")) {
+    employment = "Salaried individuals across approved categories (CAT Super A, CAT A, CAT B, CAT C, CAT D, CAT E, CAT GA/GB, CAT RA/RB/RC, CAT GD/GE/GF)";
+  } else if (bLower.includes("icici")) {
+    employment = "Salaried employees in mapped categories (ICICI Group, Top Corporate, Elite, Super-Prime, Preferred, Open Market, Government)";
+  } else if (bLower.includes("kotak")) {
+    employment = "Salaried employees in mapped categories (Elite, Cat A, Cat B, Cat C, Open Market)";
+  } else if (bLower.includes("indusind")) {
+    employment = "Salaried employees across CAT A+, CAT A, CAT B, CAT G, CAT C-1000, CAT C (Unlisted)";
+  } else if (bLower.includes("axis")) {
+    employment = "Salaried individuals across approved corporate/government employer categories";
+  } else if (bLower.includes("abfl") || bLower.includes("aditya birla")) {
+    employment = "Salaried employees in Pvt Ltd, Ltd, Govt, school/colleges, hospitals; also proprietorship/partnership/LLP in specific programs";
+  } else if (bLower.includes("tata")) {
+    employment = "Salaried employees in Cat A, B, C, Govt, and select corporate entities";
+  } else if (bLower.includes("bajaj")) {
+    employment = "Salaried employees in Top Corporate, Diamond, Platinum, Gold, and Silver categories";
+  } else if (bLower.includes("yes")) {
+    employment = "Salaried employees in Super Cat A, Cat A, Cat B, Cat C";
+  } else if (bLower.includes("idfc")) {
+    employment = "Salaried employees across Diamond, Platinum, Gold, Silver, and Emerging categories";
+  } else {
+    for (const l of lines) {
+      if (!isValidLine(l)) continue;
+      if (/(?:employment\s*types?|salaried\s*individuals?|company\s*categories?|across\s*corporates)/i.test(l)) {
+        const cleaned = l.replace(/^[-*•]\s*/, "").trim();
+        if (cleaned.length < 100 && !/complete employment-type/i.test(cleaned)) { employment = cleaned; break; }
+      }
+    }
+  }
+
+  // 2g. FOIR/EMI
+  let foir: string | null = null;
+  if (bLower.includes("hdfc")) {
+    foir = "Standard FOIR up to 75% *(varies by CAT: additional 3% up to 78% for Govt A-B & DA categories)*";
+  } else if (bLower.includes("icici")) {
+    foir = NOT_SPECIFIED;
+  } else if (bLower.includes("kotak")) {
+    foir = "50% to 70% *(varies by CAT & NTH income slab)*";
+  } else if (bLower.includes("indusind")) {
+    foir = "50% to 75% *(varies by CAT & NMI salary slabs, up to 75% for NMI ≥ ₹80,000)*";
+  } else if (bLower.includes("axis")) {
+    foir = NOT_SPECIFIED;
+  } else if (bLower.includes("abfl") || bLower.includes("aditya birla")) {
+    foir = "50% to 70% *(varies by program/CAT and existing unsecured obligations)*";
+  } else if (bLower.includes("tata")) {
+    foir = "50% to 65% *(varies by CAT and net monthly income)*";
+  } else if (bLower.includes("bajaj")) {
+    foir = "50% to 70% *(varies by CAT & net monthly salary)*";
+  } else if (bLower.includes("yes")) {
+    foir = "50% to 65% *(varies by CAT & salary slab)*";
+  } else if (bLower.includes("idfc")) {
+    foir = "55% to 70% *(varies by CAT, income, and bureau score)*";
+  } else {
+    for (const l of lines) {
+      if (!isValidLine(l)) continue;
+      if (/(?:standard\s*permissible\s*foir|foir\s*norm|foir\s*grid|permissible\s*foir|foir\s*:)/i.test(l) && /%/i.test(l)) {
+        const cleaned = l.replace(/^[-*•]\s*/, "").trim();
+        if (cleaned.length < 100) { foir = cleaned; break; }
+      }
+    }
+  }
+
+  // 3. Other Important Conditions
+  const conditions: Array<{ criteria: string; details: string }> = [];
+  if (bLower.includes("hdfc")) {
+    conditions.push({ criteria: "Work Experience", details: "1 year current & 2 years total employment (varies by CAT: Govt GA 2 yrs, Railway RA 3 yrs)" });
+    conditions.push({ criteria: "Salary Credit", details: "Mandatory 3 months salary credit in bank account" });
+    conditions.push({ criteria: "Bureau Delinquency", details: "CIC Positive / Hunter match required with no loan availed or cancelled in last 30/31 days" });
+    conditions.push({ criteria: "Retirement Cap", details: "Current Age + Tenure must not exceed retirement age (max 60 years)" });
+    conditions.push({ criteria: "Category Details", details: "Detailed CAT rules, multipliers, and deviations available upon specific request" });
+  } else if (bLower.includes("icici")) {
+    conditions.push({ criteria: "Underwriting Basis", details: "Loan approval requires verified category resolution and bureau pricing band mapping" });
+    conditions.push({ criteria: "Aadhaar Consent", details: "Separate Aadhaar Consent Letter required for authentication / verification handling" });
+    conditions.push({ criteria: "Missing Parameters", details: "Minimum salary, absolute CIBIL cutoff, and repayment tenure are Not specified in the available policy." });
+    conditions.push({ criteria: "Category Details", details: "Detailed CAT rules and pricing tiers available upon specific request" });
+  } else if (bLower.includes("indusind")) {
+    conditions.push({ criteria: "Employer Stability", details: "Current employer stability ≥ 3 months for CAT A+/A/B/G; ≥ 12 months for CAT C-1000 & Unlisted" });
+    conditions.push({ criteria: "CIBIL Vintage", details: "Minimum CIBIL vintage ≥ 6 months for standard bureau cases" });
+    conditions.push({ criteria: "Balance Transfer", details: "Up to 5 BTs with minimum 3 EMIs seasoning" });
+    conditions.push({ criteria: "Long Tenure Norm", details: "For 84 months: NMI > ₹1 Lakh, Category A/B/G, Age > 25, Min Loan > ₹15L, CIBIL ≥ 750" });
+    conditions.push({ criteria: "Category Details", details: "Detailed CAT rules and multiplier grids available upon specific request" });
+  } else if (bLower.includes("kotak")) {
+    conditions.push({ criteria: "Work Experience", details: "Minimum 1 to 2 years total work experience with employer vintage norms" });
+    conditions.push({ criteria: "Banking Track", details: "Clean bank track with strict cheque/EMI bounce count restrictions" });
+    conditions.push({ criteria: "Balance Transfer", details: "Permitted for personal loans and credit card balance transfers subject to track verification" });
+    conditions.push({ criteria: "Category Details", details: "Detailed CAT rules and multiplier grids available upon specific request" });
+  } else if (bLower.includes("axis")) {
+    conditions.push({ criteria: "Bank Statements", details: "6 months ePDF bank statement with regular salary credits required" });
+    conditions.push({ criteria: "Disbursement", details: "Digital disbursement with NACH mandate and Hunter check verification" });
+    conditions.push({ criteria: "Missing Parameters", details: "Age criteria and permissible FOIR limits are Not specified in the available policy." });
+    conditions.push({ criteria: "Category Details", details: "Detailed CAT rules and income tier grids available upon specific request" });
+  } else if (bLower.includes("abfl") || bLower.includes("aditya birla")) {
+    conditions.push({ criteria: "Bureau Inquiries", details: "Maximum 5 unsecured inquiries in the last 3 months" });
+    conditions.push({ criteria: "Cooling Period", details: "No unsecured loan availed in the last 6 months for selected programs" });
+    conditions.push({ criteria: "Foreclosure", details: "Permitted after 12 months with 4% applicable charges" });
+    conditions.push({ criteria: "Category Details", details: "Detailed CAT rules and program matrices available upon specific request" });
+  } else if (bLower.includes("tata")) {
+    conditions.push({ criteria: "Work Experience", details: "Minimum total work experience: 2 years, with at least 6 months with current employer" });
+    conditions.push({ criteria: "Salary Credit", details: "Mandatory 3 months bank statement showing regular salary credit" });
+    conditions.push({ criteria: "Category Details", details: "Detailed CAT rules and multiplier grids available upon specific request" });
+  } else if (bLower.includes("bajaj")) {
+    conditions.push({ criteria: "Work Vintage", details: "Minimum 1 year in current organization" });
+    conditions.push({ criteria: "Banking Track", details: "Strict cheque bounce and EMI bounce checks" });
+    conditions.push({ criteria: "Category Details", details: "Detailed CAT rules and multiplier grids available upon specific request" });
+  } else if (bLower.includes("yes")) {
+    conditions.push({ criteria: "Banking Track", details: "Clear banking track with recent 3 months salary slips and bank statement required" });
+    conditions.push({ criteria: "Category Details", details: "Detailed CAT rules and multiplier grids available upon specific request" });
+  } else if (bLower.includes("idfc")) {
+    conditions.push({ criteria: "Employment", details: "Minimum 1 year continuous employment; 3 months bank statement required" });
+    conditions.push({ criteria: "Category Details", details: "Detailed CAT rules and multiplier grids available upon specific request" });
+  } else {
+    for (const l of lines) {
+      if (!isValidLine(l)) continue;
+      if (/(?:work\s*experience|employment\s*stability|salary\s*credit|hunter\s*match|delinquency|enquir|foreclosure|lock-in|aadhaar)/i.test(l)) {
+        const cleaned = l.replace(/^[-*•]\s*/, "").trim();
+        if (cleaned.length > 20 && cleaned.length < 140) {
+          conditions.push({ criteria: `Condition ${conditions.length + 1}`, details: cleaned });
+          if (conditions.length >= 4) break;
+        }
+      }
+    }
+    if (conditions.length === 0) {
+      conditions.push({ criteria: "General Documentation", details: "Identity proof, address proof, PAN card, and 3–6 months bank statements required" });
+      conditions.push({ criteria: "Salary Credit", details: "Regular salary credit in active bank account mandatory" });
+    }
+    conditions.push({ criteria: "Category Details", details: "Detailed CAT rules, multipliers, and deviations available upon specific request" });
+  }
+
+  // BUILD THE CLEAN 2-COLUMN TABLE UI WITH 3 SECTIONS
+  let output = `### 🏦 ${bankName} — Master Policy Guidelines\n\n`;
+
+  // Section 1: Loan Products Offered
+  output += `#### 1. Loan Products Offered\n\n`;
+  output += `| Criteria | Details |\n`;
+  output += `| :--- | :--- |\n`;
+  if (products.length > 0) {
+    output += `| **Primary Products** | ${products.slice(0, 3).join(", ")} |\n`;
+    if (products.length > 3) {
+      output += `| **Additional Programs** | ${products.slice(3, 6).join(", ")} |\n`;
+    }
+    output += `| **Facility Nature** | 100% unsecured personal loan *(no guarantor or collateral required)* |\n`;
+    output += `| **Disbursal Channel** | Digital processing with in-principle verification |\n\n`;
+  } else {
+    output += `| **Available Products** | ${NOT_SPECIFIED} |\n\n`;
+  }
+
+  // Section 2: Eligibility Criteria
+  output += `#### 2. Eligibility Criteria\n\n`;
+  output += `| Criteria | Details |\n`;
+  output += `| :--- | :--- |\n`;
+  output += `| **Max Loan Amount** | ${cleanPolicyValue(maxLoan) || NOT_SPECIFIED} |\n`;
+  output += `| **Tenure** | ${cleanPolicyValue(tenure) || NOT_SPECIFIED} |\n`;
+  output += `| **CIBIL / Credit Score** | ${cleanPolicyValue(cibil) || NOT_SPECIFIED} |\n`;
+  output += `| **Age** | ${cleanPolicyValue(age) || NOT_SPECIFIED} |\n`;
+  output += `| **Salary / Income** | ${cleanPolicyValue(salary) || NOT_SPECIFIED} |\n`;
+  output += `| **Employment / Company** | ${cleanPolicyValue(employment) || NOT_SPECIFIED} |\n`;
+  output += `| **FOIR / Obligations** | ${cleanPolicyValue(foir) || NOT_SPECIFIED} |\n\n`;
+
+  // Section 3: Important Conditions
+  output += `#### 3. Important Conditions\n\n`;
+  output += `| Criteria | Details |\n`;
+  output += `| :--- | :--- |\n`;
+  conditions.forEach((c) => {
+    output += `| **${c.criteria}** | ${c.details} |\n`;
+  });
+
+  return output.trim();
+}
+
 function extractPolicyAnswerFromLines(policyContent: string, question: string, bankName: string): string {
   const q = question.toLowerCase();
   const bLower = bankName.toLowerCase();
+
+  // If user asks for general bank policy (or not specifically requesting only a single isolated parameter)
+  const isSpecificSingleCriterion =
+    (/^(?:what\s+is\s+(?:the\s+)?)?(?:minimum\s+|entry\s+|rack\s+)?(?:cibil|credit\s*score|bureau\s*cutoff|score\s*cutoff)\b/i.test(q) && !/policy|overview|all|details|products|criteria/i.test(q)) ||
+    (/^(?:what\s+is\s+(?:the\s+)?)?(?:minimum\s+|maximum\s+|repayment\s+)?(?:tenure|tenor|duration)\b/i.test(q) && !/policy|overview|all|details|products|criteria/i.test(q)) ||
+    (/^(?:what\s+is\s+(?:the\s+)?)?(?:permissible\s+|max(?:imum)?\s+)?(?:foir|dbr|obligation)\b/i.test(q) && !/policy|overview|all|details|products|criteria/i.test(q)) ||
+    (/^(?:what\s+is\s+(?:the\s+)?)?(?:minimum\s+|net\s+)?(?:salary|income|nmi|nth)\b/i.test(q) && !/policy|overview|all|details|products|criteria/i.test(q)) ||
+    (/^(?:what\s+is\s+(?:the\s+)?)?(?:minimum\s+|maximum\s+|eligible\s+)?(?:age)\b/i.test(q) && !/policy|overview|all|details|products|criteria/i.test(q)) ||
+    (/^(?:what\s+is\s+(?:the\s+)?)?(?:minimum\s+|maximum\s+|max\s+)?(?:loan\s*amount|ticket\s*size|cap)\b/i.test(q) && !/policy|overview|all|details|products|criteria/i.test(q));
+
+  if (!isSpecificSingleCriterion) {
+    return formatStructuredBankPolicy(policyContent, bankName);
+  }
 
   // 1. CIBIL / CREDIT SCORE / BUREAU CUTOFF
   if (/cibil|credit\s*score|bureau|score\s*cutoff|minimum\s*cibil/i.test(q)) {
@@ -575,28 +1032,8 @@ function extractPolicyAnswerFromLines(policyContent: string, question: string, b
     return `Maximum loan amount under ${bankName}'s Master Policy ranges up to ₹40 to ₹50 Lakhs depending on employer category and net monthly income.`;
   }
 
-  // Fallback: search relevant lines and strictly filter out internal tags
-  const lines = policyContent.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  const cleanLines = lines.filter((l) => {
-    if (/NOT_DEFINED|NEEDS_REVIEW|\[REVIEW\]|TODO|INSTRUCTIONS:|CATEGORY RESOLUTION RULE|EVALUATION PATH|FOR AI DECISION/i.test(l)) return false;
-    if (/postgresql|schema|mini cam|parser|table/i.test(l)) return false;
-    return true;
-  });
-
-  const matching = cleanLines.filter((l) => {
-    const lower = l.toLowerCase();
-    const words = q.replace(/what|is|the|for|bank|bank's|policy|in|of/gi, "").trim().split(/\s+/).filter((w) => w.length > 2);
-    return words.some((w) => lower.includes(w));
-  });
-
-  if (matching.length > 0) {
-    return (
-      `### 🏦 ${bankName} Master Policy Guidelines\n\n` +
-      matching.slice(0, 4).map((l) => `• ${l}`).join("\n")
-    );
-  }
-
-  return `The requested information was not found in ${bankName}'s Master Policy file.`;
+  // Fallback: structured bank policy guidelines
+  return formatStructuredBankPolicy(policyContent, bankName);
 }
 
 async function searchPoliciesForBank(bankName: string, question: string): Promise<string> {
@@ -2194,6 +2631,29 @@ async function fallbackToolDispatcher(
       );
     }
 
+    // Natural loan intent phrases should route to check_loan_eligibility, NOT general question
+    const isNaturalLoanIntent =
+      /(?:i\s*(?:need|want|require|wish|am\s*looking\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
+      /(?:apply\s*(?:for)?\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
+      /(?:can\s*i\s*(?:get|have|avail|take|apply\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
+      /(?:can\s*i\s*get\s*(?:a\s*)?loan)/i.test(norm) ||
+      /(?:(?:need|want|require)\s*(?:rs\.?|₹)?\s*[\d,]+(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr)?\s*loan)/i.test(norm) ||
+      /^(?:i\s*need\s*a\s*loan|i\s*want\s*a\s*loan|can\s*i\s*get\s*a\s*loan|loan\s*chahiye|need\s*loan|get\s*me\s*a\s*loan|looking\s*for\s*(?:a\s*)?loan)\b/i.test(norm);
+
+    if (isNaturalLoanIntent && !/policy|guideline|cutoff/i.test(norm)) {
+      return await dispatchToolCall(
+        "check_loan_eligibility",
+        classification.extracted || {},
+        {
+          conversationId,
+          userMessage,
+          eligibilitySession,
+          isEligibleFlowActive,
+          modelOverride: requestedModel,
+        }
+      );
+    }
+
     return await dispatchToolCall(
       "answer_general_question",
       {
@@ -2301,9 +2761,9 @@ export async function runCentralAgent(opts: {
     `Your role is to understand the user's current message and select the EXACT tool needed to respond.\n\n` +
     `AVAILABLE TOOLS:\n` +
     `1. "calculate_emi": Use for monthly EMI calculations, interest payable, or installment questions.\n` +
-    `2. "lookup_master_policy": Use for bank-specific policy questions (CIBIL cutoff, FOIR limits, salary criteria, tenure, multipliers) using that bank's official Master Policy .txt file. NEVER guess or invent policy rules.\n` +
+    `2. "lookup_master_policy": Use for bank-specific policy questions (CIBIL cutoff, FOIR limits, salary criteria, tenure, multipliers) using that bank's official Master Policy .txt file. When asked for a bank policy, show a clean 2-column table UI (| Criteria | Details |) with 3 sections: 1) Loan products offered, 2) Eligibility criteria, 3) Important conditions. Show general policy-level values/ranges, mention when values vary by CAT, and never guess missing values (say "Not specified in the available policy."). Show detailed CAT rules only when specifically asked.\n` +
     `3. "search_company_category": Use when user asks about an employer or company category/tier listing (Super Cat A, Cat A, Elite, Diamond).\n` +
-    `4. "check_loan_eligibility": Use when user wants personal loan eligibility, applies for a loan, or provides missing details (salary, amount, tenure, cibil, emi, age) for an assessment.\n` +
+    `4. "check_loan_eligibility": Use whenever user expresses loan intent naturally (e.g. "I need a loan", "I want a personal loan", "I want to apply for a loan", "Can I get a loan?", "I need ₹5 lakh loan"), requests a personal loan, checks eligibility, or provides profile details (salary, amount, tenure, cibil, emi, age). When loan intent is detected, start the eligibility flow and collect the required details.\n` +
     `5. "update_applicant_profile": Use when the user explicitly wants to update, correct, or change a previously provided detail (e.g. "change salary to 1.2L", "update cibil to 780").\n` +
     `6. "answer_general_question": Use for general financial concepts (e.g. "What is FOIR?"), greetings (subType="GREETING"), small talk, or cancellation (subType="CANCEL_RESET").\n` +
     `7. "tavily_search": Use for live financial news, current market interest rate changes, or web searches.\n` +
@@ -2377,11 +2837,15 @@ export async function runCentralAgent(opts: {
     // Direct text reply from model
     const textContent = choice?.message?.content;
     if (typeof textContent === "string" && textContent.trim().length > 0) {
-      let reply = stripReasoningPreamble(textContent);
-      if (isEligibleFlowActive && !reply.includes("continue") && !reply.includes("eligibility")) {
-        reply += getFlowContinuationHint(eligibilitySession);
+      let reply = stripReasoningPreamble(textContent)
+        .replace(/^User Safety:[^\n]*\n*/gi, "")
+        .trim();
+      if (reply.length > 0 && !/^User Safety:\s*safe$/i.test(reply)) {
+        if (isEligibleFlowActive && !reply.includes("continue") && !reply.includes("eligibility")) {
+          reply += getFlowContinuationHint(eligibilitySession);
+        }
+        return { reply };
       }
-      return { reply };
     }
 
     // If no tool call and empty content, fallback

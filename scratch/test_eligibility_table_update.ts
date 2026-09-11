@@ -120,15 +120,15 @@ async function runTests() {
   console.log(report.substring(0, 1600));
 
   // Assertions on the table markdown
-  assert(report.includes("| # | Bank Name | Estimated Monthly EMI | CIBIL | Tenure |"), "Table header must have exact columns: '#', 'Bank Name', 'Estimated Monthly EMI', 'CIBIL', 'Tenure'");
+  assert(report.includes("| Bank | Status | CIBIL | Tenure | Est. EMI |"), "Table header must have exact columns: Bank | Status | CIBIL | Tenure | Est. EMI");
   assert(report.includes("| :--- | :--- | :--- | :--- | :--- |"), "Table separator must match 5 columns");
   assert(!report.includes("| Interest Rate (ROI) |"), "Table must NOT contain 'Interest Rate (ROI)' column");
   assert(!report.includes("| Maximum Loan Limit |"), "Table must NOT contain 'Maximum Loan Limit' column");
   assert(!report.includes("| Processing Fee |"), "Table must NOT contain 'Processing Fee' column");
 
-  // Verify that rows contain proper CIBIL and Tenure
+  // Verify that rows contain proper CIBIL, Tenure, and Status
   const lines = report.split("\n");
-  const tableRows = lines.filter(l => /^\s*\|\s*\d+\s*\|/.test(l));
+  const tableRows = lines.filter(l => l.includes("✅ Eligible"));
   console.log(`\nTable row count: ${tableRows.length}`);
   assert(tableRows.length > 0, "Must have approved partner banks in table");
   tableRows.forEach(r => console.log(`  Row: ${r}`));

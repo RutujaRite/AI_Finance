@@ -1971,31 +1971,107 @@ body:has(.chat-page) {
     font-size: 0.85rem;
 }
 
-/* Compact inline tables */
+/* Modern Bank Policy & Responsive Table Cards */
 .chat-bubble table,
 .chat-page .table {
     width: 100%;
-    border-collapse: collapse;
-    margin: 0.25rem 0;
-    font-size: 0.8125rem;
-    line-height: 1.35;
-}
-
-.chat-bubble th,
-.chat-bubble td,
-.chat-page .table th,
-.chat-page .table td {
-    padding: 0.2rem 0.45rem;
-    border: 1px solid var(--border);
-    vertical-align: middle;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 0.625rem 0 1rem 0;
+    font-size: 0.84rem;
+    line-height: 1.5;
+    background: var(--surface);
+    border: 1px solid rgba(13, 148, 136, 0.22);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px -2px rgba(13, 148, 136, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
 .chat-bubble th,
 .chat-page .table th {
-    background: var(--surface-2);
-    font-weight: 600;
-    font-size: 0.75rem;
+    background: linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%);
+    color: #0e7490;
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.55rem 0.85rem;
+    border-bottom: 2px solid rgba(14, 165, 233, 0.25);
+    border-right: 1px solid rgba(14, 165, 233, 0.15);
+    text-align: left;
+}
+
+.chat-bubble th:last-child,
+.chat-page .table th:last-child {
+    border-right: none;
+}
+
+.chat-bubble td,
+.chat-page .table td {
+    padding: 0.5rem 0.85rem;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    vertical-align: top;
     color: var(--ink);
+    background: var(--surface);
+}
+
+/* 2-column policy tables (Criteria | Details) */
+.chat-bubble table:not(.eligibility-table) tr > td:first-child:nth-last-child(2),
+.chat-page .table:not(.eligibility-table) tr > td:first-child:nth-last-child(2) {
+    font-weight: 600;
+    color: var(--ink);
+    width: 32%;
+    background: var(--surface-2);
+}
+
+.chat-bubble table:not(.eligibility-table) tr > td:last-child:nth-child(2),
+.chat-page .table:not(.eligibility-table) tr > td:last-child:nth-child(2) {
+    border-right: none;
+    width: 68%;
+}
+
+.chat-bubble tr:last-child td,
+.chat-page .table tr:last-child td {
+    border-bottom: none;
+}
+
+.chat-bubble tr:hover td,
+.chat-page .table tr:hover td {
+    background: rgba(14, 165, 233, 0.035);
+}
+
+/* Dark mode theme adjustments */
+[data-bs-theme="dark"] .chat-bubble table,
+[data-bs-theme="dark"] .chat-page .table {
+    background: #11151c;
+    border-color: rgba(56, 189, 248, 0.25);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+[data-bs-theme="dark"] .chat-bubble th,
+[data-bs-theme="dark"] .chat-page .table th {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.28) 0%, rgba(14, 165, 233, 0.28) 100%);
+    color: #38bdf8;
+    border-bottom-color: rgba(56, 189, 248, 0.35);
+    border-right-color: rgba(56, 189, 248, 0.2);
+}
+
+[data-bs-theme="dark"] .chat-bubble td,
+[data-bs-theme="dark"] .chat-page .table td {
+    background: #11151c;
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+}
+
+[data-bs-theme="dark"] .chat-bubble table:not(.eligibility-table) tr > td:first-child:nth-last-child(2),
+[data-bs-theme="dark"] .chat-page .table:not(.eligibility-table) tr > td:first-child:nth-last-child(2) {
+    background: #161c26;
+}
+
+[data-bs-theme="dark"] .chat-bubble tr:hover td,
+[data-bs-theme="dark"] .chat-page .table tr:hover td {
+    background: rgba(56, 189, 248, 0.06);
 }
 
 .chat-bubble .table-wrapper {
@@ -3350,5 +3426,579 @@ body:has(.chat-page) {
     gap: 0.4rem;
     margin-bottom: 0.25rem;
 }
+
+/* ==========================================================================
+   Eligibility Dashboard UI (Modern Financial Dashboard Matching Reference)
+   ========================================================================== */
+
+.eligibility-dashboard {
+    width: 100%;
+    margin: 0.5rem 0 1rem 0;
+    font-family: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* 1. Header Banner */
+.eligibility-dashboard-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background-color: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.eligibility-dashboard-banner-left {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.eligibility-dashboard-banner-icon {
+    font-size: 1.75rem;
+    color: #10b981;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.eligibility-dashboard-banner-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #065f46;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.15rem;
+}
+
+.eligibility-dashboard-banner-sub {
+    font-size: 0.84rem;
+    color: #047857;
+    line-height: 1.4;
+}
+
+.eligibility-dashboard .btn-download-report {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    background-color: #ffffff;
+    color: #0f766e;
+    border: 1.5px solid #0d9488;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.15s ease-in-out;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.eligibility-dashboard .btn-download-report:hover {
+    background-color: #f0fdfa;
+    border-color: #0f766e;
+    color: #115e59;
+    box-shadow: 0 2px 4px rgba(13, 148, 136, 0.12);
+}
+
+/* 2. Applicant Summary Card */
+.applicant-summary-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.15rem 1.4rem;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.applicant-summary-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 1rem;
+}
+
+.applicant-summary-header i {
+    color: #64748b;
+    font-size: 1rem;
+}
+
+.applicant-summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.75rem;
+    position: relative;
+}
+
+.applicant-summary-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.applicant-summary-col.right-col {
+    border-left: 1px solid #f1f5f9;
+    padding-left: 1.75rem;
+}
+
+.applicant-summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-size: 0.84rem;
+}
+
+.applicant-summary-label {
+    color: #64748b;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.applicant-summary-val {
+    color: #0f172a;
+    font-weight: 700;
+    text-align: right;
+    word-break: break-word;
+}
+
+/* 3. Top Recommended Bank Card */
+.top-recommended-bank-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.15rem 1.4rem;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.top-recommended-split {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 1.75rem;
+    align-items: center;
+}
+
+.top-recommended-left {
+    display: flex;
+    flex-direction: column;
+}
+
+.top-bank-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #0f766e;
+    margin-bottom: 0.85rem;
+}
+
+.top-bank-header i {
+    color: #0d9488;
+    font-size: 1.05rem;
+}
+
+.top-bank-box {
+    display: flex;
+    align-items: center;
+    gap: 0.95rem;
+}
+
+.top-bank-badge {
+    background: #0b2545;
+    color: #ffffff;
+    border-radius: 8px;
+    width: 68px;
+    height: 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    padding: 0.25rem;
+    text-align: center;
+    line-height: 1.15;
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(11, 37, 69, 0.2);
+}
+
+.top-bank-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.top-bank-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.top-bank-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.badge-best-match {
+    display: inline-flex;
+    align-items: center;
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.15rem 0.55rem;
+    border-radius: 9999px;
+    line-height: 1.2;
+}
+
+.top-bank-emi {
+    font-size: 0.84rem;
+    color: #475569;
+}
+
+.top-bank-emi strong {
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.top-recommended-right {
+    border-left: 1px solid #f1f5f9;
+    padding-left: 1.75rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.top-bank-why-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #0f766e;
+    margin-bottom: 0.55rem;
+}
+
+.top-bank-why-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.top-bank-why-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    color: #334155;
+}
+
+.top-bank-why-item i {
+    color: #10b981;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+/* 4. Eligible Partner Banks Table Card */
+.eligible-banks-table-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.table-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.95rem 1.25rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.table-card-header i {
+    color: #0d9488;
+    font-size: 1.05rem;
+}
+
+.table-responsive-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.eligibility-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 !important;
+    background: #ffffff;
+    font-size: 0.84rem;
+}
+
+.eligibility-table th {
+    background: #f0fdfa !important;
+    color: #0f766e !important;
+    font-weight: 700 !important;
+    font-size: 0.78rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.03em !important;
+    padding: 0.7rem 1rem !important;
+    border: none !important;
+    border-bottom: 1.5px solid #ccfbf1 !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+}
+
+.eligibility-table th.col-index {
+    width: 44px;
+    text-align: center !important;
+}
+
+.eligibility-table th.col-bank {
+    min-width: 170px;
+}
+
+.eligibility-table th.col-status {
+    min-width: 110px;
+}
+
+.eligibility-table th.col-cibil {
+    min-width: 90px;
+}
+
+.eligibility-table th.col-tenure {
+    min-width: 130px;
+}
+
+.eligibility-table th.col-emi {
+    min-width: 110px;
+}
+
+.eligibility-table td {
+    padding: 0.7rem 1rem !important;
+    border: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    color: #334155 !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    background: #ffffff !important;
+}
+
+.eligibility-table td.col-index {
+    color: #64748b;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.eligibility-table td.col-bank {
+    font-weight: 600;
+    color: #0f172a !important;
+}
+
+.eligibility-table td.col-emi {
+    font-weight: 600;
+    color: #0f172a !important;
+}
+
+.eligibility-table tr:hover td {
+    background-color: #f8fafc !important;
+}
+
+.status-pill-eligible {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background-color: #dcfce7;
+    color: #166534;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.65rem;
+    border-radius: 9999px;
+    line-height: 1.2;
+}
+
+.status-pill-eligible i {
+    color: #16a34a;
+    font-size: 0.75rem;
+}
+
+/* 5. Next Step Card */
+.eligibility-next-step-card {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+}
+
+.next-step-icon {
+    font-size: 1.25rem;
+    color: #0284c7;
+    line-height: 1;
+    margin-top: 0.1rem;
+    flex-shrink: 0;
+}
+
+.next-step-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.next-step-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #0369a1;
+}
+
+.next-step-desc {
+    font-size: 0.82rem;
+    color: #334155;
+    line-height: 1.45;
+}
+
+/* Responsive breakdowns for mobile screens */
+@media (max-width: 640px) {
+    .applicant-summary-grid {
+        grid-template-columns: 1fr;
+        gap: 0.85rem;
+    }
+    .applicant-summary-col.right-col {
+        border-left: none;
+        padding-left: 0;
+        border-top: 1px solid #f1f5f9;
+        padding-top: 0.85rem;
+    }
+    .top-recommended-split {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    .top-recommended-right {
+        border-left: none;
+        padding-left: 0;
+        border-top: 1px solid #f1f5f9;
+        padding-top: 0.85rem;
+    }
+    .eligibility-dashboard-banner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .eligibility-dashboard .btn-download-report {
+        align-self: flex-start;
+    }
+}
+
+/* Dark mode theme overrides */
+[data-bs-theme="dark"] .eligibility-dashboard-banner {
+    background-color: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.35);
+}
+[data-bs-theme="dark"] .eligibility-dashboard-banner-title {
+    color: #4ade80;
+}
+[data-bs-theme="dark"] .eligibility-dashboard-banner-sub {
+    color: #86efac;
+}
+[data-bs-theme="dark"] .eligibility-dashboard .btn-download-report {
+    background-color: rgba(13, 148, 136, 0.25);
+    border-color: #2dd4bf;
+    color: #5eead4;
+}
+[data-bs-theme="dark"] .eligibility-dashboard .btn-download-report:hover {
+    background-color: rgba(13, 148, 136, 0.4);
+    color: #ffffff;
+}
+[data-bs-theme="dark"] .applicant-summary-card,
+[data-bs-theme="dark"] .top-recommended-bank-card,
+[data-bs-theme="dark"] .eligible-banks-table-card {
+    background: #111827;
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+[data-bs-theme="dark"] .applicant-summary-header,
+[data-bs-theme="dark"] .table-card-header,
+[data-bs-theme="dark"] .top-bank-name {
+    color: #f8fafc;
+}
+[data-bs-theme="dark"] .applicant-summary-label {
+    color: #94a3b8;
+}
+[data-bs-theme="dark"] .applicant-summary-val,
+[data-bs-theme="dark"] .top-bank-emi strong,
+[data-bs-theme="dark"] .eligibility-table td.col-bank,
+[data-bs-theme="dark"] .eligibility-table td.col-emi {
+    color: #f1f5f9 !important;
+}
+[data-bs-theme="dark"] .applicant-summary-col.right-col,
+[data-bs-theme="dark"] .top-recommended-right,
+[data-bs-theme="dark"] .table-card-header,
+[data-bs-theme="dark"] .eligibility-table td {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-bs-theme="dark"] .top-bank-header,
+[data-bs-theme="dark"] .top-bank-why-title {
+    color: #2dd4bf;
+}
+[data-bs-theme="dark"] .top-bank-why-item,
+[data-bs-theme="dark"] .top-bank-emi,
+[data-bs-theme="dark"] .eligibility-table td {
+    color: #cbd5e1 !important;
+}
+[data-bs-theme="dark"] .top-bank-badge {
+    background: #0f2b5c;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+[data-bs-theme="dark"] .badge-best-match {
+    background: rgba(16, 185, 129, 0.2);
+    color: #4ade80;
+}
+[data-bs-theme="dark"] .eligibility-table {
+    background: #111827;
+}
+[data-bs-theme="dark"] .eligibility-table th {
+    background: rgba(13, 148, 136, 0.22) !important;
+    color: #2dd4bf !important;
+    border-bottom-color: rgba(45, 212, 191, 0.3) !important;
+}
+[data-bs-theme="dark"] .eligibility-table td {
+    background: #111827 !important;
+}
+[data-bs-theme="dark"] .eligibility-table tr:hover td {
+    background-color: #1f2937 !important;
+}
+[data-bs-theme="dark"] .status-pill-eligible {
+    background: rgba(16, 185, 129, 0.2);
+    color: #4ade80;
+}
+[data-bs-theme="dark"] .eligibility-next-step-card {
+    background: rgba(2, 132, 199, 0.14);
+    border-color: rgba(56, 189, 248, 0.3);
+}
+[data-bs-theme="dark"] .next-step-icon {
+    color: #38bdf8;
+}
+[data-bs-theme="dark"] .next-step-title {
+    color: #38bdf8;
+}
+[data-bs-theme="dark"] .next-step-desc {
+    color: #e0f2fe;
+}
+
 
 

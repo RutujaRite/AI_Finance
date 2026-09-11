@@ -61,7 +61,7 @@ async function runTest() {
     "FAIL: 'Bank Name' must be present in recommendation details"
   );
   assert.ok(
-    report.includes("- **Status**: ✅ **Approved / Eligible**"),
+    report.includes("- **Status**: ✅ **Eligible"),
     "FAIL: 'Status' must be present in recommendation details"
   );
   assert.ok(
@@ -79,8 +79,8 @@ async function runTest() {
 
   // 6. Verify table columns
   assert.ok(
-    report.includes("| # | Bank Name | Estimated Monthly EMI | CIBIL | Tenure |"),
-    "FAIL: Table header must include Bank Name, Estimated Monthly EMI, CIBIL, Tenure"
+    report.includes("| Bank | Status | CIBIL | Tenure | Est. EMI |"),
+    "FAIL: Table header must include Bank, Status, CIBIL, Tenure, Est. EMI"
   );
 
   // 7. Verify no mentions of ROI/interest rate in the tip callout

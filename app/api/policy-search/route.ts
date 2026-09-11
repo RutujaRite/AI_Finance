@@ -464,24 +464,115 @@ async function answerPolicyQuestion(bankInfo: any, question: string): Promise<st
   }
 
   if (/eligibility|criteria|requirements|policy/i.test(q)) {
+    const NOT_SPECIFIED = "Not specified in the available policy.";
     const activeRules = rules.filter((rule) => rule.status === "active");
     const sourceRules = activeRules.length > 0 ? activeRules : rules;
+    const masterPolicy = await getMasterPolicyForBank(bank.id);
 
-    let response = `${bank.name} — ${requestedLoanType} Loan Policy Summary\n\n`;
+    // 1) Loan products offered
+    const loanTypes = [...new Set(sourceRules.map((r) => r.loan_type).filter(Boolean))];
+    const productsOffered = loanTypes.length > 0 ? loanTypes : [requestedLoanType + " Loan"];
 
-    const cibilValues = [...new Set(sourceRules.filter((rule) => rule.min_cibil != null).map((rule) => Number(rule.min_cibil)))];
-    const salaryValues = [...new Set(sourceRules.filter((rule) => rule.min_salary != null).map((rule) => Number(rule.min_salary)))];
-    const maxLoanValues = [...new Set(sourceRules.filter((rule) => rule.max_loan_amount != null).map((rule) => Number(rule.max_loan_amount)))];
-    const maxTenureValues = [...new Set(sourceRules.filter((rule) => rule.max_tenure_months != null).map((rule) => Number(rule.max_tenure_months)))];
-    const foirValues = [...new Set(sourceRules.filter((rule) => rule.foir_percent != null).map((rule) => formatPercent(rule.foir_percent)).filter(Boolean))];
+    // 2) Eligibility criteria
+    // Max loan amount
+    const maxLoanValues = [...new Set(sourceRules.filter((r) => r.max_loan_amount != null).map((r) => Number(r.max_loan_amount)))];
+    const maxLoanStr = maxLoanValues.length > 0 ? `Up to ${maxLoanValues.map(formatIndianMoney).join(", ")}` : NOT_SPECIFIED;
 
-    if (cibilValues.length > 0) response += `• Minimum CIBIL values: ${cibilValues.join(", ")}\n`;
-    if (salaryValues.length > 0) response += `• Minimum income values: ${salaryValues.map(formatIndianMoney).join(", ")}\n`;
-    if (maxLoanValues.length > 0) response += `• Maximum loan amounts: ${maxLoanValues.map(formatIndianMoney).join(", ")}\n`;
-    if (maxTenureValues.length > 0) response += `• Maximum tenure values: ${maxTenureValues.join(", ")} months\n`;
-    if (foirValues.length > 0) response += `• FOIR limits: ${foirValues.join(", ")}\n`;
+    // Tenure
+    const maxTenureValues = [...new Set(sourceRules.filter((r) => r.max_tenure_months != null).map((r) => Number(r.max_tenure_months)))];
+    const minTenureValues = [...new Set(sourceRules.filter((r) => r.min_tenure_months != null).map((r) => Number(r.min_tenure_months)))];
+    let tenureStr = NOT_SPECIFIED;
+    if (minTenureValues.length > 0 && maxTenureValues.length > 0) {
+      tenureStr = `${Math.min(...minTenureValues)} to ${Math.max(...maxTenureValues)} months`;
+    } else if (maxTenureValues.length > 0) {
+      tenureStr = `Up to ${Math.max(...maxTenureValues)} months`;
+    }
 
-    response += `\nDifferent programs may have different eligibility conditions.`;
+    // CIBIL
+    const cibilValues = [...new Set(sourceRules.filter((r) => r.min_cibil != null).map((r) => Number(r.min_cibil)))];
+    const cibilStr = cibilValues.length > 0 ? `Minimum CIBIL: ${cibilValues.join(", ")}` : NOT_SPECIFIED;
+
+    // Age
+    const minAgeValues = [...new Set(sourceRules.filter((r) => r.min_age != null).map((r) => Number(r.min_age)))];
+    const maxAgeValues = [...new Set(sourceRules.filter((r) => r.max_age != null).map((r) => Number(r.max_age)))];
+    let ageStr = NOT_SPECIFIED;
+    if (minAgeValues.length > 0 && maxAgeValues.length > 0) {
+      ageStr = `${Math.min(...minAgeValues)} to ${Math.max(...maxAgeValues)} years`;
+    } else if (minAgeValues.length > 0) {
+      ageStr = `Minimum ${Math.min(...minAgeValues)} years`;
+    }
+
+    // Salary
+    const salaryValues = [...new Set(sourceRules.filter((r) => r.min_salary != null).map((r) => Number(r.min_salary)))];
+    const salaryStr = salaryValues.length > 0 ? `Minimum ${salaryValues.map(formatIndianMoney).join(", ")}` : NOT_SPECIFIED;
+
+    // Employment / company criteria
+    const empTypes = [...new Set(sourceRules.map((r) => r.employment_type).filter(Boolean))];
+    const categories = [...new Set(sourceRules.map((r) => r.category).filter(Boolean))];
+    let empStr = NOT_SPECIFIED;
+    if (empTypes.length > 0 && categories.length > 0) {
+      empStr = `${empTypes.join(", ")} across ${categories.slice(0, 5).join(", ")}`;
+    } else if (empTypes.length > 0) {
+      empStr = empTypes.join(", ");
+    } else if (categories.length > 0) {
+      empStr = `Approved categories: ${categories.slice(0, 5).join(", ")}`;
+    }
+
+    // FOIR / EMI
+    const foirValues = [...new Set(sourceRules.filter((r) => r.foir_percent != null).map((r) => formatPercent(r.foir_percent)).filter(Boolean))];
+    const foirStr = foirValues.length > 0 ? foirValues.join(", ") : NOT_SPECIFIED;
+
+    // 3) Other important conditions
+    const conditions: string[] = [];
+    for (const r of sourceRules) {
+      if (r.other_rules && typeof r.other_rules === "string" && r.other_rules.trim().length > 5) {
+        conditions.push(r.other_rules.trim());
+      }
+    }
+    if (conditions.length === 0 && masterPolicy?.extracted_text) {
+      const mpLines = String(masterPolicy.extracted_text).split(/\r?\n/).map((l: string) => l.trim()).filter(Boolean);
+      for (const l of mpLines) {
+        if (/NOT_DEFINED|NEEDS_REVIEW|\[REVIEW\]|postgresql/i.test(l)) continue;
+        if (/(?:work\s*experience|employment\s*stability|salary\s*credit|hunter\s*match|delinquency|enquir)/i.test(l)) {
+          const cleaned = l.replace(/^[-*•]\s*/, "").trim();
+          if (cleaned.length > 15 && cleaned.length < 140 && !conditions.includes(cleaned)) {
+            conditions.push(cleaned);
+            if (conditions.length >= 3) break;
+          }
+        }
+      }
+    }
+
+    let response = `### 🏦 ${bank.name} — Master Policy Guidelines\n\n`;
+    response += `#### 1. Loan Products Offered\n\n`;
+    response += `| Criteria | Details |\n`;
+    response += `| :--- | :--- |\n`;
+    response += `| **Available Products** | ${productsOffered.join(", ")} |\n`;
+    response += `| **Facility Nature** | Unsecured / Personal Credit |\n\n`;
+
+    response += `#### 2. Eligibility Criteria\n\n`;
+    response += `| Criteria | Details |\n`;
+    response += `| :--- | :--- |\n`;
+    response += `| **Max Loan Amount** | ${maxLoanStr} |\n`;
+    response += `| **Tenure** | ${tenureStr} |\n`;
+    response += `| **CIBIL / Credit Score** | ${cibilStr} |\n`;
+    response += `| **Age** | ${ageStr} |\n`;
+    response += `| **Salary / Income** | ${salaryStr} |\n`;
+    response += `| **Employment / Company** | ${empStr} |\n`;
+    response += `| **FOIR / Obligations** | ${foirStr} |\n\n`;
+
+    response += `#### 3. Important Conditions\n\n`;
+    response += `| Criteria | Details |\n`;
+    response += `| :--- | :--- |\n`;
+    if (conditions.length > 0) {
+      conditions.slice(0, 4).forEach((c, idx) => {
+        response += `| **Condition ${idx + 1}** | ${c} |\n`;
+      });
+    } else {
+      response += `| **General Conditions** | ${NOT_SPECIFIED} |\n`;
+    }
+    response += `| **Category Details** | Detailed CAT rules, multipliers, and deviations available upon specific request |\n`;
+
     return response;
   }
 

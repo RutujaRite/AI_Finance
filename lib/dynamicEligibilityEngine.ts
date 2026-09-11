@@ -167,21 +167,38 @@ export function detectLoanIntent(
   message: string,
   preClassifiedIntent?: any
 ): { isLoanIntent: boolean; loanType: string } {
-  if (preClassifiedIntent?.intent) {
-    const isIntent =
-      preClassifiedIntent.intent === "LOAN_ELIGIBILITY" ||
-      (preClassifiedIntent as any).intent === "PERSONAL_LOAN_REQUEST";
-    return { isLoanIntent: isIntent, loanType: preClassifiedIntent.loanType || "Personal Loan" };
-  }
-
   const norm = String(message || "").toLowerCase().replace(/\s+/g, " ").trim();
-  const isIntent = /\b(?:loan|loans|borrow|borrowing|lending|financ(?:e|ing)|eligib)\b/i.test(norm);
 
   let loanType = "Personal Loan";
   if (/home\s*loan/i.test(norm)) loanType = "Home Loan";
   else if (/business\s*loan/i.test(norm)) loanType = "Business Loan";
   else if (/car\s*loan|auto\s*loan/i.test(norm)) loanType = "Auto Loan";
   else if (/education\s*loan/i.test(norm)) loanType = "Education Loan";
+
+  // Check natural user phrases expressing loan intent
+  const isNaturalLoanPhrase =
+    /(?:i\s*(?:need|want|require|wish|am\s*looking\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
+    /(?:apply\s*(?:for)?\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
+    /(?:can\s*i\s*(?:get|have|avail|take|apply\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
+    /(?:can\s*i\s*get\s*(?:a\s*)?loan)/i.test(norm) ||
+    /(?:(?:need|want|require)\s*(?:rs\.?|₹)?\s*[\d,]+(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr)?\s*loan)/i.test(norm) ||
+    /^(?:i\s*need\s*a\s*loan|i\s*want\s*a\s*loan|can\s*i\s*get\s*a\s*loan|loan\s*chahiye|need\s*loan|get\s*me\s*a\s*loan)\b/i.test(norm);
+
+  const isBankPolicy =
+    /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata|idfc|indusind|bandhan|yes\s*bank|bank)\s*(?:'s)?\s*(?:policy|guidelines?|rules?|criteria|cutoff|cut-off)/i.test(norm);
+
+  if (isNaturalLoanPhrase && !isBankPolicy) {
+    return { isLoanIntent: true, loanType };
+  }
+
+  if (preClassifiedIntent?.intent) {
+    const isIntent =
+      preClassifiedIntent.intent === "LOAN_ELIGIBILITY" ||
+      (preClassifiedIntent as any).intent === "PERSONAL_LOAN_REQUEST";
+    return { isLoanIntent: isIntent, loanType: preClassifiedIntent.loanType || loanType };
+  }
+
+  const isIntent = !isBankPolicy && /\b(?:loan|loans|borrow|borrowing|lending|financ(?:e|ing)|eligib)\b/i.test(norm);
 
   return { isLoanIntent: isIntent, loanType };
 }
@@ -1324,12 +1341,12 @@ export function formatDynamicEligibilityReport(
       lines.push(`The following **${eligibleBanks.length} partner banks** meet all policy criteria for your profile:`);
     }
     lines.push("");
-    lines.push(`| # | Bank Name | Estimated Monthly EMI | CIBIL | Tenure |`);
+    lines.push(`| Bank | Status | CIBIL | Tenure | Est. EMI |`);
     lines.push(`| :--- | :--- | :--- | :--- | :--- |`);
 
-    eligibleBanks.forEach((b, idx) => {
+    eligibleBanks.forEach((b) => {
       lines.push(
-        `| ${idx + 1} | **${b.bankName}** | ₹${b.monthlyEmi.toLocaleString("en-IN")} | ${b.policyCibil || "-"} | ${b.policyTenure || "-"} |`
+        `| **${b.bankName}** | ✅ Eligible | ${b.policyCibil || "-"} | ${b.policyTenure || "-"} | ₹${b.monthlyEmi.toLocaleString("en-IN")} |`
       );
     });
     lines.push("");
