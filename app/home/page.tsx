@@ -902,10 +902,16 @@ export default function HomePage() {
         content.includes("Assessment Outcome: No Partner Banks Currently Eligible")) &&
        (hasApplicantSummary || hasTable))
 
-    if (!isEligibilityAssessment) return null
+    // Also detect natural conversational ineligibility messages or early definitive policy rejections
+    const isConversationalIneligibility =
+      /(?:currently\s+not\s+eligible|not\s+eligible\s+for\s+(?:a\s+)?(?:personal\s+)?loan|policies\s+(?:do\s+not|may\s+not)\s+support|do\s+not\s+meet\s+(?:the\s+)?(?:eligibility|criteria)|ineligible\s+for\s+personal\s+loans?|statutory\s+age\s+criteria)/i.test(content) &&
+      !/(?:\?|please\s+provide|what\s+is\s+your|could\s+you\s+share)/i.test(content)
+
+    if (!isEligibilityAssessment && !isConversationalIneligibility) return null
 
     // Check if it's a warning / error / ineligible result
     const isWarningOrError =
+      isConversationalIneligibility ||
       content.includes("No Partner Banks Currently Eligible") ||
       content.includes("Policy Criteria Not Met") ||
       content.includes("❌ NOT ELIGIBLE") ||

@@ -3141,6 +3141,9 @@ body:has(.chat-page) {
     background-color: #f0fdf4 !important; /* light-green background */
     border: 1px solid #86efac !important;
     border-top: 3.5px solid #10b981 !important;
+    border-radius: 14px;
+    padding: 1.25rem 1.4rem;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.08);
     color: #0f172a;
 }
 
@@ -3157,6 +3160,9 @@ body:has(.chat-page) {
     background-color: #fef2f2 !important; /* light-red background */
     border: 1px solid #fca5a5 !important;
     border-top: 3.5px solid #ef4444 !important;
+    border-radius: 14px;
+    padding: 1.25rem 1.4rem;
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.08);
     color: #0f172a;
 }
 
@@ -3441,10 +3447,19 @@ body:has(.chat-page) {
 }
 
 .eligibility-dashboard.eligibility-card {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
+    background-color: #f0fdf4 !important; /* light-green background card */
+    border: 1px solid #86efac !important;
+    border-top: 3.5px solid #10b981 !important;
+    border-radius: 14px;
+    padding: 1.25rem 1.4rem !important;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.08) !important;
+}
+
+[data-bs-theme="dark"] .eligibility-dashboard.eligibility-card {
+    background-color: rgba(16, 185, 129, 0.12) !important;
+    border: 1px solid rgba(16, 185, 129, 0.35) !important;
+    border-top: 3.5px solid #10b981 !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
 }
 
 .eligibility-dashboard .eligibility-card-banner {

@@ -2309,35 +2309,6 @@ async function executeCheckLoanEligibility(
       (eligibilitySession as any).in_eligibility_flow)
   );
 
-  const hasProfileData =
-    /(?:cibil|credit\s*score|salary|income|lakh|lac|emi|age|tenure|year|month|\b\d{3,7}\b)/i.test(userMessage);
-
-  // Resume or acknowledgment during active flow (only if no profile data in text)
-  if (
-    isEligibleFlowActive &&
-    !hasProfileData &&
-    (args?.resume ||
-      /^(ok|okay|got\s*it|understood|cool|sure|great|fine|thanks|thank\s*you|continue|let['’]?s\s*continue|proceed|next|resume|go\s*ahead|yes)\b/i.test(
-        userMessage.trim()
-      ))
-  ) {
-    const nextField =
-      eligibilitySession.expectedField ||
-      (eligibilitySession.missingFields && eligibilitySession.missingFields[0]) ||
-      "monthlyIncome";
-    const question = await generateDynamicSingleQuestionWithLLM(
-      nextField,
-      eligibilitySession.applicant || {},
-      userMessage,
-      modelOverride,
-      undefined,
-      conversationHistory
-    );
-    return {
-      reply: question,
-    };
-  }
-
   const extractedFromMsg = extractApplicantFromText(userMessage);
 
   const syntheticClassification: IntentClassificationResult = {

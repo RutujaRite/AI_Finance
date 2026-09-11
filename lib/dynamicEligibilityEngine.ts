@@ -334,7 +334,7 @@ export interface SideQuestionResult {
   answer?: string;
 }
 
-export function detectAndAnswerSideQuestion(message: string): SideQuestionResult {
+export function detectAndAnswerSideQuestion(message: string, expectedField?: string): SideQuestionResult {
   const norm = message.toLowerCase().trim();
 
   // CIBIL score inquiry / impact
@@ -513,6 +513,62 @@ export function detectAndAnswerSideQuestion(message: string): SideQuestionResult
       topic: "hesitation",
       answer: "I completely understand. We only use these details to check partner bank policies and ensure an accurate eligibility assessment without hard credit inquiries.",
     };
+  }
+
+  // Generic "why" or "what" contextual resolution using expectedField
+  if (
+    /^(?:why\??|why\s+(?:is\s+this|do\s+you\s+need|ask\s+for|require)?\s*(?:this|that|it)?\??|what\??|what\s+do\s+you\s+mean\??|why\s+though\??|why\s+so\??|why\s+this\??)$/i.test(norm) ||
+    /^(?:why|what|explain)\b/i.test(norm)
+  ) {
+    if (expectedField === "companyName") {
+      return {
+        isQuestion: true,
+        topic: "why_company",
+        answer: "Partner banks categorize employers into company tiers (Super Cat A, Cat A, Elite, etc.) which directly determines your interest rate and maximum loan limit.",
+      };
+    }
+    if (expectedField === "monthlyIncome") {
+      return {
+        isQuestion: true,
+        topic: "why_salary",
+        answer: "Your take-home salary determines your maximum borrowing limit and ensures loan EMIs remain within partner banks' permissible FOIR caps (50%–70%).",
+      };
+    }
+    if (expectedField === "loanAmount") {
+      return {
+        isQuestion: true,
+        topic: "why_amount",
+        answer: "Your requested loan amount helps identify which partner banks can fulfill your borrowing requirement within their minimum and maximum policy caps.",
+      };
+    }
+    if (expectedField === "tenureMonths") {
+      return {
+        isQuestion: true,
+        topic: "why_tenure",
+        answer: "Your preferred repayment tenure determines your estimated monthly EMI and ensures the loan duration conforms to partner banks' policy limits.",
+      };
+    }
+    if (expectedField === "cibil") {
+      return {
+        isQuestion: true,
+        topic: "why_cibil",
+        answer: "Partner banks evaluate your CIBIL score to assess credit history and determine approval odds and interest rates. A soft check here won't impact your score.",
+      };
+    }
+    if (expectedField === "existingEmi") {
+      return {
+        isQuestion: true,
+        topic: "why_emi",
+        answer: "Partner banks evaluate ongoing monthly EMIs to calculate your Fixed Obligation to Income Ratio (FOIR) and ensure total monthly payments stay within 50%–70% of salary.",
+      };
+    }
+    if (expectedField === "age") {
+      return {
+        isQuestion: true,
+        topic: "why_age",
+        answer: "Partner banks use applicant age to verify legal eligibility (typically 21 to 60 years) and determine your maximum allowable repayment tenure.",
+      };
+    }
   }
 
   // General question detection (question mark or question words)
@@ -778,6 +834,14 @@ export function isFinancialOrProfileInput(text: string): boolean {
   if (!text) return false;
   const clean = text.trim().toLowerCase();
 
+  // Phrases with take-home, in-hand, per month, or direct salary/income statements
+  if (
+    /^(?:my\s+)?(?:monthly\s+)?(?:take\s*home|in\s*hand|salary|income|nmi|nth)(?:\s+is)?(?:\s*[:=-])?\s*(?:rs\.?|₹)?\s*\d+/i.test(clean) ||
+    /(?:take\s*home|in\s*hand|per\s*month|\/mo)\b/i.test(clean)
+  ) {
+    return true;
+  }
+
   // Salary, loan amount, or currency figures (e.g. "75000", "75k", "0.75 lakh", "5L", "₹500000", "500000", "5 lakhs", "0rs", "0")
   if (/^(?:rs\.?|₹)?\s*\d+(?:,\d+)*(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr|crores?)?(?:\s*(?:per\s*month|\/mo|salary|income|loan))?$/i.test(clean)) {
     return true;
@@ -830,7 +894,9 @@ export function extractCompanyCandidateFromText(text: string): string | undefine
   }
 
   // 2. Delimited segments (comma, semicolon, pipe, newline)
-  const segments = raw.split(/[,;|\n]+/).map((s) => s.trim()).filter(Boolean);
+  // Protect number commas like 95,000 from splitting
+  const unformattedNumberText = raw.replace(/(\d),(\d)/g, "$1$2");
+  const segments = unformattedNumberText.split(/[,;|\n]+/).map((s) => s.trim()).filter(Boolean);
   if (segments.length > 1) {
     for (const seg of segments) {
       const cleanSeg = seg.replace(/^(?:at|in|with)\s+/i, "").trim();
@@ -1337,7 +1403,7 @@ export function extractApplicantDetails(
   const targetExpectedField = missingContext.length > 0 ? missingContext[0] : undefined;
 
   // 0. Detect side questions mid-flow and save for the response generator
-  const sideQ = detectAndAnswerSideQuestion(text);
+  const sideQ = detectAndAnswerSideQuestion(text, targetExpectedField);
   if (sideQ.isQuestion && sideQ.answer) {
     applicant._lastSideQuestion = sideQ.answer;
   } else {
@@ -1437,6 +1503,89 @@ export function extractApplicantDetails(
 
   // 3. Extract any secondary parameters provided in the same message, preserving existing values
   extractSecondaryParameters(applicant, text, lower, effectiveTarget, llmExtracted);
+
+  return applicant;
+}
+
+/**
+ * Detects whether the user is confirming or agreeing to proceed.
+ */
+export function isConfirmationMessage(text: string): boolean {
+  const norm = String(text || "").trim().toLowerCase();
+  return /^(?:ok|okay|sure|proceed|yes|yep|yeah|continue|go\s*ahead|all\s*good|fine|understood|got\s*it|confirm|sounds\s*good|let['’]?s\s*continue|next)\b/i.test(norm);
+}
+
+/**
+ * Analyzes the full multi-turn conversation history across all turns and the current user message,
+ * extracting and merging all known applicant details, respecting chronological corrections,
+ * handling employment status and credit history, and guaranteeing no already-provided information is lost or re-asked.
+ */
+export function consolidateApplicantProfileFromHistory(
+  conversationHistory: Array<{ role: string; content: string }> | undefined,
+  currentMessage: string,
+  existingApplicant?: ApplicantProfile,
+  currentExtracted?: any
+): ApplicantProfile {
+  let applicant: ApplicantProfile = {
+    loanType: "Personal Loan",
+    ...(existingApplicant || {}),
+  };
+
+  // Collect user messages in chronological order
+  const userMessages: string[] = [];
+  if (conversationHistory && conversationHistory.length > 0) {
+    for (const turn of conversationHistory) {
+      if ((turn.role === "user" || turn.role === "human") && turn.content && turn.content.trim()) {
+        userMessages.push(turn.content.trim());
+      }
+    }
+  }
+
+  const trimmedCurrent = String(currentMessage || "").trim();
+  if (trimmedCurrent) {
+    const lastUserMsg = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
+    if (lastUserMsg !== trimmedCurrent) {
+      userMessages.push(trimmedCurrent);
+    }
+  }
+
+  // Iterate chronologically through user messages
+  for (let i = 0; i < userMessages.length; i++) {
+    const msg = userMessages[i];
+    const isLatest = i === userMessages.length - 1;
+    const extractedForTurn = isLatest ? currentExtracted : undefined;
+    const lower = msg.toLowerCase().trim();
+
+    // 1. Employment type checks
+    if (
+      /(?:not\s*working(?:\s*anywhere)?|don['’]?t\s*work|have\s*no\s*job|without\s*a?\s*job|jobless|unemployed|un-employed|lost\s*my\s*job|laid\s*off|no\s*employment)/i.test(lower)
+    ) {
+      applicant.employmentType = "Unemployed";
+      applicant.monthlyIncome = 0;
+      applicant.companyName = undefined;
+    } else if (/\b(?:student|in\s*college|studying)\b/i.test(lower)) {
+      applicant.employmentType = "Student";
+      applicant.monthlyIncome = 0;
+      applicant.companyName = undefined;
+    } else if (/\b(?:self[\s-]*employed|business|proprietor|partner|freelancer?|doctor|trader|consultant)\b/i.test(lower)) {
+      applicant.employmentType = "Self-Employed";
+      applicant.companyName = "Self-Employed";
+    }
+
+    // 2. Company name candidate extraction
+    if (!applicant.companyName || messageMentionsField("companyName", msg)) {
+      if (applicant.employmentType !== "Unemployed" && applicant.employmentType !== "Student" && applicant.employmentType !== "Self-Employed") {
+        const compCandidate = extractCompanyCandidateFromText(msg);
+        if (compCandidate && !isInvalidCompanyName(compCandidate) && !isFinancialOrProfileInput(compCandidate)) {
+          applicant.companyName = compCandidate;
+          if (!applicant.employmentType) applicant.employmentType = "Salaried";
+        }
+      }
+    }
+
+    // 3. Extract details and handle corrections
+    applicant = extractApplicantDetails(msg, applicant, [], extractedForTurn);
+  }
 
   return applicant;
 }
@@ -2886,7 +3035,7 @@ export async function processDynamicEligibility(
     /(?:manager|contact|branch\s*head|\basm\b|\brsm\b)/i.test(userMessage) ||
     (/(?:policy|guidelines?|rules?|criteria|cutoff)\s*(?:of|for)?\s+[A-Za-z0-9&'.-]+\s*bank/i.test(userMessage) && !/my|i|eligible|can\s*i/i.test(userMessage));
 
-  const directSideQ = detectAndAnswerSideQuestion(userMessage);
+  const directSideQ = detectAndAnswerSideQuestion(userMessage, existingState?.expectedField);
   if (isFlowActive && !hasProfileInput && intentResult.intent !== "LOAN_ELIGIBILITY" && !directSideQ.isQuestion && isExplicitExternalToolQuery) {
     return {
       isComplete: false,
@@ -2897,114 +3046,105 @@ export async function processDynamicEligibility(
     };
   }
 
-  // 2. Starting fresh or new personal loan inquiry:
-  // Every new chat or new loan inquiry starts completely fresh.
-  // Never read answers or profile data from previous chats or the database users table.
-  if (isNewLoanIntent && !isFlowActive) {
-    await clearEligibilityState(conversationId);
+  // 2. Consolidate applicant details across the full conversation history and current message
+  let applicant = consolidateApplicantProfileFromHistory(
+    conversationHistory,
+    userMessage,
+    existingState?.applicant,
+    intentResult?.extracted
+  );
 
-    const freshApplicant: ApplicantProfile = {
-      loanType: intentResult.loanType || "Personal Loan",
+  if (intentResult.loanType) {
+    applicant.loanType = intentResult.loanType;
+  }
+
+  // If applicant provided a company candidate, resolve against partner bank records
+  if (applicant.companyName && applicant.companyName !== "Self-Employed") {
+    const resolved = await resolveCompanyCategories(applicant.companyName);
+    applicant.companyName = resolved.matchedName || applicant.companyName;
+    if (!applicant.employmentType) applicant.employmentType = "Salaried";
+  }
+
+  // 3. Early definitive ineligibility check
+  const definitiveCheck = checkDefinitiveIneligibility(applicant);
+  if (definitiveCheck.isIneligible) {
+    const explanation = await generateDefinitiveIneligibilityExplanationWithLLM(
+      applicant,
+      definitiveCheck,
+      userMessage,
+      modelOverride,
+      conversationHistory
+    );
+    await clearEligibilityState(conversationId);
+    return {
+      isComplete: true,
+      missingFields: [],
+      applicant,
+      formattedMarkdown: explanation,
+      nextQuestion: explanation,
     };
+  }
 
-    // Check if the user also explicitly provided their employer in this opening turn
-    let candidateCompany =
-      intentResult.extracted?.companyName && !isInvalidCompanyName(intentResult.extracted.companyName) && !isFinancialOrProfileInput(intentResult.extracted.companyName)
-        ? intentResult.extracted.companyName
-        : extractCompanyCandidateFromText(userMessage);
+  // 4. If company is not resolved for salaried applicants, ask for companyName first
+  const isNonSalaried =
+    applicant.employmentType === "Unemployed" ||
+    applicant.employmentType === "Student" ||
+    applicant.employmentType === "Self-Employed";
 
-    if (candidateCompany && !isInvalidCompanyName(candidateCompany) && !isFinancialOrProfileInput(candidateCompany)) {
-      const resolved = await resolveCompanyCategories(candidateCompany);
-      freshApplicant.companyName = resolved.matchedName || candidateCompany;
+  if (!applicant.companyName && !isNonSalaried) {
+    const sideQ = detectAndAnswerSideQuestion(userMessage, "companyName");
+    if (sideQ.isQuestion && sideQ.answer) {
+      applicant._lastSideQuestion = sideQ.answer;
     }
+    const nextQuestion = await generateDynamicSingleQuestionWithLLM(
+      "companyName",
+      applicant,
+      userMessage,
+      modelOverride,
+      contextNotes,
+      conversationHistory
+    );
+    conversationHistory.push({ role: "assistant", content: nextQuestion });
+    await saveEligibilityState(conversationId, {
+      applicant,
+      expectedField: "companyName",
+      missingFields: ["companyName"],
+      updatedAt: Date.now(),
+      contextNotes,
+      conversationHistory: conversationHistory.slice(-10),
+    });
 
-    // Extract any other numbers in the message if explicitly given
-    const updated = extractApplicantDetails(userMessage, freshApplicant, [], intentResult?.extracted);
-    if (!freshApplicant.companyName && !updated.companyName) {
-      updated.companyName = undefined;
-    }
+    return {
+      isComplete: false,
+      missingFields: ["companyName"],
+      nextQuestion,
+      applicant,
+      formattedMarkdown: nextQuestion,
+    };
+  }
 
-    // Early definitive ineligibility check right after extracting details
-    const earlyDefinitive = checkDefinitiveIneligibility(updated);
-    if (earlyDefinitive.isIneligible) {
-      const explanation = await generateDefinitiveIneligibilityExplanationWithLLM(
-        updated,
-        earlyDefinitive,
-        userMessage,
-        modelOverride,
-        conversationHistory
-      );
-      await clearEligibilityState(conversationId);
-      return {
-        isComplete: true,
-        missingFields: [],
-        applicant: updated,
-        formattedMarkdown: explanation,
-        nextQuestion: explanation,
-      };
-    }
+  // 5. Dynamically determine required fields from active bank Master Policy rules
+  const companyMatch = applicant.companyName ? await resolveCompanyCategories(applicant.companyName) : undefined;
+  const missingFields = getRequiredPolicyFields(applicant, companyMatch, applicant.loanType || "Personal Loan");
 
-    // Step 3a: If company name is not yet resolved, ASK FOR COMPANY NAME FIRST!
-    const isNonSalaried =
-      updated.employmentType === "Unemployed" ||
-      updated.employmentType === "Student" ||
-      updated.employmentType === "Self-Employed";
-    if (!updated.companyName && !isNonSalaried) {
-      const nextQuestion = await generateDynamicSingleQuestionWithLLM("companyName", updated, userMessage, modelOverride, contextNotes, conversationHistory);
-      conversationHistory.push({ role: "assistant", content: nextQuestion });
-      await saveEligibilityState(conversationId, {
-        applicant: updated,
-        expectedField: "companyName",
-        missingFields: ["companyName"],
-        updatedAt: Date.now(),
-        contextNotes,
-        conversationHistory: conversationHistory.slice(-10),
-      });
+  // 6. If all parameters collected, evaluate independently against all banks!
+  if (missingFields.length === 0) {
+    const evalResult = await evaluateApplicantAgainstAllBanks(applicant, applicant.loanType || "Personal Loan");
+    const formattedMarkdown = formatDynamicEligibilityReport(applicant, evalResult);
 
-      return {
-        isComplete: false,
-        missingFields: ["companyName"],
-        nextQuestion,
-        applicant: updated,
-        formattedMarkdown: nextQuestion,
-      };
-    }
-
-    // Step 3b: Company is resolved -> dynamically determine required fields from Master Policies
-    const companyMatch = await resolveCompanyCategories(updated.companyName || "");
-    const missingFields = getRequiredPolicyFields(updated, companyMatch, updated.loanType || "Personal Loan");
-
-    if (missingFields.length > 0) {
-      const nextField = missingFields[0];
-      const nextQuestion = await generateDynamicSingleQuestionWithLLM(nextField, updated, userMessage, modelOverride, contextNotes, conversationHistory);
-      conversationHistory.push({ role: "assistant", content: nextQuestion });
-      await saveEligibilityState(conversationId, {
-        applicant: updated,
-        expectedField: nextField,
-        missingFields,
-        updatedAt: Date.now(),
-        contextNotes,
-        conversationHistory: conversationHistory.slice(-10),
-      });
-
-      return {
-        isComplete: false,
-        missingFields,
-        nextQuestion,
-        applicant: updated,
-        formattedMarkdown: nextQuestion,
-      };
-    }
-
-    // All fields provided in opening turn -> evaluate!
-    const evalResult = await evaluateApplicantAgainstAllBanks(updated, updated.loanType || "Personal Loan");
-    const formattedMarkdown = formatDynamicEligibilityReport(updated, evalResult);
-    await clearEligibilityState(conversationId);
+    await saveEligibilityState(conversationId, {
+      applicant,
+      expectedField: "chosenBank",
+      missingFields: [],
+      updatedAt: Date.now(),
+      in_eligibility_flow: false,
+      eligible_banks: (evalResult.eligibleBanks || []).map((b) => b.bankName),
+    } as any);
 
     return {
       isComplete: true,
       missingFields: [],
-      applicant: updated,
+      applicant,
       companyMatch: evalResult.companyMatch,
       evaluations: evalResult.evaluations,
       eligibleBanks: evalResult.eligibleBanks,
@@ -3015,185 +3155,39 @@ export async function processDynamicEligibility(
     };
   }
 
-  // 3. Continuing an ongoing eligibility flow
-  let applicant: ApplicantProfile = existingState?.applicant ? { ...existingState.applicant } : { loanType: "Personal Loan" };
-  let expectedField = existingState?.expectedField;
-
-  // If companyName is still expected:
-  if (expectedField === "companyName" || !applicant.companyName) {
-    const trimmedInput = userMessage.trim();
-    const lowerTrim = trimmedInput.toLowerCase();
-
-    // Check if user is jobless / unemployed
-    if (
-      intentResult?.extracted?.employmentType === "Unemployed" ||
-      /^(?:i\s+am\s+|i\s*m\s+)?(?:jobless|unemployed|no\s*job|without\s*(?:a\s*)?job|laid\s*off|not\s*working(?:\s*anywhere)?|lost\s*(?:my\s*)?job)\b/i.test(lowerTrim) ||
-      /(?:not\s*working(?:\s*anywhere)?|don['’]?t\s*work|have\s*no\s*job|without\s*a?\s*job|jobless|unemployed|un-employed|lost\s*my\s*job|laid\s*off|no\s*employment)/i.test(lowerTrim)
-    ) {
-      applicant.employmentType = "Unemployed";
-      applicant.companyName = undefined;
-      applicant.monthlyIncome = 0;
-      expectedField = undefined;
-    } else if (
-      intentResult?.extracted?.employmentType === "Student" ||
-      /^(?:i\s+am\s+|i\s*m\s+)?(?:student|in\s*college|studying)\b/i.test(lowerTrim)
-    ) {
-      applicant.employmentType = "Student";
-      applicant.companyName = undefined;
-      applicant.monthlyIncome = 0;
-      expectedField = undefined;
-    } else if (
-      intentResult?.extracted?.employmentType === "Self-Employed" ||
-      /^(?:i\s+am\s+|i\s*m\s+)?(?:self[\s-]*employed|business|proprietor|partner|freelancer?|doctor|trader|consultant)\b/i.test(lowerTrim)
-    ) {
-      applicant.employmentType = "Self-Employed";
-      applicant.companyName = "Self-Employed";
-      expectedField = undefined;
-    } else if (isFinancialOrProfileInput(trimmedInput)) {
-      applicant = extractApplicantDetails(userMessage, applicant, [], intentResult?.extracted);
-      applicant.companyName = undefined;
-      const question = await generateDynamicSingleQuestionWithLLM("companyName", applicant, userMessage, modelOverride, contextNotes, conversationHistory);
-      conversationHistory.push({ role: "assistant", content: question });
-      await saveEligibilityState(conversationId, {
-        applicant,
-        expectedField: "companyName",
-        missingFields: ["companyName"],
-        updatedAt: Date.now(),
-        contextNotes,
-        conversationHistory: conversationHistory.slice(-10),
-      });
-      return {
-        isComplete: false,
-        missingFields: ["companyName"],
-        nextQuestion: question,
-        applicant,
-        formattedMarkdown: question,
-      };
-    } else if (isInvalidCompanyName(trimmedInput)) {
-      applicant.companyName = undefined;
-      const question = await generateDynamicSingleQuestionWithLLM("companyName", applicant, userMessage, modelOverride, contextNotes, conversationHistory);
-      return {
-        isComplete: false,
-        missingFields: ["companyName"],
-        nextQuestion: question,
-        applicant,
-        formattedMarkdown: question,
-      };
-    } else {
-      // Resolve company name dynamically from company_records or as unlisted corporate
-      const cleanCandidate =
-        (intentResult?.extracted?.companyName && !isInvalidCompanyName(intentResult.extracted.companyName) && !isFinancialOrProfileInput(intentResult.extracted.companyName))
-          ? intentResult.extracted.companyName
-          : extractCompanyCandidateFromText(userMessage) ||
-            trimmedInput
-              .replace(/^(?:i\s+)?(?:work\s+at|works\s+at|working\s+at|employed\s+at|company\s+is|employer\s+is|at)\s+/i, "")
-              .trim();
-
-      const resolved = await resolveCompanyCategories(cleanCandidate);
-      applicant.companyName = resolved.matchedName || cleanCandidate;
-      if (!applicant.employmentType) applicant.employmentType = "Salaried";
-      expectedField = undefined; // Company resolved successfully!
-    }
+  // 7. If fields are genuinely missing, ask ONLY the single next missing field
+  const nextField = missingFields[0];
+  const sideQ = detectAndAnswerSideQuestion(userMessage, nextField);
+  if (sideQ.isQuestion && sideQ.answer) {
+    applicant._lastSideQuestion = sideQ.answer;
   }
 
-  // 4. Extract parameters using expectedField and intentResult.extracted
-  const verifiedCompany = applicant.companyName;
-  const updatedApplicant = extractApplicantDetails(
-    userMessage,
+  const nextQuestion = await generateDynamicSingleQuestionWithLLM(
+    nextField,
     applicant,
-    expectedField ? [expectedField] : [],
-    intentResult?.extracted
+    userMessage,
+    modelOverride,
+    contextNotes,
+    conversationHistory
   );
-  if (verifiedCompany && (!updatedApplicant.companyName || updatedApplicant.companyName === verifiedCompany)) {
-    updatedApplicant.companyName = verifiedCompany;
-  } else if (updatedApplicant.companyName && updatedApplicant.companyName !== verifiedCompany) {
-    const resolved = await resolveCompanyCategories(updatedApplicant.companyName);
-    if (resolved.isFound) {
-      updatedApplicant.companyName = resolved.matchedName || updatedApplicant.companyName;
-    }
-  }
 
-  // 4b. Immediate check for definitive ineligibility!
-  const definitiveCheck = checkDefinitiveIneligibility(updatedApplicant);
-  if (definitiveCheck.isIneligible) {
-    const explanation = await generateDefinitiveIneligibilityExplanationWithLLM(
-      updatedApplicant,
-      definitiveCheck,
-      userMessage,
-      modelOverride,
-      conversationHistory
-    );
-    await clearEligibilityState(conversationId);
-    return {
-      isComplete: true,
-      missingFields: [],
-      applicant: updatedApplicant,
-      formattedMarkdown: explanation,
-      nextQuestion: explanation,
-    };
-  }
+  conversationHistory.push({ role: "assistant", content: nextQuestion });
 
-  // 5. Dynamically determine required fields from active bank Master Policy rules
-  const companyMatch = await resolveCompanyCategories(updatedApplicant.companyName || "");
-  const missingFields = getRequiredPolicyFields(updatedApplicant, companyMatch, updatedApplicant.loanType || "Personal Loan");
-
-  // 6. If fields are missing, ask ONLY the single next question with LLM
-  if (missingFields.length > 0) {
-    const nextField = missingFields[0];
-    const nextQuestion = await generateDynamicSingleQuestionWithLLM(
-      nextField,
-      updatedApplicant,
-      userMessage,
-      modelOverride,
-      contextNotes,
-      conversationHistory
-    );
-
-    conversationHistory.push({ role: "assistant", content: nextQuestion });
-
-    await saveEligibilityState(conversationId, {
-      applicant: updatedApplicant,
-      expectedField: nextField,
-      missingFields,
-      updatedAt: Date.now(),
-      contextNotes,
-      conversationHistory: conversationHistory.slice(-10),
-    });
-
-    return {
-      isComplete: false,
-      missingFields,
-      nextQuestion,
-      applicant: updatedApplicant,
-      formattedMarkdown: nextQuestion,
-    };
-  }
-
-  // 7. All required policy parameters collected! Independently evaluate every active bank
-  const evalResult = await evaluateApplicantAgainstAllBanks(updatedApplicant, updatedApplicant.loanType || "Personal Loan");
-  const formattedMarkdown = formatDynamicEligibilityReport(updatedApplicant, evalResult);
-
-  // Save completed session state so subsequent profile corrections preserve valid profile data
   await saveEligibilityState(conversationId, {
-    applicant: updatedApplicant,
-    expectedField: "chosenBank",
-    missingFields: [],
+    applicant,
+    expectedField: nextField,
+    missingFields,
     updatedAt: Date.now(),
-    in_eligibility_flow: false,
-    eligible_banks: (evalResult.eligibleBanks || []).map((b) => b.bankName),
-  } as any);
+    contextNotes,
+    conversationHistory: conversationHistory.slice(-10),
+  });
 
   return {
-    isComplete: true,
-    missingFields: [],
-    applicant: updatedApplicant,
-    companyMatch: evalResult.companyMatch,
-    evaluations: evalResult.evaluations,
-    eligibleBanks: evalResult.eligibleBanks,
-    ineligibleBanks: evalResult.ineligibleBanks,
-    recommendedBank: evalResult.recommendedBank,
-    recommendationReason: evalResult.recommendationReason,
-    formattedMarkdown,
+    isComplete: false,
+    missingFields,
+    nextQuestion,
+    applicant,
+    formattedMarkdown: nextQuestion,
   };
 }
 
