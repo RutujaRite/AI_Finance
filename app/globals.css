@@ -3440,6 +3440,21 @@ body:has(.chat-page) {
     gap: 1rem;
 }
 
+.eligibility-dashboard.eligibility-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+.eligibility-dashboard .eligibility-card-banner {
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+}
+
 /* 1. Header Banner */
 .eligibility-dashboard-banner {
     display: flex;
@@ -3484,28 +3499,37 @@ body:has(.chat-page) {
 }
 
 .eligibility-dashboard .btn-download-report {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.82rem;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    background-color: #ffffff;
-    color: #0f766e;
-    border: 1.5px solid #0d9488;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    transition: all 0.15s ease-in-out;
-    white-space: nowrap;
-    text-decoration: none;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.45rem !important;
+    padding: 0.5rem 1rem !important;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    background-color: #ffffff !important;
+    color: #0f766e !important;
+    border: 1.5px solid #0d9488 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.15s ease-in-out !important;
+    white-space: nowrap !important;
+    text-decoration: none !important;
 }
 
 .eligibility-dashboard .btn-download-report:hover {
-    background-color: #f0fdfa;
-    border-color: #0f766e;
-    color: #115e59;
-    box-shadow: 0 2px 4px rgba(13, 148, 136, 0.12);
+    background-color: #f0fdfa !important;
+    border-color: #0f766e !important;
+    color: #115e59 !important;
+    box-shadow: 0 2px 4px rgba(13, 148, 136, 0.12) !important;
+}
+
+.eligibility-dashboard .btn-download-report i {
+    color: #0f766e !important;
+    font-size: 0.9rem !important;
+}
+
+.eligibility-dashboard .btn-download-report:hover i {
+    color: #115e59 !important;
 }
 
 /* 2. Applicant Summary Card */

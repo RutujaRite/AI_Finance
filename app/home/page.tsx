@@ -1170,10 +1170,10 @@ export default function HomePage() {
       const badgeText = getBadgeText(topBankName)
 
       return `
-        <div class="eligibility-dashboard" data-message-id="${msgId}">
+        <div class="eligibility-dashboard eligibility-card eligibility-card-success" data-message-id="${msgId}">
           <!-- 1. Header Confirmation Banner -->
-          <div class="eligibility-dashboard-banner">
-            <div class="eligibility-dashboard-banner-left">
+          <div class="eligibility-dashboard-banner eligibility-card-banner">
+            <div class="eligibility-dashboard-banner-left eligibility-card-banner-left">
               <div class="eligibility-dashboard-banner-icon">
                 <i class="bi bi-check-circle-fill"></i>
               </div>
