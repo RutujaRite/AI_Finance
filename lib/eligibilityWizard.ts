@@ -23,10 +23,12 @@ import { resolveCompanyCategories } from "@/lib/companyCategoryResolver";
  */
 export function isLoanEligibilityIntent(text: string, preClassifiedIntent?: any): boolean {
   if (preClassifiedIntent?.intent) {
-    return preClassifiedIntent.intent === "LOAN_ELIGIBILITY" || preClassifiedIntent.intent === "PERSONAL_LOAN_REQUEST";
+    return (
+      preClassifiedIntent.intent === "LOAN_ELIGIBILITY" ||
+      (preClassifiedIntent as any).intent === "PERSONAL_LOAN_REQUEST"
+    );
   }
-  const norm = String(text || "").toLowerCase();
-  return /eligib|loan|borrow|need.*money|apply/i.test(norm) && !/manager|phone|email/i.test(norm);
+  return detectLoanIntent(text, preClassifiedIntent).isLoanIntent;
 }
 
 

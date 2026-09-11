@@ -175,17 +175,28 @@ export function detectLoanIntent(
   else if (/car\s*loan|auto\s*loan/i.test(norm)) loanType = "Auto Loan";
   else if (/education\s*loan/i.test(norm)) loanType = "Education Loan";
 
-  // Check natural user phrases expressing loan intent
+  // Bank policy inquiries asking for specific institution guidelines/rules/criteria/cutoffs
+  const isBankPolicy =
+    /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata|idfc|indusind|bandhan|yes\s*bank|piramal|poonawalla|chola|smfg|finnable|fibe|sbm|utkarsh|bank)\s*(?:'s)?\s*(?:policy|guidelines?|rules?|criteria|cutoff|cut-off|foir\s*norm)/i.test(norm) ||
+    (/(?:policy|guidelines?|rules?|cut-off|cutoff)\b/i.test(norm) && /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata|idfc|indusind|bandhan|yes\s*bank|piramal|poonawalla|chola|smfg|finnable|fibe|sbm|utkarsh)/i.test(norm));
+
+  // Check natural user phrases expressing loan intent or inquiring about eligibility across banks
   const isNaturalLoanPhrase =
     /(?:i\s*(?:need|want|require|wish|am\s*looking\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
     /(?:apply\s*(?:for)?\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
     /(?:can\s*i\s*(?:get|have|avail|take|apply\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
     /(?:can\s*i\s*get\s*(?:a\s*)?loan)/i.test(norm) ||
+    /(?:(?:what|which)\s*banks?\s*(?:am\s*i|can\s*i|could\s*i|would\s*i|should\s*i)\s*(?:be\s*)?(?:eligible|qualif\w*|get|apply))/i.test(norm) ||
+    /(?:(?:which|what)\s*banks?\s*(?:can\s*i|could\s*i|will|would|do\s*i)\s*(?:get|take|avail|receive|apply\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
+    /(?:(?:which|what)\s*banks?\s*(?:is|are|would\s*be)\s*(?:best|good|ideal|suitable|better|recommended)\s*for\s*(?:my\s*)?(?:personal\s*)?loan)/i.test(norm) ||
+    /(?:(?:am\s*i|is\s*it\s*possible\s*for\s*me\s*to\s*be|could\s*i\s*be)\s*eligible\s*(?:for\s*(?:a\s*)?(?:personal\s*)?loan)?)/i.test(norm) ||
+    /(?:(?:which|what)\s*banks?\s*will\s*(?:give|provide|grant|approve|sanction)\s*(?:me\s*)?(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
+    /(?:(?:where|how)\s*can\s*i\s*(?:get|apply\s*for|avail|take)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
+    /(?:(?:my\s*loan\s*options|options\s*for\s*(?:my\s*)?loan|what\s*are\s*my\s*loan\s*options))/i.test(norm) ||
+    /(?:(?:do\s*i\s*qualify\s*for\s*(?:a\s*)?(?:personal\s*)?loan))/i.test(norm) ||
     /(?:(?:need|want|require)\s*(?:rs\.?|₹)?\s*[\d,]+(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr)?\s*loan)/i.test(norm) ||
-    /^(?:i\s*need\s*a\s*loan|i\s*want\s*a\s*loan|can\s*i\s*get\s*a\s*loan|loan\s*chahiye|need\s*loan|get\s*me\s*a\s*loan)\b/i.test(norm);
-
-  const isBankPolicy =
-    /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata|idfc|indusind|bandhan|yes\s*bank|bank)\s*(?:'s)?\s*(?:policy|guidelines?|rules?|criteria|cutoff|cut-off)/i.test(norm);
+    /(?:(?:check|evaluate|calculate|test|find\s*out)\s*(?:my\s*)?(?:personal\s*)?(?:loan\s*)?eligib\w*)/i.test(norm) ||
+    /^(?:i\s*need\s*a\s*loan|i\s*want\s*a\s*loan|can\s*i\s*get\s*a\s*loan|loan\s*chahiye|need\s*loan|get\s*me\s*a\s*loan|looking\s*for\s*(?:a\s*)?loan)\b/i.test(norm);
 
   if (isNaturalLoanPhrase && !isBankPolicy) {
     return { isLoanIntent: true, loanType };
@@ -198,7 +209,7 @@ export function detectLoanIntent(
     return { isLoanIntent: isIntent, loanType: preClassifiedIntent.loanType || loanType };
   }
 
-  const isIntent = !isBankPolicy && /\b(?:loan|loans|borrow|borrowing|lending|financ(?:e|ing)|eligib)\b/i.test(norm);
+  const isIntent = !isBankPolicy && /\b(?:loan|loans|borrow|borrowing|lending|financ(?:e|ing)|eligib\w*)\b/i.test(norm);
 
   return { isLoanIntent: isIntent, loanType };
 }

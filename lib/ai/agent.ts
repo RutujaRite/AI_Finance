@@ -94,7 +94,7 @@ export const OPENROUTER_TOOLS = [
     function: {
       name: "check_loan_eligibility",
       description:
-        "Initiates, continues, or evaluates personal loan eligibility across all 23 partner banks using official Master Policy rules. Call when the user expresses loan intent naturally (e.g. 'I need a loan', 'I want a personal loan', 'I want to apply for a loan', 'Can I get a loan?', 'I need ₹5 lakh loan'), requests a personal loan, wants to check eligibility, or provides personal profile details (salary, loan amount, tenure, CIBIL, EMIs, age) to advance an assessment.",
+        "Initiates, continues, or evaluates personal loan eligibility across all partner banks using official Master Policy rules. Call whenever the user expresses loan intent naturally or asks about their eligibility across banks (e.g. 'What banks am I eligible for?', 'Which banks can I get a loan from?', 'Which bank is best for my loan?', 'Am I eligible for a loan?', 'Which banks will give me a loan?', 'I need a loan', 'I want a personal loan', 'I want to apply for a loan', 'Can I get a loan?', 'I need ₹5 lakh loan'), requests a personal loan, or provides personal profile details (salary, loan amount, tenure, CIBIL, EMIs, age) to advance an assessment.",
       parameters: {
         type: "object",
         properties: {
@@ -2596,7 +2596,7 @@ async function fallbackToolDispatcher(
     if (
       targetBank &&
       (classification.subIntent === "POLICY_INQUIRY" ||
-        /policy|cibil|cutoff|foir|interest|rate|multiplier|age|salary|tenure|rule|criteria|minimum|maximum|limit|band|document|doc|cat|category|tier/i.test(
+        /policy|guideline|guidelines|norm|cibil|cutoff|foir|interest|rate|multiplier|age|salary|tenure|rule|criteria|minimum|maximum|limit|band|document|doc|cat|category|tier/i.test(
           norm
         ))
     ) {
@@ -2631,16 +2631,9 @@ async function fallbackToolDispatcher(
       );
     }
 
-    // Natural loan intent phrases should route to check_loan_eligibility, NOT general question
-    const isNaturalLoanIntent =
-      /(?:i\s*(?:need|want|require|wish|am\s*looking\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
-      /(?:apply\s*(?:for)?\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
-      /(?:can\s*i\s*(?:get|have|avail|take|apply\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
-      /(?:can\s*i\s*get\s*(?:a\s*)?loan)/i.test(norm) ||
-      /(?:(?:need|want|require)\s*(?:rs\.?|₹)?\s*[\d,]+(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr)?\s*loan)/i.test(norm) ||
-      /^(?:i\s*need\s*a\s*loan|i\s*want\s*a\s*loan|can\s*i\s*get\s*a\s*loan|loan\s*chahiye|need\s*loan|get\s*me\s*a\s*loan|looking\s*for\s*(?:a\s*)?loan)\b/i.test(norm);
-
-    if (isNaturalLoanIntent && !/policy|guideline|cutoff/i.test(norm)) {
+    // Natural loan intent phrases and eligibility inquiries should route to check_loan_eligibility, NOT general question
+    const naturalLoanCheck = detectLoanIntent(userMessage, classification);
+    if (naturalLoanCheck.isLoanIntent) {
       return await dispatchToolCall(
         "check_loan_eligibility",
         classification.extracted || {},
@@ -2732,6 +2725,8 @@ export async function runCentralAgent(opts: {
   const { message, conversationId, model: requestedModel } = opts;
   const userMessage = String(message || "").trim();
 
+  const norm = userMessage.toLowerCase().replace(/\s+/g, " ").trim();
+
   // 1. Check if an eligibility session is active for this specific conversation
   const eligibilitySession = await getEligibilityState(conversationId);
   const isEligibleFlowActive = !!(
@@ -2763,7 +2758,7 @@ export async function runCentralAgent(opts: {
     `1. "calculate_emi": Use for monthly EMI calculations, interest payable, or installment questions.\n` +
     `2. "lookup_master_policy": Use for bank-specific policy questions (CIBIL cutoff, FOIR limits, salary criteria, tenure, multipliers) using that bank's official Master Policy .txt file. When asked for a bank policy, show a clean 2-column table UI (| Criteria | Details |) with 3 sections: 1) Loan products offered, 2) Eligibility criteria, 3) Important conditions. Show general policy-level values/ranges, mention when values vary by CAT, and never guess missing values (say "Not specified in the available policy."). Show detailed CAT rules only when specifically asked.\n` +
     `3. "search_company_category": Use when user asks about an employer or company category/tier listing (Super Cat A, Cat A, Elite, Diamond).\n` +
-    `4. "check_loan_eligibility": Use whenever user expresses loan intent naturally (e.g. "I need a loan", "I want a personal loan", "I want to apply for a loan", "Can I get a loan?", "I need ₹5 lakh loan"), requests a personal loan, checks eligibility, or provides profile details (salary, amount, tenure, cibil, emi, age). When loan intent is detected, start the eligibility flow and collect the required details.\n` +
+    `4. "check_loan_eligibility": Use whenever user expresses loan intent naturally or asks about their eligibility across banks (e.g. "What banks am I eligible for?", "Which banks can I get a loan from?", "Which bank is best for my loan?", "Am I eligible for a loan?", "Which banks will give me a loan?", "I need a loan", "I want a personal loan", "I want to apply for a loan", "Can I get a loan?", "I need ₹5 lakh loan"), requests a personal loan, checks eligibility, or provides profile details (salary, amount, tenure, cibil, emi, age). When loan intent or eligibility inquiry is detected, start the eligibility flow and collect the required details. Keep bank policy questions separate: specific inquiries asking for an official bank's policy rules (e.g. "What is HDFC bank policy?") must use "lookup_master_policy", NOT "check_loan_eligibility".\n` +
     `5. "update_applicant_profile": Use when the user explicitly wants to update, correct, or change a previously provided detail (e.g. "change salary to 1.2L", "update cibil to 780").\n` +
     `6. "answer_general_question": Use for general financial concepts (e.g. "What is FOIR?"), greetings (subType="GREETING"), small talk, or cancellation (subType="CANCEL_RESET").\n` +
     `7. "tavily_search": Use for live financial news, current market interest rate changes, or web searches.\n` +
@@ -2825,6 +2820,40 @@ export async function runCentralAgent(opts: {
         parsedArgs = {};
       }
 
+      const bankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|poonawalla|yes\s*bank|\byes\b|bandhan|chola|fibe|finnable|smfg|utkarsh|sbm|tata\s*capital|\btata\b(?!.*consultancy)/i.exec(
+        userMessage
+      );
+
+      // If model erroneously invoked general question on a user loan eligibility inquiry, redirect to check_loan_eligibility
+      if (toolName === "answer_general_question" && detectLoanIntent(userMessage).isLoanIntent) {
+        return await dispatchToolCall("check_loan_eligibility", parsedArgs, {
+          conversationId,
+          userMessage,
+          eligibilitySession,
+          isEligibleFlowActive,
+          modelOverride: requestedModel,
+        });
+      }
+
+      // If model erroneously invoked general question on a bank policy inquiry, redirect to lookup_master_policy
+      if (
+        toolName === "answer_general_question" &&
+        bankMatch &&
+        /policy|guideline|guidelines|rules?|criteria|cutoff|cut-off|foir|rate|cibil|salary|tenure/i.test(norm)
+      ) {
+        return await dispatchToolCall(
+          "lookup_master_policy",
+          { bankName: bankMatch[0], questionTopic: userMessage },
+          {
+            conversationId,
+            userMessage,
+            eligibilitySession,
+            isEligibleFlowActive,
+            modelOverride: requestedModel,
+          }
+        );
+      }
+
       return await dispatchToolCall(toolName, parsedArgs, {
         conversationId,
         userMessage,
@@ -2837,6 +2866,38 @@ export async function runCentralAgent(opts: {
     // Direct text reply from model
     const textContent = choice?.message?.content;
     if (typeof textContent === "string" && textContent.trim().length > 0) {
+      // If model generated direct text instead of calling check_loan_eligibility on a loan eligibility inquiry, start eligibility flow
+      if (detectLoanIntent(userMessage).isLoanIntent) {
+        return await dispatchToolCall("check_loan_eligibility", {}, {
+          conversationId,
+          userMessage,
+          eligibilitySession,
+          isEligibleFlowActive,
+          modelOverride: requestedModel,
+        });
+      }
+
+      // If model generated direct text instead of calling lookup_master_policy on a bank policy inquiry, lookup policy
+      const bankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|poonawalla|yes\s*bank|\byes\b|bandhan|chola|fibe|finnable|smfg|utkarsh|sbm|tata\s*capital|\btata\b(?!.*consultancy)/i.exec(
+        userMessage
+      );
+      if (
+        bankMatch &&
+        /policy|guideline|guidelines|rules?|criteria|cutoff|cut-off|foir|rate|cibil|salary|tenure/i.test(norm)
+      ) {
+        return await dispatchToolCall(
+          "lookup_master_policy",
+          { bankName: bankMatch[0], questionTopic: userMessage },
+          {
+            conversationId,
+            userMessage,
+            eligibilitySession,
+            isEligibleFlowActive,
+            modelOverride: requestedModel,
+          }
+        );
+      }
+
       let reply = stripReasoningPreamble(textContent)
         .replace(/^User Safety:[^\n]*\n*/gi, "")
         .trim();
