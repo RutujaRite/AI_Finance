@@ -892,14 +892,15 @@ export default function HomePage() {
   function detectEligibilityResult(content: string) {
     if (!content || typeof content !== "string") return null
 
-    // Check if message is an eligibility evaluation report or result
+    // Check if message is a structured eligibility evaluation report
+    const hasTable = content.includes("| Bank | Status | CIBIL | Tenure | Est. EMI |")
+    const hasApplicantSummary = content.includes("Applicant Summary")
     const isEligibilityAssessment =
-      content.includes("Personal Loan Eligibility Assessment") ||
-      content.includes("Personal Loan Eligibility Result:") ||
-      content.includes("Personal Loan Eligibility Evaluation") ||
-      content.includes("Assessment Outcome: No Partner Banks Currently Eligible") ||
-      (content.includes("Eligible Partner Bank") &&
-        (content.includes("Applicant Summary") || content.includes("Estimated Monthly EMI") || content.includes("Criteria Met")))
+      (hasTable && hasApplicantSummary) ||
+      ((content.includes("Personal Loan Eligibility Assessment") ||
+        content.includes("Personal Loan Eligibility Result:") ||
+        content.includes("Assessment Outcome: No Partner Banks Currently Eligible")) &&
+       (hasApplicantSummary || hasTable))
 
     if (!isEligibilityAssessment) return null
 
@@ -911,11 +912,18 @@ export default function HomePage() {
       content.includes("❌ Not Eligible") ||
       content.includes("Key Policy Constraints Identified") ||
       content.includes("Assessment Outcome: No Partner Banks Currently Eligible") ||
-      content.includes("Input Required / Conditionally Eligible")
+      content.includes("Input Required / Conditionally Eligible") ||
+      /\b(?:not\s+eligible|currently\s+not\s+eligible|ineligible|0\s+partner\s+banks?)\b/i.test(content)
+
+    const hasEligibleTableRows =
+      hasTable && /\|\s*\*\*[^*]+\*\*\s*\|\s*✅\s*Eligible/i.test(content)
+
+    // isSuccess is strictly true ONLY when qualifying partner banks are present and no ineligibility flags exist
+    const isSuccess = hasEligibleTableRows && !isWarningOrError
 
     return {
       isEligibility: true,
-      isSuccess: !isWarningOrError,
+      isSuccess,
     }
   }
 
@@ -1395,19 +1403,38 @@ export default function HomePage() {
         if (dashboardHtml) {
           html = dashboardHtml
         } else {
-          // Fallback if structured parsing fails
-          html = `<div class="eligibility-card eligibility-card-success">
-            <div class="eligibility-card-banner">
-              <div class="eligibility-card-banner-left">
-                <i class="bi bi-shield-check"></i>
-                <span>Eligibility Confirmed — Qualifying Partner Banks Found</span>
+          // Strictly gate success banner on having qualifying partner banks
+          const hasEligibleRows =
+            message.content.includes("| Bank | Status | CIBIL | Tenure | Est. EMI |") &&
+            /\|\s*\*\*[^*]+\*\*\s*\|\s*✅\s*Eligible/i.test(message.content)
+          if (hasEligibleRows) {
+            html = `<div class="eligibility-card eligibility-card-success">
+              <div class="eligibility-card-banner">
+                <div class="eligibility-card-banner-left">
+                  <i class="bi bi-shield-check"></i>
+                  <span>Eligibility Confirmed — Qualifying Partner Banks Found</span>
+                </div>
+                ${downloadBtnHtml}
               </div>
-              ${downloadBtnHtml}
-            </div>
-            <div class="eligibility-card-body">
-              ${html}
-            </div>
-          </div>`
+              <div class="eligibility-card-body">
+                ${html}
+              </div>
+            </div>`
+          } else {
+            // NOT_ELIGIBLE must NEVER display "Eligibility Confirmed — Qualifying Partner Banks Found"
+            html = `<div class="eligibility-card eligibility-card-warning">
+              <div class="eligibility-card-banner">
+                <div class="eligibility-card-banner-left">
+                  <i class="bi bi-exclamation-triangle-fill"></i>
+                  <span>Eligibility Assessment — Policy Criteria Not Met</span>
+                </div>
+                ${downloadBtnHtml}
+              </div>
+              <div class="eligibility-card-body">
+                ${html}
+              </div>
+            </div>`
+          }
         }
       } else {
         // Warning / Error / Ineligible result: Light-Red Background Card

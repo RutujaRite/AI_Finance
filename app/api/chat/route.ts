@@ -148,6 +148,27 @@ export async function POST(req: NextRequest) {
       console.error("Error saving user message to DB:", msgErr);
     }
 
+    // Load recent conversation history (prior turns) to provide complete multi-turn context
+    let conversationHistory: Array<{ role: string; content: string }> = [];
+    try {
+      const historyRes = await pool.query(
+        `SELECT role, content FROM assistant_messages
+         WHERE conversation_id = $1
+         ORDER BY id ASC
+         LIMIT 20`,
+        [convId]
+      );
+      // Exclude the message we just inserted so conversationHistory represents PRIOR turns
+      const allRows = historyRes.rows;
+      const priorRows = allRows.slice(0, -1);
+      conversationHistory = priorRows.map((r: any) => ({
+        role: r.role === "assistant" || r.role === "ai" ? "assistant" : "user",
+        content: r.content,
+      }));
+    } catch (histErr) {
+      console.warn("Could not load conversation history from DB:", histErr);
+    }
+
     /* ---------------------------------------------------------------------- */
     /* Central AI Agent                                                       */
     /* ---------------------------------------------------------------------- */
@@ -155,6 +176,7 @@ export async function POST(req: NextRequest) {
     const agentResult = await runCentralAgent({
       message,
       conversationId: conversationIdStr,
+      conversationHistory,
       model: requestedModel,
     });
 

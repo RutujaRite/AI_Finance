@@ -171,7 +171,8 @@ export async function processEligibilityFlow(
   userMessage: string,
   modelOverride?: string,
   callOpenRouterFn?: (msg: string, model?: string, context?: string, prompt?: string) => Promise<string | null>,
-  preClassifiedIntent?: any
+  preClassifiedIntent?: any,
+  conversationHistory?: Array<{ role: string; content: string }>
 ): Promise<{ reply: string; isFinished: boolean; applicant?: any; companyData?: any }> {
   const lowerMsg = userMessage.toLowerCase().trim();
 
@@ -313,7 +314,8 @@ export async function processEligibilityFlow(
     conversationId,
     userMessage,
     modelOverride,
-    preClassifiedIntent
+    preClassifiedIntent,
+    conversationHistory
   );
 
   if (!dynamicOutput.isComplete) {
