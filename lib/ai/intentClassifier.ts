@@ -1,5 +1,4 @@
-// lib/ai/intentClassifier.ts
-import { parseFinancialAmount } from "@/lib/dynamicEligibilityEngine";
+import { parseFinancialAmount, extractCompanyCandidateFromText } from "@/lib/dynamicEligibilityEngine";
 
 const getApiKey = () => process.env.OPENROUTER_API_KEY || "";
 const getModel = () => (process.env.OPENROUTER_MODEL || "openrouter/auto").replace(/^["']|["']$/g, "").trim();
@@ -128,7 +127,7 @@ export async function classifyIntentWithLLM(
         `- Expected Field: ${context?.expectedField || "none"}\n` +
         `- Known Applicant Profile: ${JSON.stringify(context?.existingApplicant || {})}\n\n` +
         `Entity Extraction (extract whatever parameters are explicitly mentioned):\n` +
-        `- companyName: employer or corporate name (DO NOT assign greetings, numbers, amounts, or employment status phrases like "jobless", "unemployed", "freelancer", "student" as company name)\n` +
+        `- companyName: employer or corporate name. If the message lists an organization or begins with a company name (e.g. "Capgemini, Age 28...", "Company: TCS", or "work at Wipro"), extract that organization as "companyName". (DO NOT assign greetings, numbers, amounts, or employment status phrases like "jobless", "unemployed", "freelancer", "student" as company name)\n` +
         `- monthlyIncome: net monthly salary in INR as a number (CRITICAL: If the user indicates zero income, 0rs, zero, nil, nothing, or that they are unemployed/jobless/student with no income, set monthlyIncome to 0, NOT null)\n` +
         `- loanAmount: loan amount needed in INR as a number\n` +
         `- tenureMonths: tenure in months (e.g. 3 years = 36) as a number\n` +
@@ -291,6 +290,13 @@ export async function classifyIntentWithLLM(
                 }
               }
 
+              if (!extracted.companyName) {
+                const cand = extractCompanyCandidateFromText(messageText);
+                if (cand) {
+                  extracted.companyName = cand;
+                }
+              }
+
               return {
                 intent: normalizedIntent,
                 subIntent: parsed.subIntent || parsed.sub_intent,
@@ -364,7 +370,10 @@ function isPersonalFieldMention(field: string, text: string): boolean {
     case "age":
       return /(?:age|aged)\b/i.test(lower) || /\b(?:years?\s*old|yr\s*old)\b/i.test(lower) || /(?:i\s*am|im)\s+\d{2}\b/i.test(lower);
     case "companyName":
-      return /(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is|company|firm|employer)\b/i.test(lower);
+      return (
+        /(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is|company|firm|employer)\b/i.test(lower) ||
+        Boolean(extractCompanyCandidateFromText(text))
+      );
     default:
       return false;
   }
@@ -488,23 +497,14 @@ function extractEntitiesFromText(
   }
 
   // 8. Company Name (strictly avoid assigning employment status or zero answers as company)
-  const isInvalidCandidateCompany = (candidate: string) =>
-    /(?:jobless|unemployed|no\s*job|laid\s*off|not\s*working|student|freelancer?|self[\s-]*employed|none|nil|zero|0|nothing|na|n\/a|0rs)\b/i.test(
-      candidate.trim().toLowerCase()
-    );
-
-  const compMatch = text.match(
-    /(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is)\s+([A-Za-z0-9\s&'.-]+?)(?=\s*[,;]|\s+(?:and|with|salary|cibil|age|loan|emi)|$)/i
-  );
-  if (compMatch && !isInvalidCandidateCompany(compMatch[1])) {
-    extracted.companyName = compMatch[1].trim();
-  } else if (
-    context?.expectedField === "companyName" &&
-    !isInvalidCandidateCompany(text) &&
-    text.length > 2 &&
-    text.length < 80
-  ) {
-    extracted.companyName = text.trim();
+  const compCandidate = extractCompanyCandidateFromText(text);
+  if (compCandidate) {
+    extracted.companyName = compCandidate;
+  } else if (context?.expectedField === "companyName") {
+    const clean = text.replace(/^(?:i\s+)?(?:work\s+at|works\s+at|working\s+at|employed\s+at|company\s+is|employer\s+is|at)\s+/i, "").trim();
+    if (clean.length >= 2) {
+      extracted.companyName = clean;
+    }
   }
 
   // 9. Bank name if mentioned in text (avoid matching "Tata" if part of "Tata Consultancy Services" or user's employer)

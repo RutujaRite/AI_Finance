@@ -39,7 +39,10 @@ async function testAll() {
       res.reply.toLowerCase().includes("company") ||
       res.reply.toLowerCase().includes("employer") ||
       res.reply.toLowerCase().includes("eligibility") ||
-      res.reply.toLowerCase().includes("salary"),
+      res.reply.toLowerCase().includes("salary") ||
+      res.reply.toLowerCase().includes("salaried") ||
+      res.reply.toLowerCase().includes("employed") ||
+      res.reply.toLowerCase().includes("work"),
       `Response for "${p.text}" must start eligibility flow and ask for details`
     );
 

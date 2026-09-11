@@ -25,6 +25,7 @@ import {
   parseFinancialAmount,
   ApplicantProfile,
   applyProfileUpdateAndRecalculate,
+  extractCompanyCandidateFromText,
 } from "@/lib/dynamicEligibilityEngine";
 import { resolveCompanyCategories } from "@/lib/companyCategoryResolver";
 import { classifyIntentWithLLM, IntentClassificationResult, ExtractedEntities } from "@/lib/ai/intentClassifier";
@@ -1441,11 +1442,14 @@ const isPolicyQuery = /approval|eligibility|salary|cibil|emi|income|foir|interes
   }
 }
 
-function extractApplicantFromText(text: string) {
+export function extractApplicantFromText(text: string) {
   const norm = String(text || "").replace(/\s+/g, " ").trim();
 
   let salary: number | undefined;
-  if (/^(?:0\s*(?:rs|inr)?|rs\.?\s*0|zero|nil|none|nothing|0rs|0|no\s*income)$/i.test(norm)) {
+  if (
+    /(?:no\s*income|zero\s*income|0\s*income|0\s*salary|zero\s*salary|no\s*salary|nil\s*salary)/i.test(norm) ||
+    (/^(?:0\s*(?:rs|inr)?|rs\.?\s*0|zero|nil|none|nothing|0rs|0)$/i.test(norm) && /(?:salary|income|earn)/i.test(norm))
+  ) {
     salary = 0;
   } else {
     const salMatch = norm.match(/(?:salary|income|nmi|nth|earning|monthly\s*income)(?:\s*is)?\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakh|lac)?/i) ||
@@ -1489,7 +1493,10 @@ function extractApplicantFromText(text: string) {
   }
 
   let existing_emi: number | undefined;
-  if (/(?:no|0|zero|nil)\s*(?:existing\s*|current\s*|ongoing\s*)?(?:loan|emi)s?|no\s*loans/i.test(norm)) {
+  if (
+    /(?:no|0|zero|nil|none|nothing)\s*(?:existing\s*|current\s*|ongoing\s*)?(?:loan|emi)s?|no\s*loans/i.test(norm) ||
+    (/^(?:0|zero|nil|none|nothing)$/i.test(norm) && !/(?:salary|income|earn)/i.test(norm))
+  ) {
     existing_emi = 0;
   } else {
     const emiMatch = norm.match(/(?:existing\s*emi|current\s*emi|monthly\s*emi|emi)(?:\s*is|:)?\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k)?/i);
@@ -1521,13 +1528,7 @@ function extractApplicantFromText(text: string) {
 
   let company: string | undefined;
   if (!isFinancialOrProfileInput(norm)) {
-    const compMatch = norm.match(/(?:working\s+at|works\s+at|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is)\s+([A-Za-z0-9\s&'.-]+?)(?=\s+(?:salary|cibil|emi|income|can|is|with)|$)/i);
-    if (compMatch) {
-      const candidate = compMatch[1].trim();
-      if (candidate.length > 2 && !isInvalidCompanyName(candidate) && !isFinancialOrProfileInput(candidate)) {
-        company = candidate;
-      }
-    }
+    company = extractCompanyCandidateFromText(norm);
   }
 
   const bankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|tata|poonawalla/i.exec(norm);
@@ -2345,9 +2346,9 @@ async function executeCheckLoanEligibility(
     loanType: args?.loanType || extractedFromMsg.loan_type || "Personal Loan",
     extracted: {
       companyName: args?.companyName || extractedFromMsg.company,
-      monthlyIncome: args?.monthlyIncome || extractedFromMsg.salary,
-      loanAmount: args?.loanAmount || extractedFromMsg.loan_amount,
-      tenureMonths: args?.tenureMonths || extractedFromMsg.tenure_months,
+      monthlyIncome: args?.monthlyIncome !== undefined ? args.monthlyIncome : extractedFromMsg.salary,
+      loanAmount: args?.loanAmount !== undefined ? args.loanAmount : extractedFromMsg.loan_amount,
+      tenureMonths: args?.tenureMonths !== undefined ? args.tenureMonths : extractedFromMsg.tenure_months,
       cibil: args?.cibil !== undefined ? args.cibil : extractedFromMsg.cibil,
       existingEmi: args?.existingEmi !== undefined ? args.existingEmi : extractedFromMsg.existing_emi,
       age: args?.age !== undefined ? args.age : extractedFromMsg.age,

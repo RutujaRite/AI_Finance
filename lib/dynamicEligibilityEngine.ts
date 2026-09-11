@@ -807,6 +807,63 @@ export function isFinancialOrProfileInput(text: string): boolean {
 }
 
 /**
+ * Extracts a candidate company/employer name from text.
+ * Handles:
+ * 1. Key-value indicators: "Company: Infosys", "Employer: Capgemini", "Org: TCS"
+ * 2. Employment phrases: "work at Google", "working in Microsoft", "employed by Wipro", "my company is Accenture"
+ * 3. Structured/delimited profile submissions: "Capgemini, Age 28, Salary ₹1.5 lakh..." or "TCS | 30 yrs | ..."
+ * Strictly rejects financial numbers, ages, CIBIL scores, tenures, EMIs, and non-company status answers.
+ */
+export function extractCompanyCandidateFromText(text: string): string | undefined {
+  if (!text) return undefined;
+  const raw = text.trim();
+
+  // 1. Explicit key-value labels or employment phrases
+  const explicitMatch = raw.match(
+    /(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*|(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is)\s+)([A-Za-z0-9\s&'.-]+?)(?=\s*[,;|\n]|\s+(?:and|with|salary|cibil|age|loan|emi|tenure|earning)|$)/i
+  );
+  if (explicitMatch) {
+    const candidate = explicitMatch[1].trim();
+    if (!isInvalidCompanyName(candidate) && !isFinancialOrProfileInput(candidate)) {
+      return candidate;
+    }
+  }
+
+  // 2. Delimited segments (comma, semicolon, pipe, newline)
+  const segments = raw.split(/[,;|\n]+/).map((s) => s.trim()).filter(Boolean);
+  if (segments.length > 1) {
+    for (const seg of segments) {
+      const cleanSeg = seg.replace(/^(?:at|in|with)\s+/i, "").trim();
+      if (
+        cleanSeg.length >= 2 &&
+        !isInvalidCompanyName(cleanSeg) &&
+        !isFinancialOrProfileInput(cleanSeg) &&
+        !/^(?:i\s+need|i\s+want|can\s+i|please|hello|hi|hey|personal\s+loan|loan)\b/i.test(cleanSeg) &&
+        !/^(?:age|salary|income|cibil|credit\s*score|loan|amount|tenure|months|years|emi)\s*[:=-]?\s*.*$/i.test(cleanSeg)
+      ) {
+        return cleanSeg;
+      }
+    }
+  }
+
+  // 3. Single-phrase input (e.g. user typed "Capgemini" or "Infosys Limited")
+  if (
+    !isFinancialOrProfileInput(raw) &&
+    !isInvalidCompanyName(raw) &&
+    !/^(?:i\s+need|i\s+want|can\s+i|personal\s+loan|loan)\b/i.test(raw)
+  ) {
+    const clean = raw
+      .replace(/^(?:i\s+)?(?:work\s+at|works\s+at|working\s+at|employed\s+at|company\s+is|employer\s+is|at)\s+/i, "")
+      .trim();
+    if (!isFinancialOrProfileInput(clean) && !isInvalidCompanyName(clean)) {
+      return clean;
+    }
+  }
+
+  return undefined;
+}
+
+/**
  * Maps the user's direct response to the specific expected field.
  * Guarantees that the expected field is mapped accurately and cannot contaminate other fields.
  */
@@ -999,6 +1056,7 @@ function mapAnswerToTargetField(
 
     const candidate =
       llmExtracted?.companyName ||
+      extractCompanyCandidateFromText(text) ||
       text
         .replace(/^(?:i\s+)?(?:work\s+at|works\s+at|working\s+at|employed\s+at|company\s+is|employer\s+is|at)\s+/i, "")
         .trim();
@@ -1066,7 +1124,10 @@ export function messageMentionsField(field: string, text: string): boolean {
       return /(?:salaried|self[\s-]*employed|business|proprietor|partner|freelanc|doctor|trader|govt|government|private|pvt\s*ltd|mnc|corporate|job|employee)/i.test(lower);
 
     case "companyName":
-      return /(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is|company|firm|employer)\b/i.test(lower);
+      return (
+        /(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is|company|firm|employer)\b/i.test(lower) ||
+        Boolean(extractCompanyCandidateFromText(text))
+      );
 
     default:
       return false;
@@ -1251,14 +1312,9 @@ function extractSecondaryParameters(
     if (llmExtracted?.companyName && !isInvalidCompanyName(llmExtracted.companyName) && !isFinancialOrProfileInput(llmExtracted.companyName)) {
       applicant.companyName = normalizeCompanyName(llmExtracted.companyName);
     } else if (!isFinancialOrProfileInput(text) && !isInvalidCompanyName(text)) {
-      const compMatch = text.match(
-        /(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is)\s*[:]?\s*([A-Za-z0-9\s&'.-]+?)(?=\s*[,;]|\s+(?:and|with|salary|cibil|age|loan|emi|tenure|earning)|$|[.\n])/i
-      );
-      if (compMatch) {
-        const cName = compMatch[1].trim();
-        if (!isInvalidCompanyName(cName) && !isFinancialOrProfileInput(cName)) {
-          applicant.companyName = normalizeCompanyName(cName);
-        }
+      const cand = extractCompanyCandidateFromText(text);
+      if (cand) {
+        applicant.companyName = normalizeCompanyName(cand);
       }
     }
   }
@@ -1314,28 +1370,47 @@ export function extractApplicantDetails(
         applicant.monthlyIncome = 0;
       }
     }
-    if (typeof llmExtracted.monthlyIncome === "number") {
+    if (
+      typeof llmExtracted.monthlyIncome === "number" &&
+      (applicant.monthlyIncome === undefined || targetExpectedField === "monthlyIncome" || messageMentionsField("monthlyIncome", text))
+    ) {
       applicant.monthlyIncome = llmExtracted.monthlyIncome;
     }
-    if (typeof llmExtracted.loanAmount === "number" && llmExtracted.loanAmount > 0) {
+    if (
+      typeof llmExtracted.loanAmount === "number" && llmExtracted.loanAmount > 0 &&
+      (applicant.loanAmount === undefined || targetExpectedField === "loanAmount" || messageMentionsField("loanAmount", text))
+    ) {
       applicant.loanAmount = llmExtracted.loanAmount;
     }
-    if (typeof llmExtracted.tenureMonths === "number" && llmExtracted.tenureMonths > 0) {
+    if (
+      typeof llmExtracted.tenureMonths === "number" && llmExtracted.tenureMonths > 0 &&
+      (applicant.tenureMonths === undefined || targetExpectedField === "tenureMonths" || messageMentionsField("tenureMonths", text))
+    ) {
       applicant.tenureMonths = llmExtracted.tenureMonths;
     }
-    if (typeof llmExtracted.cibil === "number") {
+    if (
+      typeof llmExtracted.cibil === "number" &&
+      (applicant.cibil === undefined || targetExpectedField === "cibil" || messageMentionsField("cibil", text))
+    ) {
       applicant.cibil = llmExtracted.cibil;
     }
-    if (typeof llmExtracted.existingEmi === "number") {
+    if (
+      typeof llmExtracted.existingEmi === "number" &&
+      (applicant.existingEmi === undefined || targetExpectedField === "existingEmi" || messageMentionsField("existingEmi", text))
+    ) {
       applicant.existingEmi = llmExtracted.existingEmi;
     }
-    if (typeof llmExtracted.age === "number" && llmExtracted.age >= 18) {
+    if (
+      typeof llmExtracted.age === "number" && llmExtracted.age >= 18 &&
+      (applicant.age === undefined || targetExpectedField === "age" || messageMentionsField("age", text))
+    ) {
       applicant.age = llmExtracted.age;
     }
     if (
       llmExtracted.companyName &&
       !isInvalidCompanyName(llmExtracted.companyName) &&
-      !isFinancialOrProfileInput(llmExtracted.companyName)
+      !isFinancialOrProfileInput(llmExtracted.companyName) &&
+      (!applicant.companyName || targetExpectedField === "companyName" || messageMentionsField("companyName", text))
     ) {
       applicant.companyName = normalizeCompanyName(llmExtracted.companyName);
       if (!applicant.employmentType) applicant.employmentType = "Salaried";
@@ -1445,11 +1520,24 @@ export function getMissingRequiredFields(applicant: ApplicantProfile): string[] 
  * Removes thinking tags and preamble from LLM outputs.
  */
 function stripReasoningPreamble(text: string): string {
-  return text
+  if (!text) return "";
+  let cleaned = text
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
     .replace(/^Here('s| is) a thinking process[\s\S]*?\n\n/i, "")
-    .replace(/<think>[\s\S]*?<\/think>/i, "")
-    .replace(/^Thinking Process:[\s\S]*?\n\n/i, "")
+    .replace(/^(?:\*{1,2}|#+\s*)?(?:Thinking Process|Thought Process|Analysis|Chain of thought)(?:\*{1,2}|:)?[\s\S]*?\n\n/i, "")
+    .replace(/^(?:\d+\.\s+)?\*\*(?:Analyze User Input|Analysis|Drafting response)\*\*[\s\S]*?\n\n/i, "")
     .trim();
+
+  // If response has an explicit "**Response:**" or "Assistant:" label after thoughts
+  const respMatch = cleaned.match(/(?:^|\n\n)(?:\*{1,2}|#+\s*)?(?:Response|Final Response|Message to User)(?:\*{1,2}|:)?\s*\n+([\s\S]+)$/i);
+  if (respMatch) {
+    cleaned = respMatch[1].trim();
+  }
+
+  // Also strip any leading analysis numbered points like "1. **Analyze User Input:**\n ... \n\n"
+  cleaned = cleaned.replace(/^(?:\d+\.\s+)?\*\*[^*]+\*\*:\s*\n(?:\s*[-*]\s*[^\n]+\n)+\n*/i, "").trim();
+
+  return cleaned;
 }
 
 /**
@@ -1678,6 +1766,7 @@ export async function generateDynamicSingleQuestionWithLLM(
               "Never ask multiple questions. Never repeat a question for details already known.\n" +
               "Do NOT use rigid dividers like '---', robotic canned footers, or static templates.\n" +
               "Keep your response concise (2-3 sentences), warm, and human.\n" +
+              "Do NOT output internal thinking steps, numbered analysis lists, or thought preambles. Output ONLY the direct conversational response to the user.\n" +
               "Never mention databases, files, tables, internal tokens, or backend systems.",
           },
         ];
@@ -2819,24 +2908,14 @@ export async function processDynamicEligibility(
     };
 
     // Check if the user also explicitly provided their employer in this opening turn
-    let candidateCompany = intentResult.extracted?.companyName;
-    if (!candidateCompany) {
-      const compMatch = userMessage.match(
-        /(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is)\s+([A-Za-z0-9\s&'.-]+?)(?=\s*[,;]|\s+(?:and|with|salary|cibil|age|loan|emi)|$)/i
-      );
-      if (compMatch) {
-        const c = compMatch[1].trim();
-        if (!isInvalidCompanyName(c) && !isFinancialOrProfileInput(c)) {
-          candidateCompany = c;
-        }
-      }
-    }
+    let candidateCompany =
+      intentResult.extracted?.companyName && !isInvalidCompanyName(intentResult.extracted.companyName) && !isFinancialOrProfileInput(intentResult.extracted.companyName)
+        ? intentResult.extracted.companyName
+        : extractCompanyCandidateFromText(userMessage);
 
     if (candidateCompany && !isInvalidCompanyName(candidateCompany) && !isFinancialOrProfileInput(candidateCompany)) {
       const resolved = await resolveCompanyCategories(candidateCompany);
-      if (resolved.isFound) {
-        freshApplicant.companyName = resolved.matchedName || candidateCompany;
-      }
+      freshApplicant.companyName = resolved.matchedName || candidateCompany;
     }
 
     // Extract any other numbers in the message if explicitly given
@@ -3005,7 +3084,8 @@ export async function processDynamicEligibility(
       const cleanCandidate =
         (intentResult?.extracted?.companyName && !isInvalidCompanyName(intentResult.extracted.companyName) && !isFinancialOrProfileInput(intentResult.extracted.companyName))
           ? intentResult.extracted.companyName
-          : trimmedInput
+          : extractCompanyCandidateFromText(userMessage) ||
+            trimmedInput
               .replace(/^(?:i\s+)?(?:work\s+at|works\s+at|working\s+at|employed\s+at|company\s+is|employer\s+is|at)\s+/i, "")
               .trim();
 
