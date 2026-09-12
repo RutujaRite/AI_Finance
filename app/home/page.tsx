@@ -9,9 +9,10 @@ declare const marked: any
 declare const hljs: any
 
 const AVAILABLE_MODELS = [
-  { id: "liquid/lfm-2.5-embedding-350m:free", name: "LFM 2.5", desc: "Fast & efficient", icon: "⚡" },
-  { id: "gpt-4o", name: "GPT-4o", desc: "Most capable", icon: "🧠" },
-  { id: "claude-3.5-sonnet", name: "Claude 3.5", desc: "Balanced", icon: "🎯" },
+  { id: "openrouter/auto", name: "Auto (Best Available)", desc: "Fast & intelligent", icon: "⚡" },
+  { id: "google/gemini-2.5-flash", name: "Gemini 2.5 Flash", desc: "Fast & precise", icon: "✨" },
+  { id: "openai/gpt-4o", name: "GPT-4o", desc: "Most capable", icon: "🧠" },
+  { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", desc: "Balanced reasoning", icon: "🎯" },
 ]
 
 export default function HomePage() {

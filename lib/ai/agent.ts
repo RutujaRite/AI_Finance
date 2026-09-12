@@ -28,7 +28,8 @@ import {
   extractCompanyCandidateFromText,
 } from "@/lib/dynamicEligibilityEngine";
 import { resolveCompanyCategories } from "@/lib/companyCategoryResolver";
-import { classifyIntentWithLLM, IntentClassificationResult, ExtractedEntities } from "@/lib/ai/intentClassifier";
+import { classifyIntentWithLLM, IntentClassificationResult, ExtractedEntities, cleanLlmJsonOutput } from "@/lib/ai/intentClassifier";
+import { normalizeModelSlug } from "@/lib/openrouter";
 import { getResolvedMasterPolicies } from "@/lib/masterPolicies";
 import { getMasterPolicyFileContent } from "@/lib/masterPolicyParser";
 import { searchTavilyWeb } from "@/lib/ai/tavilyService";
@@ -2262,12 +2263,20 @@ async function executeSearchCompanyCategory(
 ): Promise<AgentResult> {
   let compQuery = (args.companyName || userMessage)
     .replace(/^(?:what\s+is\s+the|what\s+is|tell\s+me\s+about|search|check|find|is|are)\b/gi, "")
-    .replace(/\b(?:corporate\s+category\s+rating|category\s+rating|corporate\s+tier|category|rating|tier|corporate\s+listing|listed\s+in|for|of|in|records?|bank\s+records?)\b/gi, "")
+    .replace(/\b(?:corporate\s+category\s+rating|category\s+rating|corporate\s+tier|category|rating|tier|corporate\s+listing|listed\s+in|for|of|in|records?|bank\s+records?|across\s+banks?|in\s+banks?|partner\s+banks?)\b/gi, "")
     .replace(/[?.,!]/g, "")
     .trim();
 
   if (compQuery && !isInvalidCompanyName(compQuery)) {
-    const company = await searchCompany(compQuery);
+    let company = await searchCompany(compQuery);
+    if (!company?.found) {
+      const candidate = extractCompanyCandidateFromText(userMessage) || extractCompanyCandidateFromText(compQuery);
+      if (candidate && candidate.toLowerCase() !== compQuery.toLowerCase()) {
+        const alt = await searchCompany(candidate);
+        if (alt?.found) company = alt;
+      }
+    }
+
     if (company?.found) {
       let reply = formatCompanyResponse(company);
       return {
@@ -2493,447 +2502,344 @@ async function executeSearchBankManagers(
   };
 }
 
+
 /**
- * Dispatches an approved tool call to the corresponding specialized tool handler.
+ * Fully LLM-Driven Conversational Understanding Brain for CreditWise AI.
  */
-async function dispatchToolCall(
-  toolName: string,
-  args: any,
-  opts: {
-    conversationId: string;
-    userMessage: string;
-    eligibilitySession: any;
-    isEligibleFlowActive: boolean;
-    modelOverride?: string;
-    conversationHistory?: Array<{ role: string; content: string }>;
-  }
-): Promise<AgentResult> {
-  const { conversationId, userMessage, eligibilitySession, isEligibleFlowActive, modelOverride, conversationHistory } = opts;
+export interface MasterConversationAnalysis {
+  userIntent:
+    | "LOAN_ELIGIBILITY"
+    | "BANK_POLICY"
+    | "EMI_CALCULATION"
+    | "BANK_MANAGER"
+    | "COMPANY_SEARCH"
+    | "WEB_SEARCH"
+    | "QUESTION_OR_OBJECTION"
+    | "CORRECTION"
+    | "GREETING"
+    | "CANCEL_RESET"
+    | "GENERAL_CHAT";
+  isLoanIntent: boolean;
+  hasQuestionOrObjection: boolean;
+  questionAnswer: string | null;
+  extractedDetails: {
+    companyName?: string | null;
+    monthlyIncome?: number | null;
+    loanAmount?: number | null;
+    tenureMonths?: number | null;
+    cibil?: number | null;
+    existingEmi?: number | null;
+    age?: number | null;
+    employmentType?: "Salaried" | "Self-Employed" | "Unemployed" | "Student" | null;
+  };
+  isCorrection: boolean;
+  correctedFields: string[];
+  targetBank: string | null;
+  emiDetails?: {
+    principal?: number | null;
+    rate?: number | null;
+    tenureMonths?: number | null;
+  } | null;
+  managerSearch?: {
+    bankName?: string | null;
+    city?: string | null;
+  } | null;
+  companyQuery?: string | null;
+  webSearchQuery?: string | null;
+  naturalResponse: string;
+}
 
-  switch (toolName) {
-    case "calculate_emi":
-      return await executeCalculateEmi(
-        args,
-        userMessage,
-        eligibilitySession?.applicant,
-        isEligibleFlowActive,
-        eligibilitySession,
-        modelOverride
-      );
-
-    case "lookup_master_policy":
-      return await executeLookupMasterPolicy(
-        args,
-        userMessage,
-        isEligibleFlowActive,
-        eligibilitySession,
-        modelOverride
-      );
-
-    case "search_company_category":
-      return await executeSearchCompanyCategory(
-        args,
-        userMessage,
-        isEligibleFlowActive,
-        eligibilitySession
-      );
-
-    case "check_loan_eligibility":
-      return await executeCheckLoanEligibility(
-        args,
-        conversationId,
-        userMessage,
-        eligibilitySession,
-        modelOverride,
-        conversationHistory
-      );
-
-    case "update_applicant_profile":
-      return await executeUpdateApplicantProfile(
-        args,
-        conversationId,
-        userMessage,
-        eligibilitySession,
-        modelOverride,
-        conversationHistory
-      );
-
-    case "answer_general_question":
-      return await executeAnswerGeneralQuestion(
-        args,
-        userMessage,
-        conversationId,
-        isEligibleFlowActive,
-        eligibilitySession,
-        modelOverride,
-        conversationHistory
-      );
-
-    case "tavily_search":
-      return await executeTavilySearch(
-        args,
-        userMessage,
-        isEligibleFlowActive,
-        eligibilitySession
-      );
-
-    case "search_bank_managers":
-      return await executeSearchBankManagers(
-        args,
-        userMessage,
-        isEligibleFlowActive,
-        eligibilitySession
-      );
-
+function getFriendlyFieldName(field: string): string {
+  switch (field) {
+    case "companyName":
+      return "employer or company name";
+    case "monthlyIncome":
+      return "net monthly take-home salary";
+    case "loanAmount":
+      return "desired loan amount";
+    case "tenureMonths":
+      return "preferred repayment tenure (in years or months)";
+    case "cibil":
+      return "CIBIL credit score (or let me know if you are new to credit / don't have a score)";
+    case "existingEmi":
+      return "total ongoing monthly loan EMIs (or 0 if none)";
+    case "age":
+      return "age in years";
     default:
-      return await executeAnswerGeneralQuestion(
-        { question: userMessage, subType: "GENERAL_FAQ" },
-        userMessage,
-        conversationId,
-        isEligibleFlowActive,
-        eligibilitySession,
-        modelOverride,
-        conversationHistory
-      );
+      return field;
   }
 }
 
 /**
- * Fallback semantic dispatcher: If OpenRouter API call encounters a network issue,
- * timeout, or rate-limit (429/402), seamlessly routes to the EXACT same 8 tools.
+ * Analyzes the user's message in context using OpenRouter LLM.
+ * Performs deep semantic understanding, intent classification, entity extraction,
+ * correction tracking, and direct question answering.
  */
-async function fallbackToolDispatcher(
-  userMessage: string,
-  conversationId: string,
-  eligibilitySession: any,
-  isEligibleFlowActive: boolean,
-  requestedModel?: string,
-  conversationHistory?: Array<{ role: string; content: string }>
-): Promise<AgentResult> {
-  const norm = userMessage.toLowerCase().trim();
+export async function analyzeConversationWithLLM(opts: {
+  userMessage: string;
+  conversationHistory?: Array<{ role: string; content: string }>;
+  applicant?: ApplicantProfile;
+  missingFields?: string[];
+  isFlowActive?: boolean;
+  modelOverride?: string;
+}): Promise<MasterConversationAnalysis> {
+  const { userMessage, conversationHistory, applicant, missingFields, isFlowActive, modelOverride } = opts;
+  const apiKey = getApiKey();
+  const rawModel = modelOverride || getModel();
+  const model = normalizeModelSlug(rawModel);
 
-  const countProfileFields = (extracted?: any): number => {
-    if (!extracted) return 0;
-    return [
-      extracted.monthlyIncome,
-      extracted.cibil,
-      extracted.loanAmount,
-      extracted.tenureMonths,
-      extracted.companyName,
-      extracted.existingEmi,
-      extracted.age,
-      extracted.employmentType,
-    ].filter((v) => v !== undefined && v !== null && v !== "").length;
+  const systemPrompt =
+    `You are the master conversational understanding brain for CreditWise AI, a personal loan and banking intelligence platform.\n` +
+    `Analyze the user's message in the context of recent conversation history and the current applicant profile.\n\n` +
+    `CURRENT CONTEXT:\n` +
+    `- Accumulated Applicant Profile: ${JSON.stringify(applicant || {})}\n` +
+    `- Missing Fields for Loan Eligibility: ${JSON.stringify(missingFields || ["companyName", "monthlyIncome", "loanAmount", "tenureMonths", "cibil", "existingEmi", "age"])}\n` +
+    `- Eligibility Flow In Progress: ${isFlowActive ? "true" : "false"}\n\n` +
+    `CRITICAL ANALYSIS GUIDELINES:\n` +
+    `1. NATURAL INTENT UNDERSTANDING:\n` +
+    `   - Detect loan intent naturally from diverse user phrases (e.g. "I need a loan", "I want a personal loan", "I want to apply for a loan", "Can I get a loan?", "I need ₹5 lakh loan", "Which banks am I eligible for?", "Where can I get credit?"). Set isLoanIntent to true.\n` +
+    `   - Do NOT blindly follow any wizard step! If the assistant previously asked for a specific detail, understand whether the user is answering, asking a question, raising an objection, correcting a previous value, or chatting.\n` +
+    `2. EXTRACT APPLICANT DETAILS (Extract explicitly stated or clearly implied parameters):\n` +
+    `   - companyName: corporate employer name (e.g. "TCS", "Google", "work at Infosys"). If user says "unemployed", "jobless", "student", or "freelancer", DO NOT set companyName; set employmentType appropriately.\n` +
+    `   - monthlyIncome: net monthly take-home salary in INR as a number (e.g. "80k" -> 80000, "1.2 lakh" -> 120000, "0rs"/"zero"/"nil"/"unemployed" -> 0).\n` +
+    `   - loanAmount: requested loan amount in INR as a number (e.g. "5 lakhs" -> 500000).\n` +
+    `   - tenureMonths: repayment tenure in months as a number (e.g. "3 years" -> 36, "48 months" -> 48).\n` +
+    `   - cibil: credit bureau score (300-900). If the user states they have never had a loan, never used a credit card, or have no credit score / don't know it, set cibil to 0 (New to Credit).\n` +
+    `   - existingEmi: ongoing monthly loan EMIs in INR as a number (e.g. 0 if none/no loans/nil/all clear).\n` +
+    `   - age: applicant age in years as a number.\n` +
+    `   - employmentType: "Salaried", "Self-Employed", "Unemployed", or "Student".\n` +
+    `3. CORRECTIONS & UPDATES:\n` +
+    `   - If the user modifies, corrects, or updates previously provided information (e.g. "Actually my salary is 95,000 not 80k", "Change tenure to 5 years", "My company is TCS not Infosys"), set isCorrection to true, list the changed fields in correctedFields, and put the new values in extractedDetails.\n` +
+    `4. QUESTIONS & OBJECTIONS (DO NOT IGNORE QUESTIONS!):\n` +
+    `   - If the user asks ANY question or raises ANY objection (e.g. "What is FOIR?", "Why do you need my age/CIBIL/company/salary?", "Will this check hurt my credit score?", "Is my data safe?", "Can I prepay my loan?", "What is reducing balance rate?", "Which bank offers the lowest rate?", "Can a self-employed person get a loan?"): \n` +
+    `     Set hasQuestionOrObjection to true.\n` +
+    `     Provide a clear, accurate, natural, professional banking explanation in questionAnswer.\n` +
+    `     For CIBIL inquiry concerns: explain that this is a soft evaluation with zero impact on credit scores.\n` +
+    `     For FOIR questions: explain that Fixed Obligation to Income Ratio represents total EMIs divided by monthly income, used by lenders to measure repayment capacity.\n` +
+    `     For Age/Company/Salary questions: explain how lenders use these to assess statutory eligibility, corporate category tier, and loan affordability.\n` +
+    `5. BANK POLICIES, EMI, MANAGERS, COMPANY RATINGS & LIVE WEB SEARCH:\n` +
+    `   - If the user asks for an official bank's policy rules/guidelines/cutoffs (e.g. "What is HDFC bank policy?", "ICICI loan rules"): set userIntent to "BANK_POLICY", targetBank to the bank name.\n` +
+    `   - If the user asks to calculate monthly EMI (e.g. "EMI for 10 lakhs at 11% for 5 years"): set userIntent to "EMI_CALCULATION", populate emiDetails.\n` +
+    `   - If the user asks for bank managers or branch contacts: set userIntent to "BANK_MANAGER", populate managerSearch.\n` +
+    `   - If the user asks about an employer or company category rating / tier (e.g. "What is TCS category rating?", "Is Infosys listed in Cat A?"): set userIntent to "COMPANY_SEARCH", set companyQuery to the company name.\n` +
+    `   - If the user asks for live web search, current financial news, or latest market updates: set userIntent to "WEB_SEARCH", set webSearchQuery.\n` +
+    `   - If the user asks to cancel, reset, or restart: set userIntent to "CANCEL_RESET".\n` +
+    `6. NATURAL RESPONSE:\n` +
+    `   - Compose a natural, cohesive response in naturalResponse addressing the user's inquiry, acknowledging details or corrections, and (if loan flow is active and details are missing) inviting the user to provide the next missing required detail.\n\n` +
+    `Return ONLY a strictly valid JSON object matching this schema:\n` +
+    `{\n` +
+    `  "userIntent": "LOAN_ELIGIBILITY" | "BANK_POLICY" | "EMI_CALCULATION" | "BANK_MANAGER" | "COMPANY_SEARCH" | "WEB_SEARCH" | "QUESTION_OR_OBJECTION" | "CORRECTION" | "GREETING" | "CANCEL_RESET" | "GENERAL_CHAT",\n` +
+    `  "isLoanIntent": boolean,\n` +
+    `  "hasQuestionOrObjection": boolean,\n` +
+    `  "questionAnswer": string | null,\n` +
+    `  "extractedDetails": {\n` +
+    `    "companyName": string | null,\n` +
+    `    "monthlyIncome": number | null,\n` +
+    `    "loanAmount": number | null,\n` +
+    `    "tenureMonths": number | null,\n` +
+    `    "cibil": number | null,\n` +
+    `    "existingEmi": number | null,\n` +
+    `    "age": number | null,\n` +
+    `    "employmentType": "Salaried" | "Self-Employed" | "Unemployed" | "Student" | null\n` +
+    `  },\n` +
+    `  "isCorrection": boolean,\n` +
+    `  "correctedFields": string[],\n` +
+    `  "targetBank": string | null,\n` +
+    `  "emiDetails": { "principal": number | null, "rate": number | null, "tenureMonths": number | null } | null,\n` +
+    `  "managerSearch": { "bankName": string | null, "city": string | null } | null,\n` +
+    `  "companyQuery": string | null,\n` +
+    `  "webSearchQuery": string | null,\n` +
+    `  "naturalResponse": string\n` +
+    `}`;
+
+  const messages: any[] = [{ role: "system", content: systemPrompt }];
+
+  if (conversationHistory && conversationHistory.length > 0) {
+    const recentHistory = conversationHistory.slice(-8);
+    for (const turn of recentHistory) {
+      if (turn.content && turn.content.trim()) {
+        messages.push({
+          role: turn.role === "assistant" || turn.role === "ai" ? "assistant" : "user",
+          content: turn.content.trim(),
+        });
+      }
+    }
+  }
+
+  messages.push({ role: "user", content: userMessage });
+
+  const executeApiCall = async (targetModel: string) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001",
+          "X-Title": "CreditWise AI",
+        },
+        body: JSON.stringify({
+          model: targetModel,
+          temperature: 0.1,
+          max_tokens: 1200,
+          response_format: { type: "json_object" },
+          messages,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(`OpenRouter HTTP ${res.status}`);
+      }
+      return await res.json();
+    } finally {
+      clearTimeout(timeoutId);
+    }
   };
 
-  // 1. Explicit Cancel/Reset
-  if (/^(cancel|reset|restart|stop|exit)\b/i.test(norm)) {
-    return await dispatchToolCall(
-      "answer_general_question",
-      { question: userMessage, subType: "CANCEL_RESET" },
-      {
-        conversationId,
-        userMessage,
-        eligibilitySession,
-        isEligibleFlowActive,
-        modelOverride: requestedModel,
-        conversationHistory,
+  let rawContent = "";
+  if (apiKey) {
+    try {
+      const data = await executeApiCall(model);
+      rawContent = data?.choices?.[0]?.message?.content || "";
+    } catch (err) {
+      if (model !== "openrouter/auto") {
+        try {
+          const fallbackData = await executeApiCall("openrouter/auto");
+          rawContent = fallbackData?.choices?.[0]?.message?.content || "";
+        } catch {}
       }
-    );
+    }
   }
 
-  // 2. Greetings
-  if (/^(hello|hi|hey|good\s*(?:morning|afternoon|evening)|namaste|greetings)\b/i.test(norm)) {
-    return await dispatchToolCall(
-      "answer_general_question",
-      { question: userMessage, subType: "GREETING" },
-      {
-        conversationId,
-        userMessage,
-        eligibilitySession,
-        isEligibleFlowActive,
-        modelOverride: requestedModel,
-        conversationHistory,
+  if (rawContent) {
+    let parsed: MasterConversationAnalysis | null = null;
+    try {
+      let cleaned = cleanLlmJsonOutput(rawContent);
+      cleaned = cleaned.replace(/,\s*([}\]])/g, "$1");
+      parsed = JSON.parse(cleaned);
+    } catch (e1) {
+      try {
+        let cleaned = cleanLlmJsonOutput(rawContent).replace(/,\s*([}\]])/g, "$1");
+        const sanitized = cleaned.replace(/(:\s*"[^"]*?)\n([^"]*")/g, "$1\\n$2");
+        parsed = JSON.parse(sanitized);
+      } catch (e2) {
+        const getStr = (key: string) => {
+          const m = rawContent.match(new RegExp(`"${key}"\\s*:\\s*"([\\s\\S]*?)"(?=\\s*[,}\\]])`, "i"));
+          return m ? m[1] : null;
+        };
+        const getNum = (key: string) => {
+          const m = rawContent.match(new RegExp(`"${key}"\\s*:\\s*([0-9.]+)`, "i"));
+          return m ? Number(m[1]) : null;
+        };
+        const getBool = (key: string) => {
+          const m = rawContent.match(new RegExp(`"${key}"\\s*:\\s*(true|false)`, "i"));
+          return m ? m[1].toLowerCase() === "true" : false;
+        };
+
+        parsed = {
+          userIntent: (getStr("userIntent") as any) || "LOAN_ELIGIBILITY",
+          isLoanIntent: getBool("isLoanIntent"),
+          hasQuestionOrObjection: getBool("hasQuestionOrObjection"),
+          questionAnswer: getStr("questionAnswer"),
+          extractedDetails: {
+            companyName: getStr("companyName"),
+            monthlyIncome: getNum("monthlyIncome"),
+            loanAmount: getNum("loanAmount"),
+            tenureMonths: getNum("tenureMonths"),
+            cibil: getNum("cibil"),
+            existingEmi: getNum("existingEmi"),
+            age: getNum("age"),
+            employmentType: (getStr("employmentType") as any) || null,
+          },
+          isCorrection: getBool("isCorrection"),
+          correctedFields: [],
+          targetBank: getStr("targetBank"),
+          emiDetails: null,
+          managerSearch: null,
+          companyQuery: getStr("companyQuery"),
+          webSearchQuery: getStr("webSearchQuery"),
+          naturalResponse: getStr("naturalResponse") || "",
+        };
       }
-    );
+    }
+
+    if (parsed) {
+      // Normalize numeric extracted entities
+      if (parsed.extractedDetails) {
+        if (typeof parsed.extractedDetails.monthlyIncome === "string") {
+          parsed.extractedDetails.monthlyIncome = parseFinancialAmount(parsed.extractedDetails.monthlyIncome) || undefined;
+        }
+        if (typeof parsed.extractedDetails.loanAmount === "string") {
+          parsed.extractedDetails.loanAmount = parseFinancialAmount(parsed.extractedDetails.loanAmount) || undefined;
+        }
+        if (typeof parsed.extractedDetails.existingEmi === "string") {
+          const emi = parseFinancialAmount(parsed.extractedDetails.existingEmi);
+          parsed.extractedDetails.existingEmi = emi !== null ? emi : undefined;
+        }
+        if (typeof parsed.extractedDetails.tenureMonths === "string") {
+          const t = parseInt(parsed.extractedDetails.tenureMonths, 10);
+          if (!isNaN(t)) {
+            parsed.extractedDetails.tenureMonths = t >= 1 && t <= 7 ? t * 12 : t;
+          }
+        }
+        if (typeof parsed.extractedDetails.tenureMonths === "number" && parsed.extractedDetails.tenureMonths >= 1 && parsed.extractedDetails.tenureMonths <= 7) {
+          parsed.extractedDetails.tenureMonths = parsed.extractedDetails.tenureMonths * 12;
+        }
+        if (typeof parsed.extractedDetails.cibil === "string") {
+          const c = parseInt(parsed.extractedDetails.cibil, 10);
+          parsed.extractedDetails.cibil = !isNaN(c) ? c : undefined;
+        }
+        if (typeof parsed.extractedDetails.age === "string") {
+          const a = parseInt(parsed.extractedDetails.age, 10);
+          parsed.extractedDetails.age = !isNaN(a) ? a : undefined;
+        }
+        if (parsed.extractedDetails.companyName && isInvalidCompanyName(parsed.extractedDetails.companyName)) {
+          parsed.extractedDetails.companyName = undefined;
+        }
+      }
+
+      return parsed;
+    }
   }
 
-  // 3. Continuation or acknowledgment during active flow (only if no profile data in text)
-  const hasProfileDataInText =
-    /(?:cibil|credit\s*score|salary|income|lakh|lac|emi|age|tenure|year|month|\b\d{3,7}\b)/i.test(norm);
+  // Fallback semantic analysis if OpenRouter is unreachable or returned unparseable text
+  const extractedFallback = extractApplicantFromText(userMessage);
+  const normMsg = userMessage.toLowerCase().trim();
+  const bankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|poonawalla|yes\s*bank|\byes\b|bandhan|chola|tata\s*capital/i.exec(userMessage);
 
-  if (
-    isEligibleFlowActive &&
-    !hasProfileDataInText &&
-    /^(ok|okay|got\s*it|understood|cool|sure|great|fine|thanks|thank\s*you|continue|let['’]?s\s*continue|proceed|next|resume|go\s*ahead|yes)\b/i.test(
-      norm
-    )
-  ) {
-    return await dispatchToolCall(
-      "check_loan_eligibility",
-      { resume: true },
-      {
-        conversationId,
-        userMessage,
-        eligibilitySession,
-        isEligibleFlowActive,
-        modelOverride: requestedModel,
-        conversationHistory,
-      }
-    );
-  }
-
-  // 4. Semantic LLM intent classification with multi-turn conversation history
-  const classification = await classifyIntentWithLLM(
-    userMessage,
-    {
-      isFlowActive: isEligibleFlowActive,
-      expectedField: eligibilitySession?.expectedField,
-      existingApplicant: eligibilitySession?.applicant,
-      recentMessages: conversationHistory,
+  return {
+    userIntent: bankMatch && /policy|rule|cutoff/i.test(normMsg) ? "BANK_POLICY" : detectLoanIntent(userMessage).isLoanIntent ? "LOAN_ELIGIBILITY" : "GENERAL_CHAT",
+    isLoanIntent: detectLoanIntent(userMessage).isLoanIntent,
+    hasQuestionOrObjection: false,
+    questionAnswer: null,
+    extractedDetails: {
+      companyName: extractedFallback.company,
+      monthlyIncome: extractedFallback.salary,
+      loanAmount: extractedFallback.loan_amount,
+      tenureMonths: extractedFallback.tenure_months,
+      cibil: extractedFallback.cibil,
+      existingEmi: extractedFallback.existing_emi,
+      age: extractedFallback.age,
+      employmentType: extractedFallback.employment_type as any,
     },
-    requestedModel
-  );
-
-  if (classification.intent === "CALCULATION") {
-    return await dispatchToolCall(
-      "calculate_emi",
-      {
-        principal: classification.extracted?.loanAmount,
-        rate: classification.extracted?.interestRate,
-        tenureMonths: classification.extracted?.tenureMonths,
-      },
-      {
-        conversationId,
-        userMessage,
-        eligibilitySession,
-        isEligibleFlowActive,
-        modelOverride: requestedModel,
-        conversationHistory,
-      }
-    );
-  }
-
-  if (classification.intent === "CHANGING_DETAILS") {
-    return await dispatchToolCall(
-      "update_applicant_profile",
-      classification.extracted || {},
-      {
-        conversationId,
-        userMessage,
-        eligibilitySession,
-        isEligibleFlowActive,
-        modelOverride: requestedModel,
-        conversationHistory,
-      }
-    );
-  }
-
-  if (classification.intent === "GENERAL_INFORMATION") {
-    if (
-      classification.subIntent === "BANK_MANAGER_SEARCH" ||
-      /manager|contact|phone|mobile|branch\s*head|\basm\b|\brsm\b/i.test(norm)
-    ) {
-      return await dispatchToolCall(
-        "search_bank_managers",
-        {
-          bank_name: classification.extracted?.targetBank,
-          city: classification.extracted?.city,
-        },
-        {
-          conversationId,
-          userMessage,
-          eligibilitySession,
-          isEligibleFlowActive,
-          modelOverride: requestedModel,
-          conversationHistory,
-        }
-      );
-    }
-
-    // Corporate Employer / Company Category Listing
-    if (
-      classification.subIntent === "COMPANY_SEARCH" ||
-      (/(?:company|employer|category\s*rating|company\s*tier|corporate\s*listing|is.*listed)/i.test(norm) &&
-        !/policy|rule|cutoff|foir|tenure|cibil/i.test(norm))
-    ) {
-      return await dispatchToolCall(
-        "search_company_category",
-        {
-          companyName: classification.extracted?.companyName || userMessage,
-        },
-        {
-          conversationId,
-          userMessage,
-          eligibilitySession,
-          isEligibleFlowActive,
-          modelOverride: requestedModel,
-          conversationHistory,
-        }
-      );
-    }
-
-    const bankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|poonawalla|yes\s*bank|\byes\b|bandhan|chola|fibe|finnable|smfg|utkarsh|sbm|tata\s*capital|\btata\b(?!.*consultancy)/i.exec(
-      userMessage
-    );
-    const targetBank = classification.extracted?.targetBank || (bankMatch ? bankMatch[0] : "");
-    const profileFieldsPresent = [
-      classification.extracted?.monthlyIncome,
-      classification.extracted?.cibil,
-      classification.extracted?.loanAmount,
-      classification.extracted?.tenureMonths,
-      classification.extracted?.companyName,
-      classification.extracted?.existingEmi,
-      classification.extracted?.age,
-    ].filter((v) => v !== undefined && v !== null && v !== "").length;
-
-    const isApplicantProfileSubmission =
-      countProfileFields(classification.extracted) >= 2 ||
-      Boolean(norm.match(/(?:work\s+at|employed\s+(?:at|by)|my\s+salary\s*is|cibil\s*(?:is|:)?\s*\d+|need\s*[\d,]+|age\s*(?:is|:)?\s*\d+)/i));
-
-    const isBankPolicyInquiry =
-      !isApplicantProfileSubmission &&
-      (classification.subIntent === "BANK_POLICY" ||
-      classification.subIntent === "POLICY_INQUIRY" ||
-      /(?:policy|guidelines?|rules?|criteria|cutoff|cut-off|foir\s*norm)\s*(?:of|for|from|regarding)?\s*(?:a\s*|an\s*|any\s*|the\s*)?(?:[a-z0-9\s&'.-]+)?\s*banks?\b/i.test(norm) ||
-      /banks?\s*(?:'s)?\s*(?:policy|guidelines?|rules?|criteria|cutoff|cut-off|foir\s*norm)/i.test(norm) ||
-      (/(?:policy|guidelines?|rules?|cut-off|cutoff)\b/i.test(norm) && /\bbanks?\b/i.test(norm)) ||
-      (Boolean(targetBank) &&
-        /(?:what\s+is|tell\s+me|show|check|explain|find)?\s*(?:the\s*)?(?:policy|guidelines?|norm|rules?|cutoff|criteria|foir|interest\s*rate|multiplier)/i.test(
-          norm
-        )));
-
-    if (isBankPolicyInquiry) {
-      return await dispatchToolCall(
-        "lookup_master_policy",
-        {
-          bankName: targetBank || classification.extracted?.targetBank,
-          questionTopic: userMessage,
-        },
-        {
-          conversationId,
-          userMessage,
-          eligibilitySession,
-          isEligibleFlowActive,
-          modelOverride: requestedModel,
-          conversationHistory,
-        }
-      );
-    }
-
-    // Live search if web/news query
-    if (/news|latest|update|current|today|market|rbi\s*repo/i.test(norm)) {
-      return await dispatchToolCall(
-        "tavily_search",
-        { query: userMessage },
-        {
-          conversationId,
-          userMessage,
-          eligibilitySession,
-          isEligibleFlowActive,
-          modelOverride: requestedModel,
-          conversationHistory,
-        }
-      );
-    }
-
-    // Natural loan intent phrases and eligibility inquiries should route to check_loan_eligibility, NOT general question
-    const naturalLoanCheck = detectLoanIntent(userMessage, classification);
-    if (naturalLoanCheck.isLoanIntent || isApplicantProfileSubmission) {
-      return await dispatchToolCall(
-        "check_loan_eligibility",
-        classification.extracted || {},
-        {
-          conversationId,
-          userMessage,
-          eligibilitySession,
-          isEligibleFlowActive,
-          modelOverride: requestedModel,
-          conversationHistory,
-        }
-      );
-    }
-
-    return await dispatchToolCall(
-      "answer_general_question",
-      {
-        question: userMessage,
-        subType: "CONCEPT_DEFINITION",
-      },
-      {
-        conversationId,
-        userMessage,
-        eligibilitySession,
-        isEligibleFlowActive,
-        modelOverride: requestedModel,
-        conversationHistory,
-      }
-    );
-  }
-
-  // Global check for natural loan intent or multi-field profile submission
-  const naturalLoanGlobalCheck = detectLoanIntent(userMessage, classification);
-  const globalProfileCount = countProfileFields(classification.extracted);
-  if (
-    classification.intent === "LOAN_ELIGIBILITY" ||
-    naturalLoanGlobalCheck.isLoanIntent ||
-    globalProfileCount >= 2
-  ) {
-    return await dispatchToolCall(
-      "check_loan_eligibility",
-      classification.extracted || {},
-      {
-        conversationId,
-        userMessage,
-        eligibilitySession,
-        isEligibleFlowActive,
-        modelOverride: requestedModel,
-        conversationHistory,
-      }
-    );
-  }
-
-  if (classification.intent === "ANOTHER_TOPIC") {
-    return await dispatchToolCall(
-      "answer_general_question",
-      {
-        question: userMessage,
-        subType: "CASUAL_CHAT",
-      },
-      {
-        conversationId,
-        userMessage,
-        eligibilitySession,
-        isEligibleFlowActive,
-        modelOverride: requestedModel,
-        conversationHistory,
-      }
-    );
-  }
-
-  return await dispatchToolCall(
-    "answer_general_question",
-    {
-      question: userMessage,
-      subType: "GENERAL_FAQ",
-    },
-    {
-      conversationId,
-      userMessage,
-      eligibilitySession,
-      isEligibleFlowActive,
-      modelOverride: requestedModel,
-      conversationHistory,
-    }
-  );
+    isCorrection: /actually|update|change|not\s+\d+/i.test(normMsg),
+    correctedFields: [],
+    targetBank: bankMatch ? bankMatch[0] : null,
+    emiDetails: null,
+    managerSearch: null,
+    naturalResponse: "I am ready to help you with your loan eligibility, bank policies, or EMI calculations. How can I assist you?",
+  };
 }
 
 /**
  * Main CreditWise AI Central Agent.
- * OpenRouter serves as the primary decision-making brain on every turn.
- * Selects and invokes actions via tools.
- * Never allows active eligibility to block or override a new request.
- * Master Policy .txt files are the sole source of truth for bank eligibility and policy QA.
+ * Fully LLM-driven for conversation understanding.
+ * Analyzes current message together with multi-turn conversation context.
+ * Understands user intent, extracts/updates details, answers questions directly,
+ * and asks ONLY for genuinely missing required information.
+ * Preserves deterministic eligibility engine, bank policies, and calculations.
  */
 export async function runCentralAgent(opts: {
   message: string;
@@ -2944,10 +2850,9 @@ export async function runCentralAgent(opts: {
   const { message, conversationId, model: requestedModel } = opts;
   let { conversationHistory } = opts;
   const userMessage = String(message || "").trim();
-
   const norm = userMessage.toLowerCase().replace(/\s+/g, " ").trim();
 
-  // If conversationHistory was not provided, attempt to load recent history from database or memory
+  // 1. Ensure conversationHistory represents prior dialogue turns
   if (!conversationHistory || conversationHistory.length === 0) {
     const numConvId = Number(conversationId);
     if (pool && Number.isFinite(numConvId)) {
@@ -2960,9 +2865,10 @@ export async function runCentralAgent(opts: {
           [numConvId]
         );
         const allRows = historyRes.rows;
-        const priorRows = allRows.length > 0 && allRows[allRows.length - 1].content === userMessage
-          ? allRows.slice(0, -1)
-          : allRows;
+        const priorRows =
+          allRows.length > 0 && allRows[allRows.length - 1].content === userMessage
+            ? allRows.slice(0, -1)
+            : allRows;
         conversationHistory = priorRows.map((r: any) => ({
           role: r.role === "assistant" || r.role === "ai" ? "assistant" : "user",
           content: r.content,
@@ -2973,7 +2879,7 @@ export async function runCentralAgent(opts: {
     }
   }
 
-  // 1. Check if an eligibility session is active for this specific conversation
+  // 2. Retrieve existing eligibility session state
   const eligibilitySession = await getEligibilityState(conversationId);
   const isEligibleFlowActive = !!(
     eligibilitySession &&
@@ -2982,227 +2888,323 @@ export async function runCentralAgent(opts: {
       (eligibilitySession as any).in_eligibility_flow)
   );
 
-  if ((!conversationHistory || conversationHistory.length === 0) && eligibilitySession?.conversationHistory) {
-    conversationHistory = eligibilitySession.conversationHistory;
-  }
-  conversationHistory = conversationHistory || [];
+  const currentApplicant: ApplicantProfile = eligibilitySession?.applicant
+    ? { ...eligibilitySession.applicant }
+    : { loanType: "Personal Loan" };
 
-  const model = requestedModel || getModel();
-  const apiKey = getApiKey();
+  const currentMissingFields = getRequiredPolicyFields(currentApplicant);
 
-  // If no API key is configured, route via fallbackToolDispatcher directly
-  if (!apiKey) {
-    return await fallbackToolDispatcher(
-      userMessage,
-      conversationId,
-      eligibilitySession,
-      isEligibleFlowActive,
-      requestedModel,
-      conversationHistory
-    );
-  }
-
-  // 2. OpenRouter Tool-Calling Decision-Making Brain
-  const systemPrompt =
-    `You are the central decision-making brain of CreditWise AI, an intelligent personal loan and banking intelligence platform.\n` +
-    `Your role is to understand the user's current message in the context of the full conversation history and select the EXACT tool needed to respond.\n\n` +
-    `AVAILABLE TOOLS:\n` +
-    `1. "calculate_emi": Use for monthly EMI calculations, interest payable, or installment questions.\n` +
-    `2. "lookup_master_policy": Use for bank-specific policy questions (CIBIL cutoff, FOIR limits, salary criteria, tenure, multipliers) using that bank's official Master Policy .txt file. When asked for a bank policy, show a clean 2-column table UI (| Criteria | Details |) with 3 sections: 1) Loan products offered, 2) Eligibility criteria, 3) Important conditions. Show general policy-level values/ranges, mention when values vary by CAT, and never guess missing values (say "Not specified in the available policy."). Show detailed CAT rules only when specifically asked.\n` +
-    `3. "search_company_category": Use when user asks about an employer or company category/tier listing (Super Cat A, Cat A, Elite, Diamond).\n` +
-    `4. "check_loan_eligibility": Use whenever user expresses loan intent naturally or asks about their eligibility across banks (e.g. "What banks am I eligible for?", "Which banks can I get a loan from?", "Which bank is best for my loan?", "Am I eligible for a loan?", "Which banks will give me a loan?", "I need a loan", "I want a personal loan", "I want to apply for a loan", "Can I get a loan?", "I need ₹5 lakh loan"), requests a personal loan, checks eligibility, answers an eligibility question, raises an objection during eligibility (e.g. "Why age?", "Why company?", "Why salary?", "Is my data safe?", "Will this affect my CIBIL?"), or provides profile details (salary, amount, tenure, cibil, emi, age). When loan intent or eligibility inquiry is detected, start the eligibility flow and collect the required details. Keep bank policy questions separate: specific inquiries asking for an official bank's policy rules (e.g. "What is HDFC bank policy?") must use "lookup_master_policy", NOT "check_loan_eligibility".\n` +
-    `5. "update_applicant_profile": Use when the user explicitly wants to update, correct, or change a previously provided detail (e.g. "change salary to 1.2L", "update cibil to 780", "actually my company is Infosys").\n` +
-    `6. "answer_general_question": Use for standalone general financial concepts (e.g. "What is FOIR?"), greetings (subType="GREETING"), small talk, or cancellation (subType="CANCEL_RESET") when not answering an in-flow eligibility question.\n` +
-    `7. "tavily_search": Use for live financial news, current market interest rate changes, or web searches.\n` +
-    `8. "search_bank_managers": Use for bank manager contacts, ASM/RSM directory, phone numbers, or branch contacts.\n\n` +
-    `CRITICAL CONVERSATIONAL RULES:\n` +
-    `- ANALYZE MULTI-TURN CONTEXT: If an eligibility assessment is in progress and the user replies to the assistant's previous question, asks an objection (e.g. "Why do you need my age?", "Will this hurt my CIBIL?"), or provides partial details, call "check_loan_eligibility" so the engine naturally explains the requirement and seamlessly continues the assessment.\n` +
-    `- NEVER let an active eligibility flow block or ignore an explicit external request! If an assessment is in progress and the user explicitly asks for an official bank's policy, an EMI calculation, a live search, a manager contact, or a concept definition, ALWAYS call that specific tool.\n` +
-    `- Choose the tool that addresses the user's CURRENT message in its conversational context.\n` +
-    `- Context: isFlowActive=${isEligibleFlowActive ? "true" : "false"}, expectedField=${eligibilitySession?.expectedField || "none"}, applicant=${JSON.stringify(eligibilitySession?.applicant || {})}.`;
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
-
-    const messagesForBrain: any[] = [
-      { role: "system", content: systemPrompt },
-    ];
-
-    if (conversationHistory && conversationHistory.length > 0) {
-      const recentHistory = conversationHistory.slice(-8);
-      for (const turn of recentHistory) {
-        if (turn.content && turn.content.trim()) {
-          messagesForBrain.push({
-            role: turn.role === "assistant" || turn.role === "ai" ? "assistant" : "user",
-            content: turn.content.trim(),
-          });
+  // 3. Check if user is selecting an eligible bank from a previously completed eligibility evaluation
+  if (
+    eligibilitySession?.expectedField === "chosenBank" ||
+    (eligibilitySession?.eligible_banks && eligibilitySession.eligible_banks.length > 0)
+  ) {
+    const eligibleBanks: string[] = eligibilitySession.eligible_banks || [];
+    let selectedBank = "";
+    for (const b of eligibleBanks) {
+      const bClean = b.replace(/bank|finance|limited|ltd/gi, "").trim().toLowerCase();
+      if (bClean && norm.includes(bClean)) {
+        selectedBank = b;
+        break;
+      }
+    }
+    if (!selectedBank) {
+      const commonBanks = ["hdfc", "icici", "axis", "sbi", "kotak", "indusind", "idfc", "bajaj", "chola", "piramal", "poonawalla", "tata", "yes"];
+      for (const cb of commonBanks) {
+        if (norm.includes(cb)) {
+          selectedBank = eligibleBanks.find((b) => b.toLowerCase().includes(cb)) || cb.toUpperCase() + " Bank";
+          break;
         }
       }
     }
 
-    messagesForBrain.push({ role: "user", content: userMessage });
-
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:3001",
-        "X-Title": "CreditWise AI",
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.1,
-        max_tokens: 600,
-        messages: messagesForBrain,
-        tools: OPENROUTER_TOOLS,
-        tool_choice: "auto",
-      }),
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      // If OpenRouter returns non-200 (e.g. rate limit, 429, 402), use fallback dispatcher
-      return await fallbackToolDispatcher(
-        userMessage,
-        conversationId,
-        eligibilitySession,
-        isEligibleFlowActive,
-        requestedModel,
-        conversationHistory
-      );
-    }
-
-    const data = await response.json();
-    const choice = data?.choices?.[0];
-    const toolCall = choice?.message?.tool_calls?.[0];
-
-    if (toolCall?.function?.name) {
-      const toolName = toolCall.function.name;
-      let parsedArgs: any = {};
+    if (
+      selectedBank &&
+      (/choose|select|connect|apply|go with|prefer|want|branch|manager/i.test(norm) ||
+        eligibleBanks.some((b) => norm.includes(b.toLowerCase().replace(/bank/gi, "").trim())))
+    ) {
+      const collectedLocation = currentApplicant.location || "Mumbai";
+      let managerSection = "";
       try {
-        parsedArgs = JSON.parse(toolCall.function.arguments || "{}");
+        const mgrList = await searchBankManager({ bank_name: selectedBank, city: collectedLocation, query: `${selectedBank} ${collectedLocation}` });
+        managerSection = mgrList?.length
+          ? `### 👔 Official Bank Manager Directory: **${selectedBank}** (${collectedLocation})\n\n` + formatManagers(mgrList, collectedLocation)
+          : `Official manager contact request logged for **${selectedBank}** in **${collectedLocation}**.`;
       } catch {
-        parsedArgs = {};
+        managerSection = `Official manager contact request logged for **${selectedBank}** in **${collectedLocation}**.`;
       }
 
-      const bankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|poonawalla|yes\s*bank|\byes\b|bandhan|chola|fibe|finnable|smfg|utkarsh|sbm|tata\s*capital|\btata\b(?!.*consultancy)/i.exec(
-        userMessage
+      await clearEligibilityState(conversationId);
+      const numConvId = Number(conversationId);
+      if (pool && Number.isFinite(numConvId)) {
+        try {
+          await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numConvId]);
+        } catch {}
+      }
+
+      return {
+        reply: `${managerSection}\n\n---\n✅ **Thank you for choosing ${selectedBank}! Our official bank representative will assist with your application.**`,
+      };
+    }
+  }
+
+  // 4. Master LLM Conversational Analysis
+  const analysis = await analyzeConversationWithLLM({
+    userMessage,
+    conversationHistory,
+    applicant: currentApplicant,
+    missingFields: currentMissingFields,
+    isFlowActive: isEligibleFlowActive,
+    modelOverride: requestedModel,
+  });
+
+  // 5. Handle Reset / Cancel
+  if (analysis.userIntent === "CANCEL_RESET" || /^(cancel|reset|restart|stop|exit)\b/i.test(norm)) {
+    await clearEligibilityState(conversationId);
+    const numConvId = Number(conversationId);
+    if (pool && Number.isFinite(numConvId)) {
+      try {
+        await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numConvId]);
+      } catch {}
+    }
+    return {
+      reply: "🔄 **Loan Assessment Reset**\n\nYour session has been reset. You can start fresh anytime by asking for a loan, checking bank policies, or calculating EMIs.",
+    };
+  }
+
+  // 6. Handle Official Bank Policy Inquiries
+  const isPolicyQuery =
+    analysis.userIntent === "BANK_POLICY" ||
+    Boolean(analysis.targetBank && /policy|rule|criteria|cutoff|guideline|foir/i.test(norm));
+
+  if (isPolicyQuery) {
+    const bankToQuery = analysis.targetBank || extractUnsupportedBankName(userMessage) || "";
+    const policyReply = await answerBankPolicyWithMasterPolicy(bankToQuery, userMessage, requestedModel);
+    return { reply: policyReply };
+  }
+
+  // 7. Handle EMI Calculation
+  const isEmiQuery =
+    analysis.userIntent === "EMI_CALCULATION" ||
+    Boolean(
+      norm.match(/\bemi\b/i) &&
+        (norm.match(/(\d+(?:\.\d+)?)\s*%/i) || norm.match(/(?:at|rate\s*of)\s*(\d+)/i) || /interest/i.test(norm)) &&
+        (norm.match(/(\d+)\s*(?:years?|yrs?|months?|m\b)/i) || norm.match(/(?:lakhs?|lacs?|k\b|\d{5,8})/i))
+    );
+
+  if (isEmiQuery) {
+    let principal = analysis.emiDetails?.principal || analysis.extractedDetails?.loanAmount;
+    let rate = analysis.emiDetails?.rate;
+    let tenure = analysis.emiDetails?.tenureMonths || analysis.extractedDetails?.tenureMonths;
+
+    if (!principal) {
+      const pMatch = norm.match(/(?:for|loan\s*of|amount\s*of)?\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|cr)?/i);
+      if (pMatch) {
+        principal = parseFinancialAmount(pMatch[1] + (pMatch[2] || "")) || undefined;
+      }
+    }
+    if (!rate) {
+      const rMatch = norm.match(/(\d+(?:\.\d+)?)\s*%/);
+      if (rMatch) rate = parseFloat(rMatch[1]);
+    }
+    if (!tenure) {
+      const yrMatch = norm.match(/(\d+)\s*(?:years?|yrs?|yr)/i);
+      if (yrMatch) tenure = parseInt(yrMatch[1], 10) * 12;
+      else {
+        const moMatch = norm.match(/(\d+)\s*(?:months?|m\b)/i);
+        if (moMatch) tenure = parseInt(moMatch[1], 10);
+      }
+    }
+
+    if (principal && principal > 0) {
+      const effectiveRate = rate || 10.5;
+      const effectiveTenure = tenure || 60;
+      const emiVal = calculateEmi(principal, effectiveRate, effectiveTenure);
+      const emiMarkdown = formatEmiResult(
+        { principal, rate: effectiveRate, tenure: effectiveTenure },
+        emiVal
       );
 
-      // If model erroneously invoked general question on a user loan eligibility inquiry, redirect to check_loan_eligibility
-      if (toolName === "answer_general_question" && detectLoanIntent(userMessage).isLoanIntent) {
-        return await dispatchToolCall("check_loan_eligibility", parsedArgs, {
-          conversationId,
-          userMessage,
-          eligibilitySession,
-          isEligibleFlowActive,
-          modelOverride: requestedModel,
-          conversationHistory,
-        });
+      if (isEligibleFlowActive) {
+        const missing = getRequiredPolicyFields(currentApplicant);
+        if (missing.length > 0) {
+          return {
+            reply: `${emiMarkdown}\n\n---\nWhenever you're ready to proceed with your eligibility assessment, please share your **${getFriendlyFieldName(missing[0])}**.`,
+          };
+        }
       }
-
-      const isBankPolicyInquiry =
-        /(?:policy|guidelines?|rules?|criteria|cutoff|cut-off|foir\s*norm)\s*(?:of|for|from|regarding)?\s*(?:a\s*|an\s*|any\s*|the\s*)?(?:[a-z0-9\s&'.-]+)?\s*banks?\b/i.test(norm) ||
-        /banks?\s*(?:'s)?\s*(?:policy|guidelines?|rules?|criteria|cutoff|cut-off|foir\s*norm)/i.test(norm) ||
-        (/(?:policy|guidelines?|rules?|cut-off|cutoff)\b/i.test(norm) && /\bbanks?\b/i.test(norm)) ||
-        (bankMatch && /policy|guideline|guidelines|rules?|criteria|cutoff|cut-off|foir|rate|cibil|salary|tenure/i.test(norm));
-
-      // If model erroneously invoked general question on a bank policy inquiry, redirect to lookup_master_policy
-      if (toolName === "answer_general_question" && isBankPolicyInquiry) {
-        return await dispatchToolCall(
-          "lookup_master_policy",
-          { bankName: bankMatch ? bankMatch[0] : parsedArgs?.bankName, questionTopic: userMessage },
-          {
-            conversationId,
-            userMessage,
-            eligibilitySession,
-            isEligibleFlowActive,
-            modelOverride: requestedModel,
-            conversationHistory,
-          }
-        );
-      }
-
-      return await dispatchToolCall(toolName, parsedArgs, {
-        conversationId,
-        userMessage,
-        eligibilitySession,
-        isEligibleFlowActive,
-        modelOverride: requestedModel,
-        conversationHistory,
-      });
+      return { reply: emiMarkdown };
     }
-
-    // Direct text reply from model
-    const textContent = choice?.message?.content;
-    if (typeof textContent === "string" && textContent.trim().length > 0) {
-      // If model generated direct text instead of calling check_loan_eligibility on a loan eligibility inquiry, start eligibility flow
-      if (detectLoanIntent(userMessage).isLoanIntent) {
-        return await dispatchToolCall("check_loan_eligibility", {}, {
-          conversationId,
-          userMessage,
-          eligibilitySession,
-          isEligibleFlowActive,
-          modelOverride: requestedModel,
-          conversationHistory,
-        });
-      }
-
-      // If model generated direct text instead of calling lookup_master_policy on a bank policy inquiry, lookup policy
-      const directBankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|poonawalla|yes\s*bank|\byes\b|bandhan|chola|fibe|finnable|smfg|utkarsh|sbm|tata\s*capital|\btata\b/i.exec(userMessage);
-      const isBankPolicyInquiry =
-        /(?:policy|guidelines?|rules?|criteria|cutoff|cut-off|foir\s*norm)\s*(?:of|for|from|regarding)?\s*(?:a\s*|an\s*|any\s*|the\s*)?(?:[a-z0-9\s&'.-]+)?\s*banks?\b/i.test(norm) ||
-        /banks?\s*(?:'s)?\s*(?:policy|guidelines?|rules?|criteria|cutoff|cut-off|foir\s*norm)/i.test(norm) ||
-        (/(?:policy|guidelines?|rules?|cut-off|cutoff)\b/i.test(norm) && /\bbanks?\b/i.test(norm)) ||
-        (Boolean(directBankMatch) && /policy|guideline|guidelines|rules?|criteria|cutoff|cut-off|foir|rate|cibil|salary|tenure/i.test(norm));
-
-      if (isBankPolicyInquiry) {
-        return await dispatchToolCall(
-          "lookup_master_policy",
-          { bankName: directBankMatch ? directBankMatch[0] : undefined, questionTopic: userMessage },
-          {
-            conversationId,
-            userMessage,
-            eligibilitySession,
-            isEligibleFlowActive,
-            modelOverride: requestedModel,
-            conversationHistory,
-          }
-        );
-      }
-
-      let reply = stripReasoningPreamble(textContent)
-        .replace(/^User Safety:[^\n]*\n*/gi, "")
-        .trim();
-      if (reply.length > 0 && !/^User Safety:\s*safe$/i.test(reply)) {
-        return { reply };
-      }
-    }
-
-    // If no tool call and empty content, fallback
-    return await fallbackToolDispatcher(
-      userMessage,
-      conversationId,
-      eligibilitySession,
-      isEligibleFlowActive,
-      requestedModel,
-      conversationHistory
-    );
-  } catch (err) {
-    // Network error or timeout -> fallback dispatcher
-    return await fallbackToolDispatcher(
-      userMessage,
-      conversationId,
-      eligibilitySession,
-      isEligibleFlowActive,
-      requestedModel,
-      conversationHistory
-    );
   }
+
+  // 8. Handle Bank Manager Directory Searches
+  if (
+    analysis.userIntent === "BANK_MANAGER" &&
+    (analysis.managerSearch?.bankName || /manager|branch\s*head|\basm\b|\brsm\b/i.test(norm))
+  ) {
+    const mgrArgs = {
+      bank_name: analysis.managerSearch?.bankName || undefined,
+      city: analysis.managerSearch?.city || undefined,
+    };
+    return await executeSearchBankManagers(mgrArgs, userMessage, isEligibleFlowActive, eligibilitySession);
+  }
+
+  // 8b. Handle Corporate Company Category Searches
+  const isCompanySearch =
+    analysis.userIntent === "COMPANY_SEARCH" ||
+    ((/(?:company|employer)\s+(?:category|tier|rating|listing)|(?:is|check)\s+.*\s+(?:listed|categorized)|\bcategory\s*rating\b/i.test(norm)) &&
+      !analysis.isLoanIntent &&
+      !isEligibleFlowActive &&
+      !isPolicyQuery);
+
+  if (isCompanySearch) {
+    let compName = analysis.companyQuery || analysis.extractedDetails?.companyName;
+    if (!compName) {
+      compName = userMessage
+        .replace(/^(?:what\s+is\s+the|what\s+is|tell\s+me\s+about|search|check|find|is|are)\b/gi, "")
+        .replace(/\b(?:corporate\s+category\s+rating|category\s+rating|corporate\s+tier|category|rating|tier|corporate\s+listing|listed\s+in|for|of|in|records?|bank\s+records?|across\s+banks?|in\s+banks?|partner\s+banks?)\b/gi, "")
+        .replace(/[?.,!]/g, "")
+        .trim();
+    }
+    const compResult = await executeSearchCompanyCategory({ companyName: compName }, userMessage, isEligibleFlowActive, eligibilitySession);
+    if (isEligibleFlowActive) {
+      const missing = getRequiredPolicyFields(currentApplicant);
+      if (missing.length > 0) {
+        compResult.reply += `\n\n---\nWhenever you're ready to proceed with your loan assessment, please provide your **${getFriendlyFieldName(missing[0])}**.`;
+      }
+    }
+    return compResult;
+  }
+
+  // 8c. Handle Live Web Search via Tavily
+  if (analysis.userIntent === "WEB_SEARCH" && (analysis.webSearchQuery || /news|latest rate|rbi repo|interest rate hike/i.test(norm))) {
+    const query = analysis.webSearchQuery || userMessage;
+    return await executeTavilySearch({ query }, userMessage, isEligibleFlowActive, eligibilitySession);
+  }
+
+  // 9. Consolidate Applicant Profile & Apply Entity Updates / Corrections
+  const updatedApplicant: ApplicantProfile = { ...currentApplicant };
+
+  if (analysis.isCorrection && analysis.extractedDetails) {
+    const fieldsToApply = analysis.correctedFields?.length ? analysis.correctedFields : Object.keys(analysis.extractedDetails);
+    for (const f of fieldsToApply) {
+      if ((analysis.extractedDetails as any)[f] !== undefined && (analysis.extractedDetails as any)[f] !== null) {
+        (updatedApplicant as any)[f] = (analysis.extractedDetails as any)[f];
+      }
+    }
+  } else if (analysis.extractedDetails) {
+    if (analysis.extractedDetails.companyName && !isInvalidCompanyName(analysis.extractedDetails.companyName)) {
+      updatedApplicant.companyName = analysis.extractedDetails.companyName;
+    }
+    if (analysis.extractedDetails.monthlyIncome !== undefined && analysis.extractedDetails.monthlyIncome !== null) {
+      updatedApplicant.monthlyIncome = analysis.extractedDetails.monthlyIncome;
+    }
+    if (analysis.extractedDetails.loanAmount !== undefined && analysis.extractedDetails.loanAmount !== null) {
+      updatedApplicant.loanAmount = analysis.extractedDetails.loanAmount;
+    }
+    if (analysis.extractedDetails.tenureMonths !== undefined && analysis.extractedDetails.tenureMonths !== null) {
+      updatedApplicant.tenureMonths = analysis.extractedDetails.tenureMonths;
+    }
+    if (analysis.extractedDetails.cibil !== undefined && analysis.extractedDetails.cibil !== null) {
+      updatedApplicant.cibil = analysis.extractedDetails.cibil;
+    }
+    if (analysis.extractedDetails.existingEmi !== undefined && analysis.extractedDetails.existingEmi !== null) {
+      updatedApplicant.existingEmi = analysis.extractedDetails.existingEmi;
+    }
+    if (analysis.extractedDetails.age !== undefined && analysis.extractedDetails.age !== null) {
+      updatedApplicant.age = analysis.extractedDetails.age;
+    }
+    if (analysis.extractedDetails.employmentType) {
+      updatedApplicant.employmentType = analysis.extractedDetails.employmentType;
+    }
+  }
+
+  // Resolve corporate company category against 339,000+ bank records
+  if (updatedApplicant.companyName && updatedApplicant.companyName !== "Self-Employed") {
+    try {
+      const resolved = await resolveCompanyCategories(updatedApplicant.companyName);
+      if (resolved?.matchedName) {
+        updatedApplicant.companyName = resolved.matchedName;
+      }
+    } catch {}
+  }
+
+  // 10. Determine Loan Flow Status & Eligibility Decision
+  const hasMultipleProfileParams =
+    [updatedApplicant.monthlyIncome, updatedApplicant.loanAmount, updatedApplicant.cibil, updatedApplicant.companyName].filter(
+      (v) => v !== undefined && v !== null
+    ).length >= 2;
+
+  const isLoanFlow =
+    analysis.isLoanIntent ||
+    isEligibleFlowActive ||
+    Boolean(eligibilitySession?.in_eligibility_flow) ||
+    hasMultipleProfileParams;
+
+  if (isLoanFlow) {
+    const missingFields = getRequiredPolicyFields(updatedApplicant);
+
+    // Case A: All required fields collected -> RUN ELIGIBILITY DECISION ENGINE
+    if (missingFields.length === 0) {
+      const evalResult = await evaluateApplicantAgainstAllBanks(updatedApplicant, updatedApplicant.loanType || "Personal Loan");
+      let report = formatDynamicEligibilityReport(updatedApplicant, evalResult);
+
+      // If user also asked a question or raised an objection in this turn, answer it before the report!
+      if (analysis.hasQuestionOrObjection && analysis.questionAnswer) {
+        report = `> [!NOTE]\n> **Answering your question:** ${analysis.questionAnswer}\n\n` + report;
+      }
+
+      await saveEligibilityState(conversationId, {
+        applicant: updatedApplicant,
+        expectedField: "chosenBank",
+        missingFields: [],
+        in_eligibility_flow: false,
+        eligible_banks: (evalResult.eligibleBanks || []).map((b) => b.bankName),
+        updatedAt: Date.now(),
+      } as any);
+
+      return { reply: report };
+    }
+
+    // Case B: Information is missing -> Ask ONLY for the genuinely missing detail!
+    const nextField = missingFields[0];
+    let replyText = "";
+
+    if (analysis.hasQuestionOrObjection && analysis.questionAnswer) {
+      replyText = `${analysis.questionAnswer}\n\nWhenever you're ready, could you please share your **${getFriendlyFieldName(nextField)}** so we can check your eligibility across all partner banks?`;
+    } else if (analysis.naturalResponse && analysis.naturalResponse.trim().length > 15) {
+      replyText = analysis.naturalResponse;
+    } else if (analysis.isCorrection) {
+      replyText = `Got it, I have updated your information. To proceed with checking your loan eligibility across partner banks, could you please provide your **${getFriendlyFieldName(nextField)}**?`;
+    } else {
+      replyText = `Could you please provide your **${getFriendlyFieldName(nextField)}** to check your loan eligibility across partner banks?`;
+    }
+
+    await saveEligibilityState(conversationId, {
+      applicant: updatedApplicant,
+      expectedField: nextField,
+      missingFields,
+      in_eligibility_flow: true,
+      updatedAt: Date.now(),
+    } as any);
+
+    return { reply: replyText };
+  }
+
+  // 11. General Q&A, Concept Questions & Greetings (when not in loan flow)
+  if (analysis.hasQuestionOrObjection) {
+    const qAnswer = analysis.questionAnswer || (await answerGeneralQuestionWithLLM(userMessage, requestedModel, conversationHistory));
+    if (qAnswer) return { reply: qAnswer };
+  }
+
+  if (analysis.userIntent === "GREETING") {
+    return {
+      reply: "Hello! 👋 Welcome to CreditWise AI. How can I assist you today? You can ask me to check your personal loan eligibility across partner banks, view bank policies, or calculate monthly EMIs.",
+    };
+  }
+
+  return { reply: analysis.naturalResponse || "How can I assist you with your banking or loan inquiries today?" };
 }
+
 
 

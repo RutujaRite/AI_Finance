@@ -62,7 +62,7 @@ async function runAllTests() {
     assert(t4.applicant.age === 29, "Turn 4 extracted age 29");
     assert(t4.applicant.existingEmi === 0, "Turn 4 extracted existingEmi 0");
     assert((t4.eligibleBanks || []).length > 0, "Turn 4 returned eligible banks");
-    assert(t4.formattedMarkdown.includes("| Bank | Status | CIBIL | Tenure | Est. EMI |"), "Turn 4 has standard markdown table");
+    assert(Boolean(t4.formattedMarkdown?.includes("| Bank | Status | CIBIL | Tenure | Est. EMI |")), "Turn 4 has standard markdown table");
   }
 
   // TEST 2: Contextual "Why?" objection handling without wiping state
@@ -105,9 +105,9 @@ async function runAllTests() {
     const convId = "test_confirmation_" + Date.now();
     const history: Array<{ role: string; content: string }> = [];
 
-    // Turn 1: Company
-    const t1 = await processDynamicEligibility(convId, "Wipro", undefined, undefined, history);
-    history.push({ role: "user", content: "Wipro" });
+    // Turn 1: Company with loan intent
+    const t1 = await processDynamicEligibility(convId, "I want a loan, I work at Wipro", undefined, undefined, history);
+    history.push({ role: "user", content: "I want a loan, I work at Wipro" });
     history.push({ role: "assistant", content: t1.nextQuestion || "" });
 
     // Turn 2: User says "ok proceed"
@@ -139,9 +139,9 @@ async function runAllTests() {
     const tUnemp = await processDynamicEligibility(convIdUnemp, "I am unemployed and have no job");
     assert(tUnemp.isComplete, "Unemployed applicant completes assessment early");
     assert(
-      tUnemp.formattedMarkdown.toLowerCase().includes("unemployed") ||
-      tUnemp.formattedMarkdown.toLowerCase().includes("income") ||
-      tUnemp.formattedMarkdown.toLowerCase().includes("eligible"),
+      (tUnemp.formattedMarkdown || "").toLowerCase().includes("unemployed") ||
+      (tUnemp.formattedMarkdown || "").toLowerCase().includes("income") ||
+      (tUnemp.formattedMarkdown || "").toLowerCase().includes("eligible"),
       "Unemployed response explains policy income requirement"
     );
 

@@ -777,8 +777,13 @@ export function detectTargetedFieldInMessage(text: string, targetExpectedField?:
     return "tenureMonths";
   }
 
-  // If user says "my cibil is 750" or "score 770" while expectedField was something else:
-  if (targetExpectedField !== "cibil" && /(?:cibil|credit\s*score|score\s*is|score\b)\s*[3-9]\d{2}/i.test(norm)) {
+  // If user says "my cibil is 750", "no cibil", "don't have credit score" or "score 770" while expectedField was something else:
+  if (
+    targetExpectedField !== "cibil" &&
+    (/(?:cibil|credit\s*score|score\s*is|score\b)\s*[3-9]\d{2}/i.test(norm) ||
+      /(?:no|don['’]?t\s*have|never\s*had|never\s*checked|zero|nil|unknown|first\s*time)\s*(?:a\s*)?(?:cibil|credit\s*score|score)/i.test(norm) ||
+      /(?:cibil|credit\s*score|score)\s*(?:is\s*)?(?:unknown|zero|nil|none|never\s*checked|not\s*generated)/i.test(norm))
+  ) {
     return "cibil";
   }
 
@@ -811,10 +816,28 @@ export function detectTargetedFieldInMessage(text: string, targetExpectedField?:
  */
 export function isInvalidCompanyName(text: string): boolean {
   if (!text) return true;
-  const clean = text.trim().toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+  const raw = text.trim();
+  const clean = raw.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
   if (clean.length < 2) return true;
   if (/^\d+$/.test(clean)) return true;
   if (!/[a-zA-Z]/.test(clean)) return true;
+
+  // Questions, conversational phrases, confirmations, small talk
+  if (
+    /\?$/.test(raw) ||
+    /^(?:why|how|what|when|where|who|which|explain|is|can|will|do|did|does|should|would|could|are|am)\b/i.test(clean) ||
+    /^(?:ok|okay|sure|yes|yep|yeah|proceed|continue|go\s*ahead|fine|understood|got\s*it|thanks|thank\s*you|hello|hi|hey|good\s*(?:morning|afternoon|evening|day)|bye|cancel|reset)\b/i.test(clean)
+  ) {
+    return true;
+  }
+
+  // Financial parameter statements, corrections, or profile data
+  if (
+    /\b(?:salary|income|take\s*home|in\s*hand|cibil|credit\s*score|existing\s*emi|no\s*emi|zero\s*emi|lakh|lakhs|crore|crores|peti|khoka)\b/i.test(clean)
+  ) {
+    return true;
+  }
+
   if (
     /^(?:i\s+am\s+|i\s*m\s+)?(?:jobless|unemployed|no\s*job|without\s*(?:a\s*)?job|laid\s*off|not\s*working(?:\s*anywhere)?|none|nil|na|n\/a|nothing|zero|0|0rs|student|freelancer?|self[\s-]*employed)$/i.test(
       clean
@@ -833,37 +856,57 @@ export function isInvalidCompanyName(text: string): boolean {
 export function isFinancialOrProfileInput(text: string): boolean {
   if (!text) return false;
   const clean = text.trim().toLowerCase();
+  const stripped = clean.replace(/^(?:(?:actually|wait|no|update|change|please|hey|hi|hello|my)\s*[,:]?\s*)+/i, "").trim();
 
   // Phrases with take-home, in-hand, per month, or direct salary/income statements
   if (
     /^(?:my\s+)?(?:monthly\s+)?(?:take\s*home|in\s*hand|salary|income|nmi|nth)(?:\s+is)?(?:\s*[:=-])?\s*(?:rs\.?|₹)?\s*\d+/i.test(clean) ||
-    /(?:take\s*home|in\s*hand|per\s*month|\/mo)\b/i.test(clean)
+    /^(?:my\s+)?(?:monthly\s+)?(?:take\s*home|in\s*hand|salary|income|nmi|nth)(?:\s+is)?(?:\s*[:=-])?\s*(?:rs\.?|₹)?\s*\d+/i.test(stripped) ||
+    /(?:take\s*home|in\s*hand|per\s*month|\/mo)\b/i.test(clean) ||
+    /(?:take\s*home|in\s*hand|per\s*month|\/mo)\b/i.test(stripped) ||
+    /\b(?:salary|income)\s*(?:is\s*)?(?:rs\.?|₹)?\s*\d+/i.test(clean) ||
+    /\b(?:salary|income)\s*(?:is\s*)?(?:rs\.?|₹)?\s*\d+/i.test(stripped)
   ) {
     return true;
   }
 
   // Salary, loan amount, or currency figures (e.g. "75000", "75k", "0.75 lakh", "5L", "₹500000", "500000", "5 lakhs", "0rs", "0")
-  if (/^(?:rs\.?|₹)?\s*\d+(?:,\d+)*(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr|crores?)?(?:\s*(?:per\s*month|\/mo|salary|income|loan))?$/i.test(clean)) {
+  if (
+    /^(?:rs\.?|₹)?\s*\d+(?:,\d+)*(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr|crores?)?(?:\s*(?:per\s*month|\/mo|salary|income|loan))?$/i.test(clean) ||
+    /^(?:rs\.?|₹)?\s*\d+(?:,\d+)*(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr|crores?)?(?:\s*(?:per\s*month|\/mo|salary|income|loan))?$/i.test(stripped)
+  ) {
     return true;
   }
 
   // 3-digit CIBIL score (300-900)
-  if (/^(?:cibil|score|credit\s*score)?\s*[3-9]\d{2}\s*(?:cibil|score)?$/i.test(clean)) {
+  if (
+    /^(?:cibil|score|credit\s*score)?\s*[3-9]\d{2}\s*(?:cibil|score)?$/i.test(clean) ||
+    /^(?:cibil|score|credit\s*score)?\s*[3-9]\d{2}\s*(?:cibil|score)?$/i.test(stripped)
+  ) {
     return true;
   }
 
   // 2-digit age (18-85)
-  if (/^(?:age\s*)?(?:1[8-9]|[2-8]\d)\s*(?:years?|yrs?|yr|years\s*old)?$/i.test(clean)) {
+  if (
+    /^(?:age\s*)?(?:1[8-9]|[2-8]\d)\s*(?:years?|yrs?|yr|years\s*old)?$/i.test(clean) ||
+    /^(?:age\s*)?(?:1[8-9]|[2-8]\d)\s*(?:years?|yrs?|yr|years\s*old)?$/i.test(stripped)
+  ) {
     return true;
   }
 
   // Tenure (e.g. "3 years", "36 months", "3y", "5 yrs", "3", "5")
-  if (/^\d{1,2}\s*(?:years?|yrs?|months?|m\b|y\b)?$/i.test(clean)) {
+  if (
+    /^\d{1,2}\s*(?:years?|yrs?|months?|m\b|y\b)?$/i.test(clean) ||
+    /^\d{1,2}\s*(?:years?|yrs?|months?|m\b|y\b)?$/i.test(stripped)
+  ) {
     return true;
   }
 
   // EMI answers & zero values (e.g. "none", "0 emi", "no emi", "zero", "nil", "nothing", "nope", "0rs", "0")
-  if (/^(?:no|none|nil|zero|0|nope|nothing|no\s*emi|0\s*emi|no\s*loans|0rs|rs\.?\s*0)$/i.test(clean)) {
+  if (
+    /^(?:no|none|nil|zero|0|nope|nothing|no\s*emi|0\s*emi|no\s*loans|0rs|rs\.?\s*0)$/i.test(clean) ||
+    /^(?:no|none|nil|zero|0|nope|nothing|no\s*emi|0\s*emi|no\s*loans|0rs|rs\.?\s*0)$/i.test(stripped)
+  ) {
     return true;
   }
 
@@ -1034,10 +1077,6 @@ function mapAnswerToTargetField(
       applicant.cibil = llmExtracted.cibil;
       return;
     }
-    if (/no|none|nil|zero|0|unknown|not\s*sure|don'?t\s*know|first\s*time|never\s*checked|na|n\/a/i.test(lower)) {
-      applicant.cibil = 0;
-      return;
-    }
     const cibilMatch = text.match(/\b([3-9]\d{2})\b/);
     if (cibilMatch) {
       const score = parseInt(cibilMatch[1], 10);
@@ -1045,6 +1084,13 @@ function mapAnswerToTargetField(
         applicant.cibil = score;
         return;
       }
+    }
+    if (
+      /\b(?:no|none|nil|zero|0|unknown|not\s*sure|don'?t\s*know|first\s*time|never\s*checked|na|n\/a)\b/i.test(lower) ||
+      /(?:no|don['’]?t\s*have|never\s*had|never\s*checked|zero|nil|unknown)\s*(?:a\s*)?(?:cibil|credit\s*score|score)/i.test(lower)
+    ) {
+      applicant.cibil = 0;
+      return;
     }
   }
 
@@ -1054,8 +1100,18 @@ function mapAnswerToTargetField(
       applicant.existingEmi = llmExtracted.existingEmi;
       return;
     }
-    if (/no|none|nil|zero|0|nothing|nope|no\s*emi|0\s*emi|no\s*loans|zero\s*debt|sab\s*clear|no\s*debt/i.test(lower)) {
-      applicant.existingEmi = 0;
+    if (
+      /\b(?:no|none|nil|zero|0|nothing|nope|clear)\b/i.test(lower) ||
+      /(?:no|zero|0)\s*(?:existing\s*)?emi/i.test(lower) ||
+      /(?:no|zero|nil|0)\s*(?:existing\s*|ongoing\s*|current\s*)?loans?/i.test(lower) ||
+      /zero\s*debt|sab\s*clear|no\s*debt/i.test(lower)
+    ) {
+      const parsedAmt = parseFinancialAmount(text);
+      if (parsedAmt && parsedAmt > 0 && !/(?:no|zero|0|nil)\s*emi/i.test(lower)) {
+        applicant.existingEmi = parsedAmt;
+      } else {
+        applicant.existingEmi = 0;
+      }
       return;
     }
     const amt = parseFinancialAmount(text);
@@ -1274,7 +1330,11 @@ function extractSecondaryParameters(
         if (val >= 300 && val <= 900) {
           applicant.cibil = val;
         }
-      } else if (/no\s*cibil|no\s*credit\s*history|first\s*time\s*borrower/i.test(lower)) {
+      } else if (
+        /(?:no|don['’]?t\s*have|never\s*had|never\s*checked|zero|nil|unknown|first\s*time)\s*(?:a\s*)?(?:cibil|credit\s*score|score|credit\s*history)/i.test(lower) ||
+        /(?:cibil|credit\s*score|score)\s*(?:is\s*)?(?:unknown|zero|nil|none|never\s*checked|not\s*generated)/i.test(lower) ||
+        /no\s*cibil|no\s*credit\s*history|first\s*time\s*borrower/i.test(lower)
+      ) {
         applicant.cibil = 0;
       }
     }
@@ -1472,11 +1532,14 @@ export function extractApplicantDetails(
     ) {
       applicant.age = llmExtracted.age;
     }
+    const hasExplicitCompanyInText =
+      /(?:(?:change|update|correct)\s+(?:my\s+)?(?:company|employer)|(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is)|(?:company|employer)\s*[:=-])/i.test(text);
+
     if (
       llmExtracted.companyName &&
       !isInvalidCompanyName(llmExtracted.companyName) &&
       !isFinancialOrProfileInput(llmExtracted.companyName) &&
-      (!applicant.companyName || targetExpectedField === "companyName" || messageMentionsField("companyName", text))
+      (!applicant.companyName || targetExpectedField === "companyName" || hasExplicitCompanyInText)
     ) {
       applicant.companyName = normalizeCompanyName(llmExtracted.companyName);
       if (!applicant.employmentType) applicant.employmentType = "Salaried";
@@ -1573,7 +1636,10 @@ export function consolidateApplicantProfileFromHistory(
     }
 
     // 2. Company name candidate extraction
-    if (!applicant.companyName || messageMentionsField("companyName", msg)) {
+    const hasExplicitCompanyInTurn =
+      /(?:(?:change|update|correct)\s+(?:my\s+)?(?:company|employer)|(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is)|(?:company|employer)\s*[:=-])/i.test(msg);
+
+    if (!applicant.companyName || hasExplicitCompanyInTurn) {
       if (applicant.employmentType !== "Unemployed" && applicant.employmentType !== "Student" && applicant.employmentType !== "Self-Employed") {
         const compCandidate = extractCompanyCandidateFromText(msg);
         if (compCandidate && !isInvalidCompanyName(compCandidate) && !isFinancialOrProfileInput(compCandidate)) {
@@ -1584,7 +1650,8 @@ export function consolidateApplicantProfileFromHistory(
     }
 
     // 3. Extract details and handle corrections
-    applicant = extractApplicantDetails(msg, applicant, [], extractedForTurn);
+    const missingForTurn = getRequiredPolicyFields(applicant);
+    applicant = extractApplicantDetails(msg, applicant, missingForTurn, extractedForTurn);
   }
 
   return applicant;
