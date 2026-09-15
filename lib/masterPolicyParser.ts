@@ -27,611 +27,57 @@ export interface CategoryPolicyRule {
   policySource: string;
   policyCibil: string;
   policyTenure: string;
+  reviewRequired?: boolean;
+  reviewReason?: string | null;
 }
 
-interface BankPolicySpec {
+export interface CachedTierRule {
+  minSalary: number;
+  maxLoanAmount: number;
+  maxTenureMonths: number;
+  foirPercent: number;
+  roi: number;
+  minCibil: number;
+  policyCibil: string;
+  policyTenure: string;
+  resolvedCategory: string;
+  reviewRequired?: boolean;
+  reviewReason?: string | null;
+}
+
+export interface CachedBankPolicy {
   bankKey: string;
   bankName: string;
   bankCode: string;
-  fileName: string;
-  supportedLoanTypes: string[];
-  minSalaryTier1: number;
-  minSalaryTier2: number;
-  minSalaryStandard: number;
-  minCibil: number;
   minAge: number;
   maxAge: number;
   minLoanAmount: number;
-  maxLoanAmount: number;
   minTenureMonths: number;
-  maxTenureMonths: number;
-  foirTier1: number;
-  foirTier2: number;
-  foirStandard: number;
-  roiTier1: number;
-  roiTier2: number;
-  roiStandard: number;
   processingFeePercent: number;
   employmentType: string;
+  tiers: Record<CategoryTierType, CachedTierRule>;
 }
 
-const VERIFIED_BANK_POLICIES: BankPolicySpec[] = [
-  {
-    bankKey: "abfl",
-    bankName: "Aditya Birla Finance",
-    bankCode: "ABFL",
-    fileName: "ABFL_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 25000,
-    minSalaryTier2: 25000,
-    minSalaryStandard: 30000,
-    minCibil: 650,
-    minAge: 21,
-    maxAge: 60,
-    minLoanAmount: 50000,
-    maxLoanAmount: 700000,
-    minTenureMonths: 12,
-    maxTenureMonths: 48,
-    foirTier1: 60,
-    foirTier2: 60,
-    foirStandard: 60,
-    roiTier1: 22.0,
-    roiTier2: 22.0,
-    roiStandard: 24.0,
-    processingFeePercent: 2.0,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "axis",
-    bankName: "Axis Bank",
-    bankCode: "AXIS",
-    fileName: "AXIS_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 25000,
-    minSalaryTier2: 35000,
-    minSalaryStandard: 50000,
-    minCibil: 700,
-    minAge: 21,
-    maxAge: 60,
-    minLoanAmount: 50000,
-    maxLoanAmount: 4000000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 70,
-    foirTier2: 65,
-    foirStandard: 60,
-    roiTier1: 10.75,
-    roiTier2: 11.75,
-    roiStandard: 13.50,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "axisfinance",
-    bankName: "Axis Finance",
-    bankCode: "AFL",
-    fileName: "Axis_Finance_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 25000,
-    minSalaryTier2: 35000,
-    minSalaryStandard: 45000,
-    minCibil: 720,
-    minAge: 21,
-    maxAge: 60,
-    minLoanAmount: 100000,
-    maxLoanAmount: 3000000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 70,
-    foirTier2: 65,
-    foirStandard: 60,
-    roiTier1: 11.50,
-    roiTier2: 12.50,
-    roiStandard: 13.50,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "bajajfinserv",
-    bankName: "Bajaj Finserv",
-    bankCode: "BAJAJ_FINSERV",
-    fileName: "Bajaj_Finserv_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 25000,
-    minSalaryTier2: 30000,
-    minSalaryStandard: 35000,
-    minCibil: 730,
-    minAge: 25,
-    maxAge: 58,
-    minLoanAmount: 50000,
-    maxLoanAmount: 3500000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 70,
-    foirTier2: 70,
-    foirStandard: 65,
-    roiTier1: 11.50,
-    roiTier2: 12.50,
-    roiStandard: 13.50,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "bajajmarkets",
-    bankName: "Bajaj Markets",
-    bankCode: "BAJAJ_MARKETS",
-    fileName: "Bajaj_Markets_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 15000,
-    minSalaryTier2: 15000,
-    minSalaryStandard: 15000,
-    minCibil: 700,
-    minAge: 25,
-    maxAge: 58,
-    minLoanAmount: 50000,
-    maxLoanAmount: 3500000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 70,
-    foirTier2: 70,
-    foirStandard: 70,
-    roiTier1: 9.99,
-    roiTier2: 9.99,
-    roiStandard: 10.99,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "bandhan",
-    bankName: "Bandhan Bank",
-    bankCode: "BANDHAN",
-    fileName: "Bandhan_Bank_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 25000,
-    minSalaryTier2: 25000,
-    minSalaryStandard: 25000,
-    minCibil: 731,
-    minAge: 21,
-    maxAge: 60,
-    minLoanAmount: 100000,
-    maxLoanAmount: 2500000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 60,
-    foirTier2: 60,
-    foirStandard: 60,
-    roiTier1: 10.25,
-    roiTier2: 10.75,
-    roiStandard: 11.50,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "chola",
-    bankName: "Cholamandalam Investment & Finance",
-    bankCode: "CHOLA",
-    fileName: "Chola_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 25000,
-    minSalaryTier2: 25000,
-    minSalaryStandard: 25000,
-    minCibil: 675,
-    minAge: 25,
-    maxAge: 58,
-    minLoanAmount: 100000,
-    maxLoanAmount: 2000000,
-    minTenureMonths: 12,
-    maxTenureMonths: 48,
-    foirTier1: 55,
-    foirTier2: 55,
-    foirStandard: 50,
-    roiTier1: 16.00,
-    roiTier2: 17.50,
-    roiStandard: 19.00,
-    processingFeePercent: 2.0,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "fibe",
-    bankName: "Fibe (EarlySalary)",
-    bankCode: "FIBE",
-    fileName: "Fibe_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 15000,
-    minSalaryTier2: 15000,
-    minSalaryStandard: 18000,
-    minCibil: 700,
-    minAge: 19,
-    maxAge: 55,
-    minLoanAmount: 5000,
-    maxLoanAmount: 500000,
-    minTenureMonths: 6,
-    maxTenureMonths: 36,
-    foirTier1: 65,
-    foirTier2: 65,
-    foirStandard: 60,
-    roiTier1: 15.00,
-    roiTier2: 16.50,
-    roiStandard: 18.00,
-    processingFeePercent: 2.0,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "finnable",
-    bankName: "Finnable Credit",
-    bankCode: "FINNABLE",
-    fileName: "Finnable_Credit_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 20000,
-    minSalaryTier2: 15000,
-    minSalaryStandard: 20000,
-    minCibil: 700,
-    minAge: 21,
-    maxAge: 60,
-    minLoanAmount: 50000,
-    maxLoanAmount: 1000000,
-    minTenureMonths: 12,
-    maxTenureMonths: 48,
-    foirTier1: 60,
-    foirTier2: 60,
-    foirStandard: 55,
-    roiTier1: 15.00,
-    roiTier2: 16.00,
-    roiStandard: 17.50,
-    processingFeePercent: 2.0,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "hdfc",
-    bankName: "HDFC Bank",
-    bankCode: "HDFC",
-    fileName: "HDFC_Bank_Master_Policy_CIBIL_Updated.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 25000,
-    minSalaryTier2: 35000,
-    minSalaryStandard: 50000,
-    minCibil: 730,
-    minAge: 21,
-    maxAge: 60,
-    minLoanAmount: 50000,
-    maxLoanAmount: 5000000,
-    minTenureMonths: 12,
-    maxTenureMonths: 72,
-    foirTier1: 70,
-    foirTier2: 65,
-    foirStandard: 65,
-    roiTier1: 10.75,
-    roiTier2: 11.75,
-    roiStandard: 13.75,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "homeloan",
-    bankName: "Home Loan Services",
-    bankCode: "HOME_LOAN",
-    fileName: "home_loan_eligibility_policy_rules.txt",
-    supportedLoanTypes: ["Home Loan"], // Strictly Home Loan only! Ineligible for Personal Loan
-    minSalaryTier1: 30000,
-    minSalaryTier2: 30000,
-    minSalaryStandard: 35000,
-    minCibil: 700,
-    minAge: 21,
-    maxAge: 65,
-    minLoanAmount: 500000,
-    maxLoanAmount: 10000000,
-    minTenureMonths: 60,
-    maxTenureMonths: 240,
-    foirTier1: 60,
-    foirTier2: 60,
-    foirStandard: 55,
-    roiTier1: 8.50,
-    roiTier2: 8.75,
-    roiStandard: 9.25,
-    processingFeePercent: 0.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "icici",
-    bankName: "ICICI Bank",
-    bankCode: "ICICI",
-    fileName: "ICICI_Bank_Personal_Loan_Policy_Rulebook.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 25000,
-    minSalaryTier2: 30000,
-    minSalaryStandard: 40000,
-    minCibil: 700,
-    minAge: 21,
-    maxAge: 58,
-    minLoanAmount: 50000,
-    maxLoanAmount: 5000000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 65,
-    foirTier2: 60,
-    foirStandard: 60,
-    roiTier1: 10.65,
-    roiTier2: 11.50,
-    roiStandard: 12.90,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "idfc",
-    bankName: "IDFC FIRST Bank",
-    bankCode: "IDFC",
-    fileName: "IDFC_FIRST_Bank_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 20000,
-    minSalaryTier2: 20000,
-    minSalaryStandard: 25000,
-    minCibil: 690,
-    minAge: 21,
-    maxAge: 60,
-    minLoanAmount: 50000,
-    maxLoanAmount: 4000000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 65,
-    foirTier2: 60,
-    foirStandard: 60,
-    roiTier1: 10.99,
-    roiTier2: 11.99,
-    roiStandard: 12.99,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "indusind",
-    bankName: "IndusInd Bank",
-    bankCode: "INDUSIND",
-    fileName: "IndusInd_Bank_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 25000,
-    minSalaryTier2: 35000,
-    minSalaryStandard: 50000,
-    minCibil: 700,
-    minAge: 21,
-    maxAge: 60,
-    minLoanAmount: 50000,
-    maxLoanAmount: 2500000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 70,
-    foirTier2: 65,
-    foirStandard: 60,
-    roiTier1: 10.99,
-    roiTier2: 11.99,
-    roiStandard: 13.50,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "kotak",
-    bankName: "Kotak Mahindra Bank",
-    bankCode: "KOTAK",
-    fileName: "Kotak_Mahindra_Bank_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 25000,
-    minSalaryTier2: 35000,
-    minSalaryStandard: 40000,
-    minCibil: 700,
-    minAge: 21,
-    maxAge: 60,
-    minLoanAmount: 50000,
-    maxLoanAmount: 4000000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 70,
-    foirTier2: 65,
-    foirStandard: 60,
-    roiTier1: 10.99,
-    roiTier2: 11.75,
-    roiStandard: 12.50,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "ltfinance",
-    bankName: "L&T Finance",
-    bankCode: "LTF",
-    fileName: "LT_Finance_Master_Policy_Clean.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 25000,
-    minSalaryTier2: 30000,
-    minSalaryStandard: 35000,
-    minCibil: 700,
-    minAge: 21,
-    maxAge: 60,
-    minLoanAmount: 50000,
-    maxLoanAmount: 2500000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 65,
-    foirTier2: 60,
-    foirStandard: 60,
-    roiTier1: 11.50,
-    roiTier2: 12.50,
-    roiStandard: 13.50,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "piramal",
-    bankName: "Piramal Capital & Housing Finance",
-    bankCode: "PIRAMAL",
-    fileName: "Piramal_Capital__Housing_Finance_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 27500,
-    minSalaryTier2: 27500,
-    minSalaryStandard: 30000,
-    minCibil: 650,
-    minAge: 21,
-    maxAge: 61,
-    minLoanAmount: 100000,
-    maxLoanAmount: 2500000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 65,
-    foirTier2: 60,
-    foirStandard: 55,
-    roiTier1: 12.50,
-    roiTier2: 13.50,
-    roiStandard: 14.50,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "poonawalla",
-    bankName: "Poonawalla Fincorp",
-    bankCode: "POONAWALLA",
-    fileName: "Poonawalla_Fincorp_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 30000,
-    minSalaryTier2: 35000,
-    minSalaryStandard: 40000,
-    minCibil: 700,
-    minAge: 21,
-    maxAge: 58,
-    minLoanAmount: 50000,
-    maxLoanAmount: 5000000,
-    minTenureMonths: 12,
-    maxTenureMonths: 72,
-    foirTier1: 75,
-    foirTier2: 75,
-    foirStandard: 70,
-    roiTier1: 12.50,
-    roiTier2: 13.00,
-    roiStandard: 13.50,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "sbm",
-    bankName: "SBM Bank India",
-    bankCode: "SBM",
-    fileName: "SBM_Bank_India_Master_Policy_Clean.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 30000,
-    minSalaryTier2: 30000,
-    minSalaryStandard: 50000,
-    minCibil: 720,
-    minAge: 25,
-    maxAge: 60,
-    minLoanAmount: 500000,
-    maxLoanAmount: 3000000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 65,
-    foirTier2: 60,
-    foirStandard: 50,
-    roiTier1: 11.25,
-    roiTier2: 11.75,
-    roiStandard: 12.25,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "smfg",
-    bankName: "SMFG India Credit (Fullerton)",
-    bankCode: "SMFG",
-    fileName: "SMFG_India_Credit_Fullerton_Master_Policy_Clean.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 19000,
-    minSalaryTier2: 22000,
-    minSalaryStandard: 25000,
-    minCibil: 705,
-    minAge: 21,
-    maxAge: 65,
-    minLoanAmount: 100000,
-    maxLoanAmount: 2500000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 70,
-    foirTier2: 65,
-    foirStandard: 60,
-    roiTier1: 12.99,
-    roiTier2: 13.99,
-    roiStandard: 15.50,
-    processingFeePercent: 2.0,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "tatacapital",
-    bankName: "Tata Capital",
-    bankCode: "TATA_CAPITAL",
-    fileName: "Tata_Capital_Master_Policy_Clean.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 20000,
-    minSalaryTier2: 25000,
-    minSalaryStandard: 27000,
-    minCibil: 725,
-    minAge: 21,
-    maxAge: 58,
-    minLoanAmount: 75000,
-    maxLoanAmount: 3500000,
-    minTenureMonths: 12,
-    maxTenureMonths: 72,
-    foirTier1: 65,
-    foirTier2: 65,
-    foirStandard: 60,
-    roiTier1: 11.99,
-    roiTier2: 12.99,
-    roiStandard: 14.50,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "utkarsh",
-    bankName: "Utkarsh Small Finance Bank",
-    bankCode: "UTKARSH",
-    fileName: "Utkarsh_Small_Finance_Bank_Master_Policy_Clean.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 25000,
-    minSalaryTier2: 25000,
-    minSalaryStandard: 30000,
-    minCibil: 650,
-    minAge: 23,
-    maxAge: 58,
-    minLoanAmount: 150000,
-    maxLoanAmount: 1500000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 60,
-    foirTier2: 55,
-    foirStandard: 50,
-    roiTier1: 14.00,
-    roiTier2: 15.00,
-    roiStandard: 16.50,
-    processingFeePercent: 2.0,
-    employmentType: "Salaried",
-  },
-  {
-    bankKey: "yesbank",
-    bankName: "Yes Bank",
-    bankCode: "YES_BANK",
-    fileName: "Yes_Bank_Master_Policy.txt",
-    supportedLoanTypes: ["Personal Loan"],
-    minSalaryTier1: 25000,
-    minSalaryTier2: 35000,
-    minSalaryStandard: 45000,
-    minCibil: 731,
-    minAge: 21,
-    maxAge: 60,
-    minLoanAmount: 50000,
-    maxLoanAmount: 4000000,
-    minTenureMonths: 12,
-    maxTenureMonths: 60,
-    foirTier1: 70,
-    foirTier2: 65,
-    foirStandard: 60,
-    roiTier1: 10.99,
-    roiTier2: 11.75,
-    roiStandard: 12.75,
-    processingFeePercent: 1.5,
-    employmentType: "Salaried",
-  },
-];
+let policyRulesCache: Record<string, CachedBankPolicy> | null = null;
+
+/**
+ * Loads parsed policy rules directly from policy-master-files/.policy_rules_cache.json.
+ * Cache is populated directly from the actual text of bank Master Policy rulebooks.
+ */
+export function loadPolicyRulesCache(): Record<string, CachedBankPolicy> {
+  if (policyRulesCache) return policyRulesCache;
+  const cachePath = path.join(process.cwd(), "policy-master-files", ".policy_rules_cache.json");
+  if (fs.existsSync(cachePath)) {
+    try {
+      const data = fs.readFileSync(cachePath, "utf-8");
+      policyRulesCache = JSON.parse(data);
+      return policyRulesCache!;
+    } catch (e: any) {
+      console.warn("[Policy Parser] Could not read .policy_rules_cache.json:", e?.message || e);
+    }
+  }
+  return {};
+}
 
 
 export type CategoryTierType = "tier_1" | "tier_2" | "govt" | "standard";
@@ -1065,8 +511,116 @@ export function getPolicyCibilAndTenure(
 }
 
 /**
+ * Deterministically parses policy rules from the raw text content of a bank Master Policy file.
+ */
+export function extractRulesFromPolicyText(
+  fileName: string,
+  content: string,
+  classification: CategoryClassification
+): {
+  minSalary: number;
+  minCibil: number;
+  minAge: number;
+  maxAge: number;
+  minLoanAmount: number;
+  maxLoanAmount: number;
+  minTenureMonths: number;
+  maxTenureMonths: number;
+  foirPercent: number;
+  roi: number;
+  processingFeePercent: number;
+  policyCibil?: string;
+  policyTenure?: string;
+  reviewRequired?: boolean;
+  reviewReason?: string | null;
+} {
+  let minAge = 21;
+  let maxAge = 60;
+  const ageM = content.match(/age[:\s]+(\d{2})\s*(?:to|-)\s*(\d{2})/i) ||
+               content.match(/(\d{2})\s*(?:to|-)\s*(\d{2})\s*years?/i);
+  if (ageM) {
+    minAge = parseInt(ageM[1], 10);
+    maxAge = parseInt(ageM[2], 10);
+  }
+
+  let minLoanAmount = 50000;
+  let maxLoanAmount = classification.tier === "tier_1" || classification.tier === "govt" ? 4000000 : 2500000;
+  const minAmtM = content.match(/min(?:imum)?\s*loan\s*(?:amount)?[:\s]*(?:rs\.?|₹)?\s*([\d,]+)/i);
+  if (minAmtM) {
+    const val = parseInt(minAmtM[1].replace(/,/g, ""), 10);
+    if (val >= 5000 && val <= 1000000) minLoanAmount = val;
+  }
+  const maxAmtM = content.match(/max(?:imum)?\s*(?:loan\s*amount|funding)[:\s]*(?:rs\.?|₹)?\s*([\d,]+)/i);
+  if (maxAmtM) {
+    const val = parseInt(maxAmtM[1].replace(/,/g, ""), 10);
+    if (val >= 100000 && val <= 10000000) maxLoanAmount = val;
+  }
+
+  let minTenureMonths = 12;
+  let maxTenureMonths = classification.tier === "tier_1" || classification.tier === "govt" ? 72 : 60;
+  const minTenM = content.match(/min(?:imum)?\s*tenure[:\s]*(\d+)\s*months?/i);
+  if (minTenM) minTenureMonths = parseInt(minTenM[1], 10);
+  const maxTenM = content.match(/max(?:imum)?\s*tenure[:\s]*(\d+)\s*(?:months?|years?)/i);
+  if (maxTenM) {
+    let val = parseInt(maxTenM[1], 10);
+    if (val <= 10) val = val * 12;
+    maxTenureMonths = val;
+  }
+
+  let minSalary = classification.tier === "tier_1" || classification.tier === "govt" ? 25000 : classification.tier === "tier_2" ? 35000 : 45000;
+  const salM = content.match(/min(?:imum)?\s*(?:net\s*)?(?:monthly\s*)?(?:salary|nmi|nth)[:\s]*(?:rs\.?|₹)?\s*([\d,]+)/i);
+  if (salM) {
+    const val = parseInt(salM[1].replace(/,/g, ""), 10);
+    if (val >= 10000 && val <= 200000) minSalary = val;
+  }
+
+  let minCibil = 700;
+  const cibilM = content.match(/cibil\s*(?:score)?[:\s]*(?:>=|>)?\s*(\d{3})/i) ||
+                 content.match(/min(?:imum)?\s*cibil[:\s]*(\d{3})/i);
+  if (cibilM) {
+    const val = parseInt(cibilM[1], 10);
+    if (val >= 600 && val <= 850) minCibil = val;
+  }
+
+  let foirPercent = classification.tier === "tier_1" || classification.tier === "govt" ? 70 : classification.tier === "tier_2" ? 65 : 60;
+  const foirM = content.match(/(?:max(?:imum)?\s*)?foir[:\s]+(?:up\s*to\s*)?(\d{2})%/i) ||
+                content.match(/(\d{2})%\s*foir/i);
+  if (foirM) foirPercent = parseInt(foirM[1], 10);
+
+  let roi = classification.tier === "tier_1" || classification.tier === "govt" ? 11.5 : classification.tier === "tier_2" ? 12.5 : 13.5;
+  const roiM = content.match(/roi[:\s]+(?:starting\s*from\s*)?(\d{1,2}(?:\.\d{1,2})?)\s*%/i) ||
+               content.match(/interest\s*rate[:\s]+(?:starting\s*from\s*)?(\d{1,2}(?:\.\d{1,2})?)\s*%/i) ||
+               content.match(/irr[:\s]*(\d{1,2}(?:\.\d{1,2})?)\s*%/i);
+  if (roiM) roi = parseFloat(roiM[1]);
+
+  let processingFeePercent = 1.5;
+  const pfM = content.match(/processing\s*fee[:\s]*(\d(?:\.\d{1,2})?)\s*%/i);
+  if (pfM) processingFeePercent = parseFloat(pfM[1]);
+
+  const isUnlisted = classification.tier === "standard";
+  const reviewRequired = isUnlisted;
+  const reviewReason = isUnlisted ? "Unlisted corporate subject to internal credit policy review" : null;
+
+  return {
+    minSalary,
+    minCibil,
+    minAge,
+    maxAge,
+    minLoanAmount,
+    maxLoanAmount,
+    minTenureMonths,
+    maxTenureMonths,
+    foirPercent,
+    roi,
+    processingFeePercent,
+    reviewRequired,
+    reviewReason,
+  };
+}
+
+/**
  * Extracts bank-specific category-adjusted policy rules using the Master Policy .txt file
- * as the primary source of truth, with policy_rules as secondary fallback.
+ * as the primary source of truth. Evaluates only relevant Personal Loan policy files.
  */
 export function getBankRulesForCategory(
   bankName: string,
@@ -1089,7 +643,21 @@ export function getBankRulesForCategory(
     return null;
   }
 
-  // Verify Master Policy file exists on disk and is non-empty
+  // Filter out non-Personal Loan policies if Personal Loan requested
+  const normReq = (requestedLoanType || "Personal Loan").toLowerCase().replace(/\s*loan$/, "");
+  if (normReq === "personal") {
+    if (matchedMaster.bank_code === "HOME_LOAN" || /home_loan/i.test(matchedMaster.file_name || "")) {
+      return null;
+    }
+    const isPL =
+      (matchedMaster.loan_type && matchedMaster.loan_type.toLowerCase().includes("personal")) ||
+      (Array.isArray(matchedMaster.supported_loan_types) &&
+        matchedMaster.supported_loan_types.some((t: string) => t.toLowerCase().includes("personal")));
+    if (!isPL) {
+      return null;
+    }
+  }
+
   const fileName = matchedMaster.file_name;
   if (!fileName) {
     console.warn(
@@ -1121,273 +689,14 @@ export function getBankRulesForCategory(
     return null;
   }
 
-  // Lookup verified bank policy specification
-  const spec = VERIFIED_BANK_POLICIES.find(
-    (b) =>
-      b.bankKey === bankKey ||
-      normalizeBankKey(b.bankName) === bankKey ||
-      normalizeBankKey(b.bankCode) === bankKey ||
-      (matchedMaster && normalizeBankKey(b.bankCode) === normalizeBankKey(matchedMaster.bank_code)) ||
-      (matchedMaster && normalizeBankKey(b.bankName) === normalizeBankKey(matchedMaster.bank_name))
+  const classification = classifyCategoryTier(companyCategory);
+  const cache = loadPolicyRulesCache();
+  const cachedBank = cache[fileName] || Object.values(cache).find(
+    (b: any) => b.bankKey === bankKey || normalizeBankKey(b.bankName) === bankKey || normalizeBankKey(b.bankCode) === bankKey
   );
 
-  if (!spec) {
-    console.warn(
-      `[Bank Fetching] Cannot load Master Policy rules for "${matchedMaster.bank_name}": No matching rule specification found for "${fileName}".`
-    );
-    return null;
-  }
-
-  const normCat = String(companyCategory || "").trim().toLowerCase();
-  const classification = classifyCategoryTier(companyCategory);
-
-  // Apply category-tiered parameters strictly from bank Master Policy rules
-  let minSalary =
-    classification.tier === "tier_1" || classification.tier === "govt"
-      ? spec.minSalaryTier1
-      : classification.tier === "tier_2"
-      ? spec.minSalaryTier2
-      : spec.minSalaryStandard;
-
-  let minCibil = spec.minCibil;
-  let minAge = spec.minAge;
-  let maxAge = spec.maxAge;
-  let minLoanAmount = spec.minLoanAmount;
-  let maxLoanAmount =
-    classification.tier === "tier_1" || classification.tier === "govt"
-      ? spec.maxLoanAmount
-      : Math.min(spec.maxLoanAmount, 3500000);
-
-  let minTenureMonths = spec.minTenureMonths;
-  let maxTenureMonths =
-    classification.tier === "tier_1" || classification.tier === "govt"
-      ? spec.maxTenureMonths
-      : Math.min(spec.maxTenureMonths, 60);
-
-  let foirPercent =
-    classification.tier === "tier_1" || classification.tier === "govt"
-      ? spec.foirTier1
-      : classification.tier === "tier_2"
-      ? spec.foirTier2
-      : spec.foirStandard;
-
-  let roi =
-    classification.tier === "tier_1" || classification.tier === "govt"
-      ? spec.roiTier1
-      : classification.tier === "tier_2"
-      ? spec.roiTier2
-      : spec.roiStandard;
-
-  let processingFeePercent = spec.processingFeePercent;
-
-  // --- Bank-specific Category Rule Refinements from Master Policy text files ---
-  if (bankKey === "hdfc") {
-    // HDFC Master Policy rules:
-    // - CAT Super A / CAT A: up to ₹40L, 72m tenure, min salary ₹25k, ROI 10.75%, FOIR 70%
-    // - CAT B / CAT C: up to ₹25L, 60m tenure, min salary ₹35k, ROI 11.75%, FOIR 65%
-    // - CAT D / CAT E: up to ₹10L, 60m tenure, min salary ₹50k, ROI 13.75%, FOIR 60%
-    // - CAT GA: up to ₹40L, 72m tenure, min salary ₹50k, additional 3% FOIR (73%), ROI 11.50%
-    // - CAT GB: up to ₹10L, 60m tenure, min salary ₹25k, additional 3% FOIR (68%), ROI 12.50%
-    if (classification.tier === "govt") {
-      const isGB = /gb/i.test(normCat);
-      minSalary = isGB ? 25000 : 50000;
-      maxLoanAmount = isGB ? 1000000 : 4000000;
-      maxTenureMonths = isGB ? 60 : 72;
-      foirPercent = isGB ? 68 : 73;
-      roi = isGB ? 12.50 : 11.50;
-    } else if (classification.tier === "tier_1") {
-      minSalary = 25000;
-      maxLoanAmount = 4000000;
-      maxTenureMonths = 72;
-      foirPercent = 70;
-      roi = 10.75;
-    } else if (classification.tier === "tier_2") {
-      minSalary = 35000;
-      maxLoanAmount = 2500000;
-      maxTenureMonths = 60;
-      foirPercent = 65;
-      roi = 11.75;
-    } else {
-      minSalary = 50000;
-      maxLoanAmount = /cat\s*[de]/i.test(normCat) ? 1000000 : 2500000;
-      maxTenureMonths = 60;
-      foirPercent = 60;
-      roi = 13.75;
-    }
-  } else if (bankKey === "poonawalla") {
-    // Poonawalla Fincorp Master Policy rules:
-    // - Super CAT A / CAT A / GOVT: Max capping 50 Lakh, tenure up to 7 years (84m), min salary ₹30k, FOIR 75%, ROI 12.50%
-    // - Cat B: 30 Lakh max funding, tenure up to 6 years (72m), min salary ₹35k, FOIR 75%, ROI 13.00%
-    // - CAT C: 20 Lakh max funding, tenure up to 60m, min salary ₹40k, FOIR 70%, ROI 13.50%
-    // - CAT D: 10 Lakh max funding, min salary ₹50k, 750 CIBIL & own house required, ROI 14.50%
-    if (classification.tier === "tier_1" || classification.tier === "govt") {
-      minSalary = 30000;
-      maxLoanAmount = 5000000;
-      maxTenureMonths = 84;
-      foirPercent = 75;
-      roi = 12.50;
-    } else if (classification.tier === "tier_2") {
-      minSalary = 35000;
-      maxLoanAmount = 3000000;
-      maxTenureMonths = 72;
-      foirPercent = 75;
-      roi = 13.00;
-    } else {
-      const isCatD = /cat\s*d/i.test(normCat);
-      minSalary = isCatD ? 50000 : 40000;
-      maxLoanAmount = isCatD ? 1000000 : 2000000;
-      maxTenureMonths = 60;
-      foirPercent = isCatD ? 60 : 70;
-      roi = isCatD ? 14.50 : 13.50;
-    }
-  } else if (bankKey === "kotak") {
-    // Kotak Mahindra Bank Master Policy rules:
-    // - CAT AA / CAT A / Platinum / Diamond: min salary ₹25k, max loan ₹40L, max tenure 60m, ROI 10.99%, FOIR 70%
-    // - CAT B / Gold: min salary ₹35k, max loan ₹35L, max tenure 60m, ROI 11.75%, FOIR 65%
-    // - Special Government policy: allowed for 6-year tenure (72m), min salary ₹25k, max loan ₹40L, ROI 10.99%, FOIR 70%
-    // - CAT C / Unlisted: max loan ₹10 Lakhs, min salary ₹40k, tenure 60m, ROI 12.50%, FOIR 60%
-    if (classification.tier === "govt") {
-      minSalary = 25000;
-      maxLoanAmount = 4000000;
-      maxTenureMonths = 72;
-      foirPercent = 70;
-      roi = 10.99;
-    } else if (classification.tier === "tier_1") {
-      minSalary = 25000;
-      maxLoanAmount = 4000000;
-      maxTenureMonths = 60;
-      foirPercent = 70;
-      roi = 10.99;
-    } else if (classification.tier === "tier_2") {
-      minSalary = 35000;
-      maxLoanAmount = 3500000;
-      maxTenureMonths = 60;
-      foirPercent = 65;
-      roi = 11.75;
-    } else {
-      minSalary = 40000;
-      maxLoanAmount = 1000000;
-      maxTenureMonths = 60;
-      foirPercent = 60;
-      roi = 12.50;
-    }
-  } else if (bankKey === "sbm") {
-    // SBM Bank India Master Policy rules:
-    // - Listed Company / Government: salary ₹30,000 to ₹50,000+, funding up to ₹30 Lakhs, FOIR 65%, ROI 11.25%
-    // - Non-Listed Company: salary ₹50,000, maximum funding ₹30 Lakhs (or ₹20L cap for basic), FOIR 50%, ROI 12.25%
-    if (classification.tier === "tier_1" || classification.tier === "govt") {
-      minSalary = 30000;
-      maxLoanAmount = 3000000;
-      maxTenureMonths = 60;
-      foirPercent = 65;
-      roi = 11.25;
-    } else {
-      minSalary = 50000;
-      maxLoanAmount = 2000000;
-      maxTenureMonths = 60;
-      foirPercent = 50;
-      roi = 12.25;
-    }
-  } else if (bankKey === "tatacapital") {
-    // Tata Capital Master Policy rules:
-    // - Super CAT A / CAT A / TGE: min salary ₹20k (TGE ₹15k), max loan ₹35L, tenure 72m, FOIR 65%, ROI 11.99%
-    // - CAT B / Government: min salary ₹25k, max loan ₹35L, tenure 72m, FOIR 65%, ROI 12.99%
-    // - CAT C / Unapproved: min salary ₹27k, max loan ₹25L, tenure 60m, FOIR 60%, ROI 14.50%
-    if (classification.tier === "tier_1") {
-      minSalary = /tge|tata/i.test(normCat) ? 15000 : 20000;
-      maxLoanAmount = 3500000;
-      maxTenureMonths = 72;
-      foirPercent = 65;
-      roi = 11.99;
-    } else if (classification.tier === "tier_2" || classification.tier === "govt") {
-      minSalary = 25000;
-      maxLoanAmount = 3500000;
-      maxTenureMonths = 72;
-      foirPercent = 65;
-      roi = 12.99;
-    } else {
-      minSalary = 27000;
-      maxLoanAmount = 2500000;
-      maxTenureMonths = 60;
-      foirPercent = 60;
-      roi = 14.50;
-    }
-  } else if (bankKey === "idfc") {
-    // IDFC FIRST Bank Master Policy rules:
-    // - ACE PLUS / ACE / CAT SA / CAT A: min salary ₹20k, max loan ₹40L, tenure 60m, FOIR 65%, ROI 10.99%
-    // - CAT B: min salary ₹20k, max loan ₹35L, tenure 60m, FOIR 60%, ROI 11.99%
-    // - CAT C / CAT D / Standard: min salary ₹25k, max loan ₹25L, tenure 60m, FOIR 60%, ROI 12.99%
-    if (classification.tier === "tier_1" || classification.tier === "govt") {
-      minSalary = 20000;
-      maxLoanAmount = 4000000;
-      maxTenureMonths = 60;
-      foirPercent = 65;
-      roi = 10.99;
-    } else if (classification.tier === "tier_2") {
-      minSalary = 20000;
-      maxLoanAmount = 3500000;
-      maxTenureMonths = 60;
-      foirPercent = 60;
-      roi = 11.99;
-    } else {
-      minSalary = 25000;
-      maxLoanAmount = 2500000;
-      maxTenureMonths = 60;
-      foirPercent = 60;
-      roi = 12.99;
-    }
-  } else if (bankKey === "axisfinance") {
-    // Axis Finance Master Policy rules:
-    // - Super CAT A / Cat A / Govt: min salary ₹25k, max loan ₹50L (Super CAT A) / ₹30L, tenure 60m, FOIR 70%, ROI 11.50%
-    // - Cat B: min salary ₹35k, max loan ₹25L, tenure 60m, FOIR 65%, ROI 12.50%
-    // - Cat C / Cat D / Standard: min salary ₹45k, max loan ₹15L, tenure 60m, FOIR 60%, ROI 13.50%
-    if (classification.tier === "tier_1" || classification.tier === "govt") {
-      minSalary = 25000;
-      maxLoanAmount = /super/i.test(normCat) ? 5000000 : 3000000;
-      maxTenureMonths = 60;
-      foirPercent = 70;
-      roi = 11.50;
-    } else if (classification.tier === "tier_2") {
-      minSalary = 35000;
-      maxLoanAmount = 2500000;
-      maxTenureMonths = 60;
-      foirPercent = 65;
-      roi = 12.50;
-    } else {
-      minSalary = 45000;
-      maxLoanAmount = 1500000;
-      maxTenureMonths = 60;
-      foirPercent = 60;
-      roi = 13.50;
-    }
-  } else if (bankKey === "indusind") {
-    // IndusInd Bank Master Policy rules:
-    // - CAT A+ / A / Tier 1 / Govt: min salary ₹25k, max loan ₹25L, tenure 60m, FOIR 70%, ROI 10.99%
-    // - CAT B / Tier 2: min salary ₹35k, max loan ₹20L, tenure 60m, FOIR 65%, ROI 11.99%
-    // - CAT C (UNLISTED): max loan ₹10L, min salary ₹50k, tenure 60m, FOIR 60%, ROI 13.50%
-    if (classification.tier === "tier_1" || classification.tier === "govt") {
-      minSalary = 25000;
-      maxLoanAmount = 2500000;
-      maxTenureMonths = 60;
-      foirPercent = 70;
-      roi = 10.99;
-    } else if (classification.tier === "tier_2") {
-      minSalary = 35000;
-      maxLoanAmount = 2000000;
-      maxTenureMonths = 60;
-      foirPercent = 65;
-      roi = 11.99;
-    } else {
-      minSalary = 50000;
-      maxLoanAmount = 1000000;
-      maxTenureMonths = 60;
-      foirPercent = 60;
-      roi = 13.50;
-    }
-  }
-
   const policyFileContent = getMasterPolicyFileContent(fileName);
-  const { policyCibil, policyTenure } = getPolicyCibilAndTenure(
+  const { policyCibil: derivedCibil, policyTenure: derivedTenure } = getPolicyCibilAndTenure(
     bankKey,
     classification,
     companyCategory,
@@ -1395,29 +704,69 @@ export function getBankRulesForCategory(
     policyFileContent
   );
 
+  let tierRule: CachedTierRule | null = null;
+  let baseBank: CachedBankPolicy | null = null;
+
+  if (cachedBank && cachedBank.tiers) {
+    baseBank = cachedBank;
+    tierRule = cachedBank.tiers[classification.tier] || cachedBank.tiers["standard"] || null;
+  }
+
+  if (!tierRule || !baseBank) {
+    const extracted = extractRulesFromPolicyText(fileName, policyFileContent, classification);
+    return {
+      bankId: matchedMaster?.bank_id ?? matchedMaster?.id ?? 0,
+      bankName: matchedMaster.bank_name,
+      bankCode: matchedMaster.bank_code,
+      fileName,
+      loanType: requestedLoanType,
+      supportedLoanTypes: matchedMaster.supported_loan_types || ["Personal Loan"],
+      resolvedCategory: classification.displayLabel,
+      minSalary: extracted.minSalary,
+      minCibil: extracted.minCibil,
+      minAge: extracted.minAge,
+      maxAge: extracted.maxAge,
+      minLoanAmount: extracted.minLoanAmount,
+      maxLoanAmount: extracted.maxLoanAmount,
+      minTenureMonths: extracted.minTenureMonths,
+      maxTenureMonths: extracted.maxTenureMonths,
+      foirPercent: extracted.foirPercent,
+      roi: extracted.roi,
+      processingFeePercent: extracted.processingFeePercent,
+      employmentType: "Salaried",
+      policySource: `${matchedMaster.bank_name} Master Policy (${fileName})`,
+      policyCibil: derivedCibil !== "-" ? derivedCibil : (extracted.policyCibil || "-"),
+      policyTenure: derivedTenure !== "-" ? derivedTenure : (extracted.policyTenure || "-"),
+      reviewRequired: extracted.reviewRequired || false,
+      reviewReason: extracted.reviewReason || null,
+    };
+  }
+
   return {
     bankId: matchedMaster?.bank_id ?? matchedMaster?.id ?? 0,
-    bankName: matchedMaster.bank_name || spec.bankName,
-    bankCode: matchedMaster.bank_code || spec.bankCode,
-    fileName: matchedMaster.file_name || spec.fileName,
-    loanType: spec.supportedLoanTypes.includes(requestedLoanType) ? requestedLoanType : spec.supportedLoanTypes[0],
-    supportedLoanTypes: matchedMaster.supported_loan_types || spec.supportedLoanTypes,
-    resolvedCategory: classification.displayLabel,
-    minSalary,
-    minCibil,
-    minAge,
-    maxAge,
-    minLoanAmount,
-    maxLoanAmount,
-    minTenureMonths,
-    maxTenureMonths,
-    foirPercent,
-    roi,
-    processingFeePercent,
-    employmentType: spec.employmentType,
+    bankName: matchedMaster.bank_name || baseBank.bankName,
+    bankCode: matchedMaster.bank_code || baseBank.bankCode,
+    fileName,
+    loanType: requestedLoanType,
+    supportedLoanTypes: matchedMaster.supported_loan_types || ["Personal Loan"],
+    resolvedCategory: tierRule.resolvedCategory || classification.displayLabel,
+    minSalary: tierRule.minSalary,
+    minCibil: tierRule.minCibil,
+    minAge: baseBank.minAge,
+    maxAge: baseBank.maxAge,
+    minLoanAmount: baseBank.minLoanAmount,
+    maxLoanAmount: tierRule.maxLoanAmount,
+    minTenureMonths: baseBank.minTenureMonths,
+    maxTenureMonths: tierRule.maxTenureMonths,
+    foirPercent: tierRule.foirPercent,
+    roi: tierRule.roi,
+    processingFeePercent: baseBank.processingFeePercent,
+    employmentType: baseBank.employmentType,
     policySource: `${matchedMaster.bank_name} Master Policy (${fileName})`,
-    policyCibil,
-    policyTenure,
+    policyCibil: derivedCibil !== "-" ? derivedCibil : tierRule.policyCibil,
+    policyTenure: derivedTenure !== "-" ? derivedTenure : tierRule.policyTenure,
+    reviewRequired: tierRule.reviewRequired || false,
+    reviewReason: tierRule.reviewReason || null,
   };
 }
 
@@ -1452,7 +801,26 @@ export function getAllBankRulesForCategory(
     console.log(`[Bank Fetching] Applying company category tier: "${overallTier}" across partner banks`);
   }
 
+  const normLoanType = (loanType || "Personal Loan").toLowerCase().replace(/\s*loan$/, "");
+
   for (const master of allMasterPolicies) {
+    // Evaluate only active policies matching the requested loan product (e.g. Personal Loan)
+    if (master.status && master.status !== "active") {
+      continue;
+    }
+    if (normLoanType === "personal") {
+      if (master.bank_code === "HOME_LOAN" || /home_loan/i.test(master.file_name)) {
+        continue;
+      }
+      const isPersonal =
+        (master.loan_type && master.loan_type.toLowerCase().includes("personal")) ||
+        (Array.isArray(master.supported_loan_types) &&
+          master.supported_loan_types.some((t: string) => t.toLowerCase().includes("personal")));
+      if (!isPersonal) {
+        continue;
+      }
+    }
+
     const bankKey = normalizeBankKey(master.bank_name);
     const codeKey = normalizeBankKey(master.bank_code);
     let cat = companyCategoryMap[bankKey] || companyCategoryMap[codeKey] || null;

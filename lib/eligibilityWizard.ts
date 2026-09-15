@@ -100,13 +100,13 @@ export async function evaluateEligibilityFromTool(input: {
   const applicant: ApplicantProfile = {
     loanType: input.loanType || "Personal Loan",
     companyName: input.companyName,
-    monthlyIncome: input.salary != null ? Number(input.salary) : undefined,
-    cibil: input.cibil != null ? Number(input.cibil) : undefined,
-    existingEmi: input.existingEmi != null ? Number(input.existingEmi) : undefined,
-    age: input.age != null ? Number(input.age) : undefined,
+    monthlyIncome: input.salary != null ? (typeof input.salary === "number" ? input.salary : (isNaN(Number(input.salary)) ? input.salary : Number(input.salary))) : undefined,
+    cibil: input.cibil != null ? (typeof input.cibil === "number" ? input.cibil : (isNaN(Number(input.cibil)) ? input.cibil : Number(input.cibil))) : undefined,
+    existingEmi: input.existingEmi != null ? (typeof input.existingEmi === "number" ? input.existingEmi : (isNaN(Number(input.existingEmi)) ? input.existingEmi : Number(input.existingEmi))) : undefined,
+    age: input.age != null ? (typeof input.age === "number" ? input.age : (isNaN(Number(input.age)) ? input.age : Number(input.age))) : undefined,
     employmentType: input.employmentType || "Salaried",
-    loanAmount: input.loanAmount != null ? Number(input.loanAmount) : undefined,
-    tenureMonths: input.tenureMonths != null ? Number(input.tenureMonths) : undefined,
+    loanAmount: input.loanAmount != null ? (typeof input.loanAmount === "number" ? input.loanAmount : (isNaN(Number(input.loanAmount)) ? input.loanAmount : Number(input.loanAmount))) : undefined,
+    tenureMonths: input.tenureMonths != null ? (typeof input.tenureMonths === "number" ? input.tenureMonths : (isNaN(Number(input.tenureMonths)) ? input.tenureMonths : Number(input.tenureMonths))) : undefined,
   };
 
   const evalResult = await evaluateApplicantAgainstAllBanks(applicant, applicant.loanType || "Personal Loan");
@@ -397,12 +397,15 @@ export interface DeterministicApplicantInput {
   loanAmount?: number | string;
   requestedLoanAmount?: number | string;
   tenureMonths?: number | string;
+  tenure?: number | string;
 }
 
 export interface DeterministicCalculations {
   netSalary?: number;
   existingEmi?: number;
+  monthlyEmi?: number;
   foirPercent?: number;
+  calculatedFoir?: number;
   maxPermissibleEmi?: number;
   netAvailableEmi?: number;
   estimatedMaxLoanAmount?: number;
@@ -435,7 +438,14 @@ export async function calculateDeterministicEligibility(
   const netSalary = rawSalary != null && rawSalary !== "" && !isNaN(Number(rawSalary)) ? Number(rawSalary) : undefined;
 
   const rawCibil = input.cibil ?? input.creditScore;
-  const cibil = rawCibil != null && rawCibil !== "" && !isNaN(Number(rawCibil)) ? Number(rawCibil) : undefined;
+  const isCibilNotProvided =
+    rawCibil === "Not provided" ||
+    (typeof rawCibil === "string" && /not\s*provided|unknown/i.test(rawCibil));
+  const cibil = isCibilNotProvided
+    ? "Not provided"
+    : rawCibil != null && rawCibil !== "" && !isNaN(Number(rawCibil))
+    ? Number(rawCibil)
+    : undefined;
 
   const rawEmi = input.existingEmi;
   const existingEmi = rawEmi != null && rawEmi !== "" && !isNaN(Number(rawEmi)) ? Number(rawEmi) : undefined;
@@ -447,6 +457,11 @@ export async function calculateDeterministicEligibility(
 
   const rawAge = input.age;
   const age = rawAge != null && rawAge !== "" && !isNaN(Number(rawAge)) ? Number(rawAge) : undefined;
+
+  const rawLoanAmount = input.loanAmount;
+  const requestedLoanAmount = rawLoanAmount != null && rawLoanAmount !== "" && !isNaN(Number(rawLoanAmount)) ? Number(rawLoanAmount) : 500000;
+  const rawTenure = input.tenureMonths || input.tenure;
+  const requestedTenureMonths = rawTenure != null && rawTenure !== "" && !isNaN(Number(rawTenure)) ? Number(rawTenure) : 36;
 
   const conditionsChecked: string[] = [];
   const passedConditions: string[] = [];
@@ -542,6 +557,8 @@ export async function calculateDeterministicEligibility(
     const minCibil = Number(primaryRule.min_cibil);
     if (cibil === undefined) {
       failedConditions.push(`CIBIL score missing (Policy requires min ${minCibil}+) — [FAIL]`);
+    } else if (cibil === "Not provided") {
+      failedConditions.push(`CIBIL score (Not provided) is below required threshold (${minCibil}+) — [FAIL]`);
     } else {
       if (cibil >= minCibil) {
         passedConditions.push(`CIBIL score (${cibil}) meets required threshold (${minCibil}+) — [PASS]`);
@@ -569,15 +586,25 @@ export async function calculateDeterministicEligibility(
 
       if (existingEmi !== undefined) {
         calculations.existingEmi = existingEmi;
+
+        // 1. Calculate proposed EMI first using bank ROI and requested loan amount & tenure
+        const annualRoi = primaryRule.roi ? Number(primaryRule.roi) : 10.5;
+        const proposedEmi = dynamicCalculateEmi(requestedLoanAmount, annualRoi, requestedTenureMonths);
+        calculations.monthlyEmi = proposedEmi;
+
+        // 2. Calculate FOIR = (Existing EMI + Proposed EMI) / Salary * 100
+        const totalObligation = existingEmi + proposedEmi;
+        const calculatedFoir = Number(((totalObligation / netSalary) * 100).toFixed(1));
+        calculations.calculatedFoir = calculatedFoir;
+
         const netAvailableEmi = Math.max(0, maxPermissibleEmi - existingEmi);
         calculations.netAvailableEmi = netAvailableEmi;
 
         const estimatedMaxLoanAmount = Math.round(netAvailableEmi * 38.5);
         calculations.estimatedMaxLoanAmount = estimatedMaxLoanAmount;
 
-        const calculatedFoir = Number(((existingEmi / netSalary) * 100).toFixed(1));
-        if (existingEmi > maxPermissibleEmi) {
-          failedConditions.push(`Calculated FOIR (${calculatedFoir}%) exceeds policy FOIR cap (${foirCap}%) [Max EMI Cap: ₹${maxPermissibleEmi.toLocaleString("en-IN")}] — [FAIL]`);
+        if (totalObligation > maxPermissibleEmi) {
+          failedConditions.push(`Calculated FOIR (${calculatedFoir}%) exceeds policy FOIR cap (${foirCap}%) [Total Obligations: ₹${totalObligation.toLocaleString("en-IN")}, Max EMI Cap: ₹${maxPermissibleEmi.toLocaleString("en-IN")}] — [FAIL]`);
         } else {
           passedConditions.push(`Calculated FOIR (${calculatedFoir}%) is within policy FOIR cap (${foirCap}%) [Net Capacity: ₹${netAvailableEmi.toLocaleString("en-IN")}/mo] — [PASS]`);
         }

@@ -10,12 +10,12 @@ const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openrouter/free";
 export interface ApplicantProfile {
   loanType?: string;
   companyName?: string;
-  monthlyIncome?: number;
-  cibil?: number;
-  loanAmount?: number;
-  tenureMonths?: number;
-  existingEmi?: number;
-  age?: number;
+  monthlyIncome?: number | string;
+  cibil?: number | string;
+  loanAmount?: number | string;
+  tenureMonths?: number | string;
+  existingEmi?: number | string;
+  age?: number | string;
   employmentType?: string;
   location?: string;
   _lastSideQuestion?: string;
@@ -29,6 +29,9 @@ export interface BankEvaluationResult {
   fileName: string;
   resolvedCategory: string;
   isEligible: boolean;
+  status: "ELIGIBLE" | "NOT_ELIGIBLE" | "NEEDS_REVIEW";
+  reviewRequired?: boolean;
+  reviewReason?: string;
   roi: number; // % p.a.
   monthlyEmi: number; // ₹/month
   maxLoanEligible: number; // ₹
@@ -52,6 +55,7 @@ export interface DynamicEligibilityOutput {
   companyMatch?: CompanyCategoryMatch;
   evaluations?: BankEvaluationResult[];
   eligibleBanks?: BankEvaluationResult[];
+  reviewBanks?: BankEvaluationResult[];
   ineligibleBanks?: BankEvaluationResult[];
   recommendedBank?: BankEvaluationResult | null;
   recommendationReason?: string;
@@ -76,6 +80,14 @@ export interface SessionState {
   lastAnsweredField?: string;
   in_eligibility_flow?: boolean;
   eligible_banks?: string[];
+  hasCompletedEvaluation?: boolean;
+  evaluationCompleted?: boolean;
+  topBank?: string;
+  chosenBank?: string;
+  city?: string;
+  location?: string;
+  rejectedBanks?: string[];
+  ineligibleBanks?: Array<{ bankName: string; failureReasons: string[] }>;
 }
 
 // In-memory fallback session store ensures persistence across turns even if non-numeric conversation IDs are used
@@ -97,7 +109,9 @@ export async function getEligibilityState(conversationId: string): Promise<Sessi
         inMemorySessionStates.set(conversationId, loaded);
         return loaded;
       }
-    } catch (e) {}
+    } catch (e: any) {
+      console.error("[getEligibilityState] Error querying DB state:", e?.message || e);
+    }
   }
   return null;
 }
@@ -113,7 +127,9 @@ export async function saveEligibilityState(conversationId: string, state: Sessio
          ON CONFLICT (conversation_id) DO UPDATE SET state = $2, expires_at = NOW() + INTERVAL '45 minutes'`,
         [numId, state]
       );
-    } catch (e) {}
+    } catch (e: any) {
+      console.error("[saveEligibilityState] Error persisting DB state:", e?.message || e);
+    }
   }
 }
 
@@ -123,7 +139,9 @@ export async function clearEligibilityState(conversationId: string): Promise<voi
   if (pool && Number.isFinite(numId)) {
     try {
       await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numId]);
-    } catch (e) {}
+    } catch (e: any) {
+      console.error("[clearEligibilityState] Error deleting DB state:", e?.message || e);
+    }
   }
 }
 
@@ -222,6 +240,15 @@ export function detectLoanIntent(
     (Boolean(norm.match(/work\s+at|employed|employer|company/i)) && Boolean(norm.match(/salary|income|cibil|credit\s*score|need\s*[\d,]+/i))) ||
     (Boolean(norm.match(/cibil|credit\s*score/i)) && Boolean(norm.match(/emi|tenure|\d+\s*(?:years?|yrs?|months?)|need\s*[\d,]+|lakhs?|lacs?/i)));
 
+  // Generic educational / informational questions about loans, finance, or banking concepts MUST NOT trigger loan intent!
+  const isGenericLoanQuestion =
+    /^(?:what\s+is|what\s+are|how\s+does|how\s+do|explain|difference\s+between|tell\s+me\s+about|documents\s+required|eligibility\s+criteria\s+for|what\s+documents|how\s+long\s+does|can\s+you\s+explain)\b/i.test(norm) &&
+    !/(?:for\s+me|am\s+i|can\s+i\s+get|i\s+need|i\s+want|check\s+my|my\s+eligib|give\s+me)/i.test(norm);
+
+  if (isGenericLoanQuestion) {
+    return { isLoanIntent: false, loanType };
+  }
+
   if ((isNaturalLoanPhrase || hasMultipleApplicantProfileFields) && !isBankPolicy) {
     return { isLoanIntent: true, loanType };
   }
@@ -248,9 +275,7 @@ export function detectLoanIntent(
     }
   }
 
-  const isIntent = !isBankPolicy && /\b(?:loan|loans|borrow|borrowing|lending|financ(?:e|ing)|eligib\w*)\b/i.test(norm);
-
-  return { isLoanIntent: isIntent, loanType };
+  return { isLoanIntent: false, loanType };
 }
 
 /**
@@ -833,7 +858,8 @@ export function isInvalidCompanyName(text: string): boolean {
 
   // Financial parameter statements, corrections, or profile data
   if (
-    /\b(?:salary|income|take\s*home|in\s*hand|cibil|credit\s*score|existing\s*emi|no\s*emi|zero\s*emi|lakh|lakhs|crore|crores|peti|khoka)\b/i.test(clean)
+    /\b(?:salary|income|take\s*home|in\s*hand|cibil|credit\s*score|existing\s*emi|no\s*emi|zero\s*emi|lakh|lakhs|crore|crores|peti|khoka)\b/i.test(clean) ||
+    /\b(?:loan|personal\s*loan|home\s*loan|borrow|borrowing|need\s*(?:a\s*)?loan|want\s*(?:a\s*)?loan|apply\s*(?:for\s*)?(?:a\s*)?loan|get\s*(?:a\s*)?loan)\b/i.test(clean)
   ) {
     return true;
   }
@@ -927,7 +953,7 @@ export function extractCompanyCandidateFromText(text: string): string | undefine
 
   // 1. Explicit key-value labels or employment phrases
   const explicitMatch = raw.match(
-    /(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*|(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is)\s+)([A-Za-z0-9\s&'.-]+?)(?=\s*[,;|\n]|\s+(?:and|with|salary|cibil|age|loan|emi|tenure|earning)|$)/i
+    /(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*|(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is|(?:i\s*am|i'?m)\s+(?:working\s+)?(?:at|in))\s+)([A-Za-z0-9\s&'.-]+?)(?=\s*[,;|\n]|\s+(?:and|with|salary|cibil|age|loan|emi|tenure|earning)|$)/i
   );
   if (explicitMatch) {
     const candidate = explicitMatch[1].trim();
@@ -1077,6 +1103,10 @@ function mapAnswerToTargetField(
       applicant.cibil = llmExtracted.cibil;
       return;
     }
+    if (typeof llmExtracted?.cibil === "string" && /not\s*provided|unknown|not\s*sure|don'?t\s*know|na|n\/a/i.test(llmExtracted.cibil)) {
+      applicant.cibil = "Not provided";
+      return;
+    }
     const cibilMatch = text.match(/\b([3-9]\d{2})\b/);
     if (cibilMatch) {
       const score = parseInt(cibilMatch[1], 10);
@@ -1086,9 +1116,13 @@ function mapAnswerToTargetField(
       }
     }
     if (
-      /\b(?:no|none|nil|zero|0|unknown|not\s*sure|don'?t\s*know|first\s*time|never\s*checked|na|n\/a)\b/i.test(lower) ||
-      /(?:no|don['’]?t\s*have|never\s*had|never\s*checked|zero|nil|unknown)\s*(?:a\s*)?(?:cibil|credit\s*score|score)/i.test(lower)
+      /\b(?:unknown|not\s*sure|don'?t\s*know|never\s*checked|na|n\/a|no\s*idea)\b/i.test(lower) ||
+      /(?:don['’]?t\s*have|never\s*had|never\s*checked|unknown|no\s*idea)\s*(?:a\s*)?(?:cibil|credit\s*score|score)/i.test(lower)
     ) {
+      applicant.cibil = "Not provided";
+      return;
+    }
+    if (/\b(?:zero|0)\b/i.test(lower)) {
       applicant.cibil = 0;
       return;
     }
@@ -1172,17 +1206,15 @@ function mapAnswerToTargetField(
       return;
     }
 
-    if (isFinancialOrProfileInput(text) || isInvalidCompanyName(text)) {
-      return;
-    }
-
     const candidate =
       llmExtracted?.companyName ||
       extractCompanyCandidateFromText(text) ||
-      text
-        .replace(/^(?:i\s+)?(?:work\s+at|works\s+at|working\s+at|employed\s+at|company\s+is|employer\s+is|at)\s+/i, "")
-        .trim();
-    if (!isInvalidCompanyName(candidate) && !isFinancialOrProfileInput(candidate)) {
+      (!isFinancialOrProfileInput(text) && !isInvalidCompanyName(text)
+        ? text
+            .replace(/^(?:i\s+)?(?:work\s+at|works\s+at|working\s+at|employed\s+at|company\s+is|employer\s+is|at)\s+/i, "")
+            .trim()
+        : undefined);
+    if (candidate && !isInvalidCompanyName(candidate) && !isFinancialOrProfileInput(candidate)) {
       applicant.companyName = normalizeCompanyName(candidate);
       if (!applicant.employmentType) {
         applicant.employmentType = "Salaried";
@@ -1294,7 +1326,7 @@ function extractSecondaryParameters(
   // 2. Loan Amount (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
   if (
     targetExpectedField !== "loanAmount" &&
-    (applicant.loanAmount === undefined || applicant.loanAmount <= 0) &&
+    (applicant.loanAmount === undefined || (typeof applicant.loanAmount === "number" && applicant.loanAmount <= 0)) &&
     messageMentionsField("loanAmount", text)
   ) {
     if (typeof llmExtracted?.loanAmount === "number" && llmExtracted.loanAmount >= 10000) {
@@ -1321,6 +1353,8 @@ function extractSecondaryParameters(
   ) {
     if (typeof llmExtracted?.cibil === "number" && ((llmExtracted.cibil >= 300 && llmExtracted.cibil <= 900) || llmExtracted.cibil === 0)) {
       applicant.cibil = llmExtracted.cibil;
+    } else if (typeof llmExtracted?.cibil === "string" && /not\s*provided|unknown|not\s*sure|don'?t\s*know/i.test(llmExtracted.cibil)) {
+      applicant.cibil = "Not provided";
     } else {
       const cibilMatch =
         text.match(/(?:cibil|credit\s*score|score)(?::|\s*is|\s*=)?\s*(?:of)?\s*(\d{3})\b/i) ||
@@ -1331,10 +1365,11 @@ function extractSecondaryParameters(
           applicant.cibil = val;
         }
       } else if (
-        /(?:no|don['’]?t\s*have|never\s*had|never\s*checked|zero|nil|unknown|first\s*time)\s*(?:a\s*)?(?:cibil|credit\s*score|score|credit\s*history)/i.test(lower) ||
-        /(?:cibil|credit\s*score|score)\s*(?:is\s*)?(?:unknown|zero|nil|none|never\s*checked|not\s*generated)/i.test(lower) ||
-        /no\s*cibil|no\s*credit\s*history|first\s*time\s*borrower/i.test(lower)
+        /(?:don['’]?t\s*have|never\s*had|never\s*checked|unknown|no\s*idea)\s*(?:a\s*)?(?:cibil|credit\s*score|score|credit\s*history)/i.test(lower) ||
+        /(?:cibil|credit\s*score|score)\s*(?:is\s*)?(?:unknown|not\s*sure|don'?t\s*know|never\s*checked|not\s*generated)/i.test(lower)
       ) {
+        applicant.cibil = "Not provided";
+      } else if (/\b(?:zero|0)\s*(?:cibil|credit)/i.test(lower)) {
         applicant.cibil = 0;
       }
     }
@@ -1343,7 +1378,7 @@ function extractSecondaryParameters(
   // 4. Tenure Months (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
   if (
     targetExpectedField !== "tenureMonths" &&
-    (applicant.tenureMonths === undefined || applicant.tenureMonths <= 0) &&
+    (applicant.tenureMonths === undefined || (typeof applicant.tenureMonths === "number" && applicant.tenureMonths <= 0)) &&
     messageMentionsField("tenureMonths", text)
   ) {
     if (typeof llmExtracted?.tenureMonths === "number" && llmExtracted.tenureMonths > 0) {
@@ -1389,7 +1424,7 @@ function extractSecondaryParameters(
   // 6. Applicant Age (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
   if (
     targetExpectedField !== "age" &&
-    (applicant.age === undefined || applicant.age <= 0) &&
+    (applicant.age === undefined || (typeof applicant.age === "number" && applicant.age <= 0)) &&
     messageMentionsField("age", text)
   ) {
     if (typeof llmExtracted?.age === "number" && llmExtracted.age >= 18 && llmExtracted.age <= 85) {
@@ -1437,9 +1472,9 @@ function extractSecondaryParameters(
   ) {
     if (llmExtracted?.companyName && !isInvalidCompanyName(llmExtracted.companyName) && !isFinancialOrProfileInput(llmExtracted.companyName)) {
       applicant.companyName = normalizeCompanyName(llmExtracted.companyName);
-    } else if (!isFinancialOrProfileInput(text) && !isInvalidCompanyName(text)) {
+    } else {
       const cand = extractCompanyCandidateFromText(text);
-      if (cand) {
+      if (cand && !isInvalidCompanyName(cand) && !isFinancialOrProfileInput(cand)) {
         applicant.companyName = normalizeCompanyName(cand);
       }
     }
@@ -1677,14 +1712,14 @@ export function getRequiredPolicyFields(
   // 2. Active bank policy rules evaluation:
   // For loan eligibility evaluation, all 6 financial & profile parameters are required:
   // monthlyIncome, loanAmount, tenureMonths, cibil, existingEmi, age.
-  const requiredFields = new Set<string>([
+  const requiredFields = [
     "monthlyIncome",
     "loanAmount",
     "tenureMonths",
     "cibil",
-    "existingEmi",
     "age",
-  ]);
+    "existingEmi",
+  ];
 
   // Filter out any fields that the user has already provided in this chat
   const missing: string[] = [];
@@ -1696,12 +1731,12 @@ export function getRequiredPolicyFields(
       missing.push("monthlyIncome");
     } else if (
       field === "loanAmount" &&
-      (applicant.loanAmount === undefined || applicant.loanAmount === null || applicant.loanAmount <= 0)
+      (applicant.loanAmount === undefined || applicant.loanAmount === null || (typeof applicant.loanAmount === "number" && applicant.loanAmount <= 0))
     ) {
       missing.push("loanAmount");
     } else if (
       field === "tenureMonths" &&
-      (applicant.tenureMonths === undefined || applicant.tenureMonths === null || applicant.tenureMonths <= 0)
+      (applicant.tenureMonths === undefined || applicant.tenureMonths === null || (typeof applicant.tenureMonths === "number" && applicant.tenureMonths <= 0))
     ) {
       missing.push("tenureMonths");
     } else if (
@@ -1710,15 +1745,15 @@ export function getRequiredPolicyFields(
     ) {
       missing.push("cibil");
     } else if (
+      field === "age" &&
+      (applicant.age === undefined || applicant.age === null || (typeof applicant.age === "number" && applicant.age <= 0))
+    ) {
+      missing.push("age");
+    } else if (
       field === "existingEmi" &&
       (applicant.existingEmi === undefined || applicant.existingEmi === null)
     ) {
       missing.push("existingEmi");
-    } else if (
-      field === "age" &&
-      (applicant.age === undefined || applicant.age === null || applicant.age <= 0)
-    ) {
-      missing.push("age");
     }
   }
 
@@ -1758,7 +1793,7 @@ function stripReasoningPreamble(text: string): string {
 
 /**
  * Checks whether the applicant's known details make them definitively ineligible
- * across all 23 partner banks (e.g. unemployed/jobless, zero income, or underage).
+ * across partner banks (e.g. unemployed/jobless, zero income, or underage).
  */
 export interface DefinitiveIneligibilityResult {
   isIneligible: boolean;
@@ -1772,33 +1807,33 @@ export function checkDefinitiveIneligibility(
   // 1. Unemployed, Jobless, or Zero / severely insufficient income
   if (
     applicant.employmentType === "Unemployed" ||
-    (applicant.monthlyIncome !== undefined && applicant.monthlyIncome !== null && applicant.monthlyIncome < 10000)
+    (applicant.monthlyIncome !== undefined && applicant.monthlyIncome !== null && typeof applicant.monthlyIncome === "number" && applicant.monthlyIncome < 10000)
   ) {
     return {
       isIneligible: true,
       reasonType: "UNEMPLOYED_OR_ZERO_INCOME",
       explanationSnippet:
-        "All 23 partner banks strictly require active monthly employment and regular verifiable salary (typically starting from ₹15,000 to ₹25,000/month) to verify loan repayment capacity for unsecured personal loans.",
+        "Partner bank policies require active monthly employment and regular verifiable salary to verify loan repayment capacity for unsecured personal loans.",
     };
   }
 
   // 2. Underage (< 18)
-  if (applicant.age !== undefined && applicant.age !== null && applicant.age < 18) {
+  if (applicant.age !== undefined && applicant.age !== null && typeof applicant.age === "number" && applicant.age < 18) {
     return {
       isIneligible: true,
       reasonType: "MINIMUM_AGE",
       explanationSnippet:
-        "The minimum eligible age for personal loans across all our partner banks is 18 to 21 years.",
+        "Partner bank policies require applicants to be of legal age of majority (minimum 18 to 21 years depending on lender).",
     };
   }
 
   // 3. Beyond maximum age (> 70)
-  if (applicant.age !== undefined && applicant.age !== null && applicant.age > 70) {
+  if (applicant.age !== undefined && applicant.age !== null && typeof applicant.age === "number" && applicant.age > 70) {
     return {
       isIneligible: true,
       reasonType: "MAXIMUM_AGE",
       explanationSnippet:
-        "The maximum permissible age across partner banks is 60 to 65 years at loan maturity.",
+        "Applicant age exceeds maximum permissible policy limits at loan maturity across partner banks.",
     };
   }
 
@@ -1827,13 +1862,12 @@ export async function generateDefinitiveIneligibilityExplanationWithLLM(
 
       const systemPrompt =
         "You are CreditWise AI, a helpful, intelligent financial assistant having a natural, realistic conversation with a user.\n" +
-        "The applicant is inquiring about or applying for a personal loan, but based on the official policies of our 23 partner banks, they are currently NOT ELIGIBLE under their current profile (for example: being unemployed / having no job / zero regular income / underage).\n\n" +
+        "The applicant is inquiring about or applying for a personal loan, but based on the official policies of our partner banks, they are currently NOT ELIGIBLE under their current profile.\n\n" +
         "CRITICAL INSTRUCTIONS:\n" +
         "- Generate a completely natural, conversational, human response using the full conversation context.\n" +
-        "- Respond naturally, for example: \"I understand. If you’re currently unemployed, most unsecured personal-loan policies may not support the application because they require regular income. So based on the available policies, you’re currently not eligible.\"\n" +
         "- Do NOT use fixed phrases, canned headings (do NOT include '### ℹ️ Personal Loan Eligibility Assessment' or any markdown headers), rigid bullet points, or canned paragraphs.\n" +
-        "- Do NOT provide hardcoded alternatives (do not insert canned paragraphs about co-applicants, gold loans, or fixed deposits unless the user specifically asks for options).\n" +
-        "- Only mention reasons actually returned by the eligibility engine/policies (such as requiring regular, verifiable monthly income or statutory age criteria).\n" +
+        "- Do NOT provide hardcoded alternatives unless the user specifically asks for options.\n" +
+        "- Only mention reasons actually returned by the eligibility engine/policies.\n" +
         "- Keep the response concise, natural, empathetic, and human (1 to 2 short conversational paragraphs).\n" +
         "- Never mention internal code, database tables, or backend systems.";
 
@@ -1890,19 +1924,8 @@ export async function generateDefinitiveIneligibilityExplanationWithLLM(
     }
   }
 
-  // Graceful conversational fallback
-  if (reason.reasonType === "UNEMPLOYED_OR_ZERO_INCOME") {
-    if (/not\s*working|jobless|unemployed|no\s*job|without\s*a?\s*job|laid\s*off/i.test(userMessage || "")) {
-      return "I understand. If you’re currently unemployed, most unsecured personal-loan policies may not support the application because they require regular income. So based on the available policies, you’re currently not eligible.";
-    }
-    return "I understand. Unsecured personal-loan policies across our partner banks require regular, verifiable monthly income to service loan EMIs. So based on the available policies, you’re currently not eligible.";
-  }
-
-  if (reason.reasonType === "MINIMUM_AGE" || reason.reasonType === "MAXIMUM_AGE") {
-    return `I understand. Partner bank personal loan policies require applicants to be within the eligible age bracket (${reason.explanationSnippet || "18 to 60 years"}). Based on the available policies, you're currently not eligible.`;
-  }
-
-  return `I understand. Based on our partner banks' policies, personal loans require ${reason.explanationSnippet || "meeting specific policy criteria"}. Under your current profile, you're currently not eligible.`;
+  // Technical API/network error handling only
+  return "⚠️ The AI service is currently unavailable. Please check your network connection or try again shortly.";
 }
 
 /**
@@ -1918,12 +1941,17 @@ export async function generateDynamicSingleQuestionWithLLM(
   conversationHistory?: { role: string; content: string }[]
 ): Promise<string> {
   const collectedSummary: string[] = [];
-  if (applicant.companyName) collectedSummary.push(`Company: ${applicant.companyName}`);
-  if (applicant.monthlyIncome !== undefined && applicant.monthlyIncome !== null) collectedSummary.push(`Salary: ₹${applicant.monthlyIncome.toLocaleString("en-IN")}`);
-  if (applicant.loanAmount) collectedSummary.push(`Loan Amount: ₹${applicant.loanAmount.toLocaleString("en-IN")}`);
+  if (applicant.monthlyIncome !== undefined && applicant.monthlyIncome !== null) {
+    collectedSummary.push(`Salary: ${typeof applicant.monthlyIncome === "number" ? `₹${applicant.monthlyIncome.toLocaleString("en-IN")}` : applicant.monthlyIncome}`);
+  }
+  if (applicant.loanAmount) {
+    collectedSummary.push(`Loan Amount: ${typeof applicant.loanAmount === "number" ? `₹${applicant.loanAmount.toLocaleString("en-IN")}` : applicant.loanAmount}`);
+  }
   if (applicant.tenureMonths) collectedSummary.push(`Tenure: ${applicant.tenureMonths} months`);
-  if (applicant.cibil !== undefined && applicant.cibil > 0) collectedSummary.push(`CIBIL: ${applicant.cibil}`);
-  if (applicant.existingEmi !== undefined) collectedSummary.push(`Existing EMIs: ₹${applicant.existingEmi}`);
+  if (applicant.cibil !== undefined && applicant.cibil !== null) collectedSummary.push(`CIBIL: ${applicant.cibil}`);
+  if (applicant.existingEmi !== undefined) {
+    collectedSummary.push(`Existing EMIs: ${typeof applicant.existingEmi === "number" ? `₹${applicant.existingEmi.toLocaleString("en-IN")}` : applicant.existingEmi}`);
+  }
   if (applicant.age) collectedSummary.push(`Age: ${applicant.age} years`);
 
   const fieldPrompts: Record<string, string> = {
@@ -2036,113 +2064,8 @@ export async function generateDynamicSingleQuestionWithLLM(
     }
   }
 
-  // Graceful conversational fallbacks with natural, varied, contextual ChatGPT-like wording
-  return getContextualFallbackQuestion(nextField, applicant, contextNotes);
-}
-
-function getContextualFallbackQuestion(
-  nextField: string,
-  applicant: ApplicantProfile,
-  contextNotes?: ConversationalContextNotes
-): string {
-  const salaryStr = applicant.monthlyIncome ? `₹${applicant.monthlyIncome.toLocaleString("en-IN")}` : "";
-  const loanStr = applicant.loanAmount ? `₹${applicant.loanAmount.toLocaleString("en-IN")}` : "";
-
-  const variations: Record<string, string[]> = {
-    companyName: [
-      "To check partner bank policies tailored to your organization, what is your company or employer name?",
-      "Which company or organization are you currently employed with?",
-      "May I know the name of your current employer or workplace?",
-      "To evaluate your personal loan eligibility across our partner banks, what is your company or employer name?",
-    ],
-    monthlyIncome: [
-      applicant.companyName
-        ? `Great, working at **${applicant.companyName}**! What is your approximate net monthly take-home salary?`
-        : "What is your approximate net monthly in-hand salary?",
-      applicant.companyName
-        ? `Noted, **${applicant.companyName}**. Could you share your monthly take-home income after standard deductions?`
-        : "Could you share your monthly take-home income after standard deductions?",
-      applicant.companyName
-        ? `Got it for **${applicant.companyName}**! How much is your net monthly salary credited to your bank account?`
-        : "How much is your net monthly salary credited to your bank account?",
-      applicant.companyName
-        ? `Understood, at **${applicant.companyName}**. What is your regular monthly take-home income?`
-        : "What is your regular monthly take-home income?",
-    ],
-    loanAmount: [
-      salaryStr
-        ? `Got it, noted your monthly salary of ${salaryStr}. How much loan amount are you looking to borrow?`
-        : "How much loan amount are you looking to borrow?",
-      salaryStr
-        ? `Thank you. For a take-home of ${salaryStr}, what is your desired personal loan requirement in INR?`
-        : "What is your desired personal loan requirement in INR?",
-      salaryStr
-        ? `Noted ${salaryStr} monthly income. Could you let me know the loan amount you have in mind?`
-        : "Could you let me know the loan amount you have in mind?",
-      salaryStr
-        ? `Understood! With ${salaryStr} take-home, how much financing are you looking to borrow?`
-        : "How much financing are you looking to borrow?",
-    ],
-    tenureMonths: [
-      loanStr
-        ? `Understood, for a loan of ${loanStr}, what repayment tenure would you prefer (e.g. 3 years, 5 years)?`
-        : "What repayment tenure would you prefer (e.g. 3 years, 5 years)?",
-      loanStr
-        ? `Got it for ${loanStr}. Over what duration would you like to repay the loan (e.g. 2 years, 3 years, 5 years)?`
-        : "Over what duration would you like to repay the loan (e.g. 2 years, 3 years, 5 years)?",
-      loanStr
-        ? `Noted ${loanStr} loan requirement. What repayment period or tenure works best for your monthly budget?`
-        : "What repayment period or tenure works best for your monthly budget?",
-      loanStr
-        ? `For your ${loanStr} loan request, how many months or years would you prefer for the tenure?`
-        : "How many months or years would you prefer for the repayment tenure?",
-    ],
-    cibil: [
-      "Could you share your approximate CIBIL score? (If you're not sure, feel free to say 0 or unknown.)",
-      "What is your estimated CIBIL / credit score? (You can reply with 'unknown' if you haven't checked recently.)",
-      "Do you happen to know your CIBIL score? (Feel free to say 'not sure' or 0 if you're new to credit.)",
-      "What is your approximate credit score? (Say 'unknown' if you'd like us to evaluate with standard benchmarks.)",
-    ],
-    existingEmi: [
-      "Do you currently pay any monthly loan or card EMIs? (Enter the total amount in ₹, or say 'none' if you have no active loans.)",
-      "Are there any ongoing monthly loan EMIs being deducted? (Reply with 'none' or 0 if you are debt-free.)",
-      "What is the total of your existing monthly EMI obligations, if any? (Say '0' or 'none' if you have no ongoing loans.)",
-      "Do you have any active loan EMIs running right now? (Feel free to reply with 'no EMIs' if you don't have any.)",
-    ],
-    age: [
-      "Lastly, what is your current age in years?",
-      "Could you please share your current age?",
-      "To confirm age eligibility against partner policies, how old are you?",
-      "Just to verify lender age criteria, what is your current age in years?",
-    ],
-  };
-
-  const list = variations[nextField];
-  let baseQuestion = `Could you please share your ${nextField}?`;
-  if (list && list.length > 0) {
-    const idx = Math.floor(Math.random() * list.length);
-    baseQuestion = list[idx];
-  }
-
-  const prefixes: string[] = [];
-
-  if (applicant._lastSideQuestion) {
-    prefixes.push(applicant._lastSideQuestion);
-  }
-
-  if (applicant._lastCorrectionNotice) {
-    prefixes.push(`Got it! ${applicant._lastCorrectionNotice}.`);
-  }
-
-  if (prefixes.length > 0) {
-    return `${prefixes.join("\n\n")}\n\n${baseQuestion}`;
-  }
-
-  if (contextNotes?.statedPurpose === "medical emergency" && !applicant.companyName && !applicant.monthlyIncome) {
-    return `I understand this is urgent for medical reasons. Let's find your best loan options as quickly as possible.\n\n${baseQuestion}`;
-  }
-
-  return baseQuestion;
+  // Technical API/network error handling only
+  return "⚠️ The AI service is currently unavailable. Please check your network connection or try again shortly.";
 }
 
 export const generateDynamicQuestion = generateDynamicSingleQuestionWithLLM;
@@ -2159,27 +2082,28 @@ export async function evaluateApplicantAgainstAllBanks(
   companyMatch: CompanyCategoryMatch;
   evaluations: BankEvaluationResult[];
   eligibleBanks: BankEvaluationResult[];
+  reviewBanks: BankEvaluationResult[];
   ineligibleBanks: BankEvaluationResult[];
   recommendedBank: BankEvaluationResult | null;
   recommendationReason: string;
 }> {
-  const monthlySalary = applicant.monthlyIncome || 0;
-  const cibil = applicant.cibil || 0;
-  const age = applicant.age || 0;
-  const loanAmount = applicant.loanAmount || 0;
-  const tenureMonths = applicant.tenureMonths || 0;
-  const existingEmi = applicant.existingEmi || 0;
+  const monthlySalary = typeof applicant.monthlyIncome === "number" ? applicant.monthlyIncome : (applicant.monthlyIncome && !isNaN(Number(applicant.monthlyIncome)) ? Number(applicant.monthlyIncome) : 0);
+  const cibil = typeof applicant.cibil === "number" ? applicant.cibil : (applicant.cibil && !isNaN(Number(applicant.cibil)) ? Number(applicant.cibil) : 0);
+  const age = typeof applicant.age === "number" ? applicant.age : (applicant.age && !isNaN(Number(applicant.age)) ? Number(applicant.age) : 0);
+  const loanAmount = typeof applicant.loanAmount === "number" ? applicant.loanAmount : (applicant.loanAmount && !isNaN(Number(applicant.loanAmount)) ? Number(applicant.loanAmount) : 0);
+  const tenureMonths = typeof applicant.tenureMonths === "number" ? applicant.tenureMonths : (applicant.tenureMonths && !isNaN(Number(applicant.tenureMonths)) ? Number(applicant.tenureMonths) : 0);
+  const existingEmi = typeof applicant.existingEmi === "number" ? applicant.existingEmi : (applicant.existingEmi && !isNaN(Number(applicant.existingEmi)) ? Number(applicant.existingEmi) : 0);
 
   console.log(`\n================================================================================`);
   console.log(`[Eligibility Trace] === Step 1: User Profile Received ===`);
   console.log(`[Eligibility Trace]   • Product Requested: ${requestedLoanType}`);
   console.log(`[Eligibility Trace]   • Employer / Company: ${applicant.companyName || "Not provided"}`);
-  console.log(`[Eligibility Trace]   • Monthly Take-Home Salary: ₹${monthlySalary.toLocaleString("en-IN")}`);
-  console.log(`[Eligibility Trace]   • CIBIL Credit Score: ${cibil > 0 ? cibil : "Not provided"}`);
+  console.log(`[Eligibility Trace]   • Monthly Take-Home Salary: ${monthlySalary > 0 ? `₹${monthlySalary.toLocaleString("en-IN")}` : "Not provided"}`);
+  console.log(`[Eligibility Trace]   • CIBIL Credit Score: ${typeof applicant.cibil === "number" && applicant.cibil > 0 ? applicant.cibil : "Not provided"}`);
   console.log(`[Eligibility Trace]   • Applicant Age: ${age > 0 ? `${age} years` : "Not provided"}`);
-  console.log(`[Eligibility Trace]   • Requested Loan Amount: ₹${loanAmount.toLocaleString("en-IN")}`);
-  console.log(`[Eligibility Trace]   • Repayment Tenure: ${tenureMonths} months (${(tenureMonths / 12).toFixed(1)} years)`);
-  console.log(`[Eligibility Trace]   • Existing Monthly EMIs: ₹${existingEmi.toLocaleString("en-IN")}`);
+  console.log(`[Eligibility Trace]   • Requested Loan Amount: ${loanAmount > 0 ? `₹${loanAmount.toLocaleString("en-IN")}` : "Not provided"}`);
+  console.log(`[Eligibility Trace]   • Repayment Tenure: ${tenureMonths > 0 ? `${tenureMonths} months (${(tenureMonths / 12).toFixed(1)} years)` : "Not provided"}`);
+  console.log(`[Eligibility Trace]   • Existing Monthly EMIs: ${applicant.existingEmi !== undefined && applicant.existingEmi !== null ? `₹${existingEmi.toLocaleString("en-IN")}` : "Not provided"}`);
   console.log(`[Eligibility Trace]   • Employment Type: ${applicant.employmentType || "Salaried"}`);
 
   // Step 2: Resolve employer category across banks from company_records
@@ -2194,7 +2118,21 @@ export async function evaluateApplicantAgainstAllBanks(
 
   // Step 3: Load all bank policy rules with the company category applied
   console.log(`[Eligibility Trace] === Step 3: Loading Master Policy Files for Active Partner Banks ===`);
-  const bankRules = getAllBankRulesForCategory(companyMatch, requestedLoanType);
+  const allBankRules = getAllBankRulesForCategory(companyMatch, requestedLoanType);
+  const normReq = requestedLoanType.toLowerCase().replace(/\s*loan$/, "");
+
+  // Evaluate ONLY active Personal Loan policies, excluding Home Loan or non-matching policies
+  const bankRules = allBankRules.filter((rule) => {
+    if (rule.bankCode === "HOME_LOAN" || /home_loan/i.test(rule.fileName)) return false;
+    if (normReq === "personal") {
+      const isPL =
+        (rule.loanType && rule.loanType.toLowerCase().includes("personal")) ||
+        (Array.isArray(rule.supportedLoanTypes) &&
+          rule.supportedLoanTypes.some((t) => t.toLowerCase().includes("personal")));
+      return isPL;
+    }
+    return true;
+  });
   console.log(`[Eligibility Trace]   • Active partner banks loaded for evaluation: ${bankRules.length}`);
 
   // Step 4: Independent Bank Evaluation
@@ -2205,7 +2143,17 @@ export async function evaluateApplicantAgainstAllBanks(
     const verifiedChecks: string[] = [];
     const failureReasons: string[] = [];
 
-    const normReq = requestedLoanType.toLowerCase().replace(/\s*loan$/, "");
+    // 1. Calculate Proposed EMI First using bank's policy ROI, requested loan amount, and tenure
+    const proposedEmi = rule.roi && rule.roi > 0 && loanAmount > 0 && tenureMonths > 0
+      ? calculateEmi(loanAmount, rule.roi, tenureMonths)
+      : 0;
+
+    // 2. Calculate FOIR = (Existing EMI + Proposed EMI) / Salary * 100
+    const totalObligations = existingEmi + proposedEmi;
+    const calculatedFoir = monthlySalary > 0
+      ? Number(((totalObligations / monthlySalary) * 100).toFixed(1))
+      : 100;
+
     const isSupportedProduct =
       rule.supportedLoanTypes &&
       Array.isArray(rule.supportedLoanTypes) &&
@@ -2227,8 +2175,9 @@ export async function evaluateApplicantAgainstAllBanks(
     if (!rule.minSalary || rule.minSalary <= 0) {
       failureReasons.push(`Bank policy does not define a valid minimum monthly salary rule`);
     } else if (monthlySalary < rule.minSalary) {
+      const salDisplay = monthlySalary > 0 ? `₹${monthlySalary.toLocaleString("en-IN")}` : "Not provided";
       failureReasons.push(
-        `Monthly salary of ₹${monthlySalary.toLocaleString("en-IN")} is below the required ₹${rule.minSalary.toLocaleString("en-IN")} for ${rule.resolvedCategory}`
+        `Monthly salary (${salDisplay}) is below the required ₹${rule.minSalary.toLocaleString("en-IN")} for ${rule.resolvedCategory}`
       );
     } else {
       verifiedChecks.push(`Monthly salary meets ${rule.resolvedCategory} policy minimum (₹${rule.minSalary.toLocaleString("en-IN")})`);
@@ -2238,7 +2187,8 @@ export async function evaluateApplicantAgainstAllBanks(
     if (!rule.minCibil || rule.minCibil <= 0) {
       failureReasons.push(`Bank policy does not define a valid minimum CIBIL score threshold`);
     } else if (cibil < rule.minCibil) {
-      failureReasons.push(`CIBIL score (${cibil > 0 ? cibil : "N/A"}) is below the policy minimum threshold of ${rule.minCibil}`);
+      const cibilDisplay = typeof applicant.cibil === "number" && applicant.cibil > 0 ? applicant.cibil : "Not provided";
+      failureReasons.push(`CIBIL score (${cibilDisplay}) is below the policy minimum threshold of ${rule.minCibil}`);
     } else {
       verifiedChecks.push(`CIBIL score (${cibil}) meets or exceeds policy minimum of ${rule.minCibil}`);
     }
@@ -2247,7 +2197,8 @@ export async function evaluateApplicantAgainstAllBanks(
     if (!rule.minAge || !rule.maxAge || rule.minAge <= 0 || rule.maxAge <= rule.minAge) {
       failureReasons.push(`Bank policy does not define valid age criteria`);
     } else if (age < rule.minAge || age > rule.maxAge) {
-      failureReasons.push(`Age ${age} is outside permissible range (${rule.minAge} to ${rule.maxAge} years)`);
+      const ageDisplay = age > 0 ? `${age} years` : "Not provided";
+      failureReasons.push(`Age (${ageDisplay}) is outside permissible range (${rule.minAge} to ${rule.maxAge} years)`);
     } else {
       verifiedChecks.push(`Applicant age (${age} years) is within permissible limits (${rule.minAge}–${rule.maxAge} years)`);
     }
@@ -2256,9 +2207,11 @@ export async function evaluateApplicantAgainstAllBanks(
     if (!rule.minLoanAmount || !rule.maxLoanAmount || rule.minLoanAmount <= 0 || rule.maxLoanAmount < rule.minLoanAmount) {
       failureReasons.push(`Bank policy does not define valid loan amount (ticket size) limits`);
     } else if (loanAmount < rule.minLoanAmount) {
-      failureReasons.push(`Requested loan amount (₹${loanAmount.toLocaleString("en-IN")}) is below minimum ticket size of ₹${rule.minLoanAmount.toLocaleString("en-IN")}`);
+      const amtDisplay = loanAmount > 0 ? `₹${loanAmount.toLocaleString("en-IN")}` : "Not provided";
+      failureReasons.push(`Requested loan amount (${amtDisplay}) is below minimum ticket size of ₹${rule.minLoanAmount.toLocaleString("en-IN")}`);
     } else if (loanAmount > rule.maxLoanAmount) {
-      failureReasons.push(`Requested loan amount (₹${loanAmount.toLocaleString("en-IN")}) exceeds maximum permissible ticket size of ₹${rule.maxLoanAmount.toLocaleString("en-IN")}`);
+      const amtDisplay = loanAmount > 0 ? `₹${loanAmount.toLocaleString("en-IN")}` : "Not provided";
+      failureReasons.push(`Requested loan amount (${amtDisplay}) exceeds maximum permissible ticket size of ₹${rule.maxLoanAmount.toLocaleString("en-IN")}`);
     } else {
       verifiedChecks.push(`Requested amount (₹${loanAmount.toLocaleString("en-IN")}) is within permissible ticket size range`);
     }
@@ -2267,7 +2220,8 @@ export async function evaluateApplicantAgainstAllBanks(
     if (!rule.minTenureMonths || !rule.maxTenureMonths || rule.minTenureMonths <= 0 || rule.maxTenureMonths < rule.minTenureMonths) {
       failureReasons.push(`Bank policy does not define valid repayment tenure limits`);
     } else if (tenureMonths < rule.minTenureMonths || tenureMonths > rule.maxTenureMonths) {
-      failureReasons.push(`Requested tenure of ${tenureMonths} months is outside permissible range (${rule.minTenureMonths} to ${rule.maxTenureMonths} months)`);
+      const tenureDisplay = tenureMonths > 0 ? `${tenureMonths} months` : "Not provided";
+      failureReasons.push(`Requested tenure (${tenureDisplay}) is outside permissible range (${rule.minTenureMonths} to ${rule.maxTenureMonths} months)`);
     } else {
       verifiedChecks.push(`Requested tenure (${tenureMonths} months) is within permissible policy tenure`);
     }
@@ -2283,10 +2237,6 @@ export async function evaluateApplicantAgainstAllBanks(
       foirValid = false;
     }
 
-    const emi = rule.roi && rule.roi > 0 ? calculateEmi(loanAmount, rule.roi, tenureMonths) : 0;
-    const totalObligation = existingEmi + emi;
-    const calculatedFoir = monthlySalary > 0 ? (totalObligation / monthlySalary) * 100 : 100;
-
     const maxPermissibleEmi = rule.foirPercent && rule.foirPercent > 0 ? monthlySalary * (rule.foirPercent / 100) : 0;
     const availableEmiHeadroom = Math.max(0, maxPermissibleEmi - existingEmi);
     let maxLoanEligible = rule.roi && rule.roi > 0 ? calculateMaxLoanCapacity(availableEmiHeadroom, rule.roi, tenureMonths) : 0;
@@ -2296,21 +2246,36 @@ export async function evaluateApplicantAgainstAllBanks(
 
     if (foirValid) {
       if (calculatedFoir > rule.foirPercent) {
-        failureReasons.push(`Total debt obligations consume ${calculatedFoir.toFixed(1)}% of income, exceeding the policy FOIR cap of ${rule.foirPercent}%`);
+        failureReasons.push(
+          `Total debt obligations consume ${calculatedFoir}% of income (existing EMI ₹${existingEmi.toLocaleString("en-IN")} + proposed EMI ₹${proposedEmi.toLocaleString("en-IN")}), exceeding the policy FOIR cap of ${rule.foirPercent}%`
+        );
       } else {
-        verifiedChecks.push(`Total debt obligations (${calculatedFoir.toFixed(1)}%) remain within permissible FOIR cap of ${rule.foirPercent}%`);
+        verifiedChecks.push(
+          `Total debt obligations (${calculatedFoir}%) remain within permissible FOIR cap of ${rule.foirPercent}%`
+        );
       }
     }
 
-    const isEligible = failureReasons.length === 0;
+    const isChecksPassed = failureReasons.length === 0;
+    const isReview = isChecksPassed && rule.reviewRequired === true;
+    const status: "ELIGIBLE" | "NOT_ELIGIBLE" | "NEEDS_REVIEW" = !isChecksPassed
+      ? "NOT_ELIGIBLE"
+      : isReview
+      ? "NEEDS_REVIEW"
+      : "ELIGIBLE";
+    const isEligible = status === "ELIGIBLE" || status === "NEEDS_REVIEW";
 
-    if (isEligible) {
+    if (status === "ELIGIBLE") {
       console.log(
-        `[Eligibility Trace]   [✓ ELIGIBLE] ${rule.bankName}: Approved | ROI: ${rule.roi}% | EMI: ₹${emi.toLocaleString("en-IN")}/mo | Max Limit: ₹${maxLoanEligible.toLocaleString("en-IN")} | FOIR: ${calculatedFoir.toFixed(1)}%`
+        `[Eligibility Trace]   [✓ ELIGIBLE] ${rule.bankName}: Approved | ROI: ${rule.roi}% | EMI: ₹${proposedEmi.toLocaleString("en-IN")}/mo | Max Limit: ₹${maxLoanEligible.toLocaleString("en-IN")} | FOIR: ${calculatedFoir}%`
+      );
+    } else if (status === "NEEDS_REVIEW") {
+      console.log(
+        `[Eligibility Trace]   [⚠️ NEEDS_REVIEW] ${rule.bankName}: Review required | Reason: ${rule.reviewReason || "Underwriting review required"}`
       );
     } else {
       console.log(
-        `[Eligibility Trace]   [✗ INELIGIBLE] ${rule.bankName}: Filtered out | Reasons: ${failureReasons.join(" | ")}`
+        `[Eligibility Trace]   [✗ NOT_ELIGIBLE] ${rule.bankName}: Filtered out | Reasons: ${failureReasons.join(" | ")}`
       );
     }
 
@@ -2321,8 +2286,11 @@ export async function evaluateApplicantAgainstAllBanks(
       fileName: rule.fileName,
       resolvedCategory: rule.resolvedCategory,
       isEligible,
+      status,
+      reviewRequired: rule.reviewRequired,
+      reviewReason: rule.reviewReason || undefined,
       roi: rule.roi,
-      monthlyEmi: emi,
+      monthlyEmi: proposedEmi,
       maxLoanEligible: isEligible ? maxLoanEligible : 0,
       requestedLoanAmount: loanAmount,
       processingFeePercent: rule.processingFeePercent,
@@ -2330,7 +2298,7 @@ export async function evaluateApplicantAgainstAllBanks(
       policyCibil: rule.policyCibil || "-",
       policyTenure: rule.policyTenure || "-",
       foirPercent: rule.foirPercent,
-      calculatedFoir: Number(calculatedFoir.toFixed(1)),
+      calculatedFoir,
       verifiedChecks,
       failureReasons,
       policySource: rule.policySource,
@@ -2338,8 +2306,9 @@ export async function evaluateApplicantAgainstAllBanks(
   }
 
   // Strictly filter out all ineligible banks
-  const eligibleBanks = evaluations.filter((e) => e.isEligible);
-  const ineligibleBanks = evaluations.filter((e) => !e.isEligible);
+  const eligibleBanks = evaluations.filter((e) => e.status === "ELIGIBLE");
+  const reviewBanks = evaluations.filter((e) => e.status === "NEEDS_REVIEW");
+  const ineligibleBanks = evaluations.filter((e) => e.status === "NOT_ELIGIBLE");
 
   // Rank Eligible Banks to select the #1 Top Recommendation
   // Criteria: Lowest ROI -> Lowest Processing Fee -> Highest Loan Capacity
@@ -2349,7 +2318,13 @@ export async function evaluateApplicantAgainstAllBanks(
     return b.maxLoanEligible - a.maxLoanEligible;
   });
 
-  const recommendedBank = eligibleBanks.length > 0 ? eligibleBanks[0] : null;
+  reviewBanks.sort((a, b) => {
+    if (a.roi !== b.roi) return a.roi - b.roi;
+    if (a.processingFeePercent !== b.processingFeePercent) return a.processingFeePercent - b.processingFeePercent;
+    return b.maxLoanEligible - a.maxLoanEligible;
+  });
+
+  const recommendedBank = eligibleBanks.length > 0 ? eligibleBanks[0] : reviewBanks.length > 0 ? reviewBanks[0] : null;
   let recommendationReason = "";
 
   if (recommendedBank) {
@@ -2365,6 +2340,11 @@ export async function evaluateApplicantAgainstAllBanks(
   console.log(
     `[Eligibility Trace]   • Eligible Banks (${eligibleBanks.length}): ${eligibleBanks.map((b) => `${b.bankName} (${b.roi}%)`).join(", ") || "None"}`
   );
+  if (reviewBanks.length > 0) {
+    console.log(
+      `[Eligibility Trace]   • Needs Review Banks (${reviewBanks.length}): ${reviewBanks.map((b) => `${b.bankName} (${b.roi}%)`).join(", ")}`
+    );
+  }
   console.log(
     `[Eligibility Trace]   • Ineligible Banks Filtered Out (${ineligibleBanks.length}): ${ineligibleBanks.map((b) => b.bankName).join(", ") || "None"}`
   );
@@ -2377,6 +2357,7 @@ export async function evaluateApplicantAgainstAllBanks(
     companyMatch,
     evaluations,
     eligibleBanks,
+    reviewBanks,
     ineligibleBanks,
     recommendedBank,
     recommendationReason,
@@ -2397,26 +2378,29 @@ export function buildConciseEligibilityReason(applicant: ApplicantProfile, b: Ba
   const parts: string[] = [];
 
   // CIBIL factor
-  if (applicant.cibil && applicant.cibil > 0) {
+  if (typeof applicant.cibil === "number" && applicant.cibil > 0) {
     parts.push(`CIBIL of ${applicant.cibil}`);
   }
 
   // Salary factor (included when relevant, e.g. salary <= ₹40,000)
-  if (applicant.monthlyIncome && applicant.monthlyIncome > 0 && applicant.monthlyIncome <= 40000) {
-    parts.push(`monthly salary of ₹${applicant.monthlyIncome.toLocaleString("en-IN")}`);
+  const salaryNum = typeof applicant.monthlyIncome === "number" ? applicant.monthlyIncome : (applicant.monthlyIncome && !isNaN(Number(applicant.monthlyIncome)) ? Number(applicant.monthlyIncome) : 0);
+  if (salaryNum > 0 && salaryNum <= 40000) {
+    parts.push(`monthly salary of ₹${salaryNum.toLocaleString("en-IN")}`);
   }
 
   // Loan amount factor
-  if (applicant.loanAmount && applicant.loanAmount > 0) {
-    const amt = applicant.loanAmount >= 100000
-      ? `₹${(applicant.loanAmount / 100000).toFixed(applicant.loanAmount % 100000 === 0 ? 0 : 1)} lakh loan amount`
-      : `₹${applicant.loanAmount.toLocaleString("en-IN")} loan amount`;
+  const loanNum = typeof applicant.loanAmount === "number" ? applicant.loanAmount : (applicant.loanAmount && !isNaN(Number(applicant.loanAmount)) ? Number(applicant.loanAmount) : 0);
+  if (loanNum > 0) {
+    const amt = loanNum >= 100000
+      ? `₹${(loanNum / 100000).toFixed(loanNum % 100000 === 0 ? 0 : 1)} lakh loan amount`
+      : `₹${loanNum.toLocaleString("en-IN")} loan amount`;
     parts.push(amt);
   }
 
   // Tenure factor
-  if (applicant.tenureMonths && applicant.tenureMonths > 0) {
-    parts.push(`${applicant.tenureMonths}-month tenure`);
+  const tenureNum = typeof applicant.tenureMonths === "number" ? applicant.tenureMonths : (applicant.tenureMonths && !isNaN(Number(applicant.tenureMonths)) ? Number(applicant.tenureMonths) : 0);
+  if (tenureNum > 0) {
+    parts.push(`${tenureNum}-month tenure`);
   }
 
   // FOIR factor
@@ -2436,6 +2420,64 @@ export function buildConciseEligibilityReason(applicant: ApplicantProfile, b: Ba
   return `Eligible because your ${parts.join(", ")}, and ${last} meet this bank's applicable criteria.`;
 }
 
+export function deduplicateRejectionReasons(
+  ineligibleBanks: BankEvaluationResult[],
+  applicant: ApplicantProfile
+): string[] {
+  const reasons: string[] = [];
+  const allReasons = ineligibleBanks.flatMap((b) => b.failureReasons);
+  if (allReasons.length === 0) return reasons;
+
+  // 1. CIBIL score
+  if (allReasons.some((r) => /cibil/i.test(r))) {
+    const cibilDisplay = typeof applicant.cibil === "number" && applicant.cibil > 0 ? applicant.cibil : "Not provided";
+    reasons.push(`**Credit Score (CIBIL)**: Current score (${cibilDisplay}) is below partner bank cutoffs (minimum required is typically 650–700+).`);
+  }
+
+  // 2. Minimum monthly salary
+  if (allReasons.some((r) => /salary/i.test(r))) {
+    const salDisplay = typeof applicant.monthlyIncome === "number" && applicant.monthlyIncome > 0
+      ? `₹${applicant.monthlyIncome.toLocaleString("en-IN")}`
+      : "Not provided";
+    reasons.push(`**Minimum Monthly Salary**: Take-home salary (${salDisplay}) is below partner bank requirements for your employer category.`);
+  }
+
+  // 3. FOIR / Debt obligations
+  if (allReasons.some((r) => /foir|debt obligations|debt burden/i.test(r))) {
+    reasons.push(`**Debt Burden / FOIR**: Current loan obligations and proposed EMI exceed partner banks' permissible debt-to-income (FOIR) limit (typically 50%–70%).`);
+  }
+
+  // 4. Age limits
+  if (allReasons.some((r) => /age/i.test(r))) {
+    const ageDisplay = typeof applicant.age === "number" && applicant.age > 0 ? `${applicant.age} years` : "Not provided";
+    reasons.push(`**Applicant Age**: Current age (${ageDisplay}) is outside partner banks' eligible age bracket (typically 21–60 years).`);
+  }
+
+  // 5. Loan Amount (Ticket size)
+  if (allReasons.some((r) => /ticket size|loan amount/i.test(r))) {
+    const amtDisplay = typeof applicant.loanAmount === "number" && applicant.loanAmount > 0
+      ? `₹${applicant.loanAmount.toLocaleString("en-IN")}`
+      : "Not provided";
+    reasons.push(`**Requested Loan Amount**: Ticket size of ${amtDisplay} is outside permissible loan bounds for partner lenders.`);
+  }
+
+  // 6. Tenure
+  if (allReasons.some((r) => /tenure/i.test(r))) {
+    const tenureDisplay = typeof applicant.tenureMonths === "number" && applicant.tenureMonths > 0
+      ? `${applicant.tenureMonths} months`
+      : "Not provided";
+    reasons.push(`**Repayment Tenure**: Requested tenure (${tenureDisplay}) is outside permissible policy ranges.`);
+  }
+
+  // Fallback if none matched: return at most 3 distinct general reasons
+  if (reasons.length === 0) {
+    const distinct = Array.from(new Set(allReasons)).slice(0, 3);
+    reasons.push(...distinct);
+  }
+
+  return reasons;
+}
+
 /**
  * Formats the final eligibility assessment report into a clean, concise, user-facing Markdown document.
  * Strictly SHOWS ONLY ELIGIBLE BANKS with a 1–2 sentence reason based on key factors:
@@ -2447,13 +2489,16 @@ export function formatDynamicEligibilityReport(
   applicant: ApplicantProfile,
   evaluationOutput: {
     companyMatch: CompanyCategoryMatch;
+    evaluations?: BankEvaluationResult[];
     eligibleBanks: BankEvaluationResult[];
+    reviewBanks?: BankEvaluationResult[];
     ineligibleBanks: BankEvaluationResult[];
     recommendedBank: BankEvaluationResult | null;
     recommendationReason: string;
   }
 ): string {
-  const { eligibleBanks, recommendedBank } = evaluationOutput;
+  const { eligibleBanks, recommendedBank, reviewBanks = [] } = evaluationOutput;
+  const approvedOrReviewBanks = [...eligibleBanks, ...reviewBanks];
   const lines: string[] = [];
 
   // Header
@@ -2464,126 +2509,71 @@ export function formatDynamicEligibilityReport(
   lines.push(`### 👤 Applicant Summary`);
   lines.push(`| Parameter | Value |`);
   lines.push(`| :--- | :--- |`);
-  if (applicant.companyName) {
-    lines.push(`| **Employer** | **${applicant.companyName}** |`);
-  }
-  lines.push(`| **Monthly Take-Home Salary** | ₹${(applicant.monthlyIncome || 0).toLocaleString("en-IN")} |`);
-  lines.push(`| **CIBIL Credit Score** | ${applicant.cibil && applicant.cibil > 0 ? applicant.cibil : "Standard"} |`);
-  lines.push(`| **Requested Loan Amount** | ₹${(applicant.loanAmount || 0).toLocaleString("en-IN")} |`);
-  lines.push(`| **Repayment Tenure** | ${applicant.tenureMonths || 0} months (${(((applicant.tenureMonths || 0)) / 12).toFixed(1)} years) |`);
-  lines.push(`| **Existing Monthly EMIs** | ₹${(applicant.existingEmi || 0).toLocaleString("en-IN")} |`);
-  lines.push(`| **Applicant Age** | ${applicant.age || 0} years (${applicant.employmentType || "Salaried"}) |`);
+  lines.push(`| **Employer** | ${applicant.companyName ? `**${applicant.companyName}**` : "Not provided"} |`);
+  lines.push(`| **Monthly Take-Home Salary** | ${applicant.monthlyIncome && typeof applicant.monthlyIncome === "number" && applicant.monthlyIncome > 0 ? `₹${applicant.monthlyIncome.toLocaleString("en-IN")}` : "Not provided"} |`);
+  lines.push(`| **CIBIL Credit Score** | ${typeof applicant.cibil === "number" && applicant.cibil > 0 ? applicant.cibil : "Not provided"} |`);
+  lines.push(`| **Requested Loan Amount** | ${applicant.loanAmount && typeof applicant.loanAmount === "number" && applicant.loanAmount > 0 ? `₹${applicant.loanAmount.toLocaleString("en-IN")}` : "Not provided"} |`);
+  lines.push(`| **Repayment Tenure** | ${applicant.tenureMonths && typeof applicant.tenureMonths === "number" && applicant.tenureMonths > 0 ? `${applicant.tenureMonths} months (${(applicant.tenureMonths / 12).toFixed(1)} years)` : "Not provided"} |`);
+  lines.push(`| **Existing Monthly EMIs** | ${applicant.existingEmi !== undefined && applicant.existingEmi !== null && typeof applicant.existingEmi === "number" ? `₹${applicant.existingEmi.toLocaleString("en-IN")}` : "Not provided"} |`);
+  lines.push(`| **Applicant Age** | ${applicant.age && typeof applicant.age === "number" && applicant.age > 0 ? `${applicant.age} years` : "Not provided"} |`);
   lines.push("");
 
-  // Top Recommendation Highlight
-  if (recommendedBank) {
-    const isSole = eligibleBanks.length === 1;
-
-    lines.push(`### 🏆 ${isSole ? "Eligible Partner Bank" : "Top Recommended Bank"}: **${recommendedBank.bankName}**`);
-    lines.push(`> [!TIP]`);
+  // Eligible Banks Table (Bank | Status | CIBIL | Tenure | Est. EMI)
+  if (approvedOrReviewBanks.length > 0) {
+    const isSole = approvedOrReviewBanks.length === 1;
+    lines.push(`### 📋 Eligible Partner Bank${isSole ? "" : "s"} (${approvedOrReviewBanks.length})`);
     if (isSole) {
-      lines.push(`> **${recommendedBank.bankName}** is your **sole qualifying partner bank**, with an estimated monthly EMI of **₹${recommendedBank.monthlyEmi.toLocaleString("en-IN")}/month**.`);
+      lines.push(`Based on your profile and verified financial parameters, **${approvedOrReviewBanks[0].bankName}** meets all eligibility criteria for your requested loan:`);
     } else {
-      lines.push(`> **${recommendedBank.bankName}** is selected as your **#1 Best Match** among **${eligibleBanks.length} eligible partner banks**, with an estimated monthly EMI of **₹${recommendedBank.monthlyEmi.toLocaleString("en-IN")}/month**.`);
-    }
-    lines.push("");
-    lines.push(`**Recommendation Details**:`);
-    lines.push(`- **Bank Name**: **${recommendedBank.bankName}**`);
-    lines.push(`- **Status**: ✅ **Eligible / Criteria Met**`);
-    lines.push(`- **Estimated Monthly EMI**: **₹${recommendedBank.monthlyEmi.toLocaleString("en-IN")} / month**`);
-    lines.push(`- **CIBIL**: **${recommendedBank.policyCibil || "-"}**`);
-    lines.push(`- **Tenure**: **${recommendedBank.policyTenure || "-"}**`);
-    lines.push("");
-  }
-
-  // Eligible Banks Table (ONLY ELIGIBLE BANKS SHOWN - INELIGIBLE FILTERED OUT)
-  if (eligibleBanks.length > 0) {
-    const isSole = eligibleBanks.length === 1;
-    lines.push(`### 📋 Eligible Partner Bank${isSole ? "" : "s"} (${eligibleBanks.length})`);
-    if (isSole) {
-      lines.push(`Based on your profile and verified financial parameters, **${eligibleBanks[0].bankName}** meets all eligibility criteria for your requested loan:`);
-    } else {
-      lines.push(`The following **${eligibleBanks.length} partner banks** meet all policy criteria for your profile:`);
+      lines.push(`The following partner banks meet all policy criteria for your profile:`);
     }
     lines.push("");
     lines.push(`| Bank | Status | CIBIL | Tenure | Est. EMI |`);
     lines.push(`| :--- | :--- | :--- | :--- | :--- |`);
 
-    eligibleBanks.forEach((b) => {
+    approvedOrReviewBanks.forEach((b) => {
+      const statusIcon = b.status === "ELIGIBLE" ? "✅ ELIGIBLE" : "⚠️ NEEDS_REVIEW";
       lines.push(
-        `| **${b.bankName}** | ✅ Eligible | ${b.policyCibil || "-"} | ${b.policyTenure || "-"} | ₹${b.monthlyEmi.toLocaleString("en-IN")} |`
+        `| **${b.bankName}** | ${statusIcon} | ${b.policyCibil || "-"} | ${b.policyTenure || "-"} | ₹${b.monthlyEmi.toLocaleString("en-IN")} |`
       );
     });
     lines.push("");
 
-    lines.push(`---\n🏦 **Next Step**: Reply with your chosen bank (for example, **"${recommendedBank?.bankName || "HDFC Bank"}"**) and city to connect with an official branch representative!`);
-  } else {
-    // Clean, informative No-Eligibility message with specific policy hurdles and constructive recommendations
-    lines.push(`### ⚠️ Assessment Outcome: No Partner Banks Currently Eligible`);
-    lines.push(`> [!WARNING]`);
-    lines.push(`> **Policy Criteria Not Met**`);
-    lines.push(`> Based on an objective, policy-by-policy evaluation against the Master Policy rules of our partner banks, no partner bank currently approves the requested loan parameters under this specific financial profile.`);
-    lines.push("");
-
-    // Identify the specific failure hurdles across ineligible banks
-    const hurdles: string[] = [];
-    const ineligibles = evaluationOutput.ineligibleBanks || [];
-
-    const cibilFails = ineligibles.filter((b) => b.failureReasons.some((r) => /cibil/i.test(r)));
-    const foirFails = ineligibles.filter((b) => b.failureReasons.some((r) => /foir|debt obligations/i.test(r)));
-    const salaryFails = ineligibles.filter((b) => b.failureReasons.some((r) => /salary/i.test(r)));
-    const ageFails = ineligibles.filter((b) => b.failureReasons.some((r) => /age/i.test(r)));
-    const amountFails = ineligibles.filter((b) => b.failureReasons.some((r) => /ticket size|loan amount/i.test(r)));
-    const tenureFails = ineligibles.filter((b) => b.failureReasons.some((r) => /tenure/i.test(r)));
-
-    if (cibilFails.length > 0 && applicant.cibil !== undefined && applicant.cibil < 650) {
-      hurdles.push(`- **Credit Score (CIBIL)**: Your credit score of **${applicant.cibil}** is below partner cut-offs. Partner banks require a minimum score of **650**, with most prime lenders requiring **700 to 731**.`);
-    }
-
-    if (foirFails.length > 0 && applicant.existingEmi && applicant.monthlyIncome) {
-      const debtRatio = ((applicant.existingEmi / applicant.monthlyIncome) * 100).toFixed(1);
-      hurdles.push(`- **Debt Obligations / FOIR**: Current monthly EMIs (₹${applicant.existingEmi.toLocaleString("en-IN")}) consume **${debtRatio}%** of monthly income. When combined with the requested loan EMI, total obligations exceed partner banks' permissible FOIR cap (50%–75%).`);
-    }
-
-    if (salaryFails.length === ineligibles.length && applicant.monthlyIncome) {
-      hurdles.push(`- **Minimum Monthly Salary**: Take-home salary of **₹${applicant.monthlyIncome.toLocaleString("en-IN")}** is below the minimum entry requirement for your employer category across partner lenders.`);
-    }
-
-    if (ageFails.length > 0 && applicant.age && (applicant.age < 21 || applicant.age > 60)) {
-      hurdles.push(`- **Applicant Age**: Current age of **${applicant.age} years** is outside the permissible age band (21–60 years) enforced by most personal loan partner policies.`);
-    }
-
-    if (amountFails.length > 0 && applicant.loanAmount) {
-      hurdles.push(`- **Requested Loan Amount**: The ticket size of **₹${applicant.loanAmount.toLocaleString("en-IN")}** is outside permissible loan bounds for certain lenders.`);
-    }
-
-    if (tenureFails.length > 0 && applicant.tenureMonths) {
-      hurdles.push(`- **Repayment Tenure**: The requested duration of **${applicant.tenureMonths} months** is outside permissible tenure ranges.`);
-    }
-
-    if (hurdles.length > 0) {
-      lines.push(`#### 📋 Key Policy Constraints Identified:`);
-      hurdles.forEach((h) => lines.push(h));
+    if (reviewBanks.length > 0) {
+      lines.push(`> ⚠️ **Note**: Banks marked **NEEDS_REVIEW** require underwriting sign-off or employer verification as per bank policy.`);
       lines.push("");
     }
 
-    lines.push(`#### 💡 Recommended Next Steps to Qualify:`);
-    if (foirFails.length > 0) {
-      lines.push(`1. **Lower Requested Loan Amount**: A smaller loan amount reduces monthly EMI and brings obligations within acceptable FOIR thresholds.`);
-      lines.push(`2. **Select a Longer Tenure**: Extending repayment tenure lowers monthly EMI, improving your debt-to-income headroom.`);
-      lines.push(`3. **Clear Existing Loans**: Paying off or consolidating active loans frees up monthly income capacity.`);
-    } else if (cibilFails.length > 0) {
-      lines.push(`1. **Improve Credit Score**: Making timely EMI/credit card payments and maintaining credit utilization below 30% can bring your score above 700 within 3–6 months.`);
-      lines.push(`2. **Check for Co-Applicant**: Adding a co-borrower with a healthy credit score (750+) can help secure approval.`);
-    } else if (salaryFails.length > 0) {
-      lines.push(`1. **Add a Co-Borrower**: Combining income with an earning family member increases total disposable income.`);
-      lines.push(`2. **Explore Collateral/Gold Loans**: Secured credit products generally offer more flexible salary requirements.`);
-    } else {
-      lines.push(`1. **Adjust Loan Terms**: Try re-evaluating with a modified loan amount or tenure.`);
-      lines.push(`2. **Consult with an Advisor**: Inquire about specialized partner programs for your specific segment.`);
-    }
+    lines.push(`---\n🏦 **Next Step**: Reply with your chosen bank and city to connect with an official branch representative!`);
+  } else {
+    // Objective assessment outcome based strictly on actual failed criteria returned by the engine
+    lines.push(`### ⚠️ Assessment Outcome: No Partner Banks Currently Eligible`);
+    lines.push(`> [!WARNING]`);
+    lines.push(`> **Policy Criteria Not Met**`);
+    lines.push(`> Based on an objective evaluation against partner bank policies, no partner bank currently approves the requested loan parameters under this profile.`);
     lines.push("");
-    lines.push(`---\n💬 **Would you like to re-evaluate with a lower loan amount, longer tenure, or updated details?** Just type your updated preferences below to start fresh.`);
+
+    const ineligibles = evaluationOutput.ineligibleBanks || [];
+    if (ineligibles.length > 0) {
+      lines.push(`### 📋 Bank-Wise Assessment Results`);
+      lines.push(`| Bank | Status | CIBIL | Tenure | Est. EMI |`);
+      lines.push(`| :--- | :--- | :--- | :--- | :--- |`);
+      ineligibles.forEach((b) => {
+        lines.push(
+          `| **${b.bankName}** | ❌ NOT_ELIGIBLE | ${b.policyCibil || "-"} | ${b.policyTenure || "-"} | - |`
+        );
+      });
+      lines.push("");
+    }
+
+    const deduplicatedReasons = deduplicateRejectionReasons(ineligibles, applicant);
+    if (deduplicatedReasons.length > 0) {
+      lines.push(`#### 📋 Key Policy Criteria Not Met:`);
+      deduplicatedReasons.forEach((r) => {
+        lines.push(`- ${r}`);
+      });
+      lines.push("");
+    }
   }
 
   return lines.join("\n");
@@ -2692,7 +2682,13 @@ export function extractProfileUpdates(
     if (typeof llmExtracted?.cibil === "number" && ((llmExtracted.cibil >= 300 && llmExtracted.cibil <= 900) || llmExtracted.cibil === 0)) {
       updates.cibil = llmExtracted.cibil;
       updatedFieldLabels.push(updates.cibil > 0 ? `CIBIL Score to ${updates.cibil}` : `CIBIL Score to 0 (No Score)`);
-    } else if (/no\s*cibil|0\s*cibil|zero\s*cibil|no\s*credit\s*(?:score|history)/i.test(lower)) {
+    } else if (typeof llmExtracted?.cibil === "string" && /not\s*provided|unknown|not\s*sure|don'?t\s*know/i.test(llmExtracted.cibil)) {
+      updates.cibil = "Not provided";
+      updatedFieldLabels.push(`CIBIL Score to Not provided`);
+    } else if (/unknown|not\s*sure|don'?t\s*know|never\s*checked|no\s*idea/i.test(lower)) {
+      updates.cibil = "Not provided";
+      updatedFieldLabels.push(`CIBIL Score to Not provided`);
+    } else if (/no\s*cibil|0\s*cibil|zero\s*cibil/i.test(lower)) {
       updates.cibil = 0;
       updatedFieldLabels.push(`CIBIL Score to 0 (No Score)`);
     } else {
@@ -2934,6 +2930,10 @@ export async function applyProfileUpdateAndRecalculate(
       updatedAt: Date.now(),
       in_eligibility_flow: true,
       eligible_banks: (evalResult.eligibleBanks || []).map((b) => b.bankName),
+      ineligibleBanks: (evalResult.ineligibleBanks || []).map((b) => ({
+        bankName: b.bankName,
+        failureReasons: b.failureReasons,
+      })),
     } as any);
 
     return {
@@ -3206,6 +3206,10 @@ export async function processDynamicEligibility(
       updatedAt: Date.now(),
       in_eligibility_flow: false,
       eligible_banks: (evalResult.eligibleBanks || []).map((b) => b.bankName),
+      ineligibleBanks: (evalResult.ineligibleBanks || []).map((b) => ({
+        bankName: b.bankName,
+        failureReasons: b.failureReasons,
+      })),
     } as any);
 
     return {
@@ -3215,6 +3219,7 @@ export async function processDynamicEligibility(
       companyMatch: evalResult.companyMatch,
       evaluations: evalResult.evaluations,
       eligibleBanks: evalResult.eligibleBanks,
+      reviewBanks: evalResult.reviewBanks,
       ineligibleBanks: evalResult.ineligibleBanks,
       recommendedBank: evalResult.recommendedBank,
       recommendationReason: evalResult.recommendationReason,

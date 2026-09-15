@@ -38,7 +38,8 @@ export function normalizeModelSlug(rawModel?: string): string {
     !trimmed ||
     trimmed === "liquid/lfm-2.5-embedding-350m:free" ||
     trimmed === "Ling 3.0 Flash Fin" ||
-    trimmed === "openrouter/free"
+    trimmed === "openrouter/free" ||
+    trimmed === "deepseek/deepseek-flash-latest"
   ) {
     return "openrouter/auto";
   }

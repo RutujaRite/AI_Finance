@@ -1,4 +1,6 @@
 // scratch/debug_llm_call.ts
+import dotenv from "dotenv";
+dotenv.config();
 import { analyzeConversationWithLLM } from "../lib/ai/agent";
 
 async function test() {

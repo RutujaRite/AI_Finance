@@ -14,12 +14,12 @@ export type UserIntentType =
 
 export interface ExtractedEntities {
   companyName?: string;
-  monthlyIncome?: number;
-  loanAmount?: number;
-  tenureMonths?: number;
-  cibil?: number;
-  existingEmi?: number;
-  age?: number;
+  monthlyIncome?: number | string;
+  loanAmount?: number | string;
+  tenureMonths?: number | string;
+  cibil?: number | string;
+  existingEmi?: number | string;
+  age?: number | string;
   interestRate?: number;
   employmentType?: string;
   loanType?: string;
@@ -116,7 +116,7 @@ export async function classifyIntentWithLLM(
         `- Multi-Turn Context: Analyze previous assistant questions and user answers. If the assistant asked for a specific detail (e.g. salary or age), evaluate whether the user is answering, raising an objection ("Why do you need my age?"), asking a side question ("Is checking this going to affect my CIBIL?"), correcting a previous answer ("Actually I work at Google"), or giving an unexpected reply ("I don't know my cibil score").\n` +
         `- Objections & Questions: If the user asks "Why age?", "Why company?", "Why salary?", "Is my data safe?", "Will this pull a hard inquiry?", "Can I prepay?", "What is FOIR?", or raises any other objection or question mid-assessment, classify intent as "GENERAL_INFORMATION" with subIntent "OBJECTION" or "CONCEPT_DEFINITION". If the message ALSO provides profile information (e.g. "I earn 80k at TCS, but why do you need my age?"), extract the profile parameters into "extracted"!\n` +
         `- Conversational & Employment Status Answers: If the user says "I am jobless", "unemployed", "I have no job", "without job", "lost my job", "laid off", "student", or "freelancer", understand this as employmentType (and NOT a company name). For "jobless" or "unemployed", set employmentType to "Unemployed", monthlyIncome to 0, and companyName to null. For "freelancer" or "self employed", set employmentType to "Self-Employed" and companyName to "Self-Employed".\n` +
-        `- Zero Values & New to Credit: When the user replies "0rs", "0", "nil", "zero", "nothing", "no income", or "no emi" to a question about salary or existing EMIs, accurately extract 0 for that field. If the user says "don't know", "never had a loan or credit card", or "no cibil score" when asked for CIBIL, set "cibil" to 0 (new to credit).\n` +
+        `- Zero Values: When the user replies "0rs", "0", "nil", "zero", "nothing", "no income", or "no emi" to a question about salary or existing EMIs, accurately extract 0 for that field. If the user says "don't know", "never checked", "not sure", or "unknown" when asked for CIBIL, set "cibil" to "Not provided" (never 0 or Standard). Only set 0 if the user explicitly specifies a score of 0.\n` +
         `- Corrections: When the user says "actually", "wait", "my bad", "make that", "change to", or corrects a previous parameter (e.g. "Actually my salary is 95000 not 80k"), classify as "CHANGING_DETAILS" and specify the field in "changeFields".\n` +
         `- Bank Policy Requests (subIntent: "BANK_POLICY" or "POLICY_INQUIRY"): If the user asks for the policy, guidelines, rules, or cutoff of ANY bank (whether a partner bank, an unsupported bank like Citibank/Bank of Baroda/PNB, or an unavailable bank, e.g. "Tell me the policy of a bank that isn't available", "What is Citibank policy?", "What is HDFC bank policy?"), classify as "GENERAL_INFORMATION" with subIntent: "BANK_POLICY", and extract targetBank if mentioned. NEVER classify bank policy questions as LOAN_ELIGIBILITY or generic FAQ.\n` +
         `- Keep bank policy questions separate: Specific bank policy inquiries asking for an official bank's rules/guidelines (e.g. "What is HDFC bank policy?", "What are ICICI guidelines?", "Axis Bank CIBIL cutoff policy") belong to "GENERAL_INFORMATION" (subIntent: "BANK_POLICY"). In contrast, any question about user qualification or which bank is best for the user's loan ("What banks am I eligible for?", "Which banks can I get a loan from?", "Which bank is best for my loan?", "Am I eligible for a loan?") belongs strictly to "LOAN_ELIGIBILITY".\n` +
@@ -131,7 +131,7 @@ export async function classifyIntentWithLLM(
         `- monthlyIncome: net monthly salary in INR as a number (CRITICAL: If the user indicates zero income, 0rs, zero, nil, nothing, or that they are unemployed/jobless/student with no income, set monthlyIncome to 0, NOT null)\n` +
         `- loanAmount: loan amount needed in INR as a number\n` +
         `- tenureMonths: tenure in months (e.g. 3 years = 36) as a number\n` +
-        `- cibil: credit score (300-900) as a number (or 0 if no score / new to credit / unknown)\n` +
+        `- cibil: credit score (300-900) as a number (or "Not provided" if unknown / not sure / never checked / don't know, null if unmentioned)\n` +
         `- existingEmi: ongoing monthly loan EMIs in INR as a number (0 if none/no loans/nil)\n` +
         `- age: applicant age in years as a number\n` +
         `- employmentType: "Salaried", "Self-Employed", "Unemployed", or "Student" if mentioned or implied (e.g. "I am jobless" -> "Unemployed", "student" -> "Student", "freelancer" -> "Self-Employed")\n` +
@@ -269,11 +269,18 @@ export async function classifyIntentWithLLM(
                 extracted.tenureMonths = extracted.tenureMonths * 12;
               }
               if (extracted.cibil !== undefined && extracted.cibil !== null && typeof extracted.cibil === "string") {
-                const parsedCibil = parseInt(String(extracted.cibil), 10);
-                extracted.cibil = !isNaN(parsedCibil) ? parsedCibil : undefined;
+                const s = String(extracted.cibil).trim();
+                if (/not\s*provided|unknown|not\s*sure|don'?t\s*know|na|n\/a/i.test(s)) {
+                  extracted.cibil = "Not provided";
+                } else {
+                  const parsedCibil = parseInt(s, 10);
+                  extracted.cibil = !isNaN(parsedCibil) ? parsedCibil : "Not provided";
+                }
               }
               if (typeof extracted.cibil === "number") {
-                if (extracted.cibil !== 0 && (extracted.cibil < 300 || extracted.cibil > 900)) {
+                if (extracted.cibil === 0 && (/don'?t\s*know|unknown|not\s*sure|never\s*checked|no\s*idea/i.test(messageText))) {
+                  extracted.cibil = "Not provided";
+                } else if (extracted.cibil !== 0 && (extracted.cibil < 300 || extracted.cibil > 900)) {
                   extracted.cibil = undefined;
                 }
               }
@@ -398,7 +405,9 @@ function extractEntitiesFromText(
     if (s >= 300 && s <= 900) {
       extracted.cibil = s;
     }
-  } else if (context?.expectedField === "cibil" && /no|none|nil|zero|0|unknown|not\s*sure|don'?t\s*know/i.test(norm)) {
+  } else if (context?.expectedField === "cibil" && /unknown|not\s*sure|don'?t\s*know|never\s*checked|no\s*idea/i.test(norm)) {
+    extracted.cibil = "Not provided";
+  } else if (context?.expectedField === "cibil" && /\b(?:0|zero)\b/i.test(norm)) {
     extracted.cibil = 0;
   }
 
@@ -645,8 +654,13 @@ function fallbackIntentParser(
     };
   }
 
+  const isGenericQuestion =
+    /^(?:what\s+is|what\s+are|how\s+does|how\s+do|explain|difference\s+between|tell\s+me\s+about|documents\s+required|eligibility\s+criteria\s+for|what\s+documents)\b/i.test(norm) &&
+    !/(?:for\s+me|am\s+i|can\s+i\s+get|i\s+need|i\s+want|check\s+my|my\s+eligib)/i.test(norm);
+
   const isNaturalLoanIntent =
     !isBankPolicyQuery &&
+    !isGenericQuestion &&
     (/(?:i\s*(?:need|want|require|wish|am\s*looking\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
      /(?:apply\s*(?:for)?\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
      /(?:can\s*i\s*(?:get|have|avail|take|apply\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
