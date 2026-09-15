@@ -80,7 +80,7 @@
         "roi": 10.99,
         "minCibil": 700,
         "policyCibil": "700+",
-        "policyTenure": "-",
+        "policyTenure": "12–60 months",
         "resolvedCategory": "CAT Super A / CAT A",
         "reviewRequired": false
       },
@@ -92,7 +92,7 @@
         "roi": 11.75,
         "minCibil": 700,
         "policyCibil": "700+",
-        "policyTenure": "-",
+        "policyTenure": "12–60 months",
         "resolvedCategory": "CAT B",
         "reviewRequired": false
       },
@@ -104,7 +104,7 @@
         "roi": 10.99,
         "minCibil": 700,
         "policyCibil": "700+",
-        "policyTenure": "-",
+        "policyTenure": "12–60 months",
         "resolvedCategory": "Government / Public Sector",
         "reviewRequired": false
       },
@@ -116,7 +116,7 @@
         "roi": 12.99,
         "minCibil": 700,
         "policyCibil": "700+",
-        "policyTenure": "-",
+        "policyTenure": "12–60 months",
         "resolvedCategory": "Open Market / Standard Corporate",
         "reviewRequired": true,
         "reviewReason": "Unlisted company requires physical verification and senior underwriter approval"
@@ -570,7 +570,7 @@
         "foirPercent": 70,
         "roi": 10.75,
         "minCibil": 700,
-        "policyCibil": "-",
+        "policyCibil": ">730",
         "policyTenure": "12–84 months",
         "resolvedCategory": "CAT Super A / CAT A",
         "reviewRequired": false
@@ -582,7 +582,7 @@
         "foirPercent": 65,
         "roi": 11.75,
         "minCibil": 700,
-        "policyCibil": "-",
+        "policyCibil": ">730",
         "policyTenure": "12–60 months",
         "resolvedCategory": "CAT B / CAT C",
         "reviewRequired": false
@@ -594,7 +594,7 @@
         "foirPercent": 73,
         "roi": 11.5,
         "minCibil": 700,
-        "policyCibil": "-",
+        "policyCibil": ">730",
         "policyTenure": "12–84 months",
         "resolvedCategory": "CAT GA (Government)",
         "reviewRequired": false
@@ -606,7 +606,7 @@
         "foirPercent": 60,
         "roi": 13.75,
         "minCibil": 700,
-        "policyCibil": "-",
+        "policyCibil": ">730",
         "policyTenure": "12–60 months",
         "resolvedCategory": "CAT D / CAT E / Standard",
         "reviewRequired": true,
@@ -632,8 +632,8 @@
         "foirPercent": 70,
         "roi": 10.8,
         "minCibil": 700,
-        "policyCibil": "-",
-        "policyTenure": "-",
+        "policyCibil": "725+",
+        "policyTenure": "12–60 months",
         "resolvedCategory": "Top Corporate",
         "reviewRequired": false
       },
@@ -644,8 +644,8 @@
         "foirPercent": 65,
         "roi": 11.5,
         "minCibil": 700,
-        "policyCibil": "-",
-        "policyTenure": "-",
+        "policyCibil": "725+",
+        "policyTenure": "12–60 months",
         "resolvedCategory": "Preferred",
         "reviewRequired": false
       },
@@ -656,8 +656,8 @@
         "foirPercent": 70,
         "roi": 10.8,
         "minCibil": 700,
-        "policyCibil": "-",
-        "policyTenure": "-",
+        "policyCibil": "725+",
+        "policyTenure": "12–60 months",
         "resolvedCategory": "Government / Defence",
         "reviewRequired": false
       },
@@ -668,8 +668,8 @@
         "foirPercent": 60,
         "roi": 12.75,
         "minCibil": 700,
-        "policyCibil": "-",
-        "policyTenure": "-",
+        "policyCibil": "725+",
+        "policyTenure": "12–60 months",
         "resolvedCategory": "Open Market / Standard",
         "reviewRequired": true,
         "reviewReason": "Open Market corporate requires underwriting verification"

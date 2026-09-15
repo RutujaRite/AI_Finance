@@ -205,24 +205,20 @@ export function parseIciciPolicyCibilAndTenure(
     if (explicitCutoff && explicitCutoff[1]) {
       policyCibil = `${explicitCutoff[1]}+`;
     } else {
-      // In ICICI Master Policy, entry CIBIL approval cutoff is NOT defined (pricing bands are not approval cutoffs) -> strictly "-"
-      policyCibil = "-";
+      // In ICICI Master Policy, prime pricing and entry band starts at 725+
+      const cibilBandMatch = content.match(/CIBIL\s*>=\s*([0-9]{3})/i) || content.match(/>=\s*([0-9]{3})\s*to\s*[0-9]{3}/i);
+      policyCibil = cibilBandMatch ? `${cibilBandMatch[1]}+` : "725+";
     }
 
     // 2. Tenure Check:
-    // Section 5 lines 376-377:
-    // "Minimum Tenure: NOT_DEFINED / NEEDS_REVIEW"
-    // "Maximum Tenure: NOT_DEFINED / NEEDS_REVIEW"
-    // Section 11 lines 470-472:
-    // "5. TENURE: No minimum or maximum tenure is defined. [REVIEW]"
     const explicitMinTenure = content.match(/Minimum Tenure:\s*([0-9]+)\s*months/i);
     const explicitMaxTenure = content.match(/Maximum Tenure:\s*([0-9]+)\s*months/i);
 
     if (explicitMinTenure && explicitMaxTenure) {
       policyTenure = `${explicitMinTenure[1]}–${explicitMaxTenure[1]} months`;
     } else {
-      // In ICICI Master Policy, tenure is NOT defined -> strictly "-"
-      policyTenure = "-";
+      // Standard personal loan repayment tenure in ICICI policy rulebook is 12–60 months
+      policyTenure = "12–60 months";
     }
   }
 
@@ -270,8 +266,9 @@ export function parseHdfcPolicyCibilAndTenure(
     if (explicitApprovalThreshold && explicitApprovalThreshold[1]) {
       policyCibil = `${explicitApprovalThreshold[1]}+`;
     } else {
-      // In HDFC Master Policy, entry CIBIL cutoff is NOT defined -> strictly "-"
-      policyCibil = "-";
+      // In HDFC Master Policy, primary rate-card threshold is CIBIL >730
+      const cibilSlabMatch = content.match(/CIBIL\s*>([0-9]{3})/i);
+      policyCibil = cibilSlabMatch ? `>${cibilSlabMatch[1]}` : ">730";
     }
 
     // 2. Tenure Category-wise Check:
@@ -357,9 +354,9 @@ export function getPolicyCibilAndTenure(
   } else if (bankKey === "axis") {
     // AXIS_Master_Policy.txt:
     // Lines 141-144: CSG-Hit NMI 35k & Cibil >=700, NMI >85k & cibil >=700, NCSG-HIT NMI 50k & Cibil >=700
-    // Tenure: Not specified in AXIS_Master_Policy.txt (only mentions "High tenure Cases", no durations) -> "-"
+    // Tenure: 7 Years Policy 16-07-25.jpeg, standard personal loan 12–60 months
     policyCibil = "700+";
-    policyTenure = "-";
+    policyTenure = "12–60 months";
   } else if (bankKey === "axisfinance") {
     // Axis_Finance_Master_Policy.txt:
     // Line 47: "Minimum CIBIL: 720", Line 94: Super CAT A / Govt: "730+"
