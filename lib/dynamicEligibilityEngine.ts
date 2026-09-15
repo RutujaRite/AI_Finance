@@ -17,6 +17,7 @@ export interface ApplicantProfile {
   existingEmi?: number | string;
   age?: number | string;
   employmentType?: string;
+  employmentStatus?: string;
   location?: string;
   _lastSideQuestion?: string;
   _lastCorrectionNotice?: string;
@@ -1523,11 +1524,28 @@ export function extractApplicantDetails(
     applicant.loanType = detectedIntent.loanType || "Personal Loan";
   }
 
-  // 0c. If LLM provided extracted entities, merge them safely
+  // 0c. Detect unemployed status from user text or LLM extraction
+  const isUnemployedCheck =
+    llmExtracted?.employmentStatus === "unemployed" ||
+    llmExtracted?.employmentType === "Unemployed" ||
+    /(?:not\s*working(?:\s*anywhere)?|don['’]?t\s*work|have\s*no\s*job|without\s*a?\s*job|jobless|unemployed|un-employed|lost\s*(?:my\s*)?job|laid\s*off|no\s*employment|no\s*job\s*right\s*now)/i.test(lower);
+
+  if (isUnemployedCheck) {
+    applicant.employmentStatus = "unemployed";
+    applicant.employmentType = "Unemployed";
+    applicant.monthlyIncome = 0;
+    applicant.companyName = undefined;
+  }
+
+  // 0d. If LLM provided extracted entities, merge them safely
   if (llmExtracted) {
+    if (llmExtracted.employmentStatus) {
+      applicant.employmentStatus = llmExtracted.employmentStatus;
+    }
     if (llmExtracted.employmentType) {
       applicant.employmentType = llmExtracted.employmentType;
       if (applicant.employmentType === "Unemployed") {
+        applicant.employmentStatus = "unemployed";
         applicant.monthlyIncome = 0;
       }
     }
@@ -1656,18 +1674,26 @@ export function consolidateApplicantProfileFromHistory(
 
     // 1. Employment type checks
     if (
-      /(?:not\s*working(?:\s*anywhere)?|don['’]?t\s*work|have\s*no\s*job|without\s*a?\s*job|jobless|unemployed|un-employed|lost\s*my\s*job|laid\s*off|no\s*employment)/i.test(lower)
+      /(?:not\s*working|no\s*job|without\s*a?\s*job|jobless|unemployed|un-employed|lost\s*my\s*job|laid\s*off|no\s*employment|don['’]?t\s*work)/i.test(lower) ||
+      extractedForTurn?.employmentStatus === "unemployed" ||
+      extractedForTurn?.employmentType === "Unemployed"
     ) {
+      applicant.employmentStatus = "unemployed";
       applicant.employmentType = "Unemployed";
       applicant.monthlyIncome = 0;
       applicant.companyName = undefined;
-    } else if (/\b(?:student|in\s*college|studying)\b/i.test(lower)) {
+    } else if (/\b(?:student|in\s*college|studying)\b/i.test(lower) || extractedForTurn?.employmentStatus === "student" || extractedForTurn?.employmentType === "Student") {
+      applicant.employmentStatus = "student";
       applicant.employmentType = "Student";
       applicant.monthlyIncome = 0;
       applicant.companyName = undefined;
-    } else if (/\b(?:self[\s-]*employed|business|proprietor|partner|freelancer?|doctor|trader|consultant)\b/i.test(lower)) {
+    } else if (/\b(?:self[\s-]*employed|business|proprietor|partner|freelancer?|doctor|trader|consultant)\b/i.test(lower) || extractedForTurn?.employmentStatus === "self-employed" || extractedForTurn?.employmentType === "Self-Employed") {
+      applicant.employmentStatus = "self-employed";
       applicant.employmentType = "Self-Employed";
       applicant.companyName = "Self-Employed";
+    } else if (extractedForTurn?.employmentStatus === "salaried" || extractedForTurn?.employmentType === "Salaried") {
+      applicant.employmentStatus = "salaried";
+      applicant.employmentType = "Salaried";
     }
 
     // 2. Company name candidate extraction
@@ -1702,9 +1728,19 @@ export function getRequiredPolicyFields(
   companyMatch?: CompanyCategoryMatch,
   loanType: string = "Personal Loan"
 ): string[] {
+  // If applicant is unemployed, under bank policies they cannot qualify for personal loans without active employment & regular income.
+  // There are no further required fields (like tenure or CIBIL) that will make an unemployed applicant eligible under personal loan policies.
+  if (
+    applicant.employmentStatus === "unemployed" ||
+    applicant.employmentType === "Unemployed" ||
+    (applicant.monthlyIncome === 0 && applicant.employmentType !== "Salaried")
+  ) {
+    return [];
+  }
+
   // 1. Employer / Company Name is strictly required first for salaried personal loans
-  if (applicant.employmentType === "Unemployed" || applicant.employmentType === "Student") {
-    // Unemployed individuals and students do not have corporate employers
+  if (applicant.employmentType === "Student") {
+    // Students do not have corporate employers
   } else if (!applicant.companyName || applicant.companyName.trim().length === 0) {
     return ["companyName"];
   }
@@ -2171,6 +2207,13 @@ export async function evaluateApplicantAgainstAllBanks(
       verifiedChecks.push(`Product type (${requestedLoanType}) is officially offered`);
     }
 
+    // Check 0: Employment Status Criteria
+    if (applicant.employmentStatus === "unemployed" || applicant.employmentType === "Unemployed") {
+      failureReasons.push(
+        `Employment criteria not met: Personal loans require active employment (Salaried or Self-Employed). Unemployed applicants are not eligible under partner bank policies.`
+      );
+    }
+
     // Check 1: Minimum Monthly Salary (Category-specific from Master Policy)
     if (!rule.minSalary || rule.minSalary <= 0) {
       failureReasons.push(`Bank policy does not define a valid minimum monthly salary rule`);
@@ -2426,7 +2469,16 @@ export function deduplicateRejectionReasons(
 ): string[] {
   const reasons: string[] = [];
   const allReasons = ineligibleBanks.flatMap((b) => b.failureReasons);
-  if (allReasons.length === 0) return reasons;
+  // 0. Employment status
+  if (
+    allReasons.some((r) => /employment|unemployed/i.test(r)) ||
+    applicant.employmentStatus === "unemployed" ||
+    applicant.employmentType === "Unemployed"
+  ) {
+    reasons.push(
+      `**Employment Status**: Personal loan policies require active employment (Salaried or Self-Employed) with regular verified income. Unemployed applicants are currently ineligible.`
+    );
+  }
 
   // 1. CIBIL score
   if (allReasons.some((r) => /cibil/i.test(r))) {

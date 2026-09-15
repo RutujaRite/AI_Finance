@@ -154,8 +154,7 @@ export async function POST(req: NextRequest) {
       const historyRes = await pool.query(
         `SELECT role, content FROM assistant_messages
          WHERE conversation_id = $1
-         ORDER BY id ASC
-         LIMIT 20`,
+         ORDER BY id ASC`,
         [convId]
       );
       // Exclude the message we just inserted so conversationHistory represents PRIOR turns

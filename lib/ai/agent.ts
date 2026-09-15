@@ -26,6 +26,7 @@ import {
   ApplicantProfile,
   applyProfileUpdateAndRecalculate,
   extractCompanyCandidateFromText,
+  consolidateApplicantProfileFromHistory,
 } from "@/lib/dynamicEligibilityEngine";
 import { resolveCompanyCategories } from "@/lib/companyCategoryResolver";
 import { classifyIntentWithLLM, IntentClassificationResult, ExtractedEntities, cleanLlmJsonOutput } from "@/lib/ai/intentClassifier";
@@ -2496,6 +2497,7 @@ export interface MasterConversationAnalysis {
     existingEmi?: number | string | null;
     age?: number | string | null;
     location?: string | null;
+    employmentStatus?: "unemployed" | "salaried" | "self-employed" | "student" | string | null;
     employmentType?: "Salaried" | "Self-Employed" | "Unemployed" | "Student" | null;
   };
   isCorrection: boolean;
@@ -2628,9 +2630,8 @@ export async function analyzeConversationWithLLM(opts: {
     `   - tenureMonths: repayment tenure in months as a number (e.g. "3 years" -> 36, "48 months" -> 48).\n` +
     `   - cibil: credit bureau score (300-900). CRITICAL: If the user indicates they do not know their CIBIL score, have never checked it, or it is unknown/not provided, you MUST set cibil to "Not provided" as a string (never null, never 0, never "Standard"). If CIBIL was not mentioned or asked about at all, set cibil to null. Only if the user explicitly specifies a numeric score should cibil be a number.\n` +
     `   - existingEmi: ongoing monthly loan EMIs in INR as a number (e.g. 0 if none/no loans/nil/all clear).\n` +
-    `   - age: applicant age in years as a number (e.g. 28).\n` +
-    `   - location: city name if mentioned (e.g. "Pune", "Bangalore", "Delhi").\n` +
-    `   - employmentType: "Salaried", "Self-Employed", "Unemployed", or "Student".\n` +
+    `   - employmentStatus: "unemployed" | "salaried" | "self-employed" | "student". Understand employment status naturally from context without requiring specific phrasing. If the user indicates they are not working, unemployed, jobless, or without a job, set employmentStatus to "unemployed", employmentType to "Unemployed", monthlyIncome to 0, and DO NOT set companyName.\n` +
+    `   - UNEMPLOYED APPLICANTS (CRITICAL POLICY RULE): Partner bank personal loan policies strictly require active employment (Salaried or Self-Employed with minimum monthly salary). An unemployed applicant cannot qualify for an unsecured personal loan. NEVER blindly continue a fixed question sequence or ask for repayment tenure, CIBIL, or ongoing EMIs when the user is unemployed! In naturalResponse, clearly and empathetically explain the bank policy requirement (active employment and regular monthly income).\n` +
     `3. CORRECTIONS & UPDATES:\n` +
     `   - If the user modifies, corrects, or updates previously provided information (e.g. "Actually my salary is 95,000 not 80k", "Change tenure to 5 years", "My company is TCS not Infosys"), set isCorrection to true, list the changed fields in correctedFields, and put the new values in extractedDetails.\n` +
     `4. QUESTIONS & OBJECTIONS (DO NOT IGNORE QUESTIONS!):\n` +
@@ -2703,7 +2704,6 @@ export async function analyzeConversationWithLLM(opts: {
     `   - ACTIVE LOAN FLOW: If Eligibility Flow In Progress is true or user is providing loan eligibility details, ALWAYS set isLoanIntent to true and userIntent to "LOAN_ELIGIBILITY".\n\n` +
     `RECENT CONVERSATION HISTORY (Prior Dialogue Turns):\n${conversationHistory && conversationHistory.length > 0
       ? conversationHistory
-        .slice(-8)
         .filter((t) => t.content && t.content.trim())
         .map((t) => `${t.role === "assistant" || t.role === "ai" ? "Assistant" : "User"}: ${t.content.trim()}`)
         .join("\n")
@@ -2724,6 +2724,7 @@ export async function analyzeConversationWithLLM(opts: {
     `    "existingEmi": number | string | null,\n` +
     `    "age": number | string | null,\n` +
     `    "location": string | null,\n` +
+    `    "employmentStatus": "unemployed" | "salaried" | "self-employed" | "student" | null,\n` +
     `    "employmentType": "Salaried" | "Self-Employed" | "Unemployed" | "Student" | null\n` +
     `  },\n` +
     `  "isCorrection": boolean,\n` +
@@ -3184,8 +3185,7 @@ export async function runCentralAgent(opts: {
         const historyRes = await pool.query(
           `SELECT role, content FROM assistant_messages
            WHERE conversation_id = $1
-           ORDER BY id ASC
-           LIMIT 20`,
+           ORDER BY id ASC`,
           [numConvId]
         );
         const allRows = historyRes.rows;
@@ -3203,7 +3203,7 @@ export async function runCentralAgent(opts: {
     }
   }
 
-  // 2. Retrieve existing eligibility session state
+  // 2. Retrieve existing eligibility session state & consolidate full conversation profile
   const eligibilitySession = await getEligibilityState(conversationId);
   const isEligibleFlowActive = !!(
     eligibilitySession &&
@@ -3212,9 +3212,11 @@ export async function runCentralAgent(opts: {
       (eligibilitySession as any).in_eligibility_flow)
   );
 
-  const currentApplicant: ApplicantProfile = eligibilitySession?.applicant
-    ? { ...eligibilitySession.applicant }
-    : { loanType: "Personal Loan" };
+  const currentApplicant: ApplicantProfile = consolidateApplicantProfileFromHistory(
+    conversationHistory,
+    userMessage,
+    eligibilitySession?.applicant
+  );
 
   const currentMissingFields = getRequiredPolicyFields(currentApplicant);
 
@@ -3627,8 +3629,21 @@ export async function runCentralAgent(opts: {
     if (analysis.extractedDetails.age !== undefined && analysis.extractedDetails.age !== null) {
       updatedApplicant.age = analysis.extractedDetails.age;
     }
+    if (analysis.extractedDetails.employmentStatus) {
+      updatedApplicant.employmentStatus = analysis.extractedDetails.employmentStatus;
+      if (analysis.extractedDetails.employmentStatus === "unemployed") {
+        updatedApplicant.employmentType = "Unemployed";
+        updatedApplicant.monthlyIncome = 0;
+        updatedApplicant.companyName = undefined;
+      }
+    }
     if (analysis.extractedDetails.employmentType) {
       updatedApplicant.employmentType = analysis.extractedDetails.employmentType;
+      if (analysis.extractedDetails.employmentType === "Unemployed") {
+        updatedApplicant.employmentStatus = "unemployed";
+        updatedApplicant.monthlyIncome = 0;
+        updatedApplicant.companyName = undefined;
+      }
     }
   }
 
@@ -3656,7 +3671,9 @@ export async function runCentralAgent(opts: {
     analysis.isLoanIntent ||
     isEligibleFlowActive ||
     Boolean(eligibilitySession?.in_eligibility_flow) ||
-    hasMultipleProfileParams;
+    hasMultipleProfileParams ||
+    updatedApplicant.employmentStatus === "unemployed" ||
+    updatedApplicant.employmentType === "Unemployed";
 
   if (isLoanFlow) {
     const missingFields = getRequiredPolicyFields(updatedApplicant);
