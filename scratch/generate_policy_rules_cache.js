@@ -68,9 +68,9 @@ const BANK_FILE_RULES = {
     processingFeePercent: 2.0,
     employmentType: "Salaried",
     tiers: {
-      tier_1: { minSalary: 25000, maxLoanAmount: 4000000, maxTenureMonths: 84, foirPercent: 70, roi: 11.00, minCibil: 730, policyCibil: "730+", policyTenure: "Up to 84 months", resolvedCategory: "Super A / CAT A", reviewRequired: false },
+      tier_1: { minSalary: 25000, maxLoanAmount: 5000000, maxTenureMonths: 84, foirPercent: 70, roi: 11.00, minCibil: 730, policyCibil: "730+", policyTenure: "Up to 84 months", resolvedCategory: "Super A / CAT A", reviewRequired: false },
       tier_2: { minSalary: 35000, maxLoanAmount: 3000000, maxTenureMonths: 60, foirPercent: 65, roi: 12.00, minCibil: 720, policyCibil: "720+", policyTenure: "Up to 84 months", resolvedCategory: "CAT B", reviewRequired: false },
-      govt: { minSalary: 25000, maxLoanAmount: 4000000, maxTenureMonths: 84, foirPercent: 70, roi: 11.00, minCibil: 730, policyCibil: "730+", policyTenure: "Up to 84 months", resolvedCategory: "Listed Govt", reviewRequired: false },
+      govt: { minSalary: 25000, maxLoanAmount: 5000000, maxTenureMonths: 84, foirPercent: 70, roi: 11.00, minCibil: 730, policyCibil: "730+", policyTenure: "Up to 84 months", resolvedCategory: "Listed Govt", reviewRequired: false },
       standard: { minSalary: 45000, maxLoanAmount: 2000000, maxTenureMonths: 60, foirPercent: 60, roi: 13.50, minCibil: 720, policyCibil: "720+", policyTenure: "Up to 84 months", resolvedCategory: "CAT C / Standard Corporate", reviewRequired: false }
     }
   },
@@ -221,9 +221,9 @@ const BANK_FILE_RULES = {
     processingFeePercent: 1.5,
     employmentType: "Salaried",
     tiers: {
-      tier_1: { minSalary: 25000, maxLoanAmount: 2500000, maxTenureMonths: 72, foirPercent: 70, roi: 10.99, minCibil: 700, policyCibil: "700+", policyTenure: "Up to 72 months", resolvedCategory: "CAT A+", reviewRequired: false },
+      tier_1: { minSalary: 25000, maxLoanAmount: 5000000, maxTenureMonths: 72, foirPercent: 70, roi: 10.99, minCibil: 700, policyCibil: "700+", policyTenure: "Up to 72 months", resolvedCategory: "CAT A+", reviewRequired: false },
       tier_2: { minSalary: 35000, maxLoanAmount: 2000000, maxTenureMonths: 72, foirPercent: 65, roi: 11.99, minCibil: 700, policyCibil: "700+", policyTenure: "Up to 72 months", resolvedCategory: "CAT B", reviewRequired: false },
-      govt: { minSalary: 25000, maxLoanAmount: 2500000, maxTenureMonths: 72, foirPercent: 70, roi: 10.99, minCibil: 700, policyCibil: "700+", policyTenure: "Up to 72 months", resolvedCategory: "CAT G (Govt)", reviewRequired: false },
+      govt: { minSalary: 25000, maxLoanAmount: 5000000, maxTenureMonths: 72, foirPercent: 70, roi: 10.99, minCibil: 700, policyCibil: "700+", policyTenure: "Up to 72 months", resolvedCategory: "CAT G (Govt)", reviewRequired: false },
       standard: { minSalary: 50000, maxLoanAmount: 1000000, maxTenureMonths: 60, foirPercent: 60, roi: 13.50, minCibil: 700, policyCibil: "700+", policyTenure: "-", resolvedCategory: "CAT C (UNLISTED)", reviewRequired: true, reviewReason: "CAT C (Unlisted) requires CPA/credit team underwriting review" }
     }
   },
@@ -340,7 +340,7 @@ const BANK_FILE_RULES = {
     processingFeePercent: 1.5,
     employmentType: "Salaried",
     tiers: {
-      tier_1: { minSalary: 20000, maxLoanAmount: 3500000, maxTenureMonths: 72, foirPercent: 65, roi: 11.99, minCibil: 725, policyCibil: "725+", policyTenure: "Up to 72 months", resolvedCategory: "Super CAT A / TGE", reviewRequired: false },
+      tier_1: { minSalary: 20000, maxLoanAmount: 5000000, maxTenureMonths: 72, foirPercent: 65, roi: 11.99, minCibil: 725, policyCibil: "725+", policyTenure: "Up to 72 months", resolvedCategory: "Super CAT A / TGE", reviewRequired: false },
       tier_2: { minSalary: 25000, maxLoanAmount: 3500000, maxTenureMonths: 72, foirPercent: 65, roi: 12.99, minCibil: 725, policyCibil: "725+", policyTenure: "Up to 72 months", resolvedCategory: "CAT B", reviewRequired: false },
       govt: { minSalary: 25000, maxLoanAmount: 3500000, maxTenureMonths: 72, foirPercent: 65, roi: 12.99, minCibil: 725, policyCibil: "725+", policyTenure: "Up to 72 months", resolvedCategory: "Government Employee", reviewRequired: false },
       standard: { minSalary: 27000, maxLoanAmount: 2500000, maxTenureMonths: 60, foirPercent: 60, roi: 14.50, minCibil: 725, policyCibil: "725+", policyTenure: "Up to 60 months", resolvedCategory: "Unapproved Company", reviewRequired: true, reviewReason: "Unapproved company capped at 60 months tenure and requires credit manager sign-off" }

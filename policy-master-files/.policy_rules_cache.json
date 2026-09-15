@@ -198,7 +198,7 @@
     "tiers": {
       "tier_1": {
         "minSalary": 25000,
-        "maxLoanAmount": 4000000,
+        "maxLoanAmount": 5000000,
         "maxTenureMonths": 84,
         "foirPercent": 70,
         "roi": 11,
@@ -222,7 +222,7 @@
       },
       "govt": {
         "minSalary": 25000,
-        "maxLoanAmount": 4000000,
+        "maxLoanAmount": 5000000,
         "maxTenureMonths": 84,
         "foirPercent": 70,
         "roi": 11,
@@ -750,7 +750,7 @@
     "tiers": {
       "tier_1": {
         "minSalary": 25000,
-        "maxLoanAmount": 2500000,
+        "maxLoanAmount": 5000000,
         "maxTenureMonths": 72,
         "foirPercent": 70,
         "roi": 10.99,
@@ -774,7 +774,7 @@
       },
       "govt": {
         "minSalary": 25000,
-        "maxLoanAmount": 2500000,
+        "maxLoanAmount": 5000000,
         "maxTenureMonths": 72,
         "foirPercent": 70,
         "roi": 10.99,
@@ -1181,7 +1181,7 @@
     "tiers": {
       "tier_1": {
         "minSalary": 20000,
-        "maxLoanAmount": 3500000,
+        "maxLoanAmount": 5000000,
         "maxTenureMonths": 72,
         "foirPercent": 65,
         "roi": 11.99,

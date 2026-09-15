@@ -2582,10 +2582,19 @@ export async function analyzeConversationWithLLM(opts: {
   const model = normalizeModelSlug(rawModel);
 
   const systemPrompt =
-    `CRITICAL REQUIREMENT: You are an API backend that MUST ALWAYS respond ONLY with a strictly valid JSON object matching the schema. NEVER return conversational text, greetings, or markdown outside the JSON object.\n\n` +
+    `CRITICAL REQUIREMENT: You are an API backend that MUST ALWAYS respond ONLY with a strictly valid JSON object matching the schema. NEVER return conversational text, greetings, or markdown outside the JSON object.\n` +
+    `LANGUAGE REQUIREMENT: All text in 'naturalResponse' and 'questionAnswer' MUST ALWAYS be written in English. Do NOT output Chinese or any other language.\n\n` +
     `You are the master conversational understanding brain for CreditWise AI, a personal loan and banking intelligence platform.\n` +
     `Analyze the user's message in the context of recent conversation history and the current applicant profile.\n\n` +
     `CURRENT CONTEXT:\n` +
+    `- RECENT CONVERSATION HISTORY (Prior Dialogue Turns in Chronological Order):\n${conversationHistory && conversationHistory.length > 0
+      ? conversationHistory
+        .filter((t) => t.content && t.content.trim())
+        .map((t, idx) => `  [Turn ${idx + 1}] ${t.role === "assistant" || t.role === "ai" ? "Assistant" : "User"}: ${t.content.trim()}`)
+        .join("\n")
+      : "  No prior turns in this conversation."
+    }\n` +
+    `- CURRENT USER MESSAGE TO ANALYZE: "${userMessage}"\n` +
     `- Accumulated Applicant Profile: ${JSON.stringify(applicant || {})}\n` +
     `- Missing Fields for Initial Eligibility: ${JSON.stringify(missingFields || ["companyName", "monthlyIncome", "loanAmount", "tenureMonths", "cibil", "existingEmi", "age"])}\n` +
     `- Eligibility Flow In Progress: ${isFlowActive ? "true" : "false"}\n` +
@@ -2608,10 +2617,42 @@ export async function analyzeConversationWithLLM(opts: {
       : "  No failed bank evaluations recorded yet"
     }\n\n` +
     `CRITICAL ANALYSIS GUIDELINES:\n` +
-    `1. NATURAL INTENT UNDERSTANDING & GENERIC QUESTION DISTINCTION (CRITICAL):\n` +
-    `   - ACTUAL LOAN INTENT:\n` +
-    `     * Detect loan intent naturally when the user ACTUALLY wants to get, apply for, borrow, or check their own personal loan eligibility (e.g. "I need a loan", "I want a personal loan", "I want to apply for a loan", "Can I get a loan?", "I need ₹5 lakh loan", "Which banks am I eligible for?", "Where can I get credit?", "Check my loan options", "Help me find a personal loan").\n` +
-    `     * For these requests, set isLoanIntent to true and userIntent to "LOAN_ELIGIBILITY".\n` +
+    `1. NATURAL INTENT UNDERSTANDING & CONVERSATION CONTEXT (CRITICAL):\n` +
+    `   - ALWAYS use the CURRENT USER MESSAGE together with RECENT CONVERSATION HISTORY to understand intent.\n` +
+    `   - INQUIRIES ABOUT CONVERSATION HISTORY & META-QUESTIONS (CRITICAL):\n` +
+    `     * If the user's message asks what they asked, what they said, what their question was, or references past turns (e.g. "what am I asking?", "what did I ask?", "what was my question?", "what did I say earlier?", "what was I asking you?", "remind me what I asked", "what are you answering?"): \n` +
+    `       - You MUST set isLoanIntent to false.\n` +
+    `       - Set userIntent to "QUESTION_OR_OBJECTION".\n` +
+    `       - Set hasQuestionOrObjection to true.\n` +
+    `       - Inspect RECENT CONVERSATION HISTORY to identify the user's previous question, inquiry, or topic.\n` +
+    `       - In questionAnswer and naturalResponse:\n` +
+    `         1) Clearly state what the user asked previously (e.g. "Earlier, you asked: '<previous question>'").\n` +
+    `         2) Directly, accurately, and thoroughly answer that previous question based on official bank policies and financial rules.\n` +
+    `         3) If there are no prior turns in history, warmly state that this is the beginning of the conversation and no prior questions were asked yet.\n` +
+    `       - DO NOT continue the loan eligibility question flow (do NOT ask for company name, salary, loan amount, tenure, etc.)!\n` +
+    `       - DO NOT ask for a bank!\n` +
+    `       - DO NOT restart eligibility!\n` +
+    `       - DO NOT generate a table!\n` +
+    `     * If the user asks what YOU (the assistant) asked (e.g. "what did you ask?", "what are you asking me?"): check what the assistant asked in the previous turn in history, explain what was asked, set isLoanIntent to false, userIntent to "QUESTION_OR_OBJECTION", and hasQuestionOrObjection to true.\n` +
+    `   - ACTUAL LOAN INTENT vs BANK POLICY INQUIRIES (CRITICAL):\n` +
+    `     * BANK POLICY / ELIGIBILITY CRITERIA INQUIRY (CRITICAL):\n` +
+    `       - If the user asks for a bank's official policy, rules, guidelines, cutoffs, or eligibility criteria (e.g. "Tell me the eligibility criteria for HDFC Bank", "What is the eligibility criteria for ICICI?", "HDFC Bank eligibility criteria", "What are Axis Bank loan rules?", "SBI criteria for personal loans", "Bajaj Finserv policy"): \n` +
+    `         - You MUST set userIntent to "BANK_POLICY".\n` +
+    `         - You MUST set isLoanIntent to false.\n` +
+    `         - You MUST set targetBank to the bank name (e.g. "HDFC Bank").\n` +
+    `         - Set hasQuestionOrObjection to false.\n` +
+    `         - DO NOT start a personal eligibility flow!\n` +
+    `         - DO NOT ask for salary, CIBIL, age, loan amount, employer, or any personal details!\n` +
+    `     * PERSONAL LOAN INTENT:\n` +
+    `       - Set isLoanIntent to true and userIntent to "LOAN_ELIGIBILITY" ONLY when the user asks to check their OWN personal eligibility or expresses intent to borrow (e.g. "Am I eligible for HDFC loan?", "Check my eligibility for HDFC", "Can I get a loan from HDFC?", "I need a loan", "I want a personal loan", "I want to apply for a loan", "Can I get a loan?", "I need ₹5 lakh loan", "Which banks am I eligible for?", "Check my loan options").\n` +
+    `   - UNEMPLOYED / JOBLESS INQUIRIES (CRITICAL - DO NOT TRIGGER ELIGIBILITY FLOW):\n` +
+    `     * If the user asks whether they can get a loan while jobless, unemployed, or without income (e.g. "can i get loan if i am jobless", "can i get a loan without a job", "can unemployed people get personal loans?", "i don't have a job, can i borrow?"): \n` +
+    `       - You MUST set isLoanIntent to false.\n` +
+    `       - Set userIntent to "QUESTION_OR_OBJECTION" (or "GENERAL_CHAT").\n` +
+    `       - Set hasQuestionOrObjection to true.\n` +
+    `       - Set extractedDetails.employmentStatus to "unemployed", employmentType to "Unemployed", and monthlyIncome to 0.\n` +
+    `       - In questionAnswer and naturalResponse, provide a natural, empathetic explanation of bank policy: Unsecured personal loans under partner bank policies require active employment (Salaried or Self-Employed with steady income) to verify repayment capability. Therefore, unsecured personal loans cannot be approved while jobless. Mention legitimate secured alternatives (such as a loan against fixed deposits, gold loan, or applying with an earning co-applicant) if they have collateral.\n` +
+    `       - NEVER trigger loan eligibility or generate a bank table when the user is jobless or when required data is missing!\n` +
     `   - GENERIC & CONCEPTUAL QUESTIONS (MUST NOT TRIGGER ELIGIBILITY):\n` +
     `     * If the user asks a generic, educational, conceptual, or informational question about loans, interest, documents, or banking (e.g. "What is a personal loan?", "How does a personal loan work?", "What documents are required for a personal loan?", "What is reducing balance rate?", "What is FOIR?", "What is a CIBIL score?", "Difference between secured and unsecured loan", "What is loan tenure?"): \n` +
     `       - You MUST set isLoanIntent to false.\n` +
@@ -2642,7 +2683,7 @@ export async function analyzeConversationWithLLM(opts: {
     `     For FOIR questions: explain that Fixed Obligation to Income Ratio represents total EMIs divided by monthly income, used by lenders to measure repayment capacity.\n` +
     `     For Age/Company/Salary questions: explain how lenders use these to assess statutory eligibility, corporate category tier, and loan affordability.\n` +
     `5. BANK POLICIES, EMI, MANAGERS, COMPANY RATINGS & LIVE WEB SEARCH:\n` +
-    `   - If the user asks for an official bank's policy rules/guidelines/cutoffs (e.g. "What is HDFC bank policy?", "ICICI loan rules"): set userIntent to "BANK_POLICY", targetBank to the bank name.\n` +
+    `   - If the user asks for an official bank's policy rules/guidelines/cutoffs or eligibility criteria (e.g. "Tell me the eligibility criteria for HDFC Bank", "What is HDFC bank policy?", "ICICI loan rules", "Axis Bank criteria"): set userIntent to "BANK_POLICY", targetBank to the bank name, and isLoanIntent to false. Do NOT ask for salary, CIBIL, age, or loan amount.\n` +
     `   - If the user asks to calculate monthly EMI (e.g. "EMI for 10 lakhs at 11% for 5 years"): set userIntent to "EMI_CALCULATION", populate emiDetails.\n` +
     `   - If the user asks for bank managers or branch contacts: set userIntent to "BANK_MANAGER", populate managerSearch.\n` +
     `   - If the user asks about an employer or company category rating / tier (e.g. "What is TCS category rating?", "Is Infosys listed in Cat A?"): set userIntent to "COMPANY_SEARCH", set companyQuery to the company name.\n` +
@@ -2657,6 +2698,7 @@ export async function analyzeConversationWithLLM(opts: {
     `   - For example: if company, salary, loan amount, tenure, CIBIL, and age are all present, ask ONLY for existing monthly loan EMIs. Do not ask again for company, salary, loan amount, tenure, CIBIL, or age.\n` +
     `   - If all required details are now present, confirm that you have all the required details and are ready to evaluate their eligibility across partner banks.\n` +
     `   - If the user asked a question or raised an objection, answer it directly and warmly, and seamlessly ask for the genuinely remaining missing detail.\n` +
+    `   - HIGH LOAN AMOUNTS (₹40L / ₹50L): High-ticket loans of ₹40 Lakhs to ₹50 Lakhs are officially supported by partner banks (including ICICI, IndusInd, Bajaj Finserv, Axis Finance, Poonawalla Fincorp, Tata Capital up to ₹50L, and Axis Bank, HDFC, IDFC, Kotak, Yes Bank up to ₹40L) for high-salary category applicants. Never reject ₹40L or ₹50L globally in your response. The deterministic policy engine evaluates eligibility bank-by-bank against each bank's actual policy limits, income criteria, and FOIR.\n` +
     `   - Never use canned replies, static question variations, phrases from menus, or generic boilerplate. Speak naturally as an intelligent banking advisor.\n` +
     `7. POST-EVALUATION STATE & NEXT ACTION ROUTING (When Eligibility Assessment Status is ALREADY_COMPLETED):\n` +
     `   - The applicant has ALREADY completed their loan eligibility evaluation and received their report and eligible banks table.\n` +
@@ -2701,14 +2743,17 @@ export async function analyzeConversationWithLLM(opts: {
     `   - LOAN AMOUNT: If user provides loan amount (e.g. 500000, 5 lakhs), set extractedDetails.loanAmount to that numeric amount.\n` +
     `   - TENURE: If user provides tenure (e.g. 3 years -> 36, 48 months -> 48), set extractedDetails.tenureMonths to that number in months.\n` +
     `   - EMPLOYER / COMPANY: If user provides employer/company name, set extractedDetails.companyName to that company name.\n` +
-    `   - ACTIVE LOAN FLOW: If Eligibility Flow In Progress is true or user is providing loan eligibility details, ALWAYS set isLoanIntent to true and userIntent to "LOAN_ELIGIBILITY".\n\n` +
-    `RECENT CONVERSATION HISTORY (Prior Dialogue Turns):\n${conversationHistory && conversationHistory.length > 0
+    `   - ACTIVE LOAN FLOW vs CONVERSATIONAL QUESTIONS:\n` +
+    `     * Set isLoanIntent to true and userIntent to "LOAN_ELIGIBILITY" ONLY when the user is actively initiating a loan request, providing requested eligibility parameters (company, salary, loan amount, tenure, CIBIL, age, EMI), or explicitly asking to continue the loan check.\n` +
+    `     * If the user asks ANY question, inquires about previous context (e.g. "what am I asking?"), asks for policy rules, raises an objection, or asks a generic question: you MUST set isLoanIntent to false, set userIntent to "QUESTION_OR_OBJECTION", set hasQuestionOrObjection to true, and provide the answer in questionAnswer and naturalResponse. Never force isLoanIntent to true when the user is asking a question!\n\n` +
+    `RECENT CONVERSATION HISTORY (Prior Dialogue Turns in Chronological Order):\n${conversationHistory && conversationHistory.length > 0
       ? conversationHistory
         .filter((t) => t.content && t.content.trim())
-        .map((t) => `${t.role === "assistant" || t.role === "ai" ? "Assistant" : "User"}: ${t.content.trim()}`)
+        .map((t, idx) => `  [Turn ${idx + 1}] ${t.role === "assistant" || t.role === "ai" ? "Assistant" : "User"}: ${t.content.trim()}`)
         .join("\n")
-      : "No prior turns in this conversation."
+      : "  No prior turns in this conversation."
     }\n\n` +
+    `CURRENT USER MESSAGE: "${userMessage}"\n\n` +
     `Return ONLY a strictly valid JSON object matching this schema:\n` +
     `{\n` +
     `  "userIntent": "LOAN_ELIGIBILITY" | "BANK_POLICY" | "EMI_CALCULATION" | "BANK_MANAGER" | "COMPANY_SEARCH" | "WEB_SEARCH" | "QUESTION_OR_OBJECTION" | "CORRECTION" | "GREETING" | "CANCEL_RESET" | "SELECT_BANK" | "REJECT_BANK" | "PROCEED_NEXT_STEP" | "GENERAL_CHAT",\n` +
@@ -2754,7 +2799,7 @@ export async function analyzeConversationWithLLM(opts: {
       const payload: any = {
         model: targetModel,
         temperature: 0.1,
-        max_tokens: 1000,
+        max_tokens: 3000,
         messages,
         reasoning: { effort: "low" },
       };
@@ -2853,8 +2898,16 @@ export async function analyzeConversationWithLLM(opts: {
       } catch (e2: any) {
         console.warn("[analyzeConversationWithLLM] e2 parse failed:", e2.message);
         const getStr = (key: string) => {
-          const m = rawContent.match(new RegExp(`"${key}"\\s*:\\s*"([\\s\\S]*?)"(?=\\s*[,}\\]])`, "i"));
-          return m ? m[1] : null;
+          const m = rawContent.match(new RegExp(`"${key}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"`, "i"));
+          if (m) {
+            try {
+              return JSON.parse(`"${m[1]}"`);
+            } catch {
+              return m[1];
+            }
+          }
+          const mTrunc = rawContent.match(new RegExp(`"${key}"\\s*:\\s*"([\\s\\S]*?)(?:"|(?=\\s*,\\s*"[a-zA-Z]+"\s*:)|$)`, "i"));
+          return mTrunc ? mTrunc[1].trim() : null;
         };
         const getNum = (key: string) => {
           const m = rawContent.match(new RegExp(`"${key}"\\s*:\\s*([0-9.]+)`, "i"));
@@ -2865,11 +2918,14 @@ export async function analyzeConversationWithLLM(opts: {
           return m ? m[1].toLowerCase() === "true" : false;
         };
 
+        const parsedQAnswer = getStr("questionAnswer");
+        const parsedNatResp = getStr("naturalResponse");
+
         parsed = {
           userIntent: (getStr("userIntent") as any) || "LOAN_ELIGIBILITY",
           isLoanIntent: getBool("isLoanIntent"),
           hasQuestionOrObjection: getBool("hasQuestionOrObjection"),
-          questionAnswer: getStr("questionAnswer"),
+          questionAnswer: parsedQAnswer,
           extractedDetails: {
             companyName: getStr("companyName"),
             monthlyIncome: getNum("monthlyIncome"),
@@ -2892,7 +2948,7 @@ export async function analyzeConversationWithLLM(opts: {
           managerSearch: null,
           companyQuery: getStr("companyQuery"),
           webSearchQuery: getStr("webSearchQuery"),
-          naturalResponse: getStr("naturalResponse") || "",
+          naturalResponse: parsedNatResp || parsedQAnswer || "",
         };
       }
     }
@@ -3203,6 +3259,17 @@ export async function runCentralAgent(opts: {
     }
   }
 
+  // Ensure conversationHistory represents strictly prior dialogue turns
+  if (conversationHistory && conversationHistory.length > 0) {
+    const lastItem = conversationHistory[conversationHistory.length - 1];
+    if (
+      (lastItem.role === "user" || lastItem.role === "human") &&
+      lastItem.content.trim() === userMessage.trim()
+    ) {
+      conversationHistory = conversationHistory.slice(0, -1);
+    }
+  }
+
   // 2. Retrieve existing eligibility session state & consolidate full conversation profile
   const eligibilitySession = await getEligibilityState(conversationId);
   const isEligibleFlowActive = !!(
@@ -3281,6 +3348,17 @@ export async function runCentralAgent(opts: {
       } catch {}
     }
 
+    const isUnemployedErrorCase =
+      currentApplicant.employmentStatus === "unemployed" ||
+      currentApplicant.employmentType === "Unemployed";
+
+    if (isUnemployedErrorCase) {
+      await clearEligibilityState(conversationId);
+      return {
+        reply: "Under partner bank policies, unsecured personal loans require active employment (Salaried or Self-Employed) with regular verifiable monthly income. Unemployed applicants are currently not eligible for unsecured personal loans.",
+      };
+    }
+
     const hasLoanIntent =
       isEligibleFlowActive ||
       Boolean(eligibilitySession?.in_eligibility_flow) ||
@@ -3289,8 +3367,15 @@ export async function runCentralAgent(opts: {
 
     if (hasLoanIntent) {
       const remainingMissing = getRequiredPolicyFields(currentApplicant);
-      if (remainingMissing.length === 0 && !hasCompletedEvaluation) {
-        // All 7 fields collected! Run deterministic policy evaluation directly from bank Master Policies!
+      const hasAllFields =
+        Boolean(currentApplicant.companyName || currentApplicant.employmentType === "Self-Employed") &&
+        typeof currentApplicant.monthlyIncome === "number" && currentApplicant.monthlyIncome > 0 &&
+        typeof currentApplicant.loanAmount === "number" && currentApplicant.loanAmount > 0 &&
+        typeof currentApplicant.tenureMonths === "number" && currentApplicant.tenureMonths > 0 &&
+        remainingMissing.length === 0;
+
+      if (hasAllFields && !hasCompletedEvaluation) {
+        // All fields collected! Run deterministic policy evaluation directly from bank Master Policies!
         const evalResult = await evaluateApplicantAgainstAllBanks(currentApplicant, currentApplicant.loanType || "Personal Loan");
         const report = formatDynamicEligibilityReport(currentApplicant, evalResult);
 
@@ -3468,8 +3553,11 @@ export async function runCentralAgent(opts: {
       } as any);
 
       // Return the LLM's natural conversational response directly (never canned/default)
+      if (analysis.hasQuestionOrObjection && analysis.questionAnswer) {
+        return { reply: analysis.questionAnswer.trim() };
+      }
       if (analysis.naturalResponse && analysis.naturalResponse.trim().length > 0) {
-        return { reply: analysis.naturalResponse };
+        return { reply: analysis.naturalResponse.trim() };
       }
     }
   }
@@ -3489,12 +3577,27 @@ export async function runCentralAgent(opts: {
   }
 
   // 6. Handle Official Bank Policy Inquiries
+  const isPersonalEligibilityAsk =
+    /(?:am\s*i\s*(?:eligible|qualif\w*)|check\s*(?:my|our)\s*eligib\w*|for\s*me|my\s*eligib\w*|can\s*i\s*(?:get|apply|qualify)|i\s*(?:need|want)\s*a\s*loan)/i.test(norm);
+
   const isPolicyQuery =
     analysis.userIntent === "BANK_POLICY" ||
-    Boolean(analysis.targetBank && /policy|rule|criteria|cutoff|guideline|foir/i.test(norm));
+    Boolean(analysis.targetBank && /policy|rule|criteria|cutoff|guideline|foir|eligib/i.test(norm) && !isPersonalEligibilityAsk) ||
+    Boolean(
+      /(?:policy|guidelines?|rules?|criteria|cutoff|cut-off|eligibility\s*criteria)\b/i.test(norm) &&
+      /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata\s*capital|\btata\b(?!.*consultancy)|idfc|indusind|bandhan|yes\s*bank|piramal|poonawalla|chola|smfg|finnable|fibe|sbm|utkarsh|citibank|citi|baroda|bob|pnb|canara|union|rbl|hsbc|standard\s*chartered|scb)/i.test(norm) &&
+      !isPersonalEligibilityAsk
+    );
 
   if (isPolicyQuery) {
-    const bankToQuery = analysis.targetBank || extractUnsupportedBankName(userMessage) || "";
+    let bankToQuery = analysis.targetBank;
+    if (!bankToQuery) {
+      const bankMatch = /(?:hdfc|icici|axis|sbi|kotak|indusind|idfc|bajaj|piramal|poonawalla|yes\s*bank|\byes\b|bandhan|chola|fibe|finnable|smfg|utkarsh|sbm|tata\s*capital|\btata\b(?!.*consultancy)|citibank|citi|baroda|bob|pnb|canara|union|rbl|hsbc|standard\s*chartered|scb)/i.exec(userMessage);
+      if (bankMatch) bankToQuery = bankMatch[0];
+    }
+    if (!bankToQuery) {
+      bankToQuery = extractUnsupportedBankName(userMessage) || "";
+    }
     const policyReply = await answerBankPolicyWithMasterPolicy(bankToQuery, userMessage, requestedModel);
     return { reply: policyReply };
   }
@@ -3661,31 +3764,77 @@ export async function runCentralAgent(opts: {
     } catch { }
   }
 
-  // 10. Determine Loan Flow Status & Eligibility Decision
+  // 10. Check if user asked a question, objection, or context inquiry without providing new profile details
+  const hasNewProfileDetailsInThisTurn =
+    Boolean(analysis.extractedDetails && (
+      (analysis.extractedDetails.monthlyIncome !== null && analysis.extractedDetails.monthlyIncome !== undefined) ||
+      (analysis.extractedDetails.loanAmount !== null && analysis.extractedDetails.loanAmount !== undefined) ||
+      (analysis.extractedDetails.tenureMonths !== null && analysis.extractedDetails.tenureMonths !== undefined) ||
+      (analysis.extractedDetails.cibil !== null && analysis.extractedDetails.cibil !== undefined) ||
+      (analysis.extractedDetails.age !== null && analysis.extractedDetails.age !== undefined) ||
+      (analysis.extractedDetails.existingEmi !== null && analysis.extractedDetails.existingEmi !== undefined) ||
+      (analysis.extractedDetails.companyName && !isInvalidCompanyName(analysis.extractedDetails.companyName))
+    ));
+
+  // If the user's message is a question, objection, or context inquiry (and no new profile details were provided in this turn),
+  // directly answer the user's question without continuing the eligibility wizard, asking for a bank, restarting, or generating a table!
+  const isQuestionOrContextInquiry =
+    (analysis.userIntent === "QUESTION_OR_OBJECTION" || (analysis.hasQuestionOrObjection && !analysis.isLoanIntent)) &&
+    !hasNewProfileDetailsInThisTurn;
+
+  if (isQuestionOrContextInquiry) {
+    const questionReply = analysis.questionAnswer || analysis.naturalResponse;
+    if (questionReply && questionReply.trim().length > 0) {
+      return { reply: questionReply.trim() };
+    }
+  }
+
+  // 11. Determine Loan Flow Status & Eligibility Decision
   const hasMultipleProfileParams =
     [updatedApplicant.monthlyIncome, updatedApplicant.loanAmount, updatedApplicant.cibil, updatedApplicant.companyName].filter(
       (v) => v !== undefined && v !== null
     ).length >= 2;
 
+  const isUnemployed =
+    updatedApplicant.employmentStatus === "unemployed" ||
+    updatedApplicant.employmentType === "Unemployed";
+
+  // If user is unemployed, DO NOT generate a bank table and DO NOT continue asking for loan details!
+  if (isUnemployed) {
+    await clearEligibilityState(conversationId);
+    if (analysis.naturalResponse && analysis.naturalResponse.trim().length > 0) {
+      return { reply: analysis.naturalResponse.trim() };
+    }
+    return {
+      reply: "Under partner bank policies, unsecured personal loans require active employment (Salaried or Self-Employed) with regular verifiable monthly income to confirm repayment capacity. Unemployed applicants are currently not eligible for unsecured personal loans. If you have collateral, secured options like a gold loan or loan against fixed deposits may be possible.",
+    };
+  }
+
   const isLoanFlow =
     analysis.isLoanIntent ||
     isEligibleFlowActive ||
     Boolean(eligibilitySession?.in_eligibility_flow) ||
-    hasMultipleProfileParams ||
-    updatedApplicant.employmentStatus === "unemployed" ||
-    updatedApplicant.employmentType === "Unemployed";
+    hasMultipleProfileParams;
 
   if (isLoanFlow) {
     const missingFields = getRequiredPolicyFields(updatedApplicant);
+
+    const hasAllRequiredFields =
+      !isUnemployed &&
+      Boolean(updatedApplicant.companyName || updatedApplicant.employmentType === "Self-Employed") &&
+      typeof updatedApplicant.monthlyIncome === "number" && updatedApplicant.monthlyIncome > 0 &&
+      typeof updatedApplicant.loanAmount === "number" && updatedApplicant.loanAmount > 0 &&
+      typeof updatedApplicant.tenureMonths === "number" && updatedApplicant.tenureMonths > 0 &&
+      missingFields.length === 0;
 
     // Only run or re-run the evaluation engine if:
     // 1) It has not yet been run in this session (!hasCompletedEvaluation), OR
     // 2) The user explicitly requested to recalculate/re-evaluate (analysis.wantsReevaluation), OR
     // 3) The user updated/corrected profile details (analysis.isCorrection).
     const shouldRunEvaluation =
-      (!hasCompletedEvaluation && missingFields.length === 0) ||
-      (hasCompletedEvaluation && Boolean(analysis.wantsReevaluation)) ||
-      (hasCompletedEvaluation && Boolean(analysis.isCorrection && missingFields.length === 0));
+      (!hasCompletedEvaluation && hasAllRequiredFields) ||
+      (hasCompletedEvaluation && Boolean(analysis.wantsReevaluation) && hasAllRequiredFields) ||
+      (hasCompletedEvaluation && Boolean(analysis.isCorrection && hasAllRequiredFields));
 
     if (shouldRunEvaluation) {
       const evalResult = await evaluateApplicantAgainstAllBanks(updatedApplicant, updatedApplicant.loanType || "Personal Loan");

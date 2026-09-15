@@ -211,10 +211,16 @@ export function detectLoanIntent(
 
   // Bank policy inquiries asking for specific institution guidelines/rules/criteria/cutoffs (partner or non-partner/unsupported)
   const isBankPolicy =
-    /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata\s*capital|\btata\b(?!.*consultancy)|idfc|indusind|bandhan|yes\s*bank|piramal|poonawalla|chola|smfg|finnable|fibe|sbm|utkarsh|citibank|citi|baroda|bob|pnb|canara|union|rbl|hsbc|standard\s*chartered|scb|bank)\s*(?:'s)?\s*(?:policy|guidelines?|rules?|criteria|cutoff|cut-off|foir\s*norm)/i.test(norm) ||
-    (/(?:policy|guidelines?|rules?|criteria|cut-off|cutoff|foir\s*norm)\s*(?:of|for|from|regarding)?\s*(?:a\s*|an\s*|any\s*|the\s*)?(?:[a-z0-9\s&'.-]+)?\s*banks?\b/i.test(norm)) ||
-    (/(?:policy|guidelines?|rules?|cut-off|cutoff)\b/i.test(norm) && /\bbanks?\b/i.test(norm)) ||
-    (/(?:policy|guidelines?|rules?|cut-off|cutoff)\b/i.test(norm) && /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata\s*capital|\btata\b(?!.*consultancy)|idfc|indusind|bandhan|yes\s*bank|piramal|poonawalla|chola|smfg|finnable|fibe|sbm|utkarsh|citibank|citi|baroda|bob|pnb|canara|union|rbl|hsbc|standard\s*chartered|scb)/i.test(norm));
+    /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata\s*capital|\btata\b(?!.*consultancy)|idfc|indusind|bandhan|yes\s*bank|piramal|poonawalla|chola|smfg|finnable|fibe|sbm|utkarsh|citibank|citi|baroda|bob|pnb|canara|union|rbl|hsbc|standard\s*chartered|scb|bank)\s*(?:'s)?\s*(?:policy|guidelines?|rules?|criteria|cutoff|cut-off|foir\s*norm|eligib\w*)/i.test(norm) ||
+    /(?:policy|guidelines?|rules?|criteria|cut-off|cutoff|foir\s*norm|eligibility\s*criteria)\s*(?:of|for|from|regarding)?\s*(?:a\s*|an\s*|any\s*|the\s*)?(?:[a-z0-9\s&'.-]+)?\s*banks?\b/i.test(norm) ||
+    (/(?:policy|guidelines?|rules?|cut-off|cutoff|criteria|eligib\w*)\b/i.test(norm) && /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata\s*capital|\btata\b(?!.*consultancy)|idfc|indusind|bandhan|yes\s*bank|piramal|poonawalla|chola|smfg|finnable|fibe|sbm|utkarsh|citibank|citi|baroda|bob|pnb|canara|union|rbl|hsbc|standard\s*chartered|scb)/i.test(norm));
+
+  const isPersonalEligibilityInquiry =
+    /(?:am\s*i\s*(?:eligible|qualif\w*)|check\s*(?:my|our)\s*eligib\w*|for\s*me|my\s*eligib\w*|can\s*i\s*(?:get|apply|qualify)|i\s*(?:need|want)\s*a\s*loan)/i.test(norm);
+
+  if (isBankPolicy && !isPersonalEligibilityInquiry) {
+    return { isLoanIntent: false, loanType };
+  }
 
   // Check natural user phrases expressing loan intent or inquiring about eligibility across banks
   const isNaturalLoanPhrase =
@@ -241,6 +247,14 @@ export function detectLoanIntent(
     (Boolean(norm.match(/work\s+at|employed|employer|company/i)) && Boolean(norm.match(/salary|income|cibil|credit\s*score|need\s*[\d,]+/i))) ||
     (Boolean(norm.match(/cibil|credit\s*score/i)) && Boolean(norm.match(/emi|tenure|\d+\s*(?:years?|yrs?|months?)|need\s*[\d,]+|lakhs?|lacs?/i)));
 
+  // Inquiries about obtaining loans while unemployed/jobless or without income/job are informational policy questions,
+  // NOT loan application flows, and must NOT trigger loan intent or the eligibility wizard.
+  const isJoblessPolicyInquiry =
+    /(?:jobless|unemployed|without\s*(?:a\s*)?job|no\s*job|not\s*working|zero\s*salary|without\s*income|no\s*income)/i.test(norm);
+  if (isJoblessPolicyInquiry) {
+    return { isLoanIntent: false, loanType };
+  }
+
   // Generic educational / informational questions about loans, finance, or banking concepts MUST NOT trigger loan intent!
   const isGenericLoanQuestion =
     /^(?:what\s+is|what\s+are|how\s+does|how\s+do|explain|difference\s+between|tell\s+me\s+about|documents\s+required|eligibility\s+criteria\s+for|what\s+documents|how\s+long\s+does|can\s+you\s+explain)\b/i.test(norm) &&
@@ -254,7 +268,7 @@ export function detectLoanIntent(
     return { isLoanIntent: true, loanType };
   }
 
-  if (preClassifiedIntent?.intent) {
+  if (preClassifiedIntent?.intent && (!isBankPolicy || isPersonalEligibilityInquiry)) {
     const isIntent =
       preClassifiedIntent.intent === "LOAN_ELIGIBILITY" ||
       (preClassifiedIntent as any).intent === "PERSONAL_LOAN_REQUEST";
@@ -544,7 +558,7 @@ export function detectAndAnswerSideQuestion(message: string, expectedField?: str
   // Generic "why" or "what" contextual resolution using expectedField
   if (
     /^(?:why\??|why\s+(?:is\s+this|do\s+you\s+need|ask\s+for|require)?\s*(?:this|that|it)?\??|what\??|what\s+do\s+you\s+mean\??|why\s+though\??|why\s+so\??|why\s+this\??)$/i.test(norm) ||
-    /^(?:why|what|explain)\b/i.test(norm)
+    /^(?:why\s+do\s+you\s+(?:need|ask)|why\s+is\s+(?:this|that)\s+(?:needed|required))\b/i.test(norm)
   ) {
     if (expectedField === "companyName") {
       return {
@@ -1728,14 +1742,13 @@ export function getRequiredPolicyFields(
   companyMatch?: CompanyCategoryMatch,
   loanType: string = "Personal Loan"
 ): string[] {
-  // If applicant is unemployed, under bank policies they cannot qualify for personal loans without active employment & regular income.
-  // There are no further required fields (like tenure or CIBIL) that will make an unemployed applicant eligible under personal loan policies.
+  // If applicant is unemployed, they do not meet active employment requirements for unsecured personal loans.
   if (
     applicant.employmentStatus === "unemployed" ||
     applicant.employmentType === "Unemployed" ||
     (applicant.monthlyIncome === 0 && applicant.employmentType !== "Salaried")
   ) {
-    return [];
+    return ["employmentStatus"];
   }
 
   // 1. Employer / Company Name is strictly required first for salaried personal loans
@@ -2214,9 +2227,11 @@ export async function evaluateApplicantAgainstAllBanks(
       );
     }
 
+    const missingPolicyRules: string[] = [];
+
     // Check 1: Minimum Monthly Salary (Category-specific from Master Policy)
     if (!rule.minSalary || rule.minSalary <= 0) {
-      failureReasons.push(`Bank policy does not define a valid minimum monthly salary rule`);
+      missingPolicyRules.push(`Minimum monthly salary not specified in policy`);
     } else if (monthlySalary < rule.minSalary) {
       const salDisplay = monthlySalary > 0 ? `₹${monthlySalary.toLocaleString("en-IN")}` : "Not provided";
       failureReasons.push(
@@ -2228,7 +2243,7 @@ export async function evaluateApplicantAgainstAllBanks(
 
     // Check 2: CIBIL Score Threshold
     if (!rule.minCibil || rule.minCibil <= 0) {
-      failureReasons.push(`Bank policy does not define a valid minimum CIBIL score threshold`);
+      missingPolicyRules.push(`CIBIL cutoff not specified in policy`);
     } else if (cibil < rule.minCibil) {
       const cibilDisplay = typeof applicant.cibil === "number" && applicant.cibil > 0 ? applicant.cibil : "Not provided";
       failureReasons.push(`CIBIL score (${cibilDisplay}) is below the policy minimum threshold of ${rule.minCibil}`);
@@ -2238,7 +2253,7 @@ export async function evaluateApplicantAgainstAllBanks(
 
     // Check 3: Age Bounds
     if (!rule.minAge || !rule.maxAge || rule.minAge <= 0 || rule.maxAge <= rule.minAge) {
-      failureReasons.push(`Bank policy does not define valid age criteria`);
+      missingPolicyRules.push(`Age limits not specified in policy`);
     } else if (age < rule.minAge || age > rule.maxAge) {
       const ageDisplay = age > 0 ? `${age} years` : "Not provided";
       failureReasons.push(`Age (${ageDisplay}) is outside permissible range (${rule.minAge} to ${rule.maxAge} years)`);
@@ -2248,7 +2263,7 @@ export async function evaluateApplicantAgainstAllBanks(
 
     // Check 4: Loan Amount Limits (Ticket Size)
     if (!rule.minLoanAmount || !rule.maxLoanAmount || rule.minLoanAmount <= 0 || rule.maxLoanAmount < rule.minLoanAmount) {
-      failureReasons.push(`Bank policy does not define valid loan amount (ticket size) limits`);
+      missingPolicyRules.push(`Loan amount limits not specified in policy`);
     } else if (loanAmount < rule.minLoanAmount) {
       const amtDisplay = loanAmount > 0 ? `₹${loanAmount.toLocaleString("en-IN")}` : "Not provided";
       failureReasons.push(`Requested loan amount (${amtDisplay}) is below minimum ticket size of ₹${rule.minLoanAmount.toLocaleString("en-IN")}`);
@@ -2261,7 +2276,7 @@ export async function evaluateApplicantAgainstAllBanks(
 
     // Check 5: Tenure Limits
     if (!rule.minTenureMonths || !rule.maxTenureMonths || rule.minTenureMonths <= 0 || rule.maxTenureMonths < rule.minTenureMonths) {
-      failureReasons.push(`Bank policy does not define valid repayment tenure limits`);
+      missingPolicyRules.push(`Repayment tenure limits not specified in policy`);
     } else if (tenureMonths < rule.minTenureMonths || tenureMonths > rule.maxTenureMonths) {
       const tenureDisplay = tenureMonths > 0 ? `${tenureMonths} months` : "Not provided";
       failureReasons.push(`Requested tenure (${tenureDisplay}) is outside permissible range (${rule.minTenureMonths} to ${rule.maxTenureMonths} months)`);
@@ -2272,11 +2287,11 @@ export async function evaluateApplicantAgainstAllBanks(
     // Check 6: Permissible FOIR & Monthly EMI Debt-to-Income
     let foirValid = true;
     if (!rule.foirPercent || rule.foirPercent <= 0) {
-      failureReasons.push(`Bank policy does not define a valid permissible FOIR cap`);
+      missingPolicyRules.push(`Permissible FOIR cap not specified in policy`);
       foirValid = false;
     }
     if (!rule.roi || rule.roi <= 0) {
-      failureReasons.push(`Bank policy does not define a valid interest rate (ROI)`);
+      missingPolicyRules.push(`Interest rate (ROI) not specified in policy`);
       foirValid = false;
     }
 
@@ -2300,7 +2315,10 @@ export async function evaluateApplicantAgainstAllBanks(
     }
 
     const isChecksPassed = failureReasons.length === 0;
-    const isReview = isChecksPassed && rule.reviewRequired === true;
+    const hasMissingRules = missingPolicyRules.length > 0;
+    const isReview = isChecksPassed && (rule.reviewRequired === true || hasMissingRules);
+    const resolvedReviewReason = rule.reviewReason || (hasMissingRules ? `Underwriting review required: ${missingPolicyRules.join(", ")}` : undefined);
+
     const status: "ELIGIBLE" | "NOT_ELIGIBLE" | "NEEDS_REVIEW" = !isChecksPassed
       ? "NOT_ELIGIBLE"
       : isReview
@@ -2330,8 +2348,8 @@ export async function evaluateApplicantAgainstAllBanks(
       resolvedCategory: rule.resolvedCategory,
       isEligible,
       status,
-      reviewRequired: rule.reviewRequired,
-      reviewReason: rule.reviewReason || undefined,
+      reviewRequired: isReview,
+      reviewReason: resolvedReviewReason,
       roi: rule.roi,
       monthlyEmi: proposedEmi,
       maxLoanEligible: isEligible ? maxLoanEligible : 0,
@@ -2552,6 +2570,31 @@ export function formatDynamicEligibilityReport(
   const { eligibleBanks, recommendedBank, reviewBanks = [] } = evaluationOutput;
   const approvedOrReviewBanks = [...eligibleBanks, ...reviewBanks];
   const lines: string[] = [];
+
+  // Do not generate a bank table when required data is missing!
+  const isUnemployed =
+    applicant.employmentStatus === "unemployed" ||
+    applicant.employmentType === "Unemployed";
+
+  const isMissingRequiredData =
+    isUnemployed ||
+    !applicant.loanAmount ||
+    !applicant.monthlyIncome ||
+    !applicant.tenureMonths ||
+    (applicant.employmentType !== "Self-Employed" && !applicant.companyName);
+
+  if (isMissingRequiredData) {
+    if (isUnemployed) {
+      return (
+        `### ⚠️ Personal Loan Policy Assessment\n\n` +
+        `Under partner bank policies, unsecured personal loans require active employment (Salaried or Self-Employed) with regular verifiable monthly income to confirm repayment capacity. Unemployed applicants are currently not eligible for unsecured personal loans. Secured financing options (such as gold loans or loans against fixed deposits) may be explored if collateral is available.`
+      );
+    }
+    return (
+      `### ⚠️ Incomplete Loan Parameters\n\n` +
+      `Key loan parameters (such as employment details, monthly income, requested loan amount, or repayment tenure) have not been fully provided. Please share the required details to check your eligibility across partner banks.`
+    );
+  }
 
   // Header
   lines.push(`## 📊 Personal Loan Eligibility Assessment`);
