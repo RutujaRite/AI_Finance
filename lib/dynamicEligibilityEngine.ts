@@ -89,6 +89,21 @@ export interface SessionState {
   location?: string;
   rejectedBanks?: string[];
   ineligibleBanks?: Array<{ bankName: string; failureReasons: string[] }>;
+  companyFlow?: {
+    stage: "COMPANY_INPUT" | "COMPANY_CONFIRMATION" | "COMPANY_SELECTION" | "COMPANY_SELECTED" | "COMPANY_DETAILS" | "ELIGIBILITY_INPUT";
+    originalInput?: string;
+    normalizedCompany?: string;
+    selectedCompanyId?: string;
+    selectedCompanyName?: string;
+    selectedCompany?: string;
+    companyCandidate?: any;
+    candidates?: Array<{ id: string; name: string; source: "database" | "live" }>;
+    companyData?: any;
+  };
+  selectedCompanyId?: string;
+  selectedCompanyName?: string;
+  selectedCompany?: string;
+  companyCandidate?: any;
 }
 
 // In-memory fallback session store ensures persistence across turns even if non-numeric conversation IDs are used
@@ -968,7 +983,7 @@ export function extractCompanyCandidateFromText(text: string): string | undefine
 
   // 1. Explicit key-value labels or employment phrases
   const explicitMatch = raw.match(
-    /(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*|(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is|(?:i\s*am|i'?m)\s+(?:working\s+)?(?:at|in))\s+)([A-Za-z0-9\s&'.-]+?)(?=\s*[,;|\n]|\s+(?:and|with|salary|cibil|age|loan|emi|tenure|earning)|$)/i
+    /(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*|(?:work\s+(?:at|in)|works\s+(?:at|in)|working\s+(?:at|in)|employed\s+(?:at|by|in)|(?:my\s+)?(?:company|employer)\s+is|(?:i\s*am|i'?m)\s+(?:working\s+)?(?:at|in))\s+)([A-Za-z0-9\s&'.-]+?)(?=\s*[,;|\n]|\s+(?:and|with|salary|cibil|age|loan|emi|tenure|earning)|$)/i
   );
   if (explicitMatch) {
     const candidate = explicitMatch[1].trim();
@@ -1003,7 +1018,7 @@ export function extractCompanyCandidateFromText(text: string): string | undefine
     !/^(?:i\s+need|i\s+want|can\s+i|personal\s+loan|loan)\b/i.test(raw)
   ) {
     const clean = raw
-      .replace(/^(?:i\s+)?(?:work\s+at|works\s+at|working\s+at|employed\s+at|company\s+is|employer\s+is|at)\s+/i, "")
+      .replace(/^(?:i\s+(?:work|am\s+working)\s+(?:at|in)|(?:my\s+)?(?:employer|company)\s+is|(?:work|working|employed)\s+(?:at|in|by)|employer\s*[:=-]|company\s*[:=-]|at|in)\s+/i, "")
       .trim();
     if (!isFinancialOrProfileInput(clean) && !isInvalidCompanyName(clean)) {
       return clean;
@@ -3357,4 +3372,3 @@ export async function processDynamicEligibility(
     formattedMarkdown: nextQuestion,
   };
 }
-

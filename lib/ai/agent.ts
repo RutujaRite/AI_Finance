@@ -2,7 +2,7 @@
 
 import pool from "@/lib/db";
 import { searchBankManager, formatManagers } from "@/lib/bankSearch";
-import { searchCompany, formatCompanyResponse } from "@/lib/companySearch";
+import { searchCompany, formatCompanyResponse, findCompanySuggestions, CompanyCandidate } from "@/lib/companySearch";
 import {
   processEligibilityFlow,
   evaluateEligibilityFromTool,
@@ -33,7 +33,7 @@ import { classifyIntentWithLLM, IntentClassificationResult, ExtractedEntities, c
 import { normalizeModelSlug } from "@/lib/openrouter";
 import { getResolvedMasterPolicies } from "@/lib/masterPolicies";
 import { getMasterPolicyFileContent } from "@/lib/masterPolicyParser";
-import { searchTavilyWeb } from "@/lib/ai/tavilyService";
+import { incraaxSearch, isIncraaxSearchConfigured } from "@/lib/incraax";
 
 const LLM_TIMEOUT_MS = 25000;
 
@@ -42,6 +42,12 @@ export interface AgentResult {
   bankData?: any;
   companyData?: any;
   companyQuery?: string | null;
+}
+
+export interface CompanySelectionAction {
+  type: "confirm" | "retry" | "select";
+  companyId?: string;
+  companyName?: string;
 }
 
 export const OPENROUTER_TOOLS = [
@@ -158,13 +164,13 @@ export const OPENROUTER_TOOLS = [
   {
     type: "function",
     function: {
-      name: "tavily_search",
+      name: "incraax_search",
       description:
-        "Performs live web search via Tavily for real-time financial news, live bank interest rate revisions, regulatory changes, or general web inquiries.",
+        "Performs live web search via Incraax for real-time financial news, live bank interest rate revisions, regulatory changes, or general web inquiries.",
       parameters: {
         type: "object",
         properties: {
-          query: { type: "string", description: "Search query for Tavily live web search" },
+          query: { type: "string", description: "Search query for Incraax live web search" },
         },
         required: ["query"],
       },
@@ -1360,6 +1366,8 @@ async function runToolCallingAgent(
         };
         const emiResult = calculateEmi(emiInput);
         toolResult = formatEmiResult(emiInput, emiResult);
+      } else if (toolName === "incraax_search") {
+        toolResult = await searchIncraaxWeb(args.query || userMessage);
       } else {
         toolResult = "No relevant data found.";
       }
@@ -2420,16 +2428,48 @@ async function executeAnswerGeneralQuestion(
 }
 
 /**
- * 7. Tool Executor: tavily_search
+ * 7. Tool Executor: incraax_search
  */
-async function executeTavilySearch(
+async function searchIncraaxWeb(query: string): Promise<string> {
+  const normalizedQuery = String(query || "").trim();
+  if (!normalizedQuery) return "Please provide a query for web search.";
+
+  if (!isIncraaxSearchConfigured()) {
+    return (
+      "🌐 **Web Search (Incraax)**: Web search is currently unconfigured (missing `INCRAAX_SEARCH_API_KEY`). " +
+      "For partner-bank policies and loan criteria, I can consult the available Master Policy files and database records."
+    );
+  }
+
+  try {
+    const results = await incraaxSearch(normalizedQuery, 5);
+    if (results.length === 0) {
+      return `No recent web search results found for "${normalizedQuery}".`;
+    }
+
+    const sources = results
+      .slice(0, 4)
+      .map(
+        (result, index) =>
+          `**${index + 1}. [${result.title || "Web Result"}](${result.url || "#"})**\n${result.snippet.slice(0, 200)}${result.snippet.length > 200 ? "..." : ""}`
+      )
+      .join("\n\n");
+
+    return `### 🌐 Web Search (Incraax)\n\n#### Relevant Sources:\n${sources}`;
+  } catch (error: any) {
+    console.error("[Incraax] Search error:", error?.message || error);
+    return "An error occurred while performing the Incraax web search. Using local Master Policy files instead.";
+  }
+}
+
+async function executeIncraaxSearch(
   args: { query?: string },
   userMessage: string,
   isEligibleFlowActive?: boolean,
   eligibilitySession?: any
 ): Promise<AgentResult> {
   const query = args.query || userMessage;
-  let reply = await searchTavilyWeb(query);
+  const reply = await searchIncraaxWeb(query);
   return { reply };
 }
 
@@ -3214,6 +3254,373 @@ export async function analyzeConversationWithLLM(opts: {
   };
 }
 
+function nextEligibilityQuestion(field?: string): string {
+  const questions: Record<string, string> = {
+    monthlyIncome: "What is your monthly take-home salary?",
+    loanAmount: "How much would you like to borrow?",
+    tenureMonths: "What repayment tenure do you prefer?",
+    cibil: "What is your approximate CIBIL score?",
+    age: "What is your current age?",
+    existingEmi: "What are your existing monthly EMIs? Reply 0 if you have none.",
+  };
+  return questions[field || ""] || "What is your monthly take-home salary?";
+}
+
+async function liveCompanySources(query: string) {
+  if (!isIncraaxSearchConfigured()) return [];
+  try {
+    return (await incraaxSearch(`${query} company official`, 3)).map((result) => ({
+      title: result.title,
+      url: result.url,
+      snippet: result.snippet,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function liveCandidates(sources: Array<{ title: string; url: string; snippet: string }>): CompanyCandidate[] {
+  return sources
+    .filter((source) => source.title && source.url)
+    .map((source) => ({
+      // A live provider has no database ID. Its result URL is the stable value
+      // sent back on click; the displayed name remains provider-supplied.
+      id: source.url,
+      name: source.title.trim(),
+      source: "live" as const,
+      liveSource: source,
+    }));
+}
+
+function liveOverview(sources: Array<{ title: string; url: string; snippet: string }>): string {
+  return sources
+    .map((source) => source.snippet.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .join("\\n\\n");
+}
+
+async function handleCompanySelectionFlow(
+  conversationId: string,
+  input: string,
+  applicant: ApplicantProfile,
+  session: any,
+  action?: CompanySelectionAction
+): Promise<AgentResult | null> {
+  const flow = session?.companyFlow;
+  const isCompanyStep = session?.expectedField === "companyName" || (session?.missingFields || []).includes("companyName");
+  const trimmedInput = input.trim();
+
+  // If already in ELIGIBILITY_INPUT stage and no explicit company action or explicit company phrase, continue eligibility
+  const isExplicitCompanyPhrase = /^(?:(?:i\s+(?:work|am\s+working)\s+(?:at|in)|(?:my\s+)?(?:employer|company)\s+is|(?:work|working|employed)\s+(?:at|in|by)|employer\s*[:=-]|company\s*[:=-])|(?:change|update|correct)\s+(?:my\s+)?(?:company|employer))\b/i.test(trimmedInput);
+  if (!action && flow?.stage === "ELIGIBILITY_INPUT" && !isCompanyStep && !isExplicitCompanyPhrase) {
+    return null;
+  }
+
+  // Natural language mapping for button equivalents
+  if (!action && flow?.stage === "COMPANY_CONFIRMATION") {
+    if (/^(?:yes|correct|confirm|yep|yeah|sure|that's right|right)\b/i.test(trimmedInput)) {
+      action = { type: "confirm" };
+    } else if (/^(?:no|nope|retry|different|cancel|wrong|enter again)\b/i.test(trimmedInput)) {
+      action = { type: "retry" };
+    }
+  }
+
+  if (!action && flow?.stage === "COMPANY_SELECTION" && Array.isArray(flow?.candidates)) {
+    if (/^\d+$/.test(trimmedInput)) {
+      const idx = parseInt(trimmedInput, 10) - 1;
+      if (idx >= 0 && idx < flow.candidates.length) {
+        action = { type: "select", companyId: flow.candidates[idx].id, companyName: flow.candidates[idx].name };
+      }
+    } else {
+      const match = flow.candidates.find(
+        (c: CompanyCandidate) =>
+          c.name.toLowerCase() === trimmedInput.toLowerCase() ||
+          c.name.toLowerCase().includes(trimmedInput.toLowerCase())
+      );
+      if (match) {
+        action = { type: "select", companyId: match.id, companyName: match.name };
+      }
+    }
+  }
+
+  // 1. Handle Retry / "No, enter again"
+  if (action?.type === "retry") {
+    const missing = getRequiredPolicyFields(applicant);
+    await saveEligibilityState(conversationId, {
+      ...session,
+      applicant,
+      expectedField: "companyName",
+      missingFields: missing.includes("companyName") ? missing : ["companyName", ...missing],
+      in_eligibility_flow: true,
+      companyFlow: { stage: "COMPANY_INPUT" },
+      updatedAt: Date.now(),
+    });
+    return { reply: "Please enter your employer's exact company name." };
+  }
+
+  // 2. Handle Confirm / "Yes, [Company]"
+  if (action?.type === "confirm") {
+    const confirmedCandidate = flow?.candidates?.[0];
+    if (confirmedCandidate) {
+      action = { type: "select", companyId: confirmedCandidate.id, companyName: confirmedCandidate.name };
+    }
+  }
+
+  // 3. Handle Select exact company
+  if (action?.type === "select") {
+    const candidate = flow?.candidates?.find((item: CompanyCandidate) =>
+      (action?.companyId && item.id === action.companyId) ||
+      (action?.companyName && item.name.toLowerCase() === action.companyName.toLowerCase())
+    ) || (action?.companyName ? { id: action.companyId || action.companyName, name: action.companyName, source: "database" as const } : null);
+
+    if (!candidate) {
+      return { reply: "That company option is no longer available. Please enter your employer's company name." };
+    }
+
+    const company = await searchCompany(candidate.name);
+    const canonicalName = (company.found && company.primaryName) ? company.primaryName : candidate.name;
+    const selectedApplicant = { ...applicant, companyName: canonicalName };
+    const missing = getRequiredPolicyFields(selectedApplicant);
+    const nextField = missing[0] || "monthlyIncome";
+    const liveSources = await liveCompanySources(canonicalName);
+    const selectedLiveSources = candidate.liveSource ? [candidate.liveSource] : liveSources;
+    const overview = company.overview || liveOverview(selectedLiveSources) || `${canonicalName} is verified as an active employer in the corporate registry.`;
+    
+    const companyData = {
+      company_id: candidate.id,
+      company_name: canonicalName,
+      overview,
+      basic_info: company.basicInfo,
+      financial_info: company.financialInfo,
+      bank_records: company.bankRecords,
+      live_sources: selectedLiveSources,
+      needs_disambiguation: false,
+    };
+
+    const nextStepText = `Now let's continue with your eligibility assessment.\n${nextEligibilityQuestion(nextField)}`;
+
+    await saveEligibilityState(conversationId, {
+      ...session,
+      applicant: selectedApplicant,
+      expectedField: nextField,
+      missingFields: missing,
+      in_eligibility_flow: true,
+      companyFlow: {
+        stage: "ELIGIBILITY_INPUT",
+        originalInput: flow?.originalInput,
+        normalizedCompany: canonicalName,
+        selectedCompanyId: candidate.id,
+        selectedCompanyName: canonicalName,
+        selectedCompany: canonicalName,
+        companyCandidate: candidate,
+        candidates: flow?.candidates,
+        companyData,
+      },
+      selectedCompanyId: candidate.id,
+      selectedCompanyName: canonicalName,
+      selectedCompany: canonicalName,
+      companyCandidate: candidate,
+      updatedAt: Date.now(),
+    });
+
+    const responseContent = `${formatCompanyResponse({ ...company, primaryName: canonicalName, overview })}\n\n${nextStepText}`;
+    return {
+      reply: responseContent,
+      companyData,
+      companyQuery: canonicalName,
+    };
+  }
+
+  // 4. Understand and process new company input
+  const extracted = extractCompanyCandidateFromText(input);
+  const isStandaloneCompanyName = !isCompanyStep && !flow && extracted && !isFinancialOrProfileInput(trimmedInput) && !isInvalidCompanyName(trimmedInput) && trimmedInput.split(/\s+/).length <= 5;
+
+  if (!extracted || (!isCompanyStep && !flow && !isExplicitCompanyPhrase && !isStandaloneCompanyName)) {
+    return null;
+  }
+
+  const normalized = extracted.replace(/\b(pvt\.?|private|limited|ltd\.?)\b/gi, "").replace(/\s+/g, " ").trim();
+  const dbResult = await searchCompany(extracted);
+  const liveSources = await liveCompanySources(normalized);
+
+  // Case A: Not found in database -> Check spelling mistakes / typos, then live search
+  if (!dbResult.found) {
+    const suggestions = await findCompanySuggestions(normalized);
+    if (suggestions.length > 0) {
+      await saveEligibilityState(conversationId, {
+        ...session,
+        applicant,
+        expectedField: "companyName",
+        missingFields: getRequiredPolicyFields(applicant),
+        in_eligibility_flow: true,
+        companyFlow: {
+          stage: "COMPANY_CONFIRMATION",
+          originalInput: input,
+          normalizedCompany: normalized,
+          candidates: suggestions,
+        },
+        updatedAt: Date.now(),
+      });
+      return {
+        reply: `Did you mean **${suggestions[0].name}**?`,
+        companyData: {
+          company_flow: "COMPANY_CONFIRMATION",
+          typo_suggestion: suggestions[0],
+          candidates: suggestions,
+        },
+      };
+    }
+
+    const onlineCandidates = liveCandidates(liveSources);
+    if (onlineCandidates.length > 0) {
+      await saveEligibilityState(conversationId, {
+        ...session,
+        applicant,
+        expectedField: "companyName",
+        missingFields: getRequiredPolicyFields(applicant),
+        in_eligibility_flow: true,
+        companyFlow: {
+          stage: "COMPANY_SELECTION",
+          originalInput: input,
+          normalizedCompany: normalized,
+          candidates: onlineCandidates,
+        },
+        updatedAt: Date.now(),
+      });
+      return {
+        reply: `I found live company search results for "${normalized}". Please select the exact employer:`,
+        companyData: {
+          company_flow: "COMPANY_SELECTION",
+          needs_disambiguation: true,
+          candidates: onlineCandidates,
+          live_sources: liveSources,
+        },
+      };
+    }
+
+    return {
+      reply: `No company match was found for "${normalized}". Please enter your employer's exact company name.`,
+    };
+  }
+
+  // Case B: Multiple database matches -> Disambiguate with clickable buttons
+  const candidates = dbResult.candidateOptions;
+  if (dbResult.needsDisambiguation) {
+    await saveEligibilityState(conversationId, {
+      ...session,
+      applicant,
+      expectedField: "companyName",
+      missingFields: getRequiredPolicyFields(applicant),
+      in_eligibility_flow: true,
+      companyFlow: {
+        stage: "COMPANY_SELECTION",
+        originalInput: input,
+        normalizedCompany: normalized,
+        candidates,
+      },
+      updatedAt: Date.now(),
+    });
+    return {
+      reply: `I found multiple companies matching "${normalized}". Please select your exact employer:`,
+      companyData: {
+        company_flow: "COMPANY_SELECTION",
+        needs_disambiguation: true,
+        candidates,
+        live_sources: liveSources,
+      },
+    };
+  }
+
+  // Case C: Single match found
+  const candidate = candidates[0] || {
+    id: dbResult.basicInfo?.id || dbResult.bankRecords[0]?.id || dbResult.primaryName,
+    name: dbResult.primaryName,
+    source: "database" as const,
+  };
+
+  // If user entered exact name or confirmed, select directly
+  const exactLower = dbResult.primaryName.toLowerCase();
+  const inputLower = normalized.toLowerCase();
+  const isDirectExact = exactLower === inputLower || exactLower.startsWith(inputLower);
+
+  if (isDirectExact && candidates.length === 1) {
+    const canonicalName = dbResult.primaryName;
+    const selectedApplicant = { ...applicant, companyName: canonicalName };
+    const missing = getRequiredPolicyFields(selectedApplicant);
+    const nextField = missing[0] || "monthlyIncome";
+    const overview = dbResult.overview || liveOverview(liveSources) || `${canonicalName} is an approved employer partner across partner banks.`;
+
+    const companyData = {
+      company_id: candidate.id,
+      company_name: canonicalName,
+      overview,
+      basic_info: dbResult.basicInfo,
+      financial_info: dbResult.financialInfo,
+      bank_records: dbResult.bankRecords,
+      live_sources: liveSources,
+      needs_disambiguation: false,
+    };
+
+    const nextStepText = `Now let's continue with your eligibility assessment.\n${nextEligibilityQuestion(nextField)}`;
+
+    await saveEligibilityState(conversationId, {
+      ...session,
+      applicant: selectedApplicant,
+      expectedField: nextField,
+      missingFields: missing,
+      in_eligibility_flow: true,
+      companyFlow: {
+        stage: "ELIGIBILITY_INPUT",
+        originalInput: input,
+        normalizedCompany: canonicalName,
+        selectedCompanyId: candidate.id,
+        selectedCompanyName: canonicalName,
+        selectedCompany: canonicalName,
+        companyCandidate: candidate,
+        candidates: [candidate],
+        companyData,
+      },
+      selectedCompanyId: candidate.id,
+      selectedCompanyName: canonicalName,
+      selectedCompany: canonicalName,
+      companyCandidate: candidate,
+      updatedAt: Date.now(),
+    });
+
+    return {
+      reply: `${formatCompanyResponse({ ...dbResult, primaryName: canonicalName, overview })}\n\n${nextStepText}`,
+      companyData,
+      companyQuery: canonicalName,
+    };
+  }
+
+  await saveEligibilityState(conversationId, {
+    ...session,
+    applicant,
+    expectedField: "companyName",
+    missingFields: getRequiredPolicyFields(applicant),
+    in_eligibility_flow: true,
+    companyFlow: {
+      stage: "COMPANY_CONFIRMATION",
+      originalInput: input,
+      normalizedCompany: normalized,
+      candidates: [candidate],
+    },
+    updatedAt: Date.now(),
+  });
+
+  return {
+    reply: `I found **${candidate.name}**. Please confirm this is your employer:`,
+    companyData: {
+      company_flow: "COMPANY_CONFIRMATION",
+      typo_suggestion: candidate,
+      candidates: [candidate],
+      live_sources: liveSources,
+    },
+  };
+}
+
 /**
  * Main CreditWise AI Central Agent.
  * Fully LLM-driven for conversation understanding.
@@ -3227,8 +3634,9 @@ export async function runCentralAgent(opts: {
   conversationId: string;
   model?: string;
   conversationHistory?: Array<{ role: string; content: string }>;
+  companySelectionAction?: CompanySelectionAction;
 }): Promise<AgentResult> {
-  const { message, conversationId, model: requestedModel } = opts;
+  const { message, conversationId, model: requestedModel, companySelectionAction } = opts;
   let { conversationHistory } = opts;
   const userMessage = String(message || "").trim();
   const norm = userMessage.toLowerCase().replace(/\s+/g, " ").trim();
@@ -3286,6 +3694,17 @@ export async function runCentralAgent(opts: {
   );
 
   const currentMissingFields = getRequiredPolicyFields(currentApplicant);
+
+  // A selected employer is deterministic state, not an LLM interpretation.
+  // Handle it before routing so eligibility remains on its current step.
+  const companyFlowResult = await handleCompanySelectionFlow(
+    conversationId,
+    userMessage,
+    currentApplicant,
+    eligibilitySession,
+    companySelectionAction
+  );
+  if (companyFlowResult) return companyFlowResult;
 
   // 3. Retrieve completed evaluation context
   const hasCompletedEvaluation = Boolean(
@@ -3684,10 +4103,10 @@ export async function runCentralAgent(opts: {
     return compResult;
   }
 
-  // 8c. Handle Live Web Search via Tavily
+  // 8c. Handle Live Web Search via Incraax
   if (analysis.userIntent === "WEB_SEARCH" && (analysis.webSearchQuery || /news|latest rate|rbi repo|interest rate hike/i.test(norm))) {
     const query = analysis.webSearchQuery || userMessage;
-    return await executeTavilySearch({ query }, userMessage, isEligibleFlowActive, eligibilitySession);
+    return await executeIncraaxSearch({ query }, userMessage, isEligibleFlowActive, eligibilitySession);
   }
 
   // 9. Consolidate Applicant Profile & Apply Entity Updates / Corrections
@@ -3952,6 +4371,3 @@ export async function runCentralAgent(opts: {
   const fallbackGeneralAnswer = await answerGeneralQuestionWithLLM(userMessage, requestedModel, conversationHistory);
   return { reply: fallbackGeneralAnswer };
 }
-
-
-

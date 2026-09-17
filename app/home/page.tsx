@@ -269,30 +269,10 @@ export default function HomePage() {
     }
   }
 
-  async function sendMessage(text: string) {
+  async function sendMessage(text: string, companySelection?: { type: "confirm" | "retry" | "select"; company_id?: string; company_name?: string }) {
     if (!text.trim() || loading) return
 
-    let resolvedText = text.trim()
-
-    const lastAiMessage = [...messages].reverse().find((m) => m.role === "ai")
-    if (lastAiMessage) {
-      const lastAiData = lastAiMessage.company_data
-      if (lastAiData && lastAiData.needs_disambiguation && Array.isArray(lastAiData.candidates)) {
-        const candidates = lastAiData.candidates.filter(Boolean)
-        const userInput = text.trim()
-        if (/^\d+$/.test(userInput)) {
-          const index = parseInt(userInput, 10) - 1
-          if (index >= 0 && index < candidates.length) {
-            resolvedText = candidates[index]
-          }
-        } else {
-          const partialMatch = candidates.find((c: any) => c.toLowerCase().includes(userInput.toLowerCase()))
-          if (partialMatch) {
-            resolvedText = partialMatch
-          }
-        }
-      }
-    }
+    const resolvedText = text.trim()
 
     const currentConvId = activeConvIdRef.current || activeConversationId
     if (currentConvId && messagesByConvRef.current[currentConvId] === undefined) {
@@ -313,7 +293,7 @@ export default function HomePage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: resolvedText, conversation_id: currentConvId, model: selectedModel }),
+        body: JSON.stringify({ message: resolvedText, conversation_id: currentConvId, model: selectedModel, company_selection: companySelection }),
         credentials: "include",
       })
       const data = await res.json()
@@ -1365,33 +1345,20 @@ export default function HomePage() {
 
     const companyData = message.company_data
 
-    // Disambiguation step (multiple candidate companies found)
-    if (companyData && companyData.needs_disambiguation && Array.isArray(companyData.candidates)) {
-      let html = renderMarkdown(message.content)
-      const candidates = companyData.candidates.filter(Boolean)
-      if (candidates.length > 0) {
-        html += `<div class="disambiguation-candidates" style="display: flex; flex-direction: column; gap: 6px; margin: 8px 0;">`
-        candidates.forEach((candidate: string, index: number) => {
-          const escapedCandidate = escapeHtml(candidate)
-          html += `<button class="disambiguation-candidate" data-candidate="${escapedCandidate}" style="cursor: pointer; text-align: left; padding: 6px 12px; background: rgba(16, 163, 127, 0.1); border: 1px solid rgba(16, 163, 127, 0.3); border-radius: 6px; color: #10a37f; font-weight: 500; font-size: 0.8125rem; transition: all 0.15s ease; width: 100%;"><strong>${index + 1}.</strong> ${escapedCandidate}</button>`
-        })
-        html += `</div>`
-      }
-      return html
+    // Disambiguation or typo confirmation step (multiple candidate companies found or awaiting user confirmation)
+    if (companyData && (companyData.needs_disambiguation || companyData.company_flow === "COMPANY_CONFIRMATION") && Array.isArray(companyData.candidates)) {
+      return renderMarkdown(message.content)
     }
 
-    // Single company selected / returned: Render tabular format ONCE
+    // Single company selected / returned: Render tabular format ONCE followed by any eligibility continuation prompt
     if (companyData && !companyData.needs_disambiguation) {
       let html = renderCompanyTables(companyData)
 
-      // If message.content has additional prompt text outside the company markdown block (e.g. wizard confirmation prompt)
+      // If message.content has additional prompt text outside the company markdown block (e.g. eligibility continuation question)
       if (message.content) {
-        const cleanedContent = message.content
-          .replace(/### 🏢 Corporate Intelligence:[\s\S]*?(?=⚠️|✅|$)/gi, "")
-          .trim()
-
-        if (cleanedContent) {
-          html += `<div style="margin-top: 16px;">${renderMarkdown(cleanedContent)}</div>`
+        const trailingPrompt = extractTrailingEligibilityContent(message.content)
+        if (trailingPrompt) {
+          html += `<div style="margin-top: 16px;">${renderMarkdown(trailingPrompt)}</div>`
         }
       }
 
@@ -1468,6 +1435,69 @@ export default function HomePage() {
     return html
   }
 
+  function renderCompanySelection(message: any) {
+    const data = message.company_data
+    const candidates = Array.isArray(data?.candidates) ? data.candidates.filter(Boolean) : []
+    if (!data || candidates.length === 0) return null
+    const flow = data.company_flow
+    if (flow !== "COMPANY_CONFIRMATION" && flow !== "COMPANY_SELECTION") return null
+    const suggested = data.typo_suggestion || candidates[0]
+    if (flow === "COMPANY_CONFIRMATION") {
+      return (
+        <div className="company-selection-actions">
+          <button type="button" className="company-selection-button" onClick={() => sendMessage(`Yes, ${suggested.name}`, { type: "confirm" })}>
+            Yes, {suggested.name}
+          </button>
+          <button type="button" className="company-selection-button secondary" onClick={() => sendMessage("No, enter again", { type: "retry" })}>
+            No, enter again
+          </button>
+        </div>
+      )
+    }
+    return (
+      <div className="company-selection-actions">
+        {candidates.map((candidate: any) => (
+          <button
+            key={String(candidate.id)}
+            type="button"
+            className="company-selection-button"
+            onClick={() => sendMessage(candidate.name, { type: "select", company_id: String(candidate.id), company_name: candidate.name })}
+          >
+            {candidate.name}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  function extractTrailingEligibilityContent(content: string): string {
+    if (!content) return ""
+
+    // 1. Check for standard transition phrase
+    const marker = "Now let's continue with your eligibility assessment."
+    const markerIdx = content.indexOf(marker)
+    if (markerIdx !== -1) {
+      return content.slice(markerIdx).trim()
+    }
+
+    // 2. Check for standard eligibility questions or prompts
+    const questionMatch = content.match(/((?:Now let's continue|What is your|How much|What repayment|What are your existing|Could you please share)[\s\S]*)/i)
+    if (questionMatch) {
+      return questionMatch[1].trim()
+    }
+
+    // 3. Fallback: extract any content after the last markdown table row
+    const lastTableIdx = content.lastIndexOf("|")
+    if (lastTableIdx !== -1) {
+      const afterTable = content.slice(lastTableIdx + 1).trim()
+      if (afterTable && !afterTable.startsWith("###") && !afterTable.startsWith("####")) {
+        return afterTable
+      }
+    }
+
+    return ""
+  }
+
   function renderCompanyTables(companyData: any) {
     const basic = (companyData.basic_info || companyData.basicInfo) && typeof (companyData.basic_info || companyData.basicInfo) === "object"
       ? (companyData.basic_info || companyData.basicInfo) : {}
@@ -1505,7 +1535,18 @@ export default function HomePage() {
     html += renderTableRow("Listing Status", basic.listing_status || "-")
     html += `</tbody></table></div>`
 
-    // 3. Bank Records Table
+    // 3. Financial Information Table
+    html += `<div style="margin-bottom: 0.35rem;">`
+    html += `<div style="font-weight: 600; font-size: 0.8125rem; margin-bottom: 0.15rem; color: var(--ink);"><i class="bi bi-bar-chart"></i> Financial Information</div>`
+    html += `<table class="table" style="width: 100%; border-collapse: collapse; font-size: 0.8125rem; margin: 0;"><tbody>`
+    html += renderTableRow("Workforce / Employees", financial.employees || "-")
+    html += renderTableRow("Turnover / Revenue", financial.turnover || "-")
+    html += renderTableRow("Profit Status", financial.profit_status || "-")
+    html += renderTableRow("Last AGM Date", financial.last_agm || "-")
+    html += renderTableRow("Performance Trend", financial.profit_history || "-")
+    html += `</tbody></table></div>`
+
+    // 4. Bank / Employer Records Table
     const seenBanks = new Set<string>()
     const uniqueBankRecords = bankRecords.filter((r: any) => {
       const bName = String(r?.bank_name || "").trim().toLowerCase()
@@ -1516,7 +1557,7 @@ export default function HomePage() {
 
     if (uniqueBankRecords.length > 0) {
       html += `<div style="margin-bottom: 0.35rem;">`
-      html += `<div style="font-weight: 600; font-size: 0.8125rem; margin-bottom: 0.15rem; color: var(--ink);"><i class="bi bi-bank"></i> Bank Ratings (${uniqueBankRecords.length} Partner Banks)</div>`
+      html += `<div style="font-weight: 600; font-size: 0.8125rem; margin-bottom: 0.15rem; color: var(--ink);"><i class="bi bi-bank"></i> Bank / Employer Records (${uniqueBankRecords.length} Partner Banks)</div>`
       html += `<table class="table" style="width: 100%; border-collapse: collapse; font-size: 0.8125rem; margin: 0;">`
       html += `<thead><tr><th style="width: 35px; padding: 2px 4px;">#</th><th style="padding: 2px 4px;">Bank</th><th style="padding: 2px 4px;">Rating</th><th style="padding: 2px 4px;">Remarks</th></tr></thead><tbody>`
       uniqueBankRecords.forEach((r: any, idx: number) => {
@@ -1533,17 +1574,6 @@ export default function HomePage() {
       html += `<div style="font-size: 0.78125rem; color: var(--ink-muted);"><i class="bi bi-exclamation-triangle"></i> Not listed in uploaded bank records. Standard corporate rules apply.</div>`
       html += `</div>`
     }
-
-    // 4. Financial Information Table
-    html += `<div style="margin-bottom: 0.35rem;">`
-    html += `<div style="font-weight: 600; font-size: 0.8125rem; margin-bottom: 0.15rem; color: var(--ink);"><i class="bi bi-bar-chart"></i> Financial Profile</div>`
-    html += `<table class="table" style="width: 100%; border-collapse: collapse; font-size: 0.8125rem; margin: 0;"><tbody>`
-    html += renderTableRow("Workforce", financial.employees || "-")
-    html += renderTableRow("Turnover / Revenue", financial.turnover || "-")
-    html += renderTableRow("Profit Status", financial.profit_status || "-")
-    html += renderTableRow("Last AGM", financial.last_agm || "-")
-    html += renderTableRow("Trend", financial.profit_history || "-")
-    html += `</tbody></table></div>`
 
     html += `</div>`
     return html
@@ -1995,13 +2025,6 @@ export default function HomePage() {
             onClick={(e) => {
               const target = e.target as HTMLElement | null
               if (!target) return
-              const candidateBtn = target.closest(".disambiguation-candidate")
-              if (candidateBtn) {
-                const candidate = candidateBtn.getAttribute("data-candidate")
-                if (candidate) {
-                  sendMessage(candidate)
-                }
-              }
               const downloadBtn = target.closest(".btn-download-report") as HTMLElement | null
               if (downloadBtn) {
                 const messageId = downloadBtn.getAttribute("data-message-id")
@@ -2042,6 +2065,7 @@ export default function HomePage() {
                           className="chat-bubble"
                           dangerouslySetInnerHTML={{ __html: renderMessageContent(message) }}
                         />
+                        {renderCompanySelection(message)}
                         <div className="message-meta">
                           <span>{formatTime(message.timestamp)}</span>
                           {!isUser && (

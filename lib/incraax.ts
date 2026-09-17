@@ -46,6 +46,10 @@ export interface IncraaxResult {
   snippet: string;
 }
 
+export function isIncraaxSearchConfigured(): boolean {
+  return Boolean(process.env.INCRAAX_SEARCH_API_KEY?.trim());
+}
+
 export async function incraaxSearch(query: string, maxResults = 5): Promise<IncraaxResult[]> {
   if (!query) return [];
   const apiKey = process.env.INCRAAX_SEARCH_API_KEY || "";

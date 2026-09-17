@@ -8,6 +8,7 @@ import pool from "./db";
 import { isInvalidCompanyName } from "./dynamicEligibilityEngine";
 
 export interface CompanyRecord {
+  id?: string;
   bank_name: string;
   sr_no: string;
   company_category: string;
@@ -16,6 +17,7 @@ export interface CompanyRecord {
 }
 
 export interface CompanyBasicInfo {
+  id?: string;
   company_name: string;
   industry: string;
   address: string;
@@ -27,6 +29,7 @@ export interface CompanyBasicInfo {
 }
 
 export interface CompanyFinancialInfo {
+  id?: string;
   company_name: string;
   employees: string;
   turnover: string;
@@ -43,7 +46,24 @@ export interface CompanySearchResult {
   financialInfo: CompanyFinancialInfo | null;
   bankRecords: CompanyRecord[];
   candidates: string[];
+  candidateOptions: CompanyCandidate[];
   needsDisambiguation: boolean;
+}
+
+export interface CompanyCandidate {
+  id: string;
+  name: string;
+  source: "database" | "live";
+  liveSource?: { title: string; url: string; snippet: string };
+}
+
+/** Normalizes a user-entered employer without changing its stored legal name. */
+export function normalizeCompanySearchInput(value: string): string {
+  return String(value || "")
+    .replace(/^(?:i\s+(?:work|am\s+working)\s+(?:at|in)|(?:my\s+)?(?:employer|company)\s+is|(?:work|working|employed)\s+(?:at|in|by)|employer\s*[:=-]|company\s*[:=-]|at|in)\s+/i, "")
+    .replace(/\b(?:private\s+limited|pvt\.?\s*limited|pvt\.?|limited|ltd\.?)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function extractCinFromOtherInfo(bankRecords: CompanyRecord[]): string | null {
@@ -138,66 +158,119 @@ export async function searchCompany(companyName: string): Promise<CompanySearchR
     /^(i want personal loan|i want loan|i need personal loan|i need loan|want personal loan|want loan|need loan|personal loan|loan eligibility|check eligibility|check loan eligibility|apply loan|apply for loan|salaried|self-employed|self employed|hello|hi|hey|reset|restart|cancel|help)$/i.test(normInput) ||
     /^(i want|i need|want|need|looking for|apply for)\s*(a|personal)?\s*loan$/i.test(normInput)
   ) {
-    return { found: false, primaryName: companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], candidates: [], needsDisambiguation: false };
+    return { found: false, primaryName: companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], candidates: [], candidateOptions: [], needsDisambiguation: false };
   }
 
-  const client = await pool.connect();
   try {
     let cleaned = companyName.replace(/(?:tell\s*me\s*about|company\s*loan\s*listing|company\s*listing|company|loan|listing|is|approved|rating|details|for|check)/gi, "").trim();
     if (!cleaned || cleaned.length < 2) cleaned = companyName.trim();
-    const pattern = `%${cleaned}%`;
+    const rawCleaned = cleaned;
+    cleaned = normalizeCompanySearchInput(cleaned) || companyName.trim();
 
-    const [bankRes, basicRes, financialRes] = await Promise.all([
-      client.query(
-        `SELECT cr.bank_name, cr.company_category, cr.other_info, cr.company_name
+    // Check alias resolution for acronyms (e.g. TCS -> TATA CONSULTANCY SERVICES LIMITED)
+    let aliasTarget: string | null = null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const aliasesMod = require("../services/companyAliases");
+      if (typeof aliasesMod?.resolveCompanyAlias === "function") {
+        aliasTarget = aliasesMod.resolveCompanyAlias(cleaned) || aliasesMod.resolveCompanyAlias(rawCleaned) || aliasesMod.resolveCompanyAlias(companyName);
+      }
+    } catch {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const aliasesMod = require("@/services/companyAliases");
+        if (typeof aliasesMod?.resolveCompanyAlias === "function") {
+          aliasTarget = aliasesMod.resolveCompanyAlias(cleaned) || aliasesMod.resolveCompanyAlias(rawCleaned) || aliasesMod.resolveCompanyAlias(companyName);
+        }
+      } catch {}
+    }
+
+    const searchTarget = aliasTarget || cleaned;
+    const pattern = `%${searchTarget}%`;
+    const secondaryPattern = `%${cleaned}%`;
+    const tertiaryPattern = searchTarget.includes(" ") ? `%${searchTarget.split(" ")[0]}%` : secondaryPattern;
+
+    let [bankRes, basicRes, financialRes] = await Promise.all([
+      pool.query(
+        `SELECT cr.id, cr.bank_name, cr.company_category, cr.other_info, cr.company_name
           FROM company_records cr
-          WHERE LOWER(cr.company_name) LIKE LOWER($1)
+          WHERE LOWER(cr.company_name) LIKE LOWER($1) OR LOWER(cr.company_name) LIKE LOWER($2)
           ORDER BY 
             CASE 
-              WHEN LOWER(cr.company_name) = LOWER($2) THEN 0
-              WHEN LOWER(cr.company_name) LIKE LOWER($2 || ' %') OR LOWER(cr.company_name) LIKE LOWER($2 || ',%') THEN 1
-              WHEN LOWER(cr.company_name) LIKE LOWER($2 || '%') THEN 2
-              ELSE 3
+              WHEN LOWER(cr.company_name) = LOWER($3) THEN 0
+              WHEN LOWER(cr.company_name) = LOWER($4) THEN 1
+              WHEN LOWER(cr.company_name) LIKE LOWER($3 || ' %') OR LOWER(cr.company_name) LIKE LOWER($3 || ',%') THEN 2
+              WHEN LOWER(cr.company_name) LIKE LOWER($4 || ' %') OR LOWER(cr.company_name) LIKE LOWER($4 || ',%') THEN 3
+              WHEN LOWER(cr.company_name) LIKE LOWER($3 || '%') THEN 4
+              ELSE 5
             END,
             LENGTH(cr.company_name),
             cr.company_name,
             cr.bank_name
           LIMIT 200`,
-        [pattern, cleaned]
+        [pattern, secondaryPattern, searchTarget, cleaned]
       ).catch(() => ({ rows: [], rowCount: 0 })),
-      client.query(
-        `SELECT company_name, industry, address, website, cin, incorporation_date, listing_status, country
+      pool.query(
+        `SELECT id, company_name, industry, address, website, cin, incorporation_date, listing_status, country
          FROM company_basic_info
-         WHERE LOWER(company_name) LIKE LOWER($1)
+         WHERE LOWER(company_name) LIKE LOWER($1) OR LOWER(company_name) LIKE LOWER($2)
          ORDER BY 
            CASE 
-             WHEN LOWER(company_name) = LOWER($2) THEN 0
-             WHEN LOWER(company_name) LIKE LOWER($2 || ' %') OR LOWER(company_name) LIKE LOWER($2 || ',%') THEN 1
-             WHEN LOWER(company_name) LIKE LOWER($2 || '%') THEN 2
-             ELSE 3
+             WHEN LOWER(company_name) = LOWER($3) THEN 0
+             WHEN LOWER(company_name) = LOWER($4) THEN 1
+             WHEN LOWER(company_name) LIKE LOWER($3 || ' %') OR LOWER(company_name) LIKE LOWER($3 || ',%') THEN 2
+             WHEN LOWER(company_name) LIKE LOWER($4 || ' %') OR LOWER(company_name) LIKE LOWER($4 || ',%') THEN 3
+             WHEN LOWER(company_name) LIKE LOWER($3 || '%') THEN 4
+             ELSE 5
            END,
            LENGTH(company_name)
-         LIMIT 1`,
-        [pattern, cleaned]
+         LIMIT 200`,
+        [pattern, secondaryPattern, searchTarget, cleaned]
       ).catch(() => ({ rows: [], rowCount: 0 })),
-      client.query(
-        `SELECT company_name, employees, turnover, profit_status, last_agm, profit_history
+      pool.query(
+        `SELECT id, company_name, employees, turnover, profit_status, last_agm, profit_history
          FROM company_financial_info
-         WHERE LOWER(company_name) LIKE LOWER($1)
+         WHERE LOWER(company_name) LIKE LOWER($1) OR LOWER(company_name) LIKE LOWER($2)
          ORDER BY 
            CASE 
-             WHEN LOWER(company_name) = LOWER($2) THEN 0
-             WHEN LOWER(company_name) LIKE LOWER($2 || ' %') OR LOWER(company_name) LIKE LOWER($2 || ',%') THEN 1
-             WHEN LOWER(company_name) LIKE LOWER($2 || '%') THEN 2
-             ELSE 3
+             WHEN LOWER(company_name) = LOWER($3) THEN 0
+             WHEN LOWER(company_name) = LOWER($4) THEN 1
+             WHEN LOWER(company_name) LIKE LOWER($3 || ' %') OR LOWER(company_name) LIKE LOWER($3 || ',%') THEN 2
+             WHEN LOWER(company_name) LIKE LOWER($4 || ' %') OR LOWER(company_name) LIKE LOWER($4 || ',%') THEN 3
+             WHEN LOWER(company_name) LIKE LOWER($3 || '%') THEN 4
+             ELSE 5
            END,
            LENGTH(company_name)
-         LIMIT 1`,
-        [pattern, cleaned]
+         LIMIT 200`,
+        [pattern, secondaryPattern, searchTarget, cleaned]
       ).catch(() => ({ rows: [], rowCount: 0 })),
     ]);
 
-    const bankRecords: CompanyRecord[] = bankRes.rows.map((r: any, idx: number) => ({
+    // Fallback to bank_company_data if company_records returned no rows
+    if (!bankRes.rows || bankRes.rows.length === 0) {
+      bankRes = await pool.query(
+        `SELECT bcd.id, bcd.bank_name, bcd.company_category, bcd.other_info, bcd.company_name
+          FROM bank_company_data bcd
+          WHERE LOWER(bcd.company_name) LIKE LOWER($1) OR LOWER(bcd.company_name) LIKE LOWER($2)
+          ORDER BY 
+            CASE 
+              WHEN LOWER(bcd.company_name) = LOWER($3) THEN 0
+              WHEN LOWER(bcd.company_name) = LOWER($4) THEN 1
+              WHEN LOWER(bcd.company_name) LIKE LOWER($3 || ' %') OR LOWER(bcd.company_name) LIKE LOWER($3 || ',%') THEN 2
+              WHEN LOWER(bcd.company_name) LIKE LOWER($4 || ' %') OR LOWER(bcd.company_name) LIKE LOWER($4 || ',%') THEN 3
+              WHEN LOWER(bcd.company_name) LIKE LOWER($3 || '%') THEN 4
+              ELSE 5
+            END,
+            LENGTH(bcd.company_name),
+            bcd.company_name,
+            bcd.bank_name
+          LIMIT 200`,
+        [pattern, secondaryPattern, searchTarget, cleaned]
+      ).catch(() => ({ rows: [], rowCount: 0 }));
+    }
+
+    const bankRecords: CompanyRecord[] = (bankRes.rows || []).map((r: any, idx: number) => ({
+      id: r.id != null ? String(r.id) : undefined,
       bank_name: r.bank_name,
       sr_no: r.sr_no ?? idx + 1,
       company_category: r.company_category,
@@ -205,20 +278,22 @@ export async function searchCompany(companyName: string): Promise<CompanySearchR
       company_name: r.company_name,
     }));
 
-    let basicInfo: CompanyBasicInfo | null = (basicRes.rowCount ?? 0) > 0 ? basicRes.rows[0] : null;
-    let financialInfo: CompanyFinancialInfo | null = (financialRes.rowCount ?? 0) > 0 ? financialRes.rows[0] : null;
+    const basicRows: CompanyBasicInfo[] = basicRes.rows || [];
+    const financialRows: CompanyFinancialInfo[] = financialRes.rows || [];
+    let basicInfo: CompanyBasicInfo | null = basicRows[0] || null;
+    let financialInfo: CompanyFinancialInfo | null = financialRows[0] || null;
 
     if (bankRecords.length === 0 && !basicInfo && !financialInfo) {
-      return { found: false, primaryName: companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], candidates: [], needsDisambiguation: false };
+      return { found: false, primaryName: companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], candidates: [], candidateOptions: [], needsDisambiguation: false };
     }
 
-    const candidateMap = new Map<string, string>();
+    const candidateMap = new Map<string, CompanyCandidate>();
     bankRecords.forEach((r) => {
       const name = String(r.company_name || "").trim();
       if (name) {
         const key = name.toLowerCase();
         if (!candidateMap.has(key)) {
-          candidateMap.set(key, name);
+          candidateMap.set(key, { id: r.id || name, name, source: "database" });
         }
       }
     });
@@ -226,37 +301,49 @@ export async function searchCompany(companyName: string): Promise<CompanySearchR
       const name = String(basicInfo.company_name).trim();
       const key = name.toLowerCase();
       if (!candidateMap.has(key)) {
-        candidateMap.set(key, name);
+        candidateMap.set(key, { id: basicInfo.id || name, name, source: "database" });
       }
     }
+    basicRows.forEach((row) => {
+      const name = String(row.company_name || "").trim();
+      if (name && !candidateMap.has(name.toLowerCase())) {
+        candidateMap.set(name.toLowerCase(), { id: String(row.id || name), name, source: "database" });
+      }
+    });
+    financialRows.forEach((row) => {
+      const name = String(row.company_name || "").trim();
+      if (name && !candidateMap.has(name.toLowerCase())) {
+        candidateMap.set(name.toLowerCase(), { id: String(row.id || name), name, source: "database" });
+      }
+    });
 
-    const candidates = Array.from(candidateMap.values());
-    candidates.sort();
+    const candidateOptions = Array.from(candidateMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    const candidates = candidateOptions.map((candidate) => candidate.name);
 
-    // Check for exact primary match (e.g. 'Infosys Limited' when searching 'infosys')
     const qLower = cleaned.toLowerCase();
+    const exactInputLower = companyName.trim().toLowerCase();
     const exactMatch = candidates.find(c => {
       const cLow = c.toLowerCase();
-      return cLow === qLower || cLow === `${qLower} limited` || cLow === `${qLower} ltd` || cLow === `${qLower} private limited` || cLow === `${qLower} pvt ltd`;
+      return cLow === exactInputLower || cLow === qLower || cLow === `${qLower} limited` || cLow === `${qLower} ltd` || cLow === `${qLower} private limited` || cLow === `${qLower} pvt ltd`;
     });
 
     let selectedBankRecords = bankRecords;
-    let primaryName = basicInfo?.company_name || candidates[0] || companyName;
-    let needsDisambiguation = candidates.length > 3;
+    let primaryName = (exactMatch && exactInputLower === exactMatch.toLowerCase()) ? exactMatch : (basicInfo?.company_name || candidates[0] || companyName);
+    
+    // Only require disambiguation if multiple candidates exist and the user did not explicitly select an exact candidate
+    const isExplicitSelection = candidates.some(c => c.toLowerCase() === exactInputLower);
+    let needsDisambiguation = candidates.length > 1 && !isExplicitSelection;
 
-    if (exactMatch) {
+    if (exactMatch && (candidates.length === 1 || isExplicitSelection)) {
       primaryName = exactMatch;
       const exactFiltered = bankRecords.filter(r => r.company_name.toLowerCase() === exactMatch.toLowerCase());
       if (exactFiltered.length > 0) {
         selectedBankRecords = exactFiltered;
       }
+      basicInfo = basicRows.find((row) => row.company_name.toLowerCase() === exactMatch.toLowerCase()) || basicInfo;
+      financialInfo = financialRows.find((row) => row.company_name.toLowerCase() === exactMatch.toLowerCase()) || financialInfo;
       needsDisambiguation = false;
     }
-
-    // Enrich missing basic or financial information automatically!
-    const synthesized = synthesizeCompanyDetails(primaryName, selectedBankRecords, basicInfo, financialInfo);
-    basicInfo = synthesized.basicInfo;
-    financialInfo = synthesized.financialInfo;
 
     const overview = buildOverview(basicInfo, financialInfo);
 
@@ -268,15 +355,115 @@ export async function searchCompany(companyName: string): Promise<CompanySearchR
       financialInfo,
       bankRecords: selectedBankRecords,
       candidates,
+      candidateOptions,
       needsDisambiguation,
     };
-  } finally {
-    client.release();
+  } catch (err: any) {
+    console.error("searchCompany database error:", err?.message || err);
+    return { found: false, primaryName: companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], candidates: [], candidateOptions: [], needsDisambiguation: false };
   }
+}
+
+/** Small deterministic typo matcher over verified company names. */
+export async function findCompanySuggestions(input: string, limit = 3): Promise<CompanyCandidate[]> {
+  const normalized = String(input || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (normalized.length < 3) return [];
+
+  const distance = (a: string, b: string): number => {
+    const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      let previous = row[0]++;
+      for (let j = 1; j <= b.length; j++) {
+        const saved = row[j];
+        row[j] = Math.min(row[j] + 1, row[j - 1] + 1, previous + (a[i - 1] === b[j - 1] ? 0 : 1));
+        previous = saved;
+      }
+    }
+    return row[b.length];
+  };
+
+  const stripSuffixes = (str: string) =>
+    str.toLowerCase()
+      .replace(/\b(limited|pvt|private|technologies|services|solutions|consulting|india|bpm|corporation|corp|ltd)\b/gi, "")
+      .replace(/[^a-z0-9]/g, "")
+      .trim();
+
+  const candidateMap = new Map<string, { id: string; name: string; score: number }>();
+
+  // 1. Check known canonical companies first for instant high-confidence matching
+  const KNOWN_CANONICAL = [
+    { key: "infosys", display: "Infosys" },
+    { key: "tata", display: "Tata" },
+    { key: "tcs", display: "TCS" },
+    { key: "wipro", display: "Wipro" },
+    { key: "cognizant", display: "Cognizant" },
+    { key: "accenture", display: "Accenture" },
+    { key: "capgemini", display: "Capgemini" },
+    { key: "reliance", display: "Reliance" },
+    { key: "mahindra", display: "Mahindra" },
+    { key: "hcl", display: "HCL Technologies" },
+  ];
+
+  for (const item of KNOWN_CANONICAL) {
+    const d = distance(normalized, item.key);
+    const maxAllowed = Math.max(2, Math.floor(normalized.length * 0.4));
+    // Only suggest as typo if d > 0 (not exact match)
+    if (d > 0 && d <= maxAllowed) {
+      candidateMap.set(item.display.toLowerCase(), { id: item.key, name: item.display, score: d });
+    }
+  }
+
+  // 2. Query company_records prefix match in DB
+  const prefix = normalized.slice(0, 2);
+  let result = await pool.query(
+    `SELECT MIN(id)::text AS id, company_name
+       FROM company_records
+      WHERE LOWER(company_name) LIKE $1
+      GROUP BY company_name
+      LIMIT 500`,
+    [`${prefix}%`]
+  ).catch(() => ({ rows: [] }));
+
+  if (!result.rows || result.rows.length === 0) {
+    result = await pool.query(
+      `SELECT MIN(id)::text AS id, company_name
+         FROM bank_company_data
+        WHERE LOWER(company_name) LIKE $1
+        GROUP BY company_name
+        LIMIT 500`,
+      [`${prefix}%`]
+    ).catch(() => ({ rows: [] }));
+  }
+
+  result.rows.forEach((row: any) => {
+    const name = String(row.company_name || "").trim();
+    const core = stripSuffixes(name);
+    if (!core || core.length < 3) return;
+
+    const d = distance(normalized, core);
+    const maxAllowed = Math.max(2, Math.floor(normalized.length * 0.4));
+    if (d > 0 && d <= maxAllowed) {
+      const displayName = name.length > 30 ? (core.charAt(0).toUpperCase() + core.slice(1)) : name;
+      const key = displayName.toLowerCase();
+      if (!candidateMap.has(key) || candidateMap.get(key)!.score > d) {
+        candidateMap.set(key, { id: String(row.id || name), name: displayName, score: d });
+      }
+    }
+  });
+
+  return Array.from(candidateMap.values())
+    .sort((a, b) => a.score - b.score || a.name.length - b.name.length)
+    .slice(0, limit)
+    .map(({ id, name }) => ({ id, name, source: "database" as const }));
 }
 
 /**
  * Format complete Company Search Result into clean, structured Markdown
+ * Shows 4 sections in ONE response:
+ * 1. Company Overview
+ * 2. Basic Information
+ * 3. Financial Information
+ * 4. Bank / Employer Records
  */
 export function formatCompanyResponse(compRes: CompanySearchResult): string {
   const lines: string[] = [];
@@ -284,56 +471,68 @@ export function formatCompanyResponse(compRes: CompanySearchResult): string {
   lines.push(`### 🏢 Corporate Intelligence: **${compRes.primaryName}**`);
   lines.push("");
 
+  // 1. COMPANY OVERVIEW (3-4 lines)
   if (compRes.overview) {
-    lines.push(`${compRes.overview}`);
+    lines.push(`#### 📋 Company Overview`);
+    lines.push(compRes.overview);
     lines.push("");
   }
 
-  // 1. BASIC INFORMATION BLOCK
+  // 2. BASIC INFORMATION BLOCK (only real available data)
   if (compRes.basicInfo) {
     const b = compRes.basicInfo;
-    lines.push(`#### 📌 Basic Information`);
-    lines.push(`| Property | Details |`);
-    lines.push(`| :--- | :--- |`);
-    lines.push(`| **Corporate Name** | ${b.company_name || compRes.primaryName} |`);
-    lines.push(`| **CIN Number** | \`${b.cin || "N/A"}\` |`);
-    lines.push(`| **Industry / Sector** | ${b.industry || "N/A"} |`);
-    lines.push(`| **Listing Status** | ${b.listing_status || "N/A"} |`);
-    lines.push(`| **Incorporation Date** | ${b.incorporation_date || "N/A"} |`);
-    lines.push(`| **Headquarters** | ${b.address || "India"} |`);
-    lines.push(`| **Country** | ${b.country || "India"} |`);
-    if (b.website) {
-      lines.push(`| **Official Website** | ${b.website} |`);
+    const rows = [
+      ["Corporate Name", b.company_name || compRes.primaryName],
+      ["CIN Number", b.cin],
+      ["Industry / Sector", b.industry],
+      ["Listing Status", b.listing_status],
+      ["Incorporation Date", b.incorporation_date],
+      ["Headquarters", b.address],
+      ["Country", b.country],
+      ["Official Website", b.website],
+    ].filter(([, value]) => Boolean(String(value || "").trim()) && !/undefined|null|n\/a/i.test(String(value)));
+
+    if (rows.length > 0) {
+      lines.push(`#### 📌 Basic Information`);
+      lines.push(`| Property | Details |`);
+      lines.push(`| :--- | :--- |`);
+      rows.forEach(([label, value]) => lines.push(`| **${label}** | ${value} |`));
+      lines.push("");
     }
-    lines.push("");
   }
 
-  // 2. FINANCIAL INFORMATION BLOCK
+  // 3. FINANCIAL INFORMATION BLOCK (only real available data)
   if (compRes.financialInfo) {
     const f = compRes.financialInfo;
-    lines.push(`#### 📊 Financial & Operational Profile`);
-    lines.push(`| Metric | Value / Status |`);
-    lines.push(`| :--- | :--- |`);
-    lines.push(`| **Workforce / Employees** | ${f.employees || "N/A"} |`);
-    lines.push(`| **Annual Turnover** | ${f.turnover || "N/A"} |`);
-    lines.push(`| **Financial Performance** | ${f.profit_status || "N/A"} |`);
-    lines.push(`| **Revenue & Cash Flow** | ${f.profit_history || "N/A"} |`);
-    lines.push(`| **Last AGM Date** | ${f.last_agm || "N/A"} |`);
-    lines.push("");
+    const rows = [
+      ["Workforce / Employees", f.employees],
+      ["Annual Turnover", f.turnover],
+      ["Financial Performance", f.profit_status],
+      ["Revenue & Cash Flow", f.profit_history],
+      ["Last AGM Date", f.last_agm],
+    ].filter(([, value]) => Boolean(String(value || "").trim()) && !/undefined|null|n\/a/i.test(String(value)));
+
+    if (rows.length > 0) {
+      lines.push(`#### 📊 Financial Information`);
+      lines.push(`| Metric | Value / Status |`);
+      lines.push(`| :--- | :--- |`);
+      rows.forEach(([label, value]) => lines.push(`| **${label}** | ${value} |`));
+      lines.push("");
+    }
   }
 
-  // 3. BANK APPROVED CATEGORY RATINGS BLOCK
+  // 4. BANK / EMPLOYER RECORDS BLOCK
   const records = compRes.bankRecords || [];
   const uniqueRecords = records.filter((r: any, idx: number, self: any[]) =>
     idx === self.findIndex((t: any) => t.bank_name?.toLowerCase() === r.bank_name?.toLowerCase())
   );
 
   if (uniqueRecords.length > 0) {
-    lines.push(`#### 🏦 Master Bank Category Ratings (${uniqueRecords.length} Partner Banks)`);
+    lines.push(`#### 🏦 Bank / Employer Records (${uniqueRecords.length} Partner Banks)`);
     lines.push(`| Sr No | Bank Name | Category Rating | Remarks / Info |`);
     lines.push(`| :---: | :--- | :--- | :--- |`);
     uniqueRecords.slice(0, 30).forEach((r: any, idx: number) => {
-      lines.push(`| ${idx + 1} | **${r.bank_name}** | \`${r.company_category || 'Approved'}\` | ${r.other_info || 'Corporate Partner'} |`);
+      lines.push(`| ${idx + 1} | **${r.bank_name}** | ${r.company_category || "Approved"} | ${r.other_info || ""} |`);
     });
     lines.push("");
   }

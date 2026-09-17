@@ -4039,5 +4039,72 @@ body:has(.chat-page) {
     color: #e0f2fe;
 }
 
+/* Company Selection & Confirmation Flow Buttons */
+.company-selection-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.625rem;
+    margin-bottom: 0.5rem;
+}
 
+.company-selection-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.25;
+    border-radius: 0.5rem;
+    border: 1px solid var(--accent);
+    background: var(--surface);
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    text-align: left;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
 
+.company-selection-button:hover {
+    background: var(--accent);
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.company-selection-button.secondary {
+    border-color: var(--border-strong);
+    background: var(--surface-2);
+    color: var(--ink-soft);
+}
+
+.company-selection-button.secondary:hover {
+    border-color: var(--danger);
+    background: var(--danger-soft);
+    color: var(--danger);
+    transform: translateY(-1px);
+}
+
+[data-bs-theme="dark"] .company-selection-button {
+    background: rgba(94, 106, 210, 0.1);
+    border-color: rgba(94, 106, 210, 0.35);
+    color: #a5b4fc;
+}
+
+[data-bs-theme="dark"] .company-selection-button:hover {
+    background: var(--accent);
+    color: #ffffff;
+}
+
+[data-bs-theme="dark"] .company-selection-button.secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .company-selection-button.secondary:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+}

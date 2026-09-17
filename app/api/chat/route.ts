@@ -112,6 +112,16 @@ export async function POST(req: NextRequest) {
       body?.model
         ? String(body.model).trim()
         : undefined;
+    const selectionType = body?.company_selection?.type;
+    const companySelectionAction =
+      body?.company_selection && typeof body.company_selection === "object" &&
+      (selectionType === "confirm" || selectionType === "retry" || selectionType === "select")
+      ? {
+          type: selectionType,
+          companyId: body.company_selection.company_id,
+          companyName: body.company_selection.company_name,
+        }
+      : undefined;
 
     /* ---------------------------------------------------------------------- */
     /* Validate request                                                       */
@@ -177,6 +187,7 @@ export async function POST(req: NextRequest) {
       conversationId: conversationIdStr,
       conversationHistory,
       model: requestedModel,
+      companySelectionAction,
     });
 
     /* ---------------------------------------------------------------------- */
