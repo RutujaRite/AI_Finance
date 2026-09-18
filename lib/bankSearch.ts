@@ -140,6 +140,72 @@ function likeValue(
 }
 
 /* =====================================================
+ * BRANCH DISCOVERY
+ * ===================================================== */
+
+/**
+ * Searches distinct branch locations in PostgreSQL for a given bank and city/location.
+ */
+export async function findBankBranches(
+  bankName: string,
+  cityOrLocation: string
+): Promise<string[]> {
+  const client = await pool.connect();
+  try {
+    const normBank = bankName.replace(/bank|finance|limited|ltd/gi, "").trim();
+    const normCity = cityOrLocation.trim();
+    if (!normBank || !normCity) return [];
+
+    const res = await client.query(
+      `SELECT DISTINCT COALESCE(NULLIF(branch, ''), location) as branch_name
+       FROM bank_managers
+       WHERE LOWER(COALESCE(bank_name, '')) LIKE LOWER($1) ESCAPE '\\'
+         AND (
+           LOWER(COALESCE(location, '')) LIKE LOWER($2) ESCAPE '\\'
+           OR LOWER(COALESCE(city, '')) LIKE LOWER($2) ESCAPE '\\'
+           OR LOWER(COALESCE(district, '')) LIKE LOWER($2) ESCAPE '\\'
+           OR LOWER(COALESCE(state, '')) LIKE LOWER($2) ESCAPE '\\'
+         )
+         AND COALESCE(NULLIF(branch, ''), location) IS NOT NULL
+       ORDER BY branch_name ASC`,
+      [`%${escapeLikeValue(normBank)}%`, `%${escapeLikeValue(normCity)}%`]
+    );
+
+    const rawBranches = res.rows
+      .map((r: any) => String(r.branch_name || "").trim())
+      .filter((b: string) => b.length > 0);
+
+    // If more specific branch names exist (e.g. "KOLHAPUR - DASARA CHOWK"),
+    // filter out the pure city name (e.g. "Kolhapur")
+    const specificBranches = rawBranches.filter((b) => {
+      const bLower = b.toLowerCase().replace(/[^\\w]/g, " ").trim();
+      const cLower = normCity.toLowerCase().replace(/[^\\w]/g, " ").trim();
+      return bLower !== cLower;
+    });
+
+    const candidates = specificBranches.length > 0 ? specificBranches : rawBranches;
+
+    // Deduplicate case-insensitively
+    const seen = new Set<string>();
+    const unique: string[] = [];
+    for (const b of candidates) {
+      const key = b.toLowerCase().replace(/\\s+/g, " ").trim();
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(b);
+      }
+    }
+
+    return unique;
+  } catch (error) {
+    console.error("[bankSearch] findBankBranches error:", error);
+    return [];
+  } finally {
+    client.release();
+  }
+}
+
+/* =====================================================
  * BANK MANAGER SEARCH
  * ===================================================== */
 
@@ -234,7 +300,7 @@ export async function searchBankManager(
         district,
         state,
         branch,
-        branch_code,
+        NULL AS branch_code,
         role,
         employee_code,
         extra_info,
@@ -661,6 +727,45 @@ export function formatManagers(
         `${empCode} |\n`;
     }
   );
+
+  return table.trim();
+}
+
+/**
+ * Display bank managers in a clean tabular format:
+ * | Manager Name | Bank | Branch | City | Phone | Email | Employee ID |
+ * Only displays fields that actually exist in the DB without inventing missing values.
+ */
+export function formatBankManagersTable(managers: BankManagerRecord[]): string {
+  if (!managers || managers.length === 0) {
+    return "";
+  }
+
+  let table = `| Manager Name | Bank | Branch | City | Phone | Email | Employee ID |\n`;
+  table += `| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+
+  for (const mgr of managers) {
+    const managerName = mgr.name
+      ? (mgr.role ? `**${mgr.name}** *(${mgr.role})*` : `**${mgr.name}**`)
+      : "—";
+    const bank = mgr.bank_name || "—";
+    const branch = mgr.branch || mgr.location || "—";
+    const city = mgr.city || (mgr.location && mgr.location !== mgr.branch ? mgr.location : "—");
+    const phone =
+      mgr.phone && mgr.phone !== "N/A" && mgr.phone !== "#ERROR!"
+        ? `\`${mgr.phone}\``
+        : "—";
+    const email =
+      mgr.email && mgr.email !== "N/A" && !mgr.email.includes("example.com")
+        ? `\`${mgr.email}\``
+        : "—";
+    const empId =
+      mgr.employee_code && mgr.employee_code !== "N/A"
+        ? `\`${mgr.employee_code}\``
+        : "—";
+
+    table += `| ${managerName} | ${bank} | ${branch} | ${city} | ${phone} | ${email} | ${empId} |\n`;
+  }
 
   return table.trim();
 }

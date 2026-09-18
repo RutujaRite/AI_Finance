@@ -1,7 +1,7 @@
 // lib/ai/agent.ts
 
 import pool from "@/lib/db";
-import { searchBankManager, formatManagers } from "@/lib/bankSearch";
+import { searchBankManager, formatManagers, findBankBranches, formatBankManagersTable, BankManagerRecord } from "@/lib/bankSearch";
 import { searchCompany, formatCompanyResponse, findCompanySuggestions, CompanyCandidate } from "@/lib/companySearch";
 import {
   processEligibilityFlow,
@@ -27,6 +27,15 @@ import {
   applyProfileUpdateAndRecalculate,
   extractCompanyCandidateFromText,
   consolidateApplicantProfileFromHistory,
+  isKnownBankName,
+  resolveBankName,
+  resolvePincodeToCity,
+  generatePreliminaryRecommendation,
+  extractBankBranchLocationParams,
+  reconcileBankManagerEntities,
+  BankManagerSearchEntities,
+  PostEligibilityStage,
+  isSameBank,
 } from "@/lib/dynamicEligibilityEngine";
 import { resolveCompanyCategories } from "@/lib/companyCategoryResolver";
 import { classifyIntentWithLLM, IntentClassificationResult, ExtractedEntities, cleanLlmJsonOutput } from "@/lib/ai/intentClassifier";
@@ -1399,15 +1408,15 @@ async function runToolCallingAgent(
     let fallbackDataObj: any = {};
     // Minimal filter extraction without hardcoded city lists:
     // - Extract pincode if present as 6-digit number
-    // - Extract bank name via the existing regex pattern
+    // - Extract bank name generically via resolveBankName
     const filters: { bank_name?: string; city?: string; pincode?: string; } = {};
     const pincodeMatch = userMessage.match(/\b(\d{6})\b/);
     if (pincodeMatch) {
       filters.pincode = pincodeMatch[1];
     }
-    const bankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|tata|poonawalla/i.exec(userMessage);
-    if (bankMatch) {
-      filters.bank_name = bankMatch[0].toUpperCase();
+    const resolvedBankFallback = resolveBankName(userMessage);
+    if (resolvedBankFallback) {
+      filters.bank_name = resolvedBankFallback.bankName;
     }
 
     if (isManagerQuery) {
@@ -1918,8 +1927,8 @@ async function handleGeneralInformationIntent(
     /manager|contact|phone|mobile|email|branch\s*head|\basm\b|\brsm\b|\bzsm\b|\brh\b|\brm\b/i.test(norm)
   ) {
     const filters: { bank_name?: string; city?: string; pincode?: string } = {};
-    const bankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|tata|poonawalla/i.exec(userMessage);
-    if (bankMatch) filters.bank_name = bankMatch[0].toUpperCase();
+    const resolvedBank = resolveBankName(userMessage);
+    if (resolvedBank) filters.bank_name = resolvedBank.bankName;
     if (classification.extracted?.city) filters.city = classification.extracted.city;
     if (classification.extracted?.targetBank) filters.bank_name = classification.extracted.targetBank;
 
@@ -2473,31 +2482,180 @@ async function executeIncraaxSearch(
   return { reply };
 }
 
+function extractPincodeFromManager(mgr: BankManagerRecord, userPincode?: string): string {
+  const extra = mgr.extra_info as Record<string, any> | null;
+  if (extra?.pincode) return String(extra.pincode);
+  if (extra?.pin) return String(extra.pin);
+  if (extra?.pin_code) return String(extra.pin_code);
+  const locMatch = String(mgr.location || "").match(/\b([1-9]\d{5})\b/);
+  if (locMatch) return locMatch[1];
+  const branchMatch = String(mgr.branch || "").match(/\b([1-9]\d{5})\b/);
+  if (branchMatch) return branchMatch[1];
+  const extraStr = JSON.stringify(extra || "");
+  const extraMatch = extraStr.match(/\b([1-9]\d{5})\b/);
+  if (extraMatch) return extraMatch[1];
+  if (userPincode && /\b([1-9]\d{5})\b/.test(userPincode)) {
+    return userPincode;
+  }
+  return "";
+}
+
+export function formatDynamicBankManagersTable(
+  managers: BankManagerRecord[],
+  userPincode?: string
+): string {
+  if (!managers || managers.length === 0) {
+    return "";
+  }
+
+  const hasPincode = managers.some((m) => Boolean(extractPincodeFromManager(m, userPincode)));
+  const hasContact = managers.some(
+    (m) => m.phone && m.phone !== "N/A" && m.phone !== "#ERROR!" && m.phone.trim() !== ""
+  );
+  const hasEmail = managers.some(
+    (m) => m.email && m.email !== "N/A" && !m.email.includes("example.com") && m.email.trim() !== ""
+  );
+  const hasEmployeeNo = managers.some(
+    (m) => m.employee_code && m.employee_code !== "N/A" && m.employee_code.trim() !== ""
+  );
+
+  const headers: string[] = ["Bank", "Branch", "City"];
+  if (hasPincode) headers.push("Pincode");
+  headers.push("Manager Name");
+  if (hasContact) headers.push("Contact");
+  if (hasEmail) headers.push("Email");
+  if (hasEmployeeNo) headers.push("Employee No.");
+
+  let table = `| ${headers.join(" | ")} |\n`;
+  table += `| ${headers.map(() => ":---").join(" | ")} |\n`;
+
+  for (const mgr of managers) {
+    const row: string[] = [];
+    row.push(mgr.bank_name ? `**${mgr.bank_name}**` : "—");
+    row.push(mgr.branch || mgr.location || "—");
+    const cityVal = mgr.city || (mgr.location && mgr.location !== mgr.branch ? mgr.location : "—");
+    row.push(cityVal || "—");
+    if (hasPincode) {
+      const pin = extractPincodeFromManager(mgr, userPincode);
+      row.push(pin ? `\`${pin}\`` : "—");
+    }
+    const nameVal = mgr.name
+      ? (mgr.role ? `**${mgr.name}** *(${mgr.role})*` : `**${mgr.name}**`)
+      : "—";
+    row.push(nameVal);
+    if (hasContact) {
+      const phoneVal =
+        mgr.phone && mgr.phone !== "N/A" && mgr.phone !== "#ERROR!" && mgr.phone.trim() !== ""
+          ? `\`${mgr.phone}\``
+          : "—";
+      row.push(phoneVal);
+    }
+    if (hasEmail) {
+      const emailVal =
+        mgr.email && mgr.email !== "N/A" && !mgr.email.includes("example.com") && mgr.email.trim() !== ""
+          ? `\`${mgr.email}\``
+          : "—";
+      row.push(emailVal);
+    }
+    if (hasEmployeeNo) {
+      const empVal =
+        mgr.employee_code && mgr.employee_code !== "N/A" && mgr.employee_code.trim() !== ""
+          ? `\`${mgr.employee_code}\``
+          : "—";
+      row.push(empVal);
+    }
+    table += `| ${row.join(" | ")} |\n`;
+  }
+
+  return table.trim();
+}
+
 /**
  * 8. Tool Executor: search_bank_managers
  */
 async function executeSearchBankManagers(
-  args: { bank_name?: string; city?: string; pincode?: string; role?: string },
+  args: { bank_name?: string; city?: string; pincode?: string; role?: string; branch?: string },
   userMessage: string,
   isEligibleFlowActive?: boolean,
-  eligibilitySession?: any
+  eligibilitySession?: any,
+  conversationId?: string
 ): Promise<AgentResult> {
-  const filters: { bank_name?: string; city?: string; pincode?: string } = {};
-  const bankMatch = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|tata|poonawalla/i.exec(userMessage);
-  if (args.bank_name) filters.bank_name = args.bank_name.toUpperCase();
-  else if (bankMatch) filters.bank_name = bankMatch[0].toUpperCase();
-  if (args.city) filters.city = args.city;
-  if (args.pincode) filters.pincode = args.pincode;
+  const previousEntities: BankManagerSearchEntities = {
+    bank_name: eligibilitySession?.lastBankManagerSearch?.bank_name || eligibilitySession?.chosenBank || undefined,
+    city: eligibilitySession?.lastBankManagerSearch?.city || eligibilitySession?.city || eligibilitySession?.location || undefined,
+    branch: eligibilitySession?.lastBankManagerSearch?.branch || eligibilitySession?.branch || undefined,
+    pincode: eligibilitySession?.lastBankManagerSearch?.pincode || eligibilitySession?.pincode || undefined,
+    location: eligibilitySession?.lastBankManagerSearch?.location || eligibilitySession?.location || undefined,
+    role: eligibilitySession?.lastBankManagerSearch?.role || undefined,
+  };
 
-  const bankData = await searchBankManager({ ...filters, query: userMessage });
+  const extractedParams = extractBankBranchLocationParams(
+    userMessage,
+    args.bank_name || previousEntities.bank_name,
+    undefined,
+    eligibilitySession?.expectedField,
+    previousEntities.city
+  );
+
+  if (args.bank_name && !extractedParams.bankName) extractedParams.bankName = args.bank_name;
+  if (args.city && !extractedParams.city) extractedParams.city = args.city;
+  if (args.pincode && !extractedParams.pincode) extractedParams.pincode = args.pincode;
+  if (args.branch && !extractedParams.branch) extractedParams.branch = args.branch;
+  if (args.role && !extractedParams.role) extractedParams.role = args.role;
+
+  const finalEntities = reconcileBankManagerEntities(
+    previousEntities,
+    extractedParams,
+    {
+      expectedField: eligibilitySession?.expectedField,
+      isPriorSearchCompleted: Boolean(eligibilitySession?.lastBankManagerSearch || eligibilitySession?.postEligibilityStage === "BANK_MANAGER_RESULTS"),
+    }
+  );
+
+  const filters: { bank_name?: string; city?: string; pincode?: string; branch_name?: string; role?: string; query?: string } = {};
+  if (finalEntities.bank_name) filters.bank_name = finalEntities.bank_name;
+  if (finalEntities.city) filters.city = finalEntities.city;
+  if (finalEntities.branch) filters.branch_name = finalEntities.branch;
+  if (finalEntities.role) filters.role = finalEntities.role;
+
+  // Never generate search query from stale state when latest message contains a correction
+  const finalQuery = [finalEntities.bank_name, finalEntities.branch, finalEntities.city || finalEntities.pincode].filter(Boolean).join(" ");
+  filters.query = finalQuery || undefined;
+
+  const bankData = await searchBankManager(filters);
+
+  if (conversationId) {
+    await saveEligibilityState(conversationId, {
+      ...(eligibilitySession || {}),
+      chosenBank: finalEntities.bank_name,
+      city: finalEntities.city,
+      location: finalEntities.location || finalEntities.city,
+      branch: finalEntities.branch,
+      pincode: finalEntities.pincode,
+      postEligibilityStage: bankData?.length ? "BANK_MANAGER_RESULTS" : "BANK_MANAGER_DETAILS_INPUT",
+      managerFound: Boolean(bankData?.length),
+      lastBankManagerSearch: finalEntities,
+      updatedAt: Date.now(),
+    } as any);
+  }
+
   if (bankData?.length) {
-    let reply = formatManagers(bankData, userMessage);
+    let reply = formatDynamicBankManagersTable(bankData, finalEntities.pincode);
+    if (!reply) {
+      reply = formatBankManagersTable(bankData);
+    }
+    if (!reply) {
+      reply = formatManagers(bankData, finalQuery);
+    }
+    const locHeader = [finalEntities.branch, finalEntities.city || finalEntities.pincode].filter(Boolean).join(", ");
     return {
-      reply,
+      reply: `### 👔 Official Bank Manager Directory: **${finalEntities.bank_name || "Partner Bank"}**${locHeader ? ` (${locHeader})` : ""}\n\n${reply}`,
       bankData,
     };
   }
-  let reply = `No official bank manager records found matching "${userMessage}". Please check the bank name, city, or branch.`;
+
+  const queryLoc = [finalEntities.branch, finalEntities.city || finalEntities.pincode].filter(Boolean).join(" in ");
+  const reply = `No official bank manager records found matching **${finalEntities.bank_name || ""}**${queryLoc ? ` (${queryLoc})` : ""}. Please check the bank name, city, or branch.`;
   return {
     reply,
     bankData: [],
@@ -3311,9 +3469,21 @@ async function handleCompanySelectionFlow(
   const isCompanyStep = session?.expectedField === "companyName" || (session?.missingFields || []).includes("companyName");
   const trimmedInput = input.trim();
 
-  // If already in ELIGIBILITY_INPUT stage and no explicit company action or explicit company phrase, continue eligibility
+  // If already in ELIGIBILITY_INPUT stage or evaluation is completed and no explicit company action or explicit company phrase, continue flow
   const isExplicitCompanyPhrase = /^(?:(?:i\s+(?:work|am\s+working)\s+(?:at|in)|(?:my\s+)?(?:employer|company)\s+is|(?:work|working|employed)\s+(?:at|in|by)|employer\s*[:=-]|company\s*[:=-])|(?:change|update|correct)\s+(?:my\s+)?(?:company|employer))\b/i.test(trimmedInput);
-  if (!action && flow?.stage === "ELIGIBILITY_INPUT" && !isCompanyStep && !isExplicitCompanyPhrase) {
+
+  const isBankMsg = isKnownBankName(trimmedInput) || Boolean(resolveBankName(trimmedInput, session?.eligible_banks));
+  const isPostEvalOrBankFlow = Boolean(
+    session?.hasCompletedEvaluation ||
+    session?.evaluationCompleted ||
+    session?.expectedField === "chosenBank" ||
+    session?.expectedField === "cityOrPincode" ||
+    session?.expectedField === "branchSelection" ||
+    session?.chosenBank ||
+    (session?.eligible_banks && session.eligible_banks.length > 0)
+  );
+
+  if (!action && (isBankMsg || isPostEvalOrBankFlow || (flow?.stage === "ELIGIBILITY_INPUT" && !isCompanyStep)) && !isExplicitCompanyPhrase) {
     return null;
   }
 
@@ -3434,7 +3604,14 @@ async function handleCompanySelectionFlow(
 
   // 4. Understand and process new company input
   const extracted = extractCompanyCandidateFromText(input);
-  const isStandaloneCompanyName = !isCompanyStep && !flow && extracted && !isFinancialOrProfileInput(trimmedInput) && !isInvalidCompanyName(trimmedInput) && trimmedInput.split(/\s+/).length <= 5;
+  const isCompanyAlreadyConfirmed = Boolean(
+    session?.companyFlow?.stage === "ELIGIBILITY_INPUT" ||
+    session?.companyFlow?.selectedCompanyName ||
+    session?.selectedCompanyName ||
+    session?.hasCompletedEvaluation ||
+    session?.evaluationCompleted
+  );
+  const isStandaloneCompanyName = !isCompanyAlreadyConfirmed && !isCompanyStep && !flow && extracted && !isFinancialOrProfileInput(trimmedInput) && !isInvalidCompanyName(trimmedInput) && !isKnownBankName(trimmedInput) && !Boolean(resolveBankName(trimmedInput, session?.eligible_banks)) && trimmedInput.split(/\s+/).length <= 5;
 
   if (!extracted || (!isCompanyStep && !flow && !isExplicitCompanyPhrase && !isStandaloneCompanyName)) {
     return null;
@@ -3622,6 +3799,63 @@ async function handleCompanySelectionFlow(
 }
 
 /**
+ * Checks for administrative credential inquiries or explicit/unsafe content.
+ * Guarantees zero credential exposure and strictly prevents inappropriate requests
+ * from routing into financial/banking tools.
+ */
+function checkSecurityOrSafetyGuard(message: string): { blocked: boolean; reply?: string } {
+  const norm = message.toLowerCase().trim();
+
+  // 1. Admin / Credential / Secrets inquiry
+  const isCredentialInquiry =
+    /(?:admin|root|superuser|database|db|postgres|system|server|backend)\s+(?:password|passwd|creds?|credentials?|secret|token|api\s*key)/i.test(norm) ||
+    /(?:what\s+is|give\s+me|tell\s+me|show\s+me|reveal|share|get|provide)\s+(?:the\s+)?(?:admin|root|database|db|postgres)?\s*(?:password|credentials?|login\s+credentials?|api\s*key|jwt|secret\s*key|auth\s*token)/i.test(norm) ||
+    /(?:admin\s+password|login\s+credentials|api\s*key|db\s*password|database\s*url|jwt\s*secret)\b/i.test(norm);
+
+  if (isCredentialInquiry) {
+    return {
+      blocked: true,
+      reply: "🔒 **Security Notice**: CreditWise AI strictly protects system security and cannot disclose administrative credentials, passwords, API keys, database connection secrets, or authentication tokens. To manage or reset your account login, please use the official login or profile settings page.",
+    };
+  }
+
+  // 2. Unsafe / Explicit / Sexual / Harassment content
+  const isExplicitOrUnsafe =
+    /\b(?:porn|pornography|erotic|nsfw|sex|sexual|nude|nudity|hardcore|blowjob|vagina|penis|boobs|masturbat\w*)\b/i.test(norm) ||
+    /\b(?:hack|ddos|exploit|sql\s*injection|drop\s+database|truncate\s+table)\b/i.test(norm);
+
+  if (isExplicitOrUnsafe) {
+    return {
+      blocked: true,
+      reply: "⚠️ I cannot fulfill this request. As CreditWise AI, I assist strictly with loan eligibility assessment, banking policies, EMI calculations, and verified employer evaluations. Please let me know how I can help with your loan or financial needs.",
+    };
+  }
+
+  return { blocked: false };
+}
+
+/**
+ * Answers common banking & credit questions accurately when user asks mid-conversation
+ * or when offline/fallback.
+ */
+function answerCommonBankingQuestion(userMessage: string): string | null {
+  const norm = userMessage.toLowerCase().trim();
+  if (/\b(?:what\s+is\s+emi|emi\s*mean(?:ing)?|define\s+emi|explain\s+emi|how\s+is\s+emi\s+calculated)\b/i.test(norm)) {
+    return "An **EMI (Equated Monthly Installment)** is a fixed payment amount made by a borrower to a lender on a specified date each calendar month. Each EMI repays both interest and principal over your chosen tenure until the loan is fully settled.";
+  }
+  if (/\b(?:what\s+is\s+foir|foir\s*mean(?:ing)?|define\s+foir|explain\s+foir)\b/i.test(norm)) {
+    return "**FOIR (Fixed Obligation to Income Ratio)** is the percentage of your monthly take-home salary committed toward servicing debt (existing EMIs and credit card dues). Partner banks use FOIR to ensure loan affordability, generally capping it between 40% and 65%.";
+  }
+  if (/\b(?:what\s+is\s+cibil|cibil\s*mean(?:ing)?|credit\s*score\s*mean(?:ing)?|why.*cibil|check.*affect.*cibil)\b/i.test(norm)) {
+    return "A **CIBIL Score** is a 3-digit score (ranging from 300 to 900) representing your credit history and repayment discipline. A score of 700–750+ qualifies for preferential interest rates and faster approval. Checking your eligibility on CreditWise AI is an indicative evaluation that does not impact your credit score.";
+  }
+  if (/\b(?:reducing\s*(?:balance)?\s*rate|flat\s*rate\s*vs\s*reducing)\b/i.test(norm)) {
+    return "In a **reducing balance interest rate**, interest is calculated each month only on the remaining outstanding principal balance (not the original borrowed amount), resulting in lower total interest costs compared to a flat interest rate.";
+  }
+  return null;
+}
+
+/**
  * Main CreditWise AI Central Agent.
  * Fully LLM-driven for conversation understanding.
  * Analyzes current message together with multi-turn conversation context.
@@ -3640,6 +3874,12 @@ export async function runCentralAgent(opts: {
   let { conversationHistory } = opts;
   const userMessage = String(message || "").trim();
   const norm = userMessage.toLowerCase().replace(/\s+/g, " ").trim();
+
+  // 0. Early Security & Safety Guard (Credentials, Secrets, Explicit Content)
+  const securityCheck = checkSecurityOrSafetyGuard(userMessage);
+  if (securityCheck.blocked) {
+    return { reply: securityCheck.reply || "⚠️ Request cannot be processed." };
+  }
 
   // 1. Ensure conversationHistory represents prior dialogue turns
   if (!conversationHistory || conversationHistory.length === 0) {
@@ -3667,7 +3907,7 @@ export async function runCentralAgent(opts: {
     }
   }
 
-  // Ensure conversationHistory represents strictly prior dialogue turns
+  // Ensure conversationHistory represents strictly prior dialogue turns and bound to recent turns
   if (conversationHistory && conversationHistory.length > 0) {
     const lastItem = conversationHistory[conversationHistory.length - 1];
     if (
@@ -3675,6 +3915,9 @@ export async function runCentralAgent(opts: {
       lastItem.content.trim() === userMessage.trim()
     ) {
       conversationHistory = conversationHistory.slice(0, -1);
+    }
+    if (conversationHistory.length > 10) {
+      conversationHistory = conversationHistory.slice(-10);
     }
   }
 
@@ -3711,11 +3954,13 @@ export async function runCentralAgent(opts: {
     eligibilitySession?.evaluationCompleted ||
     eligibilitySession?.hasCompletedEvaluation ||
     eligibilitySession?.expectedField === "chosenBank" ||
-    (eligibilitySession?.eligible_banks && eligibilitySession.eligible_banks.length > 0)
+    (eligibilitySession?.eligible_banks && eligibilitySession.eligible_banks.length > 0) ||
+    ((eligibilitySession as any)?.evaluatedBanks && (eligibilitySession as any).evaluatedBanks.length > 0) ||
+    Boolean((eligibilitySession as any)?.evaluationReport)
   );
-  const eligibleBanks: string[] = eligibilitySession?.eligible_banks || [];
+  const eligibleBanks: string[] = eligibilitySession?.eligible_banks || (eligibilitySession as any)?.evaluatedBanks || [];
   const topRecommendedBank: string = eligibilitySession?.topBank || eligibleBanks[0] || "";
-  const existingChosenBank: string = eligibilitySession?.chosenBank || "";
+  const existingChosenBank: string = eligibilitySession?.selectedBank || eligibilitySession?.chosenBank || "";
   const existingCity: string = eligibilitySession?.city || eligibilitySession?.location || currentApplicant.location || "";
   const existingRejectedBanks: string[] = eligibilitySession?.rejectedBanks || [];
 
@@ -3723,7 +3968,10 @@ export async function runCentralAgent(opts: {
     eligibilitySession?.ineligibleBanks || [];
   if (
     (!sessionIneligibleBanks || sessionIneligibleBanks.length === 0) &&
-    hasCompletedEvaluation
+    hasCompletedEvaluation &&
+    currentApplicant.monthlyIncome &&
+    currentApplicant.loanAmount &&
+    currentApplicant.cibil
   ) {
     try {
       const quickEval = await evaluateApplicantAgainstAllBanks(currentApplicant, currentApplicant.loanType || "Personal Loan");
@@ -3753,6 +4001,14 @@ export async function runCentralAgent(opts: {
     modelOverride: requestedModel,
   });
 
+  // Check for common banking questions (e.g. "What is EMI?", "What is FOIR?") to ensure accurate answers
+  const commonQAns = answerCommonBankingQuestion(userMessage);
+  if (commonQAns) {
+    analysis.hasQuestionOrObjection = true;
+    analysis.questionAnswer = commonQAns;
+    analysis.isTechnicalError = false;
+  }
+
   // 4b. Technical API/network error handling:
   // If the applicant sends details, extract ALL parameters from userMessage generically.
   // Never throw away user data, and evaluate against bank policies if all 7 fields are ready.
@@ -3778,11 +4034,20 @@ export async function runCentralAgent(opts: {
       };
     }
 
+    const hasPriorBankManager = Boolean(
+      eligibilitySession?.lastBankManagerSearch ||
+      eligibilitySession?.postEligibilityStage === "BANK_MANAGER_RESULTS" ||
+      eligibilitySession?.postEligibilityStage === "BANK_MANAGER_DETAILS_INPUT"
+    );
+
+    const hasExplicitLoanIntent = detectLoanIntent(userMessage).isLoanIntent;
+
     const hasLoanIntent =
-      isEligibleFlowActive ||
+      !hasPriorBankManager &&
+      (isEligibleFlowActive ||
       Boolean(eligibilitySession?.in_eligibility_flow) ||
-      detectLoanIntent(userMessage).isLoanIntent ||
-      [currentApplicant.companyName, currentApplicant.monthlyIncome, currentApplicant.loanAmount, currentApplicant.cibil].filter((v) => v != null).length >= 1;
+      hasExplicitLoanIntent ||
+      [currentApplicant.companyName, currentApplicant.monthlyIncome, currentApplicant.loanAmount, currentApplicant.cibil].filter((v) => v != null).length >= 2);
 
     if (hasLoanIntent) {
       const remainingMissing = getRequiredPolicyFields(currentApplicant);
@@ -3800,13 +4065,16 @@ export async function runCentralAgent(opts: {
 
         await saveEligibilityState(conversationId, {
           applicant: currentApplicant,
-          expectedField: "chosenBank",
+          expectedField: "selectedBank",
           missingFields: [],
           in_eligibility_flow: false,
           hasCompletedEvaluation: true,
           evaluationCompleted: true,
           eligible_banks: (evalResult.eligibleBanks || []).map((b) => b.bankName),
           topBank: evalResult.recommendedBank?.bankName || (evalResult.eligibleBanks?.[0]?.bankName) || "",
+          selectedBank: "",
+          chosenBank: "",
+          postEligibilityStage: "ELIGIBILITY_CONFIRMED",
           ineligibleBanks: (evalResult.ineligibleBanks || []).map((b) => ({
             bankName: b.bankName,
             failureReasons: b.failureReasons,
@@ -3874,19 +4142,33 @@ export async function runCentralAgent(opts: {
       }
     }
 
-    return {
-      reply: analysis.naturalResponse || "⚠️ The AI service is currently unavailable. Please check your network connection or try again shortly.",
-    };
+    const isPolicyAsk = /(?:policy|guidelines?|rules?|criteria|cutoff|cut-off|eligibility\s*criteria)\b/i.test(norm) && !detectLoanIntent(userMessage).isLoanIntent;
+    const isManagerAsk =
+      /manager|branch\s*head|\basm\b|\brsm\b/i.test(norm) ||
+      Boolean(resolveBankName(userMessage) && /branch|contact|phone|location|manager/i.test(norm)) ||
+      hasPriorBankManager;
+    const isEmiAsk = /\bemi\b/i.test(norm) && (norm.match(/(\d+(?:\.\d+)?)\s*%/) || norm.match(/(?:at|rate\s*of)\s*(\d+)/i));
+
+    if (!hasCompletedEvaluation && !isPolicyAsk && !isManagerAsk && !isEmiAsk) {
+      return {
+        reply: analysis.naturalResponse || "⚠️ The AI service is currently unavailable. Please check your network connection or try again shortly.",
+      };
+    }
   }
 
   // 4c. Post-Evaluation Bank Selection & Next Action Routing
   if (hasCompletedEvaluation) {
     // If the user explicitly asks to recalculate or re-evaluate, fall through to shouldRunEvaluation below
-    if (analysis.wantsReevaluation || (analysis.isCorrection && currentMissingFields.length === 0)) {
+    const isApplicantParameterCorrection =
+      analysis.isCorrection &&
+      currentMissingFields.length === 0 &&
+      analysis.correctedFields?.some((f) =>
+        ["companyName", "monthlyIncome", "loanAmount", "tenureMonths", "cibil", "age", "existingEmi"].includes(f)
+      );
+    if (analysis.wantsReevaluation || isApplicantParameterCorrection) {
       // Handled by shouldRunEvaluation below
     } else {
-      let updatedChosenBank = existingChosenBank;
-      let updatedCity = existingCity;
+      let currentStage: PostEligibilityStage = (eligibilitySession?.postEligibilityStage as PostEligibilityStage) || "ELIGIBILITY_CONFIRMED";
       const updatedRejectedBanks = [...existingRejectedBanks];
 
       // 1. Bank Rejection handling (e.g. "I don't want Bajaj", "Not Bajaj Markets", "Skip HDFC", "Any other bank?")
@@ -3895,68 +4177,345 @@ export async function runCentralAgent(opts: {
         if (rej && !updatedRejectedBanks.some((b) => b.toLowerCase() === rej.toLowerCase())) {
           updatedRejectedBanks.push(rej);
         }
-        // If the rejected bank was the previously chosen bank, clear chosenBank
-        if (updatedChosenBank && rej && updatedChosenBank.toLowerCase().includes(rej.toLowerCase())) {
-          updatedChosenBank = "";
+        if (existingChosenBank && rej && existingChosenBank.toLowerCase().includes(rej.toLowerCase())) {
+          currentStage = "ELIGIBILITY_CONFIRMED";
         }
       }
 
-      // 2. Bank Selection (ONLY from explicit user choice, NEVER auto-selected)
-      if (analysis.selectedBank && analysis.selectedBank.trim()) {
-        const normChosen = analysis.selectedBank.toLowerCase().replace(/bank|finance|limited|ltd/gi, "").trim();
-        const matchedBank =
-          eligibleBanks.find((b) => {
-            const bNorm = b.toLowerCase().replace(/bank|finance|limited|ltd/gi, "").trim();
-            return bNorm.includes(normChosen) || normChosen.includes(bNorm);
-          }) || analysis.selectedBank.trim();
+      // 2. Build previous entities from session and reconcile dynamically
+      const prevEntities: BankManagerSearchEntities = {
+        bank_name: existingChosenBank || undefined,
+        city: existingCity || undefined,
+        branch: eligibilitySession?.branch || undefined,
+        pincode: currentApplicant.pincode || eligibilitySession?.pincode || undefined,
+        location: eligibilitySession?.location || currentApplicant.location || undefined,
+      };
 
-        // Ensure not in rejected list
-        if (!updatedRejectedBanks.some((r) => r.toLowerCase().includes(normChosen))) {
-          updatedChosenBank = matchedBank;
+      const extractedParams = extractBankBranchLocationParams(
+        userMessage,
+        prevEntities.bank_name,
+        eligibleBanks,
+        eligibilitySession?.expectedField,
+        prevEntities.city
+      );
+
+      const isPriorSearchDone =
+        eligibilitySession?.postEligibilityStage === "BANK_MANAGER_RESULTS" ||
+        eligibilitySession?.managerFound === false;
+
+      const finalEntities = reconcileBankManagerEntities(
+        prevEntities,
+        extractedParams,
+        {
+          expectedField: eligibilitySession?.expectedField,
+          isPriorSearchCompleted: isPriorSearchDone,
         }
+      );
+
+      let updatedChosenBank = finalEntities.bank_name || "";
+      if (updatedChosenBank && updatedRejectedBanks.some((r) => r.toLowerCase() === updatedChosenBank.toLowerCase())) {
+        updatedChosenBank = "";
+      }
+      let updatedCity = finalEntities.city || "";
+      let updatedPincode = finalEntities.pincode || "";
+      let updatedBranch = finalEntities.branch || "";
+
+      if (updatedPincode) currentApplicant.pincode = updatedPincode;
+      if (updatedCity) currentApplicant.location = updatedCity;
+      if (updatedChosenBank && updatedChosenBank !== existingChosenBank) {
+        currentStage = "BANK_SELECTION";
       }
 
-      // 3. User-Provided City/Location (NEVER invent "Mumbai" or any default city)
-      const extractedCity = (analysis.city || analysis.extractedDetails?.location || "").trim();
-      if (extractedCity) {
-        updatedCity = extractedCity;
-        currentApplicant.location = extractedCity;
-      }
-
-      // 4. If BOTH bank AND city are known from user -> Connect with bank manager / initiate lead
-      if (updatedChosenBank && updatedCity) {
-        let managerSection = "";
-        try {
-          const mgrList = await searchBankManager({
-            bank_name: updatedChosenBank,
-            city: updatedCity,
-            query: `${updatedChosenBank} ${updatedCity}`,
+      // 3. Branch selection prompt resolution (if answering a numbered or candidate branch prompt)
+      const availableBranches: string[] = eligibilitySession?.availableBranches || [];
+      if (eligibilitySession?.expectedField === "branchSelection" && availableBranches.length > 0) {
+        const numChoice = parseInt(userMessage.trim(), 10);
+        if (!isNaN(numChoice) && numChoice >= 1 && numChoice <= availableBranches.length) {
+          updatedBranch = availableBranches[numChoice - 1];
+        } else {
+          const normInput = userMessage.toLowerCase().replace(/[^\w]/g, " ").trim();
+          const branchCandidate = availableBranches.find((b) => {
+            const bNorm = b.toLowerCase().replace(/[^\w]/g, " ").trim();
+            return bNorm.includes(normInput) || normInput.includes(bNorm);
           });
-          managerSection = mgrList?.length
-            ? `### 👔 Official Bank Manager Directory: **${updatedChosenBank}** (${updatedCity})\n\n` + formatManagers(mgrList, updatedCity)
-            : `Official manager contact request logged for **${updatedChosenBank}** in **${updatedCity}**.`;
-        } catch {
-          managerSection = `Official manager contact request logged for **${updatedChosenBank}** in **${updatedCity}**.`;
+          if (branchCandidate) {
+            updatedBranch = branchCandidate;
+          }
         }
-
-        await clearEligibilityState(conversationId);
-        const numConvId = Number(conversationId);
-        if (pool && Number.isFinite(numConvId)) {
-          try {
-            await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numConvId]);
-          } catch { }
-        }
-
-        const replyText =
-          analysis.naturalResponse && !analysis.naturalResponse.toLowerCase().includes(updatedChosenBank.toLowerCase())
-            ? `${analysis.naturalResponse}\n\n${managerSection}\n\n---\n✅ **Application process initiated for ${updatedChosenBank} in ${updatedCity}. Our official representative will assist you.**`
-            : `${analysis.naturalResponse || managerSection}\n\n---\n✅ **Thank you for choosing ${updatedChosenBank}! Our official representative in ${updatedCity} will assist with your application.**`;
-
-        return { reply: replyText };
       }
 
-      // 5. If bank or city is still missing, or bank rejected, or question asked:
-      // Persist state across conversation turns so the assistant knows what's selected, rejected, or missing
+      // 4. Handle questions / objections mid-flow without destroying post-eligibility state
+      if (analysis.hasQuestionOrObjection && analysis.questionAnswer) {
+        let continuation = "";
+        const locDisplay = updatedPincode || updatedCity;
+        if (updatedChosenBank && !updatedBranch && !locDisplay) {
+          continuation = `\n\n---\n*(To proceed with your **${updatedChosenBank}** application, please provide the branch name and your location/city or pincode.)*`;
+        } else if (updatedChosenBank && !updatedBranch && locDisplay) {
+          continuation = `\n\n---\n*(I have your location as **${locDisplay}**. Which **${updatedChosenBank}** branch would you like to proceed with?)*`;
+        } else if (updatedChosenBank && updatedBranch && !locDisplay) {
+          continuation = `\n\n---\n*(I have your branch as **${updatedBranch}**. Which city, location, or pincode are you located in for **${updatedChosenBank}**?)*`;
+        } else if (updatedChosenBank) {
+          continuation = `\n\n---\n*(To proceed with your **${updatedChosenBank}** application, please share your branch or location.)*`;
+        } else {
+          continuation = `\n\n---\n*(To proceed with your application, which partner bank from your eligible list would you like to select?)*`;
+        }
+
+        await saveEligibilityState(conversationId, {
+          ...eligibilitySession,
+          applicant: currentApplicant,
+          hasCompletedEvaluation: true,
+          evaluationCompleted: true,
+          eligible_banks: eligibleBanks,
+          topBank: topRecommendedBank,
+          selectedBank: updatedChosenBank,
+          chosenBank: updatedChosenBank,
+          city: updatedCity,
+          location: updatedCity,
+          pincode: updatedPincode,
+          branch: updatedBranch,
+          postEligibilityStage: currentStage,
+          expectedField: eligibilitySession?.expectedField || (updatedChosenBank ? "branch" : "selectedBank"),
+          updatedAt: Date.now(),
+        } as any);
+
+        return { reply: `${analysis.questionAnswer.trim()}${continuation}` };
+      }
+
+      // 5. Evaluate next step and maintain explicit state:
+      // ELIGIBILITY_CONFIRMED -> BANK_SELECTION -> BANK_MANAGER_DETAILS_INPUT -> BRANCH_SELECTION -> BANK_MANAGER_RESULTS
+
+      // Step A: Bank is NOT yet selected
+      if (!updatedChosenBank) {
+        await saveEligibilityState(conversationId, {
+          ...eligibilitySession,
+          applicant: currentApplicant,
+          hasCompletedEvaluation: true,
+          evaluationCompleted: true,
+          eligible_banks: eligibleBanks,
+          topBank: topRecommendedBank,
+          selectedBank: "",
+          chosenBank: "",
+          rejectedBanks: updatedRejectedBanks,
+          postEligibilityStage: "ELIGIBILITY_CONFIRMED",
+          expectedField: "selectedBank",
+          updatedAt: Date.now(),
+        } as any);
+
+        return {
+          reply: `Please select **ONE** bank from your eligible list above to proceed with connecting to an official branch manager.`,
+        };
+      }
+
+      // Step B: Bank IS selected.
+      // Case 1: BOTH branch AND location/city/pincode are available!
+      if (updatedBranch && (updatedCity || updatedPincode)) {
+        const locationQuery = [updatedBranch, updatedCity || updatedPincode].filter(Boolean).join(" ");
+        const searchFilters = {
+          bank_name: updatedChosenBank,
+          branch_name: updatedBranch,
+          city: updatedCity || resolvePincodeToCity(updatedPincode) || updatedPincode || undefined,
+          query: locationQuery || undefined,
+        };
+
+        console.log("[DEBUG] SELECTED ELIGIBLE BANK:", updatedChosenBank);
+        console.log("[DEBUG] LATEST LOCATION ENTITIES:", {
+          branch: updatedBranch,
+          city: updatedCity,
+          pincode: updatedPincode,
+        });
+        console.log("[DEBUG] FINAL SEARCH FILTERS:", searchFilters);
+
+        const rawMgrList = await searchBankManager(searchFilters);
+        // Mandatory Bank Filter (Rule 10): NEVER display managers from another bank
+        const mgrList = (rawMgrList || []).filter((m) => isSameBank(m.bank_name, updatedChosenBank));
+
+        console.log("[DEBUG] DATABASE MATCH COUNT:", mgrList.length);
+        console.log("[DEBUG] RETURNED MANAGER RECORDS:", mgrList);
+
+        if (mgrList.length > 0) {
+          await saveEligibilityState(conversationId, {
+            ...eligibilitySession,
+            applicant: currentApplicant,
+            hasCompletedEvaluation: true,
+            evaluationCompleted: true,
+            eligible_banks: eligibleBanks,
+            topBank: topRecommendedBank,
+            selectedBank: updatedChosenBank,
+            chosenBank: updatedChosenBank,
+            city: updatedCity,
+            location: updatedCity || updatedPincode,
+            pincode: updatedPincode,
+            branch: updatedBranch,
+            postEligibilityStage: "BANK_MANAGER_RESULTS",
+            expectedField: "completed",
+            managerFound: true,
+            lastBankManagerSearch: finalEntities,
+            updatedAt: Date.now(),
+          } as any);
+
+          const tableMarkdown = formatDynamicBankManagersTable(mgrList, updatedPincode);
+          const distinctBranches = Array.from(new Set(mgrList.map((m) => m.branch || m.location).filter(Boolean)));
+          const multiBranchNote =
+            distinctBranches.length > 1
+              ? `\n*Multiple branch records found (${distinctBranches.join(", ")}). You may specify a branch if you wish to narrow down.*`
+              : "";
+
+          return {
+            reply: `### 👔 Official Bank Manager Directory: **${updatedChosenBank}** (${[updatedBranch, updatedCity || updatedPincode].filter(Boolean).join(", ")})\n\n${tableMarkdown}${multiBranchNote}\n\n---\n✅ **Application process initiated for ${updatedChosenBank} at ${updatedBranch} (${[updatedCity, updatedPincode].filter(Boolean).join(" ")}). Our official representative will assist you.**`,
+          };
+        } else {
+          // Rule 16: If no exact branch match exists but nearby/valid database records exist in city, display them clearly as nearby
+          const cityTarget = updatedCity || resolvePincodeToCity(updatedPincode) || updatedPincode;
+          let nearbyRecords: BankManagerRecord[] = [];
+          if (cityTarget) {
+            const nearbyFilters = {
+              bank_name: updatedChosenBank,
+              city: cityTarget,
+            };
+            console.log("[DEBUG] NEARBY SEARCH FILTERS:", nearbyFilters);
+            const rawNearby = await searchBankManager(nearbyFilters);
+            nearbyRecords = (rawNearby || []).filter((m) => isSameBank(m.bank_name, updatedChosenBank));
+            console.log("[DEBUG] NEARBY DATABASE MATCH COUNT:", nearbyRecords.length);
+            console.log("[DEBUG] NEARBY RETURNED MANAGER RECORDS:", nearbyRecords);
+          }
+
+          if (nearbyRecords.length > 0) {
+            await saveEligibilityState(conversationId, {
+              ...eligibilitySession,
+              applicant: currentApplicant,
+              hasCompletedEvaluation: true,
+              evaluationCompleted: true,
+              eligible_banks: eligibleBanks,
+              topBank: topRecommendedBank,
+              selectedBank: updatedChosenBank,
+              chosenBank: updatedChosenBank,
+              city: updatedCity,
+              location: updatedCity || updatedPincode,
+              pincode: updatedPincode,
+              branch: updatedBranch,
+              postEligibilityStage: "BANK_MANAGER_RESULTS",
+              expectedField: "branch",
+              managerFound: true,
+              lastBankManagerSearch: finalEntities,
+              updatedAt: Date.now(),
+            } as any);
+
+            const nearbyTableMarkdown = formatDynamicBankManagersTable(nearbyRecords, updatedPincode);
+            return {
+              reply: `No exact bank manager records were found for **${updatedChosenBank}** at **${updatedBranch}**. However, here are the available/nearby official records for **${updatedChosenBank}** in **${cityTarget}**:\n\n${nearbyTableMarkdown}\n\n---\n*You may select one of the available branches above or provide another branch/city/pincode.*`,
+            };
+          } else {
+            // Rule 17: No records exist in DB for this bank in this branch/city/pincode
+            await saveEligibilityState(conversationId, {
+              ...eligibilitySession,
+              applicant: currentApplicant,
+              hasCompletedEvaluation: true,
+              evaluationCompleted: true,
+              eligible_banks: eligibleBanks,
+              topBank: topRecommendedBank,
+              selectedBank: updatedChosenBank,
+              chosenBank: updatedChosenBank,
+              city: updatedCity,
+              location: updatedCity || updatedPincode,
+              pincode: updatedPincode,
+              branch: updatedBranch,
+              postEligibilityStage: "BANK_MANAGER_DETAILS_INPUT",
+              expectedField: "branch",
+              managerFound: false,
+              lastBankManagerSearch: finalEntities,
+              updatedAt: Date.now(),
+            } as any);
+
+            return {
+              reply: `No matching bank manager records were found for **${updatedChosenBank}** at **${[updatedBranch, cityTarget].filter(Boolean).join(", ")}**. Please provide another valid branch name, city, or pincode so I can locate your representative.`,
+            };
+          }
+        }
+      }
+
+      // Case 2: Location / Pincode is provided, but branch is MISSING!
+      if ((updatedCity || updatedPincode) && !updatedBranch) {
+        const locDisplay = updatedPincode || updatedCity;
+        const dbBranches = await findBankBranches(updatedChosenBank, updatedCity || resolvePincodeToCity(updatedPincode) || "");
+
+        if (dbBranches.length > 1) {
+          await saveEligibilityState(conversationId, {
+            ...eligibilitySession,
+            applicant: currentApplicant,
+            hasCompletedEvaluation: true,
+            evaluationCompleted: true,
+            eligible_banks: eligibleBanks,
+            topBank: topRecommendedBank,
+            selectedBank: updatedChosenBank,
+            chosenBank: updatedChosenBank,
+            city: updatedCity,
+            location: updatedCity || updatedPincode,
+            pincode: updatedPincode,
+            branch: "",
+            postEligibilityStage: "BRANCH_SELECTION",
+            expectedField: "branchSelection",
+            availableBranches: dbBranches,
+            lastBankManagerSearch: finalEntities,
+            updatedAt: Date.now(),
+          } as any);
+
+          const branchListFormatted = dbBranches
+            .map((b, idx) => `${idx + 1}. **${b}**`)
+            .join("\n");
+
+          return {
+            reply: `I have your location as **${locDisplay}**. I found ${dbBranches.length} branches for **${updatedChosenBank}** in **${updatedCity}**:\n\n${branchListFormatted}\n\nWhich **${updatedChosenBank}** branch would you like to proceed with so I can connect you with your official bank representative?`,
+          };
+        }
+
+        await saveEligibilityState(conversationId, {
+          ...eligibilitySession,
+          applicant: currentApplicant,
+          hasCompletedEvaluation: true,
+          evaluationCompleted: true,
+          eligible_banks: eligibleBanks,
+          topBank: topRecommendedBank,
+          selectedBank: updatedChosenBank,
+          chosenBank: updatedChosenBank,
+          city: updatedCity,
+          location: updatedCity || updatedPincode,
+          pincode: updatedPincode,
+          branch: "",
+          postEligibilityStage: "BANK_MANAGER_DETAILS_INPUT",
+          expectedField: "branch",
+          lastBankManagerSearch: finalEntities,
+          updatedAt: Date.now(),
+        } as any);
+
+        return {
+          reply: `I have your location as **${locDisplay}**. Please provide your branch name for **${updatedChosenBank}** so I can connect you with your official bank representative.`,
+        };
+      }
+
+      // Case 3: Branch is provided, but location / city / pincode is MISSING!
+      if (updatedBranch && !updatedCity && !updatedPincode) {
+        await saveEligibilityState(conversationId, {
+          ...eligibilitySession,
+          applicant: currentApplicant,
+          hasCompletedEvaluation: true,
+          evaluationCompleted: true,
+          eligible_banks: eligibleBanks,
+          topBank: topRecommendedBank,
+          selectedBank: updatedChosenBank,
+          chosenBank: updatedChosenBank,
+          branch: updatedBranch,
+          postEligibilityStage: "BANK_MANAGER_DETAILS_INPUT",
+          expectedField: "cityOrPincode",
+          lastBankManagerSearch: finalEntities,
+          updatedAt: Date.now(),
+        } as any);
+
+        return {
+          reply: `I have your branch as **${updatedBranch}**. Please provide your city or pincode for **${updatedChosenBank}** so I can connect you with your official bank representative.`,
+        };
+      }
+
+      // Case 4: Only Bank was selected, neither branch nor location is provided yet
       await saveEligibilityState(conversationId, {
         ...eligibilitySession,
         applicant: currentApplicant,
@@ -3964,20 +4523,17 @@ export async function runCentralAgent(opts: {
         evaluationCompleted: true,
         eligible_banks: eligibleBanks,
         topBank: topRecommendedBank,
+        selectedBank: updatedChosenBank,
         chosenBank: updatedChosenBank,
-        city: updatedCity,
-        location: updatedCity,
-        rejectedBanks: updatedRejectedBanks,
+        postEligibilityStage: "BANK_MANAGER_DETAILS_INPUT",
+        expectedField: "branch",
+        lastBankManagerSearch: finalEntities,
         updatedAt: Date.now(),
       } as any);
 
-      // Return the LLM's natural conversational response directly (never canned/default)
-      if (analysis.hasQuestionOrObjection && analysis.questionAnswer) {
-        return { reply: analysis.questionAnswer.trim() };
-      }
-      if (analysis.naturalResponse && analysis.naturalResponse.trim().length > 0) {
-        return { reply: analysis.naturalResponse.trim() };
-      }
+      return {
+        reply: `You selected **${updatedChosenBank}**. Please provide your branch name.`,
+      };
     }
   }
 
@@ -4070,16 +4626,53 @@ export async function runCentralAgent(opts: {
     }
   }
 
-  // 8. Handle Bank Manager Directory Searches
-  if (
-    analysis.userIntent === "BANK_MANAGER" &&
-    (analysis.managerSearch?.bankName || /manager|branch\s*head|\basm\b|\brsm\b/i.test(norm))
-  ) {
+  // 8. Handle Bank Manager Directory Searches & Dynamic Entity Corrections
+  const hasPriorBankManagerContext = Boolean(
+    eligibilitySession?.lastBankManagerSearch ||
+    eligibilitySession?.postEligibilityStage === "BANK_MANAGER_RESULTS" ||
+    eligibilitySession?.postEligibilityStage === "BANK_MANAGER_DETAILS_INPUT"
+  );
+
+  const bmExtracted = extractBankBranchLocationParams(
+    userMessage,
+    eligibilitySession?.lastBankManagerSearch?.bank_name || eligibilitySession?.chosenBank,
+    undefined,
+    eligibilitySession?.expectedField,
+    eligibilitySession?.lastBankManagerSearch?.city || eligibilitySession?.city
+  );
+
+  const isExplicitBankManagerAsk =
+    (analysis.userIntent === "BANK_MANAGER" && (analysis.managerSearch?.bankName || /manager|branch\s*head|\basm\b|\brsm\b/i.test(norm))) ||
+    Boolean(resolveBankName(userMessage) && /manager|branch\s*head|\basm\b|\brsm\b/i.test(norm)) ||
+    Boolean(/bank\s*manager|branch\s*manager/i.test(norm));
+
+  const isBankManagerAsk =
+    isExplicitBankManagerAsk ||
+    Boolean(
+      hasPriorBankManagerContext &&
+      !analysis.isLoanIntent &&
+      !isPolicyQuery &&
+      !isEmiQuery &&
+      (
+        analysis.userIntent === "BANK_MANAGER" ||
+        analysis.userIntent === "CORRECTION" ||
+        bmExtracted?.isCorrection ||
+        bmExtracted?.bankName ||
+        bmExtracted?.branch ||
+        bmExtracted?.city ||
+        bmExtracted?.pincode
+      )
+    );
+
+  if (isBankManagerAsk) {
+    const resolvedBank = resolveBankName(userMessage);
     const mgrArgs = {
-      bank_name: analysis.managerSearch?.bankName || undefined,
-      city: analysis.managerSearch?.city || undefined,
+      bank_name: analysis.managerSearch?.bankName || bmExtracted?.bankName || resolvedBank?.bankName || undefined,
+      city: analysis.managerSearch?.city || bmExtracted?.city || undefined,
+      branch: bmExtracted?.branch || undefined,
+      pincode: bmExtracted?.pincode || undefined,
     };
-    return await executeSearchBankManagers(mgrArgs, userMessage, isEligibleFlowActive, eligibilitySession);
+    return await executeSearchBankManagers(mgrArgs, userMessage, isEligibleFlowActive, eligibilitySession, conversationId);
   }
 
   // 8b. Handle Corporate Company Category Searches
@@ -4204,6 +4797,32 @@ export async function runCentralAgent(opts: {
   if (isQuestionOrContextInquiry) {
     const questionReply = analysis.questionAnswer || analysis.naturalResponse;
     if (questionReply && questionReply.trim().length > 0) {
+      if (isEligibleFlowActive || eligibilitySession?.in_eligibility_flow || currentMissingFields.length < 7) {
+        await saveEligibilityState(conversationId, {
+          ...eligibilitySession,
+          applicant: updatedApplicant,
+          missingFields: currentMissingFields,
+          in_eligibility_flow: true,
+          updatedAt: Date.now(),
+        } as any);
+
+        const nextField = currentMissingFields[0];
+        let resumptionPrompt = "";
+        if (nextField) {
+          const fieldMap: Record<string, string> = {
+            companyName: "which company you work for",
+            monthlyIncome: "your monthly take-home salary",
+            loanAmount: "the loan amount you wish to borrow",
+            tenureMonths: "your preferred repayment tenure",
+            cibil: "your CIBIL score",
+            age: "your current age",
+            existingEmi: "your existing monthly EMIs (or 0 if none)",
+          };
+          resumptionPrompt = `\n\n---\n*(To resume your loan eligibility assessment: Could you please share ${fieldMap[nextField] || nextField}?)*`;
+        }
+
+        return { reply: `${questionReply.trim()}${resumptionPrompt}` };
+      }
       return { reply: questionReply.trim() };
     }
   }
@@ -4266,13 +4885,16 @@ export async function runCentralAgent(opts: {
 
       await saveEligibilityState(conversationId, {
         applicant: updatedApplicant,
-        expectedField: "chosenBank",
+        expectedField: "selectedBank",
         missingFields: [],
         in_eligibility_flow: false,
         hasCompletedEvaluation: true,
         evaluationCompleted: true,
         eligible_banks: (evalResult.eligibleBanks || []).map((b) => b.bankName),
         topBank: evalResult.recommendedBank?.bankName || (evalResult.eligibleBanks?.[0]?.bankName) || "",
+        selectedBank: "",
+        chosenBank: "",
+        postEligibilityStage: "ELIGIBILITY_CONFIRMED",
         ineligibleBanks: (evalResult.ineligibleBanks || []).map((b) => ({
           bankName: b.bankName,
           failureReasons: b.failureReasons,
@@ -4347,9 +4969,26 @@ export async function runCentralAgent(opts: {
         }
       }
 
+      // Add preliminary indicative recommendation if partial details are available and missing fields remain
+      const prelimRec = generatePreliminaryRecommendation(updatedApplicant);
+      if (prelimRec && !replyText.includes("Preliminary Recommendation")) {
+        replyText = `${prelimRec}\n\n${replyText}`;
+      }
+
+      const answeredInThisTurn =
+        eligibilitySession?.expectedField ||
+        (analysis.extractedDetails?.monthlyIncome !== undefined ? "monthlyIncome" :
+         analysis.extractedDetails?.loanAmount !== undefined ? "loanAmount" :
+         analysis.extractedDetails?.cibil !== undefined ? "cibil" :
+         analysis.extractedDetails?.tenureMonths !== undefined ? "tenureMonths" :
+         analysis.extractedDetails?.existingEmi !== undefined ? "existingEmi" :
+         analysis.extractedDetails?.age !== undefined ? "age" :
+         analysis.extractedDetails?.companyName ? "companyName" : undefined);
+
       await saveEligibilityState(conversationId, {
         applicant: updatedApplicant,
         expectedField: nextField,
+        lastAnsweredField: answeredInThisTurn,
         missingFields,
         in_eligibility_flow: true,
         updatedAt: Date.now(),

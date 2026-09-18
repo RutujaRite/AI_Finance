@@ -19,6 +19,8 @@ export interface ApplicantProfile {
   employmentType?: string;
   employmentStatus?: string;
   location?: string;
+  pincode?: string;
+  branch?: string;
   _lastSideQuestion?: string;
   _lastCorrectionNotice?: string;
 }
@@ -71,9 +73,17 @@ export interface ConversationalContextNotes {
   sideQuestionAnswered?: boolean;
 }
 
+export type PostEligibilityStage =
+  | "ELIGIBILITY_CONFIRMED"
+  | "BANK_SELECTION"
+  | "BANK_MANAGER_DETAILS_INPUT"
+  | "BRANCH_SELECTION"
+  | "BANK_MANAGER_RESULTS";
+
 export interface SessionState {
   applicant: ApplicantProfile;
   expectedField?: string;
+  postEligibilityStage?: PostEligibilityStage;
   missingFields?: string[];
   updatedAt: number;
   conversationHistory?: Array<{ role: string; content: string }>;
@@ -85,9 +95,15 @@ export interface SessionState {
   evaluationCompleted?: boolean;
   topBank?: string;
   chosenBank?: string;
+  selectedBank?: string;
   city?: string;
   location?: string;
+  pincode?: string;
+  branch?: string;
+  availableBranches?: string[];
+  managerFound?: boolean;
   rejectedBanks?: string[];
+  lastBankManagerSearch?: BankManagerSearchEntities;
   ineligibleBanks?: Array<{ bankName: string; failureReasons: string[] }>;
   companyFlow?: {
     stage: "COMPANY_INPUT" | "COMPANY_CONFIRMATION" | "COMPANY_SELECTION" | "COMPANY_SELECTED" | "COMPANY_DETAILS" | "ELIGIBILITY_INPUT";
@@ -110,6 +126,9 @@ export interface SessionState {
 export const inMemorySessionStates = new Map<string, SessionState>();
 
 export async function getEligibilityState(conversationId: string): Promise<SessionState | null> {
+  if (!conversationId || conversationId === "undefined" || conversationId === "null" || conversationId.trim() === "" || conversationId === "0") {
+    return null;
+  }
   if (inMemorySessionStates.has(conversationId)) {
     return inMemorySessionStates.get(conversationId)!;
   }
@@ -133,6 +152,9 @@ export async function getEligibilityState(conversationId: string): Promise<Sessi
 }
 
 export async function saveEligibilityState(conversationId: string, state: SessionState): Promise<void> {
+  if (!conversationId || conversationId === "undefined" || conversationId === "null" || conversationId.trim() === "" || conversationId === "0") {
+    return;
+  }
   inMemorySessionStates.set(conversationId, state);
   const numId = Number(conversationId);
   if (pool && Number.isFinite(numId)) {
@@ -150,6 +172,9 @@ export async function saveEligibilityState(conversationId: string, state: Sessio
 }
 
 export async function clearEligibilityState(conversationId: string): Promise<void> {
+  if (!conversationId || conversationId === "undefined" || conversationId === "null" || conversationId.trim() === "" || conversationId === "0") {
+    return;
+  }
   inMemorySessionStates.delete(conversationId);
   const numId = Number(conversationId);
   if (pool && Number.isFinite(numId)) {
@@ -691,19 +716,20 @@ export interface CorrectionResult {
 
 export function detectCorrectionInMessage(
   message: string,
-  applicant: ApplicantProfile
+  applicant: ApplicantProfile,
+  lastField?: string
 ): CorrectionResult {
   const norm = message.toLowerCase().trim();
 
-  // Detect explicit correction markers: "actually", "my bad", "wait", "change to", "update to", "instead of", "make that", "not <x>"
+  // Detect explicit correction markers: "actually", "my bad", "wait", "change to", "update to", "instead of", "make that", "make it", "not <x>"
   const isCorrectionPhrase =
-    /\b(?:wait|actually|my\s*bad|mistake|typo|wrong|change|update|correct|instead\s*of|rather\s*than|make\s+that)\b/i.test(norm);
+    /\b(?:wait|actually|my\s*bad|mistake|typo|wrong|change|update|correct|instead\s*of|rather\s*than|make\s+(?:that|it)|set\s+(?:it\s+to|to)|change\s+(?:it\s+to|to)|update\s+(?:it\s+to|to))\b/i.test(norm);
 
   if (!isCorrectionPhrase) return { isCorrection: false };
 
   // A. Company correction
   const compMatch = message.match(
-    /(?:company|employer|workplace|work\s+at|working\s+at|joined|switch(?:ed)?\s+to|moved\s+to)\s*(?:is|changed\s*to|to|=|:)?\s*([a-zA-Z0-9\s&'.-]+?)(?=\s*[,;]|\s+(?:and|with|salary|cibil|tenure|as\s+a|as\s+an|full\s*time|part\s*time)|$)/i
+    /(?:company|employer|workplace|work\s+at|working\s+at|joined|switch(?:ed)?\s+to|moved\s+to|(?:actually\s+)?(?:make\s+it|switch\s+to))\s*(?:is|changed\s*to|to|=|:)?\s*([a-zA-Z0-9\s&'.-]+?)(?=\s*[,;]|\s+(?:and|with|salary|cibil|tenure|as\s+a|as\s+an|full\s*time|part\s*time)|$)/i
   );
   if (compMatch && !isInvalidCompanyName(compMatch[1]) && !isFinancialOrProfileInput(compMatch[1])) {
     const matchedComp = compMatch[1].trim();
@@ -798,6 +824,61 @@ export function detectCorrectionInMessage(
     }
   }
 
+  // H. Generic numeric correction referring to the last answered or relevant field
+  // e.g. "Actually make it 60000", "change it to 70000", "make that 65000"
+  const genericNumMatch = message.match(
+    /(?:actually|make\s+(?:it|that)|change\s+(?:it\s+to|to)|set\s+(?:it\s+to|to)|update\s+(?:it\s+to|to)|instead)\s*(?:rs\.?|₹)?\s*([\d,]+(?:\.\d+)?(?:\s*(?:k|lakhs?|lacs?|l\b|cr|peti|hazar))?)\b/i
+  );
+  if (genericNumMatch) {
+    const amt = parseFinancialAmount(genericNumMatch[1]);
+    if (amt !== null && amt >= 0) {
+      let targetField = lastField;
+      if (!targetField) {
+        if (applicant.monthlyIncome !== undefined && amt >= 10000 && amt <= 500000) {
+          targetField = "monthlyIncome";
+        } else if (applicant.loanAmount !== undefined && amt >= 100000) {
+          targetField = "loanAmount";
+        } else if (applicant.cibil !== undefined && amt >= 300 && amt <= 900) {
+          targetField = "cibil";
+        } else if (applicant.monthlyIncome !== undefined) {
+          targetField = "monthlyIncome";
+        } else if (applicant.loanAmount !== undefined) {
+          targetField = "loanAmount";
+        }
+      }
+
+      if (targetField === "monthlyIncome") {
+        return {
+          isCorrection: true,
+          field: "monthlyIncome",
+          value: amt,
+          explanation: `Updated your monthly take-home salary to **₹${amt.toLocaleString("en-IN")}**`,
+        };
+      } else if (targetField === "loanAmount") {
+        return {
+          isCorrection: true,
+          field: "loanAmount",
+          value: amt,
+          explanation: `Updated your requested loan amount to **₹${amt.toLocaleString("en-IN")}**`,
+        };
+      } else if (targetField === "cibil" && amt >= 300 && amt <= 900) {
+        return {
+          isCorrection: true,
+          field: "cibil",
+          value: amt,
+          explanation: `Updated your CIBIL score to **${amt}**`,
+        };
+      } else if (targetField === "existingEmi") {
+        return {
+          isCorrection: true,
+          field: "existingEmi",
+          value: amt,
+          explanation: `Updated your existing monthly EMIs to **₹${amt.toLocaleString("en-IN")}**`,
+        };
+      }
+    }
+  }
+
   return { isCorrection: false };
 }
 
@@ -865,6 +946,502 @@ export function detectTargetedFieldInMessage(text: string, targetExpectedField?:
   return null;
 }
 
+export const KNOWN_BANK_PATTERNS: Array<{
+  canonicalName: string;
+  regex: RegExp;
+}> = [
+  { canonicalName: "HDFC Bank", regex: /\b(?:hdfc|hdfc\s*bnk[a-z]*|hdfc\s*banck)\b/i },
+  { canonicalName: "ICICI Bank", regex: /\b(?:icici|icic\b|icic\s*bnk[a-z]*|icici\s*bnk[a-z]*)\b/i },
+  { canonicalName: "Axis Bank", regex: /\b(?:axis\s*bank|axis\s*bnk[a-z]*|\baxis\b(?!.*finance))\b/i },
+  { canonicalName: "Axis Finance", regex: /\b(?:axis\s*finance|afl)\b/i },
+  { canonicalName: "Kotak Mahindra Bank", regex: /\b(?:kotak|kotak\s*mahindra|kotak\s*bnk[a-z]*)\b/i },
+  { canonicalName: "Bajaj Finserv", regex: /\b(?:bajaj\s*finserv|bajaj\s*finance|\bbajaj\b(?!.*markets))\b/i },
+  { canonicalName: "Bajaj Markets", regex: /\b(?:bajaj\s*markets)\b/i },
+  { canonicalName: "Tata Capital", regex: /\btata\s*capital\b/i },
+  { canonicalName: "IDFC FIRST Bank", regex: /\b(?:idfc|idfc\s*first|idfc\s*bnk[a-z]*)\b/i },
+  { canonicalName: "IndusInd Bank", regex: /\b(?:indusind|indus\s*ind|indusind\s*bnk[a-z]*)\b/i },
+  { canonicalName: "Bandhan Bank", regex: /\b(?:bandhan|bandhan\s*bnk[a-z]*)\b/i },
+  { canonicalName: "Cholamandalam Investment & Finance", regex: /\b(?:chola|cholamandalam)\b/i },
+  { canonicalName: "Piramal Capital & Housing Finance", regex: /\b(?:piramal|piramal\s*finance)\b/i },
+  { canonicalName: "Poonawalla Fincorp", regex: /\b(?:poonawalla|poonawala)\b/i },
+  { canonicalName: "SMFG India Credit (Fullerton)", regex: /\b(?:smfg|fullerton)\b/i },
+  { canonicalName: "Finnable Credit", regex: /\b(?:finnable)\b/i },
+  { canonicalName: "Fibe (EarlySalary)", regex: /\b(?:fibe|early\s*salary)\b/i },
+  { canonicalName: "SBM Bank India", regex: /\b(?:sbm|sbm\s*bank)\b/i },
+  { canonicalName: "Utkarsh Small Finance Bank", regex: /\b(?:utkarsh)\b/i },
+  { canonicalName: "Yes Bank", regex: /\b(?:yes\s*bank|\byes\s*bnk[a-z]*)\b/i },
+  { canonicalName: "Aditya Birla Finance", regex: /\b(?:aditya\s*birla\s*finance|abfl)\b/i },
+  { canonicalName: "InCred Finance", regex: /\b(?:incred)\b/i },
+  { canonicalName: "L&T Finance", regex: /\b(?:l&t\s*finance|lt\s*finance|ltf)\b/i },
+  { canonicalName: "State Bank of India", regex: /\b(?:sbi|state\s*bank\s*of\s*india)\b/i },
+];
+
+export function isKnownBankName(text: string): boolean {
+  if (!text) return false;
+  const raw = text.trim();
+  if (/^(?:i\s+(?:work|am\s+working)\s+(?:at|in)|(?:my\s+)?(?:employer|company)\s+is|(?:work|working|employed)\s+(?:at|in|by)|employer\s*[:=-]|company\s*[:=-])\b/i.test(raw)) {
+    return false;
+  }
+  const clean = raw.toLowerCase().replace(/^(?:no,?\s*(?:i\s*meant|i\s*mean)\s+|actually\s+|i\s*want\s+|i\s*prefer\s+|please\s+select\s+|proceed\s+with\s+|go\s+with\s+|choose\s+)/i, "").trim();
+  for (const p of KNOWN_BANK_PATTERNS) {
+    if (p.regex.test(clean)) return true;
+  }
+  return false;
+}
+
+export function resolveBankName(
+  text: string,
+  eligibleBanks?: string[]
+): { bankName: string; isCorrection: boolean } | null {
+  if (!text) return null;
+  const raw = text.trim();
+  const lower = raw.toLowerCase();
+
+  const isCorrection = /(?:no,?\s*(?:i\s*meant|i\s*mean)|actually|change\s*(?:to|bank\s*to)?|switch\s*to|prefer|instead\s*of)/i.test(lower);
+
+  const clean = lower
+    .replace(/^(?:no,?\s*(?:i\s*meant|i\s*mean)\s+|actually\s+|i\s*(?:want|prefer|select|choose)\s+|please\s+select\s+|proceed\s+with\s+|go\s+with\s+|change\s+(?:to|bank\s*to)?\s+|switch\s+to\s+)/i, "")
+    .trim();
+
+  for (const p of KNOWN_BANK_PATTERNS) {
+    if (p.regex.test(clean) || p.regex.test(lower)) {
+      if (eligibleBanks && eligibleBanks.length > 0) {
+        const normTarget = p.canonicalName.toLowerCase().replace(/bank|finance|limited|ltd/gi, "").trim();
+        const matched = eligibleBanks.find((eb) => {
+          const ebNorm = eb.toLowerCase().replace(/bank|finance|limited|ltd/gi, "").trim();
+          return ebNorm.includes(normTarget) || normTarget.includes(ebNorm);
+        });
+        if (matched) {
+          return { bankName: matched, isCorrection };
+        }
+      }
+      return { bankName: p.canonicalName, isCorrection };
+    }
+  }
+
+  if (eligibleBanks && eligibleBanks.length > 0) {
+    for (const eb of eligibleBanks) {
+      const ebNorm = eb.toLowerCase().replace(/bank|finance|limited|ltd/gi, "").trim();
+      if (ebNorm.length > 2 && new RegExp(`\\b${ebNorm}\\b`, "i").test(clean)) {
+        return { bankName: eb, isCorrection };
+      }
+    }
+  }
+
+  return null;
+}
+
+export function isSameBank(bankA: string | undefined | null, bankB: string | undefined | null): boolean {
+  if (!bankA || !bankB) return false;
+  const cleanA = bankA.toLowerCase().replace(/bank|finance|fincorp|limited|ltd|\./gi, "").replace(/\s+/g, "").trim();
+  const cleanB = bankB.toLowerCase().replace(/bank|finance|fincorp|limited|ltd|\./gi, "").replace(/\s+/g, "").trim();
+  if (!cleanA || !cleanB) return false;
+  if (cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA)) return true;
+  const abbrevs: Record<string, string[]> = {
+    sbi: ["statebankofindia", "sbi"],
+    hdfc: ["hdfc", "hdfcbank"],
+    icici: ["icici", "icicibank"],
+    kotak: ["kotak", "kotakmahindra", "kotakmahindrabank"],
+    pnb: ["punjabnational", "punjabnationalbank"],
+    bob: ["bankofbaroda"],
+    boi: ["bankofindia"],
+    scb: ["standardchartered", "standardcharteredbank"],
+  };
+  for (const list of Object.values(abbrevs)) {
+    const matchA = list.some((k) => cleanA.includes(k) || k.includes(cleanA));
+    const matchB = list.some((k) => cleanB.includes(k) || k.includes(cleanB));
+    if (matchA && matchB) return true;
+  }
+  return false;
+}
+
+export function resolvePincodeToCity(pincode: string): string | null {
+  if (!pincode) return null;
+  const match = String(pincode).match(/\b([1-9]\d{5})\b/);
+  if (!match) return null;
+  const pin = match[1];
+  const p3 = parseInt(pin.slice(0, 3), 10);
+  const p2 = parseInt(pin.slice(0, 2), 10);
+
+  if (p3 >= 411 && p3 <= 412) return "Pune";
+  if (p3 === 400) return "Mumbai";
+  if (p3 === 401 || p3 === 421) return "Thane";
+  if (p3 === 416) return "Kolhapur";
+  if (p3 === 415) return "Satara";
+  if (p3 === 413) return "Solapur";
+  if (p3 === 414) return "Ahmednagar";
+  if (p3 === 422) return "Nashik";
+  if (p3 === 431) return "Aurangabad";
+  if (p3 === 440 || p3 === 441) return "Nagpur";
+  if (p2 === 11) return "Delhi";
+  if (p3 === 122) return "Gurgaon";
+  if (p3 === 201) return "Noida";
+  if (p3 === 121) return "Faridabad";
+  if (p3 >= 560 && p3 <= 562) return "Bangalore";
+  if (p3 >= 500 && p3 <= 502) return "Hyderabad";
+  if (p3 >= 600 && p3 <= 603) return "Chennai";
+  if (p3 >= 700 && p3 <= 703) return "Kolkata";
+  if (p3 === 380 || p3 === 382) return "Ahmedabad";
+  if (p3 === 395) return "Surat";
+  if (p3 === 390) return "Vadodara";
+  if (p3 === 302 || p3 === 303) return "Jaipur";
+  if (p3 === 226) return "Lucknow";
+  if (p3 === 160) return "Chandigarh";
+  if (p3 === 452) return "Indore";
+  if (p3 === 462) return "Bhopal";
+  if (p3 === 800) return "Patna";
+  if (p3 === 682) return "Kochi";
+  if (p3 === 641) return "Coimbatore";
+
+  return null;
+}
+
+export const KNOWN_MAJOR_CITIES: string[] = [
+  "pune", "mumbai", "kolhapur", "bangalore", "bengaluru", "delhi", "new delhi", "hyderabad",
+  "chennai", "kolkata", "ahmedabad", "surat", "jaipur", "lucknow", "kanpur", "nagpur",
+  "indore", "thane", "bhopal", "patna", "vadodara", "nashik", "aurangabad", "sangli",
+  "satara", "solapur", "navi mumbai", "gurgaon", "gurugram", "noida", "ghaziabad",
+  "faridabad", "chandigarh", "coimbatore", "mysore", "mysuru", "kochi", "cochin",
+  "trivandrum", "thiruvananthapuram", "visakhapatnam", "vijayawada", "guntur", "madurai",
+  "salem", "trichy", "tiruchirappalli", "hubli", "dharwad", "belgaum", "belagavi",
+  "mangalore", "mangaluru", "raipur", "bilaspur", "ranchi", "jamshedpur", "dhanbad",
+  "bhubaneswar", "cuttack", "guwahati", "dehradun", "amritsar", "ludhiana", "jalandhar",
+  "agra", "varanasi", "allahabad", "prayagraj", "meerut", "bareilly", "aligarh",
+  "moradabad", "jodhpur", "udaipur", "kota", "bikaner", "ajmer", "gwalior", "jabalpur", "ujjain"
+];
+
+export interface ExtractedBankBranchLocationDetails {
+  bankName?: string;
+  isCorrection?: boolean;
+  branch?: string;
+  city?: string;
+  pincode?: string;
+  location?: string;
+  role?: string;
+}
+
+export interface BankManagerSearchEntities {
+  bank_name?: string;
+  city?: string;
+  branch?: string;
+  pincode?: string;
+  location?: string;
+  role?: string;
+}
+
+/**
+ * Extracts bank, branch, city/location, and pincode from post-eligibility user messages in any order.
+ * Dynamically handles corrections, removes conversational fillers without hardcoding, and maps pincodes.
+ * Examples supported:
+ * - "HDFC Bank Camp Pune"
+ * - "Camp branch, Pune"
+ * - "411001"
+ * - "Camp"
+ * - "Pune 411001"
+ * - "Pune"
+ * - "Actually Katraj"
+ * - "Change location to Katraj 411046"
+ */
+export function extractBankBranchLocationParams(
+  text: string,
+  currentBank?: string,
+  eligibleBanks?: string[],
+  expectedField?: string,
+  currentCity?: string
+): ExtractedBankBranchLocationDetails {
+  const result: ExtractedBankBranchLocationDetails = {};
+  if (!text) return result;
+  const raw = text.trim();
+
+  // 0. Detect whether this message is an explicit correction
+  const hasCorrectionPhrase = /(?:no,?\s*(?:i\s*meant|i\s*mean)|actually|change\s*(?:the\s*)?(?:location|branch|city|bank|pincode|pin)?\s*(?:to|is)?|update\s*(?:the\s*)?(?:location|branch|city|bank|pincode|pin)?\s*(?:to|is)?|switch\s*to|prefer|instead\s*(?:of)?|rather)/i.test(raw);
+
+  // 1. Detect Bank Name & Correction (e.g. "HDFC Bank", "HDFC bnka", "No, I meant ICICI Bank")
+  const bankMatch = resolveBankName(raw, eligibleBanks);
+  if (bankMatch) {
+    result.bankName = bankMatch.bankName;
+    result.isCorrection = bankMatch.isCorrection || hasCorrectionPhrase;
+  } else if (hasCorrectionPhrase) {
+    result.isCorrection = true;
+  }
+
+  // Remove bank name and conversational prefixes to extract branch & location
+  let remaining = raw;
+  if (result.bankName) {
+    const bNorm = result.bankName.toLowerCase().replace(/bank|finance|limited|ltd/gi, "").trim();
+    const escBank = result.bankName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escNorm = bNorm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    remaining = remaining.replace(new RegExp(`\\b(?:${escBank}|${escNorm}|bank|bnk[a-z]*)\\b`, "gi"), " ");
+  }
+
+  // 1b. Detect Role if mentioned (e.g. "ASM", "Sales Manager", "Branch Manager")
+  const roleMatch = raw.match(/\b(branch\s*manager|area\s*sales\s*manager|zonal\s*sales\s*manager|regional\s*sales\s*manager|sales\s*manager|asm|rsm|zsm|rh|rm)\b/i);
+  if (roleMatch) {
+    result.role = roleMatch[0].trim();
+  }
+
+  // Generic cleaning of conversational prefixes, correction keywords, role labels, and search filler phrases
+  remaining = remaining
+    .replace(/\b(?:instead\s+of\s+[a-zA-Z0-9\s-]+|change\s*(?:the\s*)?(?:location|branch|city|bank|pincode|pin)?\s*(?:to|is)?|update\s*(?:the\s*)?(?:location|branch|city|bank|pincode|pin)?\s*(?:to|is)?|switch\s*(?:to)?|what\s+about|how\s+about|search\s*(?:for|in)?|find\s*(?:in)?|show\s*(?:in)?|look\s*for|check\s*(?:in)?|my\s*(?:branch|location|city|pincode|pin)\s*is)\b/gi, " ")
+    .replace(/\b(?:bank\s*managers?|branch\s*managers?|managers?|branch\s*heads?|contacts?|phones?|emails?|representatives?|officers?|executives?|directory|asm|rsm|zsm|rh|rm)\b/gi, " ")
+    .replace(/^(?:no,?\s*(?:i\s*meant|i\s*mean)\s+|no,?\s+|actually\s+|instead\s+|rather\s+|i\s*(?:want|prefer|need|meant|mean)\s+|please\s+select\s+|proceed\s+with\s+|go\s+with\s+|choose\s+)/gi, " ")
+    .replace(/[,\-:;?]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // 2. Extract 6-digit Pincode (e.g. "411001", "411046")
+  const pinMatch = raw.match(/\b([1-9]\d{5})\b/);
+  if (pinMatch) {
+    result.pincode = pinMatch[1];
+    remaining = remaining.replace(pinMatch[1], " ").trim();
+    const cityFromPin = resolvePincodeToCity(result.pincode);
+    if (cityFromPin) {
+      result.city = cityFromPin;
+    }
+  }
+
+  // General questions or conceptual queries should not be arbitrarily tokenized into branch and city
+  const isGeneralQuestion =
+    (/\?/.test(raw) || /^(?:what\s+is|what\s+are|what\s+does|how\s+does|how\s+is|how\s+to|why\s+is|why\s+do|explain|tell\s+me\s+about|meaning\s+of|definition\s+of)\b/i.test(raw)) &&
+    !/(?:branch|location|city|pincode|office|address|where)\b/i.test(raw);
+
+  if (isGeneralQuestion && !result.city && !result.branch && !result.pincode && !result.bankName) {
+    return result;
+  }
+
+  // 3. Extract explicit Branch keyword (e.g. "Camp branch", "branch Camp", "branch is Camp", "at Camp branch")
+  const branchExplicitMatch = remaining.match(/\b([a-zA-Z0-9\s-]+?)\s+(?:branch)\b/i) ||
+    remaining.match(/(?:branch\s*(?:is|:)?|at\s+branch\b)\s*([a-zA-Z0-9\s-]+)/i);
+  if (branchExplicitMatch) {
+    const cand = branchExplicitMatch[1].trim();
+    if (cand.length >= 2 && !/^(?:bank|loan|personal|finance|ltd|limited|the|a|an)\b/i.test(cand)) {
+      result.branch = cand;
+      remaining = remaining.replace(branchExplicitMatch[0], " ").trim();
+    }
+  }
+
+  // 4. Extract explicit City keyword (e.g. "city Pune", "city: Pune", "in city Pune", "based in Pune", "live in Pune", "stay in Pune")
+  const cityExplicitMatch = remaining.match(/(?:city\s*(?:is|:)?|in\s+city\b|based\s*in|live\s*in|stay\s*in)\s*([a-zA-Z\s]+)/i);
+  if (cityExplicitMatch) {
+    const rawCity = cityExplicitMatch[1].trim().split(/\s*[,.]|\s+(?:and|with|for)\s+/)[0].trim();
+    if (rawCity.length >= 2 && !/^(?:bank|loan|personal|finance|ltd|limited|branch)\b/i.test(rawCity)) {
+      result.city = rawCity;
+      remaining = remaining.replace(cityExplicitMatch[0], " ").trim();
+    }
+  }
+
+  // 5. Tokenize remaining words to identify city and branch if not yet found
+  const tokens = remaining
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !/^(?:and|with|for|the|a|an|in|at|from|to|of|on|near|by|branch|city|location|pincode|pin|code|change|update|instead|actually|want|need|prefer|select|choose|meant|mean|manager|managers|contact|representative|officer|head)\b/i.test(t));
+
+  if (tokens.length > 0) {
+    if (expectedField === "branch" && currentCity && tokens.length === 1 && !result.branch) {
+      result.branch = tokens[0].toUpperCase() === currentCity.toUpperCase()
+        ? tokens[0]
+        : (tokens[0].charAt(0).toUpperCase() + tokens[0].slice(1));
+    } else {
+      let foundCityIndex = -1;
+      for (let i = 0; i < tokens.length; i++) {
+        const tNorm = tokens[i].toLowerCase();
+        if (KNOWN_MAJOR_CITIES.includes(tNorm)) {
+          foundCityIndex = i;
+          if (!result.city) {
+            result.city = tokens[i].charAt(0).toUpperCase() + tokens[i].slice(1);
+          }
+          break;
+        }
+      }
+
+      if (foundCityIndex !== -1) {
+        const otherTokens = tokens.filter((_, idx) => idx !== foundCityIndex);
+        if (otherTokens.length > 0 && !result.branch) {
+          result.branch = otherTokens.join(" ");
+        }
+      } else {
+        if (!result.city && !result.branch) {
+          if (expectedField === "branch") {
+            result.branch = tokens.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(" ");
+          } else if (expectedField === "city" || expectedField === "cityOrPincode") {
+            result.city = tokens.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(" ");
+          } else if (tokens.length >= 2) {
+            result.branch = tokens.slice(0, -1).map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(" ");
+            result.city = tokens[tokens.length - 1].charAt(0).toUpperCase() + tokens[tokens.length - 1].slice(1);
+          } else {
+            result.branch = tokens[0].charAt(0).toUpperCase() + tokens[0].slice(1);
+          }
+        } else if (result.city && !result.branch) {
+          result.branch = tokens.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(" ");
+        } else if (result.branch && !result.city) {
+          result.city = tokens.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(" ");
+        }
+      }
+    }
+  }
+
+  if (result.branch && isKnownBankName(result.branch)) delete result.branch;
+  if (result.city && isKnownBankName(result.city)) delete result.city;
+
+  if (result.branch || result.city || result.pincode) {
+    result.location = [result.branch, result.city || result.pincode].filter(Boolean).join(", ");
+  }
+
+  return result;
+}
+
+/**
+ * Reconciles bank manager search entities between previous session state and latest user input.
+ * Dynamically prioritizes latest extracted values, preserves non-contradicted entities,
+ * and invalidates stale conflicting location values.
+ *
+ * Rules implemented:
+ * 1. Latest user message has highest priority for entity values.
+ * 2. Preserve only entities that are not contradicted.
+ * 3. When a new branch/city/pincode is detected, invalidate conflicting old location values.
+ * 4. When a new bank is detected, replace the previous bank dynamically (and invalidate old branch).
+ * 5. Never generate the search query from stale state when the latest message contains a correction.
+ * 6. Generic for all banks, branches, cities, and pincodes.
+ */
+export function reconcileBankManagerEntities(
+  previous: BankManagerSearchEntities | null | undefined,
+  latest: (ExtractedBankBranchLocationDetails & { role?: string }) | null | undefined,
+  context?: {
+    expectedField?: string;
+    isPriorSearchCompleted?: boolean;
+  }
+): BankManagerSearchEntities {
+  const prevBank = previous?.bank_name?.trim() || "";
+  const prevBranch = previous?.branch?.trim() || "";
+  const prevCity = previous?.city?.trim() || "";
+  const prevPincode = previous?.pincode?.trim() || "";
+  const prevLocation = previous?.location?.trim() || "";
+  const prevRole = previous?.role?.trim() || "";
+
+  const latestBank = latest?.bankName?.trim() || "";
+  const latestBranch = latest?.branch?.trim() || "";
+  const latestCity = latest?.city?.trim() || "";
+  const latestPincode = latest?.pincode?.trim() || "";
+  const latestLocation = latest?.location?.trim() || "";
+  const latestRole = latest?.role?.trim() || "";
+  const isCorrection = Boolean(latest?.isCorrection);
+
+  const final: BankManagerSearchEntities = {};
+
+  // Rule 1 & Rule 4: Bank handling
+  // When a new bank is detected, replace previous bank dynamically and invalidate conflicting old branch
+  let bankChanged = false;
+  if (latestBank) {
+    final.bank_name = latestBank;
+    if (prevBank && prevBank.toLowerCase() !== latestBank.toLowerCase()) {
+      bankChanged = true;
+    }
+  } else if (prevBank) {
+    // Rule 2: Preserve uncontradicted bank
+    final.bank_name = prevBank;
+  }
+
+  // Branch invalidation flag
+  let invalidateOldBranch = bankChanged;
+
+  // Rule 1 & Rule 3: Pincode handling
+  if (latestPincode) {
+    final.pincode = latestPincode;
+    if (!latestBranch) {
+      // New pincode without branch invalidates conflicting old branch
+      invalidateOldBranch = true;
+    }
+  } else if (latestCity && prevCity && latestCity.toLowerCase() !== prevCity.toLowerCase()) {
+    // City changed, old pincode is invalid
+    final.pincode = undefined;
+  } else if (latestBranch && prevBranch && latestBranch.toLowerCase() !== prevBranch.toLowerCase()) {
+    // Branch changed, old pincode (belonging to old branch) is invalid
+    final.pincode = undefined;
+  } else {
+    final.pincode = prevPincode || undefined;
+  }
+
+  // Rule 1 & Rule 3: City handling
+  if (latestCity) {
+    final.city = latestCity;
+    if (prevCity && prevCity.toLowerCase() !== latestCity.toLowerCase()) {
+      // City changed, invalidate conflicting old branch
+      invalidateOldBranch = true;
+    } else if ((isCorrection || context?.isPriorSearchCompleted) && !latestBranch) {
+      // User explicitly updated/corrected location to city only (e.g. "Pune" after "Katraj" had 0 records)
+      invalidateOldBranch = true;
+      final.pincode = undefined;
+    }
+  } else {
+    final.city = prevCity || undefined;
+  }
+
+  // Rule 1 & Rule 3: Branch handling
+  if (latestBranch) {
+    final.branch = latestBranch;
+  } else if (invalidateOldBranch) {
+    final.branch = undefined;
+  } else {
+    final.branch = prevBranch || undefined;
+  }
+
+  // If old branch was invalidated and no new pincode was specified in this turn, clear pincode
+  if (invalidateOldBranch && !latestPincode) {
+    final.pincode = undefined;
+  }
+
+  // Rule 1 & Rule 3: Location composite
+  if (latestLocation) {
+    final.location = latestLocation;
+  } else if (final.branch || final.city || final.pincode) {
+    final.location = [final.branch, final.city || final.pincode].filter(Boolean).join(", ");
+  } else {
+    final.location = prevLocation || undefined;
+  }
+
+  // Role handling
+  if (latestRole) {
+    final.role = latestRole;
+  } else if (prevRole && !bankChanged) {
+    final.role = prevRole;
+  }
+
+  // Debugging requirement: previous entities → latest extracted entities → final search entities
+  console.log(
+    `[BankManager] previous entities → latest extracted entities → final search entities:`,
+    `\n  previous: ${JSON.stringify(previous || {})}`,
+    `\n  latest:   ${JSON.stringify(latest || {})}`,
+    `\n  final:    ${JSON.stringify(final)}`
+  );
+
+  return final;
+}
+
+export function generatePreliminaryRecommendation(applicant: ApplicantProfile): string {
+  const parts: string[] = [];
+  const salary = typeof applicant.monthlyIncome === "number" ? applicant.monthlyIncome : (applicant.monthlyIncome && !isNaN(Number(applicant.monthlyIncome)) ? Number(applicant.monthlyIncome) : 0);
+  const loan = typeof applicant.loanAmount === "number" ? applicant.loanAmount : (applicant.loanAmount && !isNaN(Number(applicant.loanAmount)) ? Number(applicant.loanAmount) : 0);
+  const company = applicant.companyName;
+
+  if (company && company !== "Self-Employed" && salary > 0) {
+    parts.push(`With an income of **₹${salary.toLocaleString("en-IN")}/month** at **${company}**, you match the profile for top partner banks (including **HDFC Bank, ICICI Bank, Axis Bank, and Kotak Mahindra Bank**), with indicative interest rates starting from **10.5% – 11.25% p.a.**`);
+  } else if (salary > 0) {
+    parts.push(`A monthly salary of **₹${salary.toLocaleString("en-IN")}** qualifies for the minimum income cutoff across major partner lenders, typically supporting borrowing capacity up to 15–20x monthly income.`);
+  } else if (company && company !== "Self-Employed") {
+    parts.push(`**${company}** is recognized in partner corporate registries, providing access to preferential corporate interest rates and higher loan multipliers.`);
+  } else if (loan > 0) {
+    parts.push(`A requested loan of **₹${loan.toLocaleString("en-IN")}** is within standard unsecured personal loan ticket limits across partner banks.`);
+  }
+
+  if (parts.length === 0) return "";
+
+  return (
+    `💡 **Preliminary Recommendation (Indicative)**\n` +
+    parts.join(" ") + "\n" +
+    `*(Note: This is an indicative preview. Confirmed eligibility and bank-wise sanction limits require your complete details.)*`
+  );
+}
+
 /**
  * Validates whether a candidate string is NOT a valid company name.
  * Recognizes structural validation, numbers, and non-company status answers (jobless, unemployed, student, freelancer).
@@ -872,10 +1449,14 @@ export function detectTargetedFieldInMessage(text: string, targetExpectedField?:
 export function isInvalidCompanyName(text: string): boolean {
   if (!text) return true;
   const raw = text.trim();
+  if (isKnownBankName(raw)) return true;
   const clean = raw.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
   if (clean.length < 2) return true;
   if (/^\d+$/.test(clean)) return true;
   if (!/[a-zA-Z]/.test(clean)) return true;
+
+  // Known bank names must never enter company search
+  if (isKnownBankName(clean)) return true;
 
   // Questions, conversational phrases, confirmations, small talk
   if (
@@ -922,6 +1503,14 @@ export function isFinancialOrProfileInput(text: string): boolean {
     /(?:take\s*home|in\s*hand|per\s*month|\/mo)\b/i.test(stripped) ||
     /\b(?:salary|income)\s*(?:is\s*)?(?:rs\.?|₹)?\s*\d+/i.test(clean) ||
     /\b(?:salary|income)\s*(?:is\s*)?(?:rs\.?|₹)?\s*\d+/i.test(stripped)
+  ) {
+    return true;
+  }
+
+  // Numeric corrections like "actually make it 60000", "change it to 70000", "make that 65000"
+  if (
+    /\b(?:make\s+(?:it|that)|change\s+(?:it\s+to|to)|set\s+(?:it\s+to|to)|update\s+(?:it\s+to|to)|instead)\s*(?:rs\.?|₹)?\s*[\d,]+/i.test(clean) ||
+    /^(?:make\s+(?:it|that)|change\s+(?:it\s+to|to)|set\s+(?:it\s+to|to)|update\s+(?:it\s+to|to)|instead)\s*(?:rs\.?|₹)?\s*[\d,]+/i.test(stripped)
   ) {
     return true;
   }
@@ -980,6 +1569,7 @@ export function isFinancialOrProfileInput(text: string): boolean {
 export function extractCompanyCandidateFromText(text: string): string | undefined {
   if (!text) return undefined;
   const raw = text.trim();
+  if (isKnownBankName(raw)) return undefined;
 
   // 1. Explicit key-value labels or employment phrases
   const explicitMatch = raw.match(
@@ -1323,7 +1913,7 @@ export function messageMentionsField(field: string, text: string): boolean {
  * Strictly preserves all already collected values.
  * Never extracts or sets any parameter unless the user's message explicitly mentions that parameter.
  */
-function extractSecondaryParameters(
+export function extractSecondaryParameters(
   applicant: ApplicantProfile,
   text: string,
   lower: string,
@@ -1509,6 +2099,23 @@ function extractSecondaryParameters(
       }
     }
   }
+
+  // 9. Location & Pincode (if mentioned)
+  const pinMatch = text.match(/\b([1-9]\d{5})\b/);
+  if (pinMatch && !applicant.pincode) {
+    applicant.pincode = pinMatch[1];
+    const resolvedCity = resolvePincodeToCity(pinMatch[1]);
+    if (resolvedCity && !applicant.location) {
+      applicant.location = resolvedCity;
+    }
+  }
+  const cityMatch = text.match(/\b(?:in|at|from|city\s*(?:is|:)?|based\s*in|live\s*in|stay\s*in)\s+([a-zA-Z\s]+)/i);
+  if (cityMatch && !applicant.location) {
+    const rawCity = cityMatch[1].trim().split(/\s*[,.]|\s+(?:and|with|for)\s+/)[0].trim();
+    if (rawCity.length >= 2 && rawCity.length <= 30 && !/^(?:bank|loan|personal|finance|ltd|limited)\b/i.test(rawCity)) {
+      applicant.location = rawCity;
+    }
+  }
 }
 
 /**
@@ -1520,7 +2127,8 @@ export function extractApplicantDetails(
   message: string,
   existing: ApplicantProfile = {},
   missingContext: string[] = [],
-  llmExtracted?: any
+  llmExtracted?: any,
+  lastField?: string
 ): ApplicantProfile {
   const applicant: ApplicantProfile = { ...existing };
   const text = String(message || "").replace(/\s+/g, " ").trim();
@@ -1536,7 +2144,7 @@ export function extractApplicantDetails(
   }
 
   // 0a. Detect parameter corrections ("actually my salary is 95000 not 80k", "wait, CIBIL is 740", "my bad tenure is 4 years")
-  const correction = detectCorrectionInMessage(text, applicant);
+  const correction = detectCorrectionInMessage(text, applicant, lastField);
   if (correction.isCorrection && correction.field && correction.value !== undefined) {
     (applicant as any)[correction.field] = correction.value;
     if (correction.field === "companyName") {
@@ -1694,6 +2302,8 @@ export function consolidateApplicantProfileFromHistory(
     }
   }
 
+  let lastAnsweredField: string | undefined = undefined;
+
   // Iterate chronologically through user messages
   for (let i = 0; i < userMessages.length; i++) {
     const msg = userMessages[i];
@@ -1726,22 +2336,42 @@ export function consolidateApplicantProfileFromHistory(
     }
 
     // 2. Company name candidate extraction
+    // NEVER extract company candidate from a message that is a parameter correction or financial input!
+    const isCorrectionMsg = detectCorrectionInMessage(msg, applicant, lastAnsweredField).isCorrection;
     const hasExplicitCompanyInTurn =
-      /(?:(?:change|update|correct)\s+(?:my\s+)?(?:company|employer)|(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is)|(?:company|employer)\s*[:=-])/i.test(msg);
+      !isCorrectionMsg &&
+      /(?:(?:change|update|correct)\s+(?:my\s+)?(?:company|employer)|(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is)|(?:company|employer)\s*[:=-]|\b(?:switch\s+to)\s+([A-Za-z0-9&'.-]+))/i.test(msg);
 
-    if (!applicant.companyName || hasExplicitCompanyInTurn) {
+    if ((!applicant.companyName || hasExplicitCompanyInTurn) && !isCorrectionMsg) {
       if (applicant.employmentType !== "Unemployed" && applicant.employmentType !== "Student" && applicant.employmentType !== "Self-Employed") {
         const compCandidate = extractCompanyCandidateFromText(msg);
-        if (compCandidate && !isInvalidCompanyName(compCandidate) && !isFinancialOrProfileInput(compCandidate)) {
+        if (compCandidate && !isInvalidCompanyName(compCandidate) && !isFinancialOrProfileInput(compCandidate) && !isFinancialOrProfileInput(msg)) {
           applicant.companyName = compCandidate;
           if (!applicant.employmentType) applicant.employmentType = "Salaried";
+          lastAnsweredField = "companyName";
         }
       }
     }
 
     // 3. Extract details and handle corrections
+    const prevIncome = applicant.monthlyIncome;
+    const prevLoan = applicant.loanAmount;
+    const prevCibil = applicant.cibil;
+    const prevTenure = applicant.tenureMonths;
+    const prevEmi = applicant.existingEmi;
+    const prevAge = applicant.age;
+    const prevComp = applicant.companyName;
+
     const missingForTurn = getRequiredPolicyFields(applicant);
-    applicant = extractApplicantDetails(msg, applicant, missingForTurn, extractedForTurn);
+    applicant = extractApplicantDetails(msg, applicant, missingForTurn, extractedForTurn, lastAnsweredField);
+
+    if (applicant.monthlyIncome !== prevIncome && applicant.monthlyIncome !== undefined) lastAnsweredField = "monthlyIncome";
+    else if (applicant.loanAmount !== prevLoan && applicant.loanAmount !== undefined) lastAnsweredField = "loanAmount";
+    else if (applicant.cibil !== prevCibil && applicant.cibil !== undefined) lastAnsweredField = "cibil";
+    else if (applicant.tenureMonths !== prevTenure && applicant.tenureMonths !== undefined) lastAnsweredField = "tenureMonths";
+    else if (applicant.existingEmi !== prevEmi && applicant.existingEmi !== undefined) lastAnsweredField = "existingEmi";
+    else if (applicant.age !== prevAge && applicant.age !== undefined) lastAnsweredField = "age";
+    else if (applicant.companyName !== prevComp && applicant.companyName !== undefined) lastAnsweredField = "companyName";
   }
 
   return applicant;
@@ -2654,7 +3284,7 @@ export function formatDynamicEligibilityReport(
       lines.push("");
     }
 
-    lines.push(`---\n🏦 **Next Step**: Reply with your chosen bank and city to connect with an official branch representative!`);
+    lines.push(`---\n🏦 **Next Step**: Please select **ONE** bank from the eligible list above to proceed with connecting to an official branch manager.`);
   } else {
     // Objective assessment outcome based strictly on actual failed criteria returned by the engine
     lines.push(`### ⚠️ Assessment Outcome: No Partner Banks Currently Eligible`);

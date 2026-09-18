@@ -45,6 +45,9 @@ export function normalizeModelSlug(rawModel?: string): string {
   }
   if (trimmed === "gpt-4o") return "openai/gpt-4o";
   if (trimmed === "claude-3.5-sonnet") return "anthropic/claude-3.5-sonnet";
+  if (trimmed === "gemini-pro" || trimmed === "gemini-flash" || trimmed === "gemini-2.5-flash") {
+    return "google/gemini-2.5-flash";
+  }
   return trimmed;
 }
 

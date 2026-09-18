@@ -66,8 +66,8 @@ async function resolveOrCreateConversation(
   try {
     if (Number.isFinite(numId) && numId > 0) {
       const check = await client.query(
-        `SELECT id FROM assistant_conversations WHERE id = $1`,
-        [numId]
+        `SELECT id FROM assistant_conversations WHERE id = $1 AND user_id = $2`,
+        [numId, userId]
       );
       if (check.rowCount && check.rowCount > 0) {
         return numId;
@@ -170,7 +170,9 @@ export async function POST(req: NextRequest) {
       // Exclude the message we just inserted so conversationHistory represents PRIOR turns
       const allRows = historyRes.rows;
       const priorRows = allRows.slice(0, -1);
-      conversationHistory = priorRows.map((r: any) => ({
+      // Bound conversationHistory to the most recent 10 turns to avoid context overflow while keeping relevant multi-turn context
+      const recentRows = priorRows.slice(-10);
+      conversationHistory = recentRows.map((r: any) => ({
         role: r.role === "assistant" || r.role === "ai" ? "assistant" : "user",
         content: r.content,
       }));
