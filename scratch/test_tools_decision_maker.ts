@@ -32,7 +32,7 @@ async function runToolArchitectureVerification() {
   assert(toolNames.includes("check_loan_eligibility"), "Tool schema defined: check_loan_eligibility");
   assert(toolNames.includes("update_applicant_profile"), "Tool schema defined: update_applicant_profile");
   assert(toolNames.includes("answer_general_question"), "Tool schema defined: answer_general_question");
-  assert(toolNames.includes("tavily_search"), "Tool schema defined: tavily_search");
+  assert(toolNames.includes("incraax_search"), "Tool schema defined: incraax_search");
   assert(toolNames.includes("search_bank_managers"), "Tool schema defined: search_bank_managers");
 
   const convId = "test-tools-" + Date.now();
@@ -90,10 +90,10 @@ async function runToolArchitectureVerification() {
     "Defines financial concept clearly"
   );
 
-  // 7. Test tavily_search service
-  console.log("\n--- 7. Testing tavily_search Tool Action ---");
-  const tavilyOutput = await searchTavilyWeb("RBI repo rate latest announcement 2024");
-  assert(typeof tavilyOutput === "string" && tavilyOutput.length > 0, "Tavily search service executes gracefully");
+  // 7. Test incraax_search service
+  console.log("\n--- 7. Testing incraax_search Tool Action ---");
+  const searchOutput = await searchTavilyWeb("RBI repo rate latest announcement 2024");
+  assert(typeof searchOutput === "string" && searchOutput.length > 0, "Web search service executes gracefully");
 
   // 8. Test Non-Interference: Active Eligibility NEVER Blocks Side Request
   console.log("\n--- 8. Testing Active Eligibility Flow Non-Interference ---");

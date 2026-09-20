@@ -98,14 +98,75 @@ export async function DELETE(
 
   const client = await pool.connect();
   try {
+    const check = await client.query(
+      `SELECT id FROM assistant_conversations WHERE id = $1 AND user_id = $2`,
+      [convId, userId]
+    );
+    if (convResRowCount(check) === 0) {
+      return NextResponse.json({ success: false, error: "Conversation not found" }, { status: 404 });
+    }
+
+    await client.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [convId]);
+    await client.query(`DELETE FROM assistant_messages WHERE conversation_id = $1`, [convId]);
     await client.query(
       `DELETE FROM assistant_conversations WHERE id = $1 AND user_id = $2`,
       [convId, userId]
     );
+
+    // Also clear in-memory state fallback
+    const { clearEligibilityState } = await import("@/lib/dynamicEligibilityEngine");
+    await clearEligibilityState(String(convId));
+
     return NextResponse.json({ success: true, conversation_id: convId });
   } catch (err: any) {
     console.error("Conversation delete error:", err);
     return NextResponse.json({ success: false, error: "Failed to delete conversation" }, { status: 500 });
+  } finally {
+    client.release();
+  }
+}
+
+function convResRowCount(res: any): number {
+  return typeof res?.rowCount === "number" ? res.rowCount : 0;
+}
+
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ conversation_id: string }> }
+) {
+  const { conversation_id } = await params;
+  const userId = await getAuthenticatedUserId(req);
+  if (!userId) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const convId = Number(conversation_id);
+  if (!Number.isFinite(convId)) {
+    return NextResponse.json({ success: false, error: "Invalid conversation id" }, { status: 400 });
+  }
+
+  const body = await req.json().catch(() => ({}));
+  const title = String(body.title || "").trim();
+  if (!title) {
+    return NextResponse.json({ success: false, error: "Title is required" }, { status: 400 });
+  }
+
+  const client = await pool.connect();
+  try {
+    const res = await client.query(
+      `UPDATE assistant_conversations
+       SET title = $1, updated_at = NOW()
+       WHERE id = $2 AND user_id = $3
+       RETURNING id, title, updated_at`,
+      [title, convId, userId]
+    );
+    if (convResRowCount(res) === 0) {
+      return NextResponse.json({ success: false, error: "Conversation not found" }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, conversation: res.rows[0] });
+  } catch (err: any) {
+    console.error("Conversation rename error:", err);
+    return NextResponse.json({ success: false, error: "Failed to rename conversation" }, { status: 500 });
   } finally {
     client.release();
   }

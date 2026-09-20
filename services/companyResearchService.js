@@ -5,7 +5,7 @@ function cleanSearchText(value) {
   return normalizeAssistantText(value).replace(/https?:\/\/\S+/gi, ' ').replace(/[^a-zA-Z0-9\s]/g, ' ');
 }
 
-function cleanTavilyText(str) {
+function cleanSnippetText(str) {
   if (!str) return '';
   return String(str)
     .replace(/<[^>]+>/g, ' ')
@@ -25,7 +25,7 @@ function cleanTavilyText(str) {
 }
 
 function truncateBullet(text, maxLen = 100) {
-  let cleaned = cleanTavilyText(text)
+  let cleaned = cleanSnippetText(text)
     .replace(/^[-*•\d.)\s]+/, '')
     .replace(/^(and|with|it|which|who|also|that|as)\s+/i, '')
     .trim();
@@ -37,12 +37,12 @@ function truncateBullet(text, maxLen = 100) {
   return (lastSpace > 30 ? cut.slice(0, lastSpace) : cut) + '...';
 }
 
-function filterRelevantPassages(companyName, tavilyData) {
+function filterRelevantPassages(companyName, searchData) {
   const companyTokens = companyName.toLowerCase().split(/\s+/).filter(t => t.length > 2 && !/^(company|solutions|technologies|services|pvt|ltd|limited|inc|corp|corporation|group|india|international)$/i.test(t));
   const coreName = companyTokens.length > 0 ? companyTokens[0] : companyName.toLowerCase().slice(0, 4);
 
-  const answer = cleanTavilyText(tavilyData.answer || '');
-  const results = Array.isArray(tavilyData.results) ? tavilyData.results : [];
+  const answer = cleanSnippetText(searchData.answer || '');
+  const results = Array.isArray(searchData.results) ? searchData.results : [];
 
   const relevantPassages = [];
   if (answer) {
@@ -50,8 +50,8 @@ function filterRelevantPassages(companyName, tavilyData) {
   }
 
   results.forEach((r, idx) => {
-    const title = cleanTavilyText(r.title || '');
-    const content = cleanTavilyText(r.content || '');
+    const title = cleanSnippetText(r.title || '');
+    const content = cleanSnippetText(r.content || '');
     const url = (r.url || '').toLowerCase();
     
     const isDirectMatch = title.toLowerCase().includes(coreName) || url.includes(coreName) || idx < 2;
@@ -138,12 +138,12 @@ function extractHQ(text, passages) {
   const combined = (text + ' ' + passages.join(' '));
   const m1 = combined.match(/(?:headquartered|based|hq|registered office|corporate office)\s+(?:in|at)\s+([A-Za-z0-9\s,.-]+?(?:Mumbai|Bengaluru|Bangalore|Armonk|New York|Delhi|Pune|Hyderabad|Chennai|California|India|USA|United States))/i);
   if (m1 && m1[1]) {
-    const loc = cleanTavilyText(m1[1]).replace(/^(in|at)\s+/i, '').replace(/\s*(and|operating|with|is|reachable|\().*$/i, '').trim();
+    const loc = cleanSnippetText(m1[1]).replace(/^(in|at)\s+/i, '').replace(/\s*(and|operating|with|is|reachable|\().*$/i, '').trim();
     if (loc.length > 2 && loc.length < 80) return loc;
   }
   const m2 = combined.match(/headquartered\s+(?:at|in)\s+([^;.,\n]+(?:,\s*[^;.,\n]+){0,2})/i);
   if (m2 && m2[1]) {
-    const loc = cleanTavilyText(m2[1]).replace(/\s*(and|operating|with|is|reachable|\().*$/i, '').trim();
+    const loc = cleanSnippetText(m2[1]).replace(/\s*(and|operating|with|is|reachable|\().*$/i, '').trim();
     if (loc.length > 2 && loc.length < 80) return loc;
   }
   return 'Not specified in live search';
@@ -294,54 +294,40 @@ async function fetchLiveCompanySummary(companyName) {
   const query = cleanSearchText(companyName).trim();
   if (!query) return '';
 
-  const apiKey = process.env.TAVILY_API_KEY;
-  if (!apiKey) {
-    console.log('[TAVILY] missing_api_key');
-    return '';
-  }
-
-  const url = 'https://api.tavily.com/search';
-  const searchQuery = `${query} company overview headquarters website products services leadership locations business recent developments`;
-  console.log('[TAVILY] searchQuery=' + searchQuery);
+  const apiKey = (process.env.INCRAAX_SEARCH_API_KEY || "Ni5ngM1LGX1pg79berqNVxjP8gr0EZ4q").trim();
+  const searchUrl = process.env.INCRAAX_SEARCH_URL || "https://search.incraaxaiautomation.in/api/search";
+  const url = new URL(searchUrl);
+  url.searchParams.set("q", `${query} company overview headquarters website products services leadership locations business recent developments`);
+  url.searchParams.set("format", "json");
+  url.searchParams.set("deep", "true");
 
   try {
-    const response = await fetch(url, {
-      method: 'POST',
+    const response = await fetch(url.toString(), {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (compatible; LoanAssistant/1.0)'
-      },
-      body: JSON.stringify({
-        api_key: apiKey,
-        query: searchQuery,
-        search_depth: 'advanced',
-        include_answer: 'advanced',
-        include_raw_content: false,
-        max_results: 10
-      })
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'application/json',
+      }
     });
 
     if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      console.log('[TAVILY] status=' + response.status + ' ok=' + response.ok + ' body_len=' + text.length);
       return '';
     }
 
     const data = await response.json();
-    const summary = buildCompanyProfileFromTavilyData(query, data);
-    console.log('[TAVILY] summary_len=' + (summary || '').length);
+    const summary = buildCompanyProfileFromSearchData(query, data);
     return summary;
   } catch (error) {
-    console.error('[TAVILY] error=' + (error && error.message ? error.message : error));
+    console.error('[Incraax Search] error=' + (error && error.message ? error.message : error));
     return '';
   }
 }
 
-function buildCompanyProfileFromTavilyData(companyName, tavilyData) {
+function buildCompanyProfileFromSearchData(companyName, searchData) {
   const name = String(companyName || '').trim();
   if (!name) return '';
 
-  const { answer, results, relevantPassages } = filterRelevantPassages(name, tavilyData);
+  const { answer, results, relevantPassages } = filterRelevantPassages(name, searchData);
   const allText = relevantPassages.join(' ');
 
   // 1. Overview

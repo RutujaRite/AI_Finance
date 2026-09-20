@@ -21,6 +21,7 @@ export interface ApplicantProfile {
   location?: string;
   pincode?: string;
   branch?: string;
+  area?: string;
   _lastSideQuestion?: string;
   _lastCorrectionNotice?: string;
 }
@@ -73,6 +74,13 @@ export interface ConversationalContextNotes {
   sideQuestionAnswered?: boolean;
 }
 
+export type LocationStep =
+  | "CITY_OR_PINCODE"
+  | "LOCATION_SELECTION"
+  | "BRANCH_SELECTION"
+  | "MANAGER_LOOKUP"
+  | "MANAGER_RESULTS";
+
 export type PostEligibilityStage =
   | "ELIGIBILITY_CONFIRMED"
   | "BANK_SELECTION"
@@ -82,6 +90,7 @@ export type PostEligibilityStage =
 
 export interface SessionState {
   applicant: ApplicantProfile;
+  loanType?: string;
   expectedField?: string;
   postEligibilityStage?: PostEligibilityStage;
   missingFields?: string[];
@@ -96,10 +105,18 @@ export interface SessionState {
   topBank?: string;
   chosenBank?: string;
   selectedBank?: string;
+  preferredBranch?: string;
   city?: string;
   location?: string;
   pincode?: string;
   branch?: string;
+  branchName?: string;
+  area?: string;
+  locationStep?: LocationStep | string;
+  currentStep?: string;
+  expectedEntity?: string;
+  confirmation?: boolean;
+  collectedEntities?: Record<string, any>;
   availableBranches?: string[];
   managerFound?: boolean;
   rejectedBanks?: string[];
@@ -913,10 +930,10 @@ export function detectTargetedFieldInMessage(text: string, targetExpectedField?:
     return "tenureMonths";
   }
 
-  // If user says "my cibil is 750", "no cibil", "don't have credit score" or "score 770" while expectedField was something else:
+  // If user says "my cibil is 750", "cibil is 750", "no cibil", "don't have credit score" or "score 770" while expectedField was something else:
   if (
     targetExpectedField !== "cibil" &&
-    (/(?:cibil|credit\s*score|score\s*is|score\b)\s*[3-9]\d{2}/i.test(norm) ||
+    (/(?:cibil|credit\s*score|score)(?:\s*is)?(?:\s*[:=-])?\s*[3-9]\d{2}/i.test(norm) ||
       /(?:no|don['’]?t\s*have|never\s*had|never\s*checked|zero|nil|unknown|first\s*time)\s*(?:a\s*)?(?:cibil|credit\s*score|score)/i.test(norm) ||
       /(?:cibil|credit\s*score|score)\s*(?:is\s*)?(?:unknown|zero|nil|none|never\s*checked|not\s*generated)/i.test(norm))
   ) {
@@ -938,8 +955,14 @@ export function detectTargetedFieldInMessage(text: string, targetExpectedField?:
     return "existingEmi";
   }
 
-  // If user says "age 28" or "28 years old" while expectedField was something else:
-  if (targetExpectedField !== "age" && /(?:age\s*is|aged)\s*\d{2}\b/i.test(norm)) {
+  // If user says "age 28", "23 age", "I am 23", "my age is 23", "28 years old", etc. while expectedField was something else:
+  if (
+    targetExpectedField !== "age" &&
+    (/(?:age\s*is|my\s*age\s*is|age\s*[:=-]|aged)\s*\d{2}\b/i.test(norm) ||
+      /\b(?:i\s*am|i'?m)\s+\d{2}\b/i.test(norm) ||
+      /\b\d{2}\s*(?:years?\s*old|yrs?\s*old|saal)\b/i.test(norm) ||
+      /\b\d{2}\s*age\b/i.test(norm))
+  ) {
     return "age";
   }
 
@@ -1055,11 +1078,59 @@ export function isSameBank(bankA: string | undefined | null, bankB: string | und
   return false;
 }
 
+/**
+ * Validates whether a candidate string is a plausible 6-digit Indian postal PIN code.
+ * Rules:
+ * 1. Exactly 6 numeric digits starting with 1-9.
+ * 2. Does NOT end in 0000 (Indian delivery post offices start at 001; round financial loan/income amounts like 800000, 500000 end in 0000).
+ * 3. Range is within valid Indian postal PIN codes (110001 to 855126).
+ */
+export function isValidIndianPincode(candidate: unknown): boolean {
+  if (!candidate) return false;
+  const str = String(candidate).trim();
+  if (!/^[1-9]\d{5}$/.test(str)) return false;
+  if (/0000$/.test(str)) return false;
+  return true;
+}
+
+/**
+ * Validates whether a database manager record matches a user's preferred branch.
+ * Explicitly prevents generic regional catch-alls (e.g. "All Maharashtra", "Entire Maharashtra")
+ * from matching specific branch requests like "Swarget" or "Katraj".
+ */
+export function recordMatchesBranch(
+  record: { branch?: string | null; location?: string | null },
+  preferredBranch?: string
+): boolean {
+  if (!preferredBranch) return true;
+  const pb = preferredBranch.trim().toLowerCase();
+  if (!pb) return true;
+  const branch = (record.branch || "").trim().toLowerCase();
+  const location = (record.location || "").trim().toLowerCase();
+
+  const isGenericRegion =
+    /^(?:all\s+maharashtra|entire\s+maharashtra|rest\s+of\s+maharashtra|maharashtra|all\s+india|pan\s+india)$/i.test(location) ||
+    /^(?:all\s+maharashtra|entire\s+maharashtra|rest\s+of\s+maharashtra|maharashtra|all\s+india|pan\s+india)$/i.test(branch);
+
+  const isUserRequestingRegion =
+    /^(?:all\s+maharashtra|entire\s+maharashtra|maharashtra|all\s+india|pan\s+india)$/i.test(pb);
+
+  if (isGenericRegion && !isUserRequestingRegion) {
+    return false;
+  }
+
+  const matchesBranch = Boolean(branch && (branch.includes(pb) || pb.includes(branch)));
+  const matchesLocation = Boolean(location && (location.includes(pb) || pb.includes(location)));
+
+  return matchesBranch || matchesLocation;
+}
+
 export function resolvePincodeToCity(pincode: string): string | null {
   if (!pincode) return null;
   const match = String(pincode).match(/\b([1-9]\d{5})\b/);
   if (!match) return null;
   const pin = match[1];
+  if (!isValidIndianPincode(pin)) return null;
   const p3 = parseInt(pin.slice(0, 3), 10);
   const p2 = parseInt(pin.slice(0, 2), 10);
 
@@ -1110,20 +1181,112 @@ export const KNOWN_MAJOR_CITIES: string[] = [
   "moradabad", "jodhpur", "udaipur", "kota", "bikaner", "ajmer", "gwalior", "jabalpur", "ujjain"
 ];
 
+export const KNOWN_LOCALITIES: string[] = [
+  "swargate", "swarget", "kothrud", "hadapsar", "hinjewadi", "wakad", "baner", "aundh",
+  "katraj", "shivajinagar", "viman nagar", "kalyani nagar", "kondhwa", "warje", "pimpri", "chinchwad", "bhosari",
+  "camp", "deccan", "kharadi", "magarpatta", "dhanori", "ravet", "nigdi", "yerwada", "bavdhan", "koregaon",
+  "koregaon park", "senapati bapat road", "sb road", "fergusson college road", "fc road", "jm road", "jangali maharaj road",
+  "mg road", "m g road", "mahatma gandhi road", "model colony", "wadgaon sheri", "bibwewadi", "dhankawadi", "wanowrie",
+  "fatima nagar", "salunke vihar", "sangvi", "chakan", "talegaon", "moshi", "dighi", "alandi", "shikrapur",
+  "uruli kanchan", "manjri", "narhe", "ambegaon", "sinhagad road", "parvati", "padmavati", "sahakar nagar",
+  "karve nagar", "erandwane", "law college road", "prabhat road", "bhandarkar road", "ghole road", "kasba peth",
+  "somwar peth", "shaniwar peth", "budhwar peth", "guruwar peth", "ravivar peth", "ganesh peth", "nana peth", "bhavani peth",
+  "andheri", "bandra", "dadar", "borivali", "kurla", "ghatkopar", "malad", "chembur", "juhu", "worli", "powai",
+  "whitefield", "koramangala", "indiranagar", "hsr", "jayanagar", "malleswaram", "hebbal", "marathahalli",
+  "connaught place", "nehru place", "saket", "karol bagh", "hauz khas", "dwarka", "rohini",
+  "hitec city", "gachibowli", "madhapur", "jubilee hills", "banjara hills", "kukatpally", "secunderabad",
+  "t nagar", "adyar", "velachery", "anna nagar", "mylapore", "alwarpet", "guindy"
+];
+
+export function isKnownLocality(text: string): boolean {
+  if (!text) return false;
+  const clean = text.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (!clean) return false;
+  if (KNOWN_MAJOR_CITIES.includes(clean)) return false;
+  if (KNOWN_LOCALITIES.includes(clean)) return true;
+  for (const loc of KNOWN_LOCALITIES) {
+    if (clean === loc || clean.startsWith(loc + " ") || clean.endsWith(" " + loc)) return true;
+  }
+  if (/\b(?:road|rd|chowk|nagar|colony|layout|sector|camp|cantonment|midc|wadi|gaon|viha+r|park|lane|street|cross|circle|bazaar|bazar|complex)\b/i.test(clean)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Validates whether an input string represents a geographic location, city, branch, locality, or pincode
+ * rather than a company / employer name.
+ */
+export function isLocationInput(text: string): boolean {
+  if (!text) return false;
+  const raw = text.trim();
+  const clean = raw.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (!clean) return false;
+
+  // Explicit employment or corporate statements are not pure locations
+  if (/(?:work\s+(?:at|in)|working\s+(?:at|in)|employed\s+(?:at|by|in)|(?:company|employer)\s*(?:is|:)|my\s+company|my\s+employer)\b/i.test(raw)) {
+    return false;
+  }
+
+  // Corporate designators indicate a corporate entity, not a pure location
+  if (/\b(?:pvt|private|ltd|limited|llp|inc|corp|corporation|technologies|technology|tech|solutions|systems|consultancy|consulting|services|enterprises|infotech|industries|holdings|group|bank)\b/i.test(clean)) {
+    return false;
+  }
+
+  // 1. Valid 6-digit Indian postal code
+  if (/\b[1-9]\d{5}\b/.test(clean)) {
+    return true;
+  }
+
+  // 2. Explicit location or branch keywords / prepositions
+  if (
+    /\b(?:city|branch|locality|location|pincode|pin|area|road|rd|chowk|nagar|colony|layout|sector|cantonment|camp)\b/i.test(clean) ||
+    /^(?:in|at|from|near|located\s+in|based\s+in|stay\s+in|living\s+in)\s+[a-z]+/i.test(raw)
+  ) {
+    return true;
+  }
+
+  // 3. Known major cities
+  const words = clean.split(/\s+/);
+  for (const city of KNOWN_MAJOR_CITIES) {
+    if (clean === city || words.includes(city) || clean.startsWith(city + " ") || clean.endsWith(" " + city)) {
+      return true;
+    }
+  }
+
+  // 4. Prominent localities / urban hubs
+  for (const loc of KNOWN_LOCALITIES) {
+    if (clean === loc || words.includes(loc) || clean.includes(loc)) {
+      return true;
+    }
+  }
+
+  if (isKnownLocality(clean)) {
+    return true;
+  }
+
+  return false;
+}
+
 export interface ExtractedBankBranchLocationDetails {
   bankName?: string;
   isCorrection?: boolean;
   branch?: string;
+  branchName?: string;
   city?: string;
   pincode?: string;
+  area?: string;
   location?: string;
   role?: string;
+  isDiscoveryRequest?: boolean;
 }
 
 export interface BankManagerSearchEntities {
   bank_name?: string;
   city?: string;
   branch?: string;
+  branchName?: string;
+  area?: string;
   pincode?: string;
   location?: string;
   role?: string;
@@ -1142,6 +1305,228 @@ export interface BankManagerSearchEntities {
  * - "Actually Katraj"
  * - "Change location to Katraj 411046"
  */
+/**
+ * Generic confirmation detector: handles affirmations ("yes", "okay", "confirm", etc.)
+ * and negations ("no", "cancel", "not this", etc.) dynamically.
+ */
+export function isConfirmationResponse(text: string): { isConfirmation: boolean; value?: boolean } {
+  if (!text) return { isConfirmation: false };
+  const raw = text.trim().toLowerCase();
+  const clean = raw.replace(/[.!?,]/g, "").trim();
+
+  // If the message specifies an explicit bank name, it is a bank selection/correction, not a pure confirmation
+  if (isKnownBankName(clean) || Boolean(resolveBankName(clean))) {
+    return { isConfirmation: false };
+  }
+
+  // Affirmative confirmations
+  if (
+    /^(?:yes|yep|yeah|yup|sure|ok|okay|k|confirm|confirmed|proceed|continue|please\s*proceed|yes\s*please|go\s*ahead|correct|right|fine|done|accept|agree|approved?)$/i.test(clean) ||
+    /^(?:yes|yep|yeah|yup|sure|ok|okay|confirm|confirmed|proceed|continue|please\s*proceed|yes\s*please|go\s*ahead)\b/i.test(clean)
+  ) {
+    return { isConfirmation: true, value: true };
+  }
+
+  // Negative / cancellation confirmations
+  if (
+    /^(?:no|nope|nah|cancel|not\s*this|change\s*it|stop|dont|don't|wrong|incorrect|decline|reject)$/i.test(clean) ||
+    /^(?:no|nope|nah|cancel)\b/i.test(clean)
+  ) {
+    return { isConfirmation: true, value: false };
+  }
+
+  return { isConfirmation: false };
+}
+
+export const LOCATION_STOPWORDS = new Set([
+  "is", "my", "am", "in", "at", "to", "for", "of", "on", "from", "by", "as", "or", "so", "it", "its", "the", "a", "an", "and",
+  "we", "us", "me", "our", "you", "your", "here", "there", "where", "location", "locations", "city", "branch", "branches", "place", "area", "address",
+  "town", "pincode", "pin", "code", "located", "living", "live", "stay", "staying", "based", "prefer", "want", "need", "please",
+  "select", "choose", "give", "show", "check", "find", "search", "change", "update", "instead", "actually", "meant", "mean",
+  "tell", "list", "view", "available",
+  "yes", "yeah", "yep", "sure", "ok", "okay", "no", "nope", "confirm", "proceed", "continue", "age", "years", "year", "old",
+  "lakh", "lakhs", "lac", "lacs", "cr", "crore", "crores", "k", "thousand", "rupees", "rs", "inr", "cibil", "score", "salary",
+  "income", "emi", "loan", "bank"
+]);
+
+export function detectLoanType(text: string): string | null {
+  if (!text) return null;
+  const lower = text.toLowerCase();
+  if (/\b(?:gold\s*loan|loan\s*against\s*gold|jewellery\s*loan|ornaments?)\b/i.test(lower)) return "Gold Loan";
+  if (/\b(?:personal\s*loan|unsecured\s*loan|instant\s*loan|cash\s*loan)\b/i.test(lower)) return "Personal Loan";
+  if (/\b(?:home\s*loan|housing\s*loan|plot\s*loan)\b/i.test(lower)) return "Home Loan";
+  if (/\b(?:business\s*loan|msme\s*loan|commercial\s*loan)\b/i.test(lower)) return "Business Loan";
+  if (/\b(?:car\s*loan|auto\s*loan|vehicle\s*loan)\b/i.test(lower)) return "Car Loan";
+  if (/\b(?:education\s*loan|student\s*loan)\b/i.test(lower)) return "Education Loan";
+  if (/\b(?:loan\s*against\s*property|lap)\b/i.test(lower)) return "Loan Against Property";
+  return null;
+}
+
+export type EntityType =
+  | "BANK"
+  | "BRANCH"
+  | "CITY"
+  | "PINCODE"
+  | "LOAN_AMOUNT"
+  | "TENURE"
+  | "AGE"
+  | "CIBIL"
+  | "EMI"
+  | "CONFIRMATION"
+  | "LOAN_TYPE"
+  | "COMPANY";
+
+export interface TypedLoanEntities {
+  BANK?: string;
+  BRANCH?: string;
+  CITY?: string;
+  PINCODE?: string;
+  AREA?: string;
+  LOAN_AMOUNT?: number;
+  TENURE?: number;
+  AGE?: number;
+  CIBIL?: number;
+  EMI?: number;
+  CONFIRMATION?: boolean;
+  LOAN_TYPE?: string;
+  COMPANY?: string;
+}
+
+/**
+ * Extracts typed loan entities with strict isolation.
+ * BANK != CITY, BANK != BRANCH, CITY != CONFIRMATION, LOAN_AMOUNT != PINCODE, LOAN_AMOUNT != LOCATION
+ */
+export function extractTypedLoanEntities(
+  text: string,
+  expectedEntity?: string,
+  eligibleBanks?: string[],
+  currentApplicant?: ApplicantProfile
+): TypedLoanEntities {
+  const entities: TypedLoanEntities = {};
+  if (!text) return entities;
+  const raw = text.trim();
+  const exp = (expectedEntity || "").toLowerCase();
+
+  // 1. CONFIRMATION
+  const conf = isConfirmationResponse(raw);
+  if (conf.isConfirmation) {
+    entities.CONFIRMATION = conf.value;
+  }
+
+  // 2. BANK
+  const bankMatch = resolveBankName(raw, eligibleBanks);
+  if (bankMatch) {
+    entities.BANK = bankMatch.bankName;
+  }
+
+  // 3. LOAN_TYPE
+  const lt = detectLoanType(raw);
+  if (lt) {
+    entities.LOAN_TYPE = lt;
+  }
+
+  // 4. STEP-AWARE FINANCIAL & PROFILE ENTITIES
+  // AGE
+  if (exp === "age" || /\b(?:age|years?\s*old|yo)\b/i.test(raw)) {
+    const ageMatch = raw.match(/\b(\d{1,2})\s*(?:years?\s*old|age|yo)?\b/i) || raw.match(/\b(?:i\s*(?:am|m)?\s*)?(\d{1,2})\b/);
+    if (ageMatch) {
+      const val = parseInt(ageMatch[1], 10);
+      if (val >= 18 && val <= 85) {
+        entities.AGE = val;
+      }
+    }
+  }
+
+  // CIBIL
+  if (exp === "cibil" || /\b(?:cibil|credit\s*score|score)\b/i.test(raw)) {
+    const cibilMatch = raw.match(/\b([3-9]\d{2})\b/);
+    if (cibilMatch) {
+      const val = parseInt(cibilMatch[1], 10);
+      if (val >= 300 && val <= 900) {
+        entities.CIBIL = val;
+      }
+    }
+  }
+
+  // LOAN_AMOUNT
+  if (exp === "loanamount" || exp === "loan_amount" || /\b(?:lakh|lac|crore|cr|thousand|loan\s*amount)\b/i.test(raw)) {
+    const amt = parseFinancialAmount(raw);
+    if (amt && amt >= 10000) {
+      entities.LOAN_AMOUNT = amt;
+    }
+  }
+
+  // TENURE
+  if (exp === "tenuremonths" || exp === "tenure" || /\b(?:tenure|months?|years?|yr|yrs)\b/i.test(raw)) {
+    const yrMatch = raw.match(/\b(\d+(?:\.\d+)?)\s*(?:years?|yrs?|yr)\b/i);
+    if (yrMatch) {
+      entities.TENURE = Math.round(parseFloat(yrMatch[1]) * 12);
+    } else {
+      const moMatch = raw.match(/\b(\d+)\s*(?:months?|mos?|m)\b/i);
+      if (moMatch) {
+        entities.TENURE = parseInt(moMatch[1], 10);
+      } else {
+        const numMatch = raw.match(/\b(\d+)\b/);
+        if (numMatch) {
+          const num = parseInt(numMatch[1], 10);
+          entities.TENURE = num <= 7 ? num * 12 : num;
+        }
+      }
+    }
+  }
+
+  // EXISTING_EMI
+  if (exp === "existingemi" || exp === "emi" || /\b(?:emi|existing\s*loan)\b/i.test(raw)) {
+    if (/\b(?:none|no|zero|0|nil|na)\b/i.test(raw)) {
+      entities.EMI = 0;
+    } else {
+      const emiAmt = parseFinancialAmount(raw);
+      if (emiAmt !== undefined && emiAmt !== null && !isNaN(emiAmt)) {
+        entities.EMI = emiAmt;
+      }
+    }
+  }
+
+  // 5. LOCATION (CITY, BRANCH, PINCODE)
+  // Strict isolation:
+  // - Pure confirmation must NEVER become location!
+  // - Pure numeric input when financial/profile entity is expected must NEVER become location or pincode!
+  const isPureConfirmation = conf.isConfirmation && !/(?:branch|city|bank|pincode|\d{6})/i.test(raw);
+  const isNumericStep = ["age", "cibil", "loanamount", "tenuremonths", "existingemi", "monthlyincome"].includes(exp);
+  const isPureNumeric = /^\d+$/.test(raw);
+
+  if (!isPureConfirmation && !(isNumericStep && isPureNumeric)) {
+    const loc = extractBankBranchLocationParams(
+      raw,
+      entities.BANK,
+      eligibleBanks,
+      expectedEntity,
+      currentApplicant?.location
+    );
+
+    if (loc.pincode && isValidIndianPincode(loc.pincode)) {
+      if (entities.LOAN_AMOUNT !== Number(loc.pincode)) {
+        entities.PINCODE = loc.pincode;
+      }
+    }
+    if (loc.city && !isKnownBankName(loc.city)) {
+      entities.CITY = loc.city;
+    }
+    if (loc.area && !isKnownBankName(loc.area)) {
+      entities.AREA = loc.area;
+    }
+    if (loc.branch && !isKnownBankName(loc.branch)) {
+      entities.BRANCH = loc.branch;
+    }
+  }
+
+  return entities;
+}
+
+/**
+ * Robust, generic natural language parser for Bank, Branch, City, Pincode, and Area/Locality.
+ * Cleanly isolates BANK, CITY, PINCODE, AREA, and BRANCH so they are never confused.
+ */
 export function extractBankBranchLocationParams(
   text: string,
   currentBank?: string,
@@ -1153,8 +1538,24 @@ export function extractBankBranchLocationParams(
   if (!text) return result;
   const raw = text.trim();
 
-  // 0. Detect whether this message is an explicit correction
-  const hasCorrectionPhrase = /(?:no,?\s*(?:i\s*meant|i\s*mean)|actually|change\s*(?:the\s*)?(?:location|branch|city|bank|pincode|pin)?\s*(?:to|is)?|update\s*(?:the\s*)?(?:location|branch|city|bank|pincode|pin)?\s*(?:to|is)?|switch\s*to|prefer|instead\s*(?:of)?|rather)/i.test(raw);
+  // 0. Detect confirmation responses: pure affirmations/negations must NEVER become location
+  const conf = isConfirmationResponse(raw);
+  if (conf.isConfirmation && !/(?:branch|city|bank|pincode|\d{6})/i.test(raw)) {
+    return result;
+  }
+
+  // 0b. Detect branch / location discovery requests:
+  // e.g. "tell available branches for pune city", "show branches in Pune", "available branches for Pune"
+  const isDiscovery =
+    /(?:tell|show|what\s+are|list|give|view|check|find)\s+(?:available\s+)?(?:branches|locations)\b/i.test(raw) ||
+    /(?:available\s+branches|available\s+locations)\b/i.test(raw) ||
+    /^(?:branches|locations)\s+(?:in|for|of)\b/i.test(raw);
+  if (isDiscovery) {
+    result.isDiscoveryRequest = true;
+  }
+
+  // 0c. Detect whether this message is an explicit correction
+  const hasCorrectionPhrase = /(?:no,?\s*(?:i\s*meant|i\s*mean)|actually|change\s*(?:the\s*)?(?:location|branch|city|bank|pincode|pin)?\s*(?:to|is)?|update\s*(?:the\s*)?(?:location|branch|city|bank|pincode|pin)?\s*(?:to|is)?|switch\s*to|prefer|instead\s*(?:of)?|rather|\b(?:to|->|→)\b)/i.test(raw);
 
   // 1. Detect Bank Name & Correction (e.g. "HDFC Bank", "HDFC bnka", "No, I meant ICICI Bank")
   const bankMatch = resolveBankName(raw, eligibleBanks);
@@ -1165,7 +1566,7 @@ export function extractBankBranchLocationParams(
     result.isCorrection = true;
   }
 
-  // Remove bank name and conversational prefixes to extract branch & location
+  // Remove bank name to extract branch & location
   let remaining = raw;
   if (result.bankName) {
     const bNorm = result.bankName.toLowerCase().replace(/bank|finance|limited|ltd/gi, "").trim();
@@ -1174,24 +1575,22 @@ export function extractBankBranchLocationParams(
     remaining = remaining.replace(new RegExp(`\\b(?:${escBank}|${escNorm}|bank|bnk[a-z]*)\\b`, "gi"), " ");
   }
 
-  // 1b. Detect Role if mentioned (e.g. "ASM", "Sales Manager", "Branch Manager")
+  // 1b. Detect Role if mentioned
   const roleMatch = raw.match(/\b(branch\s*manager|area\s*sales\s*manager|zonal\s*sales\s*manager|regional\s*sales\s*manager|sales\s*manager|asm|rsm|zsm|rh|rm)\b/i);
   if (roleMatch) {
     result.role = roleMatch[0].trim();
   }
 
-  // Generic cleaning of conversational prefixes, correction keywords, role labels, and search filler phrases
-  remaining = remaining
-    .replace(/\b(?:instead\s+of\s+[a-zA-Z0-9\s-]+|change\s*(?:the\s*)?(?:location|branch|city|bank|pincode|pin)?\s*(?:to|is)?|update\s*(?:the\s*)?(?:location|branch|city|bank|pincode|pin)?\s*(?:to|is)?|switch\s*(?:to)?|what\s+about|how\s+about|search\s*(?:for|in)?|find\s*(?:in)?|show\s*(?:in)?|look\s*for|check\s*(?:in)?|my\s*(?:branch|location|city|pincode|pin)\s*is)\b/gi, " ")
-    .replace(/\b(?:bank\s*managers?|branch\s*managers?|managers?|branch\s*heads?|contacts?|phones?|emails?|representatives?|officers?|executives?|directory|asm|rsm|zsm|rh|rm)\b/gi, " ")
-    .replace(/^(?:no,?\s*(?:i\s*meant|i\s*mean)\s+|no,?\s+|actually\s+|instead\s+|rather\s+|i\s*(?:want|prefer|need|meant|mean)\s+|please\s+select\s+|proceed\s+with\s+|go\s+with\s+|choose\s+)/gi, " ")
-    .replace(/[,\-:;?]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  // Handle transition phrases like "Pune to Mumbai", "from Swarget to Katraj", "411046 to 411037"
+  const transitionMatch = remaining.match(/\b(?:from\s+)?([a-zA-Z0-9]+)\s+(?:to|->|→)\s+([a-zA-Z0-9]+)\b/i);
+  if (transitionMatch) {
+    result.isCorrection = true;
+    remaining = remaining.replace(/\b(?:from\s+)?([a-zA-Z0-9]+)\s+(?:to|->|→)\s+/gi, " ");
+  }
 
-  // 2. Extract 6-digit Pincode (e.g. "411001", "411046")
+  // 2. Extract 6-digit Pincode (valid Indian postal codes)
   const pinMatch = raw.match(/\b([1-9]\d{5})\b/);
-  if (pinMatch) {
+  if (pinMatch && isValidIndianPincode(pinMatch[1])) {
     result.pincode = pinMatch[1];
     remaining = remaining.replace(pinMatch[1], " ").trim();
     const cityFromPin = resolvePincodeToCity(result.pincode);
@@ -1210,84 +1609,316 @@ export function extractBankBranchLocationParams(
   }
 
   // 3. Extract explicit Branch keyword (e.g. "Camp branch", "branch Camp", "branch is Camp", "at Camp branch")
-  const branchExplicitMatch = remaining.match(/\b([a-zA-Z0-9\s-]+?)\s+(?:branch)\b/i) ||
-    remaining.match(/(?:branch\s*(?:is|:)?|at\s+branch\b)\s*([a-zA-Z0-9\s-]+)/i);
-  if (branchExplicitMatch) {
-    const cand = branchExplicitMatch[1].trim();
-    if (cand.length >= 2 && !/^(?:bank|loan|personal|finance|ltd|limited|the|a|an)\b/i.test(cand)) {
-      result.branch = cand;
-      remaining = remaining.replace(branchExplicitMatch[0], " ").trim();
+  if (!result.isDiscoveryRequest) {
+    const branchExplicitMatch = remaining.match(/\b([a-zA-Z0-9\s-]+?)\s+\bbranch\b/i) ||
+      remaining.match(/\b(?:branch\s*(?:is|:)?|at\s+branch)\b\s*([a-zA-Z0-9\s-]+)/i);
+    if (branchExplicitMatch) {
+      const cand = branchExplicitMatch[1].trim();
+      const candLower = cand.toLowerCase();
+      if (cand.length >= 2 && !/^\d+$/.test(cand) && !isKnownBankName(cand) && !KNOWN_MAJOR_CITIES.includes(candLower) && !LOCATION_STOPWORDS.has(candLower)) {
+        result.branch = cand;
+        result.branchName = cand;
+        remaining = remaining.replace(branchExplicitMatch[0], " ").trim();
+      }
     }
   }
 
   // 4. Extract explicit City keyword (e.g. "city Pune", "city: Pune", "in city Pune", "based in Pune", "live in Pune", "stay in Pune")
-  const cityExplicitMatch = remaining.match(/(?:city\s*(?:is|:)?|in\s+city\b|based\s*in|live\s*in|stay\s*in)\s*([a-zA-Z\s]+)/i);
+  const cityExplicitMatch = remaining.match(/\b(?:city\s*(?:is|:)?|in\s+city\b|based\s*in|live\s*in|stay\s*in)\s*([a-zA-Z\s]+)/i);
   if (cityExplicitMatch) {
     const rawCity = cityExplicitMatch[1].trim().split(/\s*[,.]|\s+(?:and|with|for)\s+/)[0].trim();
-    if (rawCity.length >= 2 && !/^(?:bank|loan|personal|finance|ltd|limited|branch)\b/i.test(rawCity)) {
-      result.city = rawCity;
+    if (rawCity.length >= 2 && !/^\d+$/.test(rawCity) && !isKnownBankName(rawCity) && !LOCATION_STOPWORDS.has(rawCity.toLowerCase())) {
+      result.city = rawCity.charAt(0).toUpperCase() + rawCity.slice(1);
       remaining = remaining.replace(cityExplicitMatch[0], " ").trim();
     }
   }
 
-  // 5. Tokenize remaining words to identify city and branch if not yet found
-  const tokens = remaining
+  // 4b. Extract explicit Area keyword (e.g. "area Katraj", "locality Swargate")
+  const areaExplicitMatch = remaining.match(/\b(?:area\s*(?:is|:)?|in\s+area\b|locality\s*(?:is|:)?)\s*([a-zA-Z0-9\s-]+)/i);
+  if (areaExplicitMatch) {
+    const rawArea = areaExplicitMatch[1].trim().split(/\s*[,.]|\s+(?:and|with|for)\s+/)[0].trim();
+    if (rawArea.length >= 2 && !/^\d+$/.test(rawArea) && !isKnownBankName(rawArea) && !LOCATION_STOPWORDS.has(rawArea.toLowerCase())) {
+      result.area = rawArea.charAt(0).toUpperCase() + rawArea.slice(1);
+      remaining = remaining.replace(areaExplicitMatch[0], " ").trim();
+    }
+  }
+
+  // Generic cleaning of conversational prefixes, filler phrases, discovery phrases, etc.
+  remaining = remaining
+    .replace(/\b(?:tell|show|what\s+are|list|give|view|check|find)\s+(?:available\s+)?(?:branches|locations)?\s*(?:for|in|of|at)?\b/gi, " ")
+    .replace(/\b(?:available\s+)?(?:branches|locations)\s*(?:for|in|of|at)?\b/gi, " ")
+    .replace(/\b(?:available)\b/gi, " ")
+    .replace(/\b(?:is|as)?\s*(?:my|the|our)?\s*(?:current\s*)?(?:location|city|place|area|address|town|region|pincode|pin|code)\b/gi, " ")
+    .replace(/\b(?:is|as)\s*(?:where\s+i\s+(?:live|stay|am|work))\b/gi, " ")
+    .replace(/\b(?:my|the|our)\s*(?:current\s*)?(?:location|city|place|area|address|town|region|pincode|pin)\s*(?:is|as|to|should\s*be)?\b/gi, " ")
+    .replace(/\b(?:i\s*(?:am|m)?\s*)?(?:currently\s*)?(?:located|living|live|staying|stay|based|working|work)\s*(?:in|at|from|near|out\s*of)?\b/gi, " ")
+    .replace(/\b(?:i\s*(?:want|prefer|need|meant|mean))\s*(?:to\s*go\s*with)?\b/gi, " ")
+    .replace(/\b(?:from|at|near|in)\b/gi, " ")
+    .replace(/\b(?:instead\s+of\s+[a-zA-Z0-9\s-]+|change\s*(?:the\s*)?(?:location|city|bank|pincode|pin)?\s*(?:to|is)?|update\s*(?:the\s*)?(?:location|city|bank|pincode|pin)?\s*(?:to|is)?|switch\s*(?:to)?|what\s+about|how\s+about|search\s*(?:for|in)?|find\s*(?:in)?|show\s*(?:in)?|look\s*for|check\s*(?:in)?)\b/gi, " ")
+    .replace(/\b(?:bank\s*managers?|branch\s*managers?|managers?|branch\s*heads?|contacts?|phones?|emails?|representatives?|officers?|executives?|directory|asm|rsm|zsm|rh|rm)\b/gi, " ")
+    .replace(/^(?:no,?\s*(?:i\s*meant|i\s*mean)\s+|no,?\s+|actually\s+|instead\s+|rather\s+|i\s*(?:want|prefer|need|meant|mean)\s+|please\s+select\s+|proceed\s+with\s+|go\s+with\s+|choose\s+)/gi, " ")
+    .replace(/[,\-:;?]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // 5. Check if any KNOWN_MAJOR_CITIES appears in remaining text
+  if (!result.city) {
+    for (const city of KNOWN_MAJOR_CITIES) {
+      const cityRegex = new RegExp(`\\b${city}\\b`, "i");
+      if (cityRegex.test(remaining)) {
+        result.city = city.charAt(0).toUpperCase() + city.slice(1);
+        remaining = remaining.replace(cityRegex, " ").trim();
+        break;
+      }
+    }
+  } else {
+    const escCity = result.city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    remaining = remaining.replace(new RegExp(`\\b${escCity}\\b`, "gi"), " ").trim();
+  }
+
+  // 6. Tokenize remaining words to identify Area, Branch, or Locality
+  const remWords = remaining
     .split(/\s+/)
     .map((t) => t.trim())
-    .filter((t) => t.length >= 2 && !/^(?:and|with|for|the|a|an|in|at|from|to|of|on|near|by|branch|city|location|pincode|pin|code|change|update|instead|actually|want|need|prefer|select|choose|meant|mean|manager|managers|contact|representative|officer|head)\b/i.test(t));
+    .filter(
+      (t) =>
+        t.length >= 2 &&
+        !/^\d+$/.test(t) &&
+        !LOCATION_STOPWORDS.has(t.toLowerCase())
+    );
+  const remText = remWords.join(" ").trim();
 
-  if (tokens.length > 0) {
-    if (expectedField === "branch" && currentCity && tokens.length === 1 && !result.branch) {
-      result.branch = tokens[0].toUpperCase() === currentCity.toUpperCase()
-        ? tokens[0]
-        : (tokens[0].charAt(0).toUpperCase() + tokens[0].slice(1));
+  if (remText.length > 0) {
+    const remLower = remText.toLowerCase();
+
+    // If remText matches known localities or road patterns (e.g. "Katraj", "Swargate", "MG Road", "FC Road", "Hadapsar")
+    if (isKnownLocality(remText) || KNOWN_LOCALITIES.includes(remLower)) {
+      result.area = remWords.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
     } else {
-      let foundCityIndex = -1;
-      for (let i = 0; i < tokens.length; i++) {
-        const tNorm = tokens[i].toLowerCase();
-        if (KNOWN_MAJOR_CITIES.includes(tNorm)) {
-          foundCityIndex = i;
-          if (!result.city) {
-            result.city = tokens[i].charAt(0).toUpperCase() + tokens[i].slice(1);
-          }
+      // Check if any sub-phrase matches known localities
+      let foundLoc = "";
+      for (const loc of KNOWN_LOCALITIES) {
+        if (new RegExp(`\\b${loc}\\b`, "i").test(remText)) {
+          foundLoc = loc;
           break;
         }
       }
 
-      if (foundCityIndex !== -1) {
-        const otherTokens = tokens.filter((_, idx) => idx !== foundCityIndex);
-        if (otherTokens.length > 0 && !result.branch) {
-          result.branch = otherTokens.join(" ");
-        }
+      if (foundLoc) {
+        result.area = foundLoc.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+      } else if (expectedField === "branchSelection") {
+        // Only in explicit branch selection step where user is picking from available branches
+        result.branch = remWords.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        result.branchName = result.branch;
+      } else if (expectedField === "cityOrPincode" && !result.city && !currentCity) {
+        // User is answering city/pincode prompt with a location name (e.g. unknown city or invalid location)
+        result.city = remWords.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+      } else if (result.city || currentCity) {
+        // City is already known, so any sub-location entered is an area candidate, NOT a branch!
+        result.area = remWords.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
       } else {
-        if (!result.city && !result.branch) {
-          if (expectedField === "branch") {
-            result.branch = tokens.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(" ");
-          } else if (expectedField === "city" || expectedField === "cityOrPincode") {
-            result.city = tokens.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(" ");
-          } else if (tokens.length >= 2) {
-            result.branch = tokens.slice(0, -1).map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(" ");
-            result.city = tokens[tokens.length - 1].charAt(0).toUpperCase() + tokens[tokens.length - 1].slice(1);
-          } else {
-            result.branch = tokens[0].charAt(0).toUpperCase() + tokens[0].slice(1);
-          }
-        } else if (result.city && !result.branch) {
-          result.branch = tokens.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(" ");
-        } else if (result.branch && !result.city) {
-          result.city = tokens.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(" ");
-        }
+        // Ambiguous value: preserve as area/location candidate instead of forcing into branch
+        result.area = remWords.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
       }
     }
   }
 
-  if (result.branch && isKnownBankName(result.branch)) delete result.branch;
-  if (result.city && isKnownBankName(result.city)) delete result.city;
+  // If area was detected and city is not set, but currentCity is available from conversation state, preserve it!
+  if (result.area && !result.city && currentCity) {
+    result.city = currentCity;
+  }
 
-  if (result.branch || result.city || result.pincode) {
-    result.location = [result.branch, result.city || result.pincode].filter(Boolean).join(", ");
+  // Strict isolation: Never allow BANK, CONFIRMATION, or pure digits to become BRANCH, AREA, or CITY
+  // And never allow a KNOWN_MAJOR_CITY to become BRANCH or AREA!
+  if (result.branch) {
+    const bLower = result.branch.toLowerCase().trim();
+    if (
+      isKnownBankName(result.branch) ||
+      KNOWN_MAJOR_CITIES.includes(bLower) ||
+      LOCATION_STOPWORDS.has(bLower) ||
+      /^(?:yes|no|ok|okay|confirm|cancel)$/i.test(bLower) ||
+      /^\d+$/.test(bLower)
+    ) {
+      delete result.branch;
+      delete result.branchName;
+    }
+  }
+  if (result.area) {
+    const aLower = result.area.toLowerCase().trim();
+    if (
+      isKnownBankName(result.area) ||
+      KNOWN_MAJOR_CITIES.includes(aLower) ||
+      LOCATION_STOPWORDS.has(aLower) ||
+      /^(?:yes|no|ok|okay|confirm|cancel)$/i.test(aLower) ||
+      /^\d+$/.test(aLower)
+    ) {
+      delete result.area;
+    }
+  }
+  if (result.city) {
+    const cLower = result.city.toLowerCase().trim();
+    if (
+      isKnownBankName(result.city) ||
+      LOCATION_STOPWORDS.has(cLower) ||
+      /^(?:yes|no|ok|okay|confirm|cancel)$/i.test(cLower) ||
+      /^\d+$/.test(cLower)
+    ) {
+      delete result.city;
+    }
+  }
+
+  const locParts = [result.branch, result.area, result.city || result.pincode].filter(Boolean);
+  if (locParts.length > 0) {
+    result.location = locParts.join(", ");
   }
 
   return result;
+}
+
+/**
+ * Updates the normalized loan conversation state following the Critical State Rule:
+ * previous valid state + latest user message + current expected field = updated state
+ * Never rebuilds state from scratch, and preserves all uncontradicted fields.
+ */
+export function updateNormalizedLoanState(
+  previous: SessionState | null | undefined,
+  extracted: TypedLoanEntities,
+  currentApplicant?: ApplicantProfile,
+  expectedEntity?: string
+): SessionState {
+  const prevApplicant = previous?.applicant || currentApplicant || {
+    companyName: "",
+    monthlyIncome: 0,
+  };
+
+  const updatedApplicant: ApplicantProfile = {
+    ...prevApplicant,
+  };
+
+  if (extracted.LOAN_AMOUNT !== undefined) {
+    updatedApplicant.loanAmount = extracted.LOAN_AMOUNT;
+  }
+  if (extracted.TENURE !== undefined) {
+    updatedApplicant.tenureMonths = extracted.TENURE;
+  }
+  if (extracted.AGE !== undefined) {
+    updatedApplicant.age = extracted.AGE;
+  }
+  if (extracted.CIBIL !== undefined) {
+    updatedApplicant.cibil = extracted.CIBIL;
+  }
+  if (extracted.EMI !== undefined) {
+    updatedApplicant.existingEmi = extracted.EMI;
+  }
+  if (extracted.LOAN_TYPE) {
+    updatedApplicant.loanType = extracted.LOAN_TYPE;
+  }
+
+  // Preserve existing bank and branch values unless explicitly updated by latest message
+  let selectedBank = previous?.selectedBank || previous?.chosenBank || undefined;
+  if (extracted.BANK) {
+    selectedBank = extracted.BANK;
+  }
+
+  let preferredBranch = previous?.preferredBranch || previous?.branch || undefined;
+  if (extracted.BRANCH) {
+    preferredBranch = extracted.BRANCH;
+  }
+
+  let city = previous?.city || undefined;
+  if (extracted.CITY) {
+    city = extracted.CITY;
+  }
+
+  let area = previous?.area || undefined;
+  if (extracted.AREA) {
+    area = extracted.AREA;
+  }
+
+  let pincode = previous?.pincode || undefined;
+  if (extracted.PINCODE) {
+    pincode = extracted.PINCODE;
+    if (!city) {
+      city = resolvePincodeToCity(pincode) || undefined;
+    }
+  }
+
+  const location = [preferredBranch, area, city || pincode].filter(Boolean).join(", ");
+  if (location) {
+    updatedApplicant.location = location;
+  }
+  if (preferredBranch) {
+    updatedApplicant.branch = preferredBranch;
+  }
+  if (area) {
+    updatedApplicant.area = area;
+  }
+
+  const updatedState: SessionState = {
+    ...(previous || {
+      missingFields: [],
+      in_eligibility_flow: false,
+    }),
+    applicant: updatedApplicant,
+    loanType: extracted.LOAN_TYPE || previous?.loanType || updatedApplicant.loanType,
+    selectedBank,
+    chosenBank: selectedBank,
+    preferredBranch,
+    branch: preferredBranch,
+    branchName: preferredBranch,
+    city,
+    area,
+    pincode,
+    location: location || previous?.location,
+    confirmation: extracted.CONFIRMATION !== undefined ? extracted.CONFIRMATION : previous?.confirmation,
+    currentStep: previous?.currentStep,
+    expectedEntity: previous?.expectedEntity || expectedEntity,
+    locationStep: previous?.locationStep,
+    updatedAt: Date.now(),
+  };
+
+  return updatedState;
+}
+
+export function formatStateSummary(state: any, applicant?: any): Record<string, any> {
+  return {
+    loanType: state?.loanType || applicant?.loanType || undefined,
+    loanAmount: state?.loanAmount || applicant?.loanAmount || undefined,
+    tenure: state?.tenure || state?.tenureMonths || applicant?.tenureMonths || undefined,
+    selectedBank: state?.selectedBank || state?.chosenBank || undefined,
+    preferredBranch: state?.preferredBranch || state?.branch || applicant?.branch || undefined,
+    branchName: state?.branchName || state?.branch || undefined,
+    city: state?.city || applicant?.location || undefined,
+    area: state?.area || applicant?.area || undefined,
+    pincode: state?.pincode || applicant?.pincode || undefined,
+    locationStep: state?.locationStep || undefined,
+    currentStep: state?.currentStep || undefined,
+    expectedEntity: state?.expectedEntity || state?.expectedField || undefined,
+    confirmation: state?.confirmation !== undefined ? state.confirmation : undefined,
+  };
+}
+
+/**
+ * Standardized 8-key temporary debug logger as requested by user.
+ */
+export function logFlowDebug(params: {
+  currentFlow: string;
+  currentStep: string;
+  expectedEntity: string;
+  userMessage: string;
+  detectedIntent: string;
+  extractedEntities: Record<string, any>;
+  previousState: Record<string, any>;
+  updatedState: Record<string, any>;
+}) {
+  console.log(`CURRENT FLOW: ${params.currentFlow}`);
+  console.log(`CURRENT STEP: ${params.currentStep}`);
+  console.log(`EXPECTED ENTITY: ${params.expectedEntity}`);
+  console.log(`USER MESSAGE: ${params.userMessage}`);
+  console.log(`DETECTED INTENT: ${params.detectedIntent}`);
+  console.log(`EXTRACTED ENTITIES:`, JSON.stringify(params.extractedEntities));
+  console.log(`PREVIOUS STATE:`, JSON.stringify(params.previousState));
+  console.log(`UPDATED STATE:`, JSON.stringify(params.updatedState));
 }
 
 /**
@@ -1299,9 +1930,10 @@ export function extractBankBranchLocationParams(
  * 1. Latest user message has highest priority for entity values.
  * 2. Preserve only entities that are not contradicted.
  * 3. When a new branch/city/pincode is detected, invalidate conflicting old location values.
- * 4. When a new bank is detected, replace the previous bank dynamically (and invalidate old branch).
- * 5. Never generate the search query from stale state when the latest message contains a correction.
- * 6. Generic for all banks, branches, cities, and pincodes.
+ * 4. When a new bank is detected, replace the previous bank dynamically (and invalidate old branch/area).
+ * 5. When area is provided, preserve city if already known.
+ * 6. Never assign a city or area to branch.
+ * 7. Case-insensitive and whitespace-tolerant.
  */
 export function reconcileBankManagerEntities(
   previous: BankManagerSearchEntities | null | undefined,
@@ -1313,6 +1945,7 @@ export function reconcileBankManagerEntities(
 ): BankManagerSearchEntities {
   const prevBank = previous?.bank_name?.trim() || "";
   const prevBranch = previous?.branch?.trim() || "";
+  const prevArea = previous?.area?.trim() || "";
   const prevCity = previous?.city?.trim() || "";
   const prevPincode = previous?.pincode?.trim() || "";
   const prevLocation = previous?.location?.trim() || "";
@@ -1320,6 +1953,7 @@ export function reconcileBankManagerEntities(
 
   const latestBank = latest?.bankName?.trim() || "";
   const latestBranch = latest?.branch?.trim() || "";
+  const latestArea = latest?.area?.trim() || "";
   const latestCity = latest?.city?.trim() || "";
   const latestPincode = latest?.pincode?.trim() || "";
   const latestLocation = latest?.location?.trim() || "";
@@ -1329,7 +1963,6 @@ export function reconcileBankManagerEntities(
   const final: BankManagerSearchEntities = {};
 
   // Rule 1 & Rule 4: Bank handling
-  // When a new bank is detected, replace previous bank dynamically and invalidate conflicting old branch
   let bankChanged = false;
   if (latestBank) {
     final.bank_name = latestBank;
@@ -1337,64 +1970,67 @@ export function reconcileBankManagerEntities(
       bankChanged = true;
     }
   } else if (prevBank) {
-    // Rule 2: Preserve uncontradicted bank
     final.bank_name = prevBank;
   }
 
-  // Branch invalidation flag
+  // Branch & Area invalidation flag
   let invalidateOldBranch = bankChanged;
+  let invalidateOldArea = bankChanged;
 
-  // Rule 1 & Rule 3: Pincode handling
+  // City handling
+  let cityChanged = false;
+  if (latestCity) {
+    final.city = latestCity;
+    if (prevCity && prevCity.toLowerCase() !== latestCity.toLowerCase()) {
+      cityChanged = true;
+      invalidateOldBranch = true;
+      invalidateOldArea = true;
+    } else if ((isCorrection || context?.isPriorSearchCompleted) && !latestBranch && !latestArea) {
+      // User explicitly re-stated city only (e.g. "Pune" after "Katraj" had 0 records)
+      invalidateOldBranch = true;
+      invalidateOldArea = true;
+    }
+  } else if (latestPincode && !prevCity) {
+    final.city = resolvePincodeToCity(latestPincode) || undefined;
+  } else {
+    final.city = prevCity || undefined;
+  }
+
+  // Pincode handling
   if (latestPincode) {
     final.pincode = latestPincode;
-    if (!latestBranch) {
-      // New pincode without branch invalidates conflicting old branch
-      invalidateOldBranch = true;
-    }
-  } else if (latestCity && prevCity && latestCity.toLowerCase() !== prevCity.toLowerCase()) {
-    // City changed, old pincode is invalid
-    final.pincode = undefined;
-  } else if (latestBranch && prevBranch && latestBranch.toLowerCase() !== prevBranch.toLowerCase()) {
-    // Branch changed, old pincode (belonging to old branch) is invalid
+  } else if (cityChanged) {
     final.pincode = undefined;
   } else {
     final.pincode = prevPincode || undefined;
   }
 
-  // Rule 1 & Rule 3: City handling
-  if (latestCity) {
-    final.city = latestCity;
-    if (prevCity && prevCity.toLowerCase() !== latestCity.toLowerCase()) {
-      // City changed, invalidate conflicting old branch
-      invalidateOldBranch = true;
-    } else if ((isCorrection || context?.isPriorSearchCompleted) && !latestBranch) {
-      // User explicitly updated/corrected location to city only (e.g. "Pune" after "Katraj" had 0 records)
-      invalidateOldBranch = true;
-      final.pincode = undefined;
-    }
+  // Area handling
+  if (latestArea) {
+    final.area = latestArea;
+  } else if (invalidateOldArea) {
+    final.area = undefined;
   } else {
-    final.city = prevCity || undefined;
+    final.area = prevArea || undefined;
   }
 
-  // Rule 1 & Rule 3: Branch handling
+  // Branch handling
   if (latestBranch) {
     final.branch = latestBranch;
+    final.branchName = latestBranch;
   } else if (invalidateOldBranch) {
     final.branch = undefined;
+    final.branchName = undefined;
   } else {
     final.branch = prevBranch || undefined;
+    final.branchName = prevBranch || undefined;
   }
 
-  // If old branch was invalidated and no new pincode was specified in this turn, clear pincode
-  if (invalidateOldBranch && !latestPincode) {
-    final.pincode = undefined;
-  }
-
-  // Rule 1 & Rule 3: Location composite
+  // Composite location
   if (latestLocation) {
     final.location = latestLocation;
-  } else if (final.branch || final.city || final.pincode) {
-    final.location = [final.branch, final.city || final.pincode].filter(Boolean).join(", ");
+  } else if (final.branch || final.area || final.city || final.pincode) {
+    final.location = [final.branch, final.area, final.city || final.pincode].filter(Boolean).join(", ");
   } else {
     final.location = prevLocation || undefined;
   }
@@ -1406,7 +2042,24 @@ export function reconcileBankManagerEntities(
     final.role = prevRole;
   }
 
-  // Debugging requirement: previous entities → latest extracted entities → final search entities
+  // Ensure numeric strings are NEVER assigned to branch, area, city, or location
+  if (final.branch && /^\d+$/.test(final.branch.trim())) {
+    final.branch = undefined;
+    final.branchName = undefined;
+  }
+  if (final.area && /^\d+$/.test(final.area.trim())) {
+    final.area = undefined;
+  }
+  if (final.city && /^\d+$/.test(final.city.trim())) {
+    final.city = undefined;
+  }
+  if (final.pincode && !isValidIndianPincode(final.pincode)) {
+    final.pincode = undefined;
+  }
+  if (final.location && /^\d+$/.test(final.location.trim())) {
+    final.location = undefined;
+  }
+
   console.log(
     `[BankManager] previous entities → latest extracted entities → final search entities:`,
     `\n  previous: ${JSON.stringify(previous || {})}`,
@@ -1450,6 +2103,7 @@ export function isInvalidCompanyName(text: string): boolean {
   if (!text) return true;
   const raw = text.trim();
   if (isKnownBankName(raw)) return true;
+  if (isLocationInput(raw)) return true;
   const clean = raw.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
   if (clean.length < 2) return true;
   if (/^\d+$/.test(clean)) return true;
@@ -1525,16 +2179,20 @@ export function isFinancialOrProfileInput(text: string): boolean {
 
   // 3-digit CIBIL score (300-900)
   if (
-    /^(?:cibil|score|credit\s*score)?\s*[3-9]\d{2}\s*(?:cibil|score)?$/i.test(clean) ||
-    /^(?:cibil|score|credit\s*score)?\s*[3-9]\d{2}\s*(?:cibil|score)?$/i.test(stripped)
+    /^(?:(?:my\s+)?(?:cibil|credit\s*score|score)(?:\s*is)?(?:\s*[:=-])?\s*)?[3-9]\d{2}(?:\s*(?:cibil|score|credit\s*score))?$/i.test(clean) ||
+    /^(?:(?:my\s+)?(?:cibil|credit\s*score|score)(?:\s*is)?(?:\s*[:=-])?\s*)?[3-9]\d{2}(?:\s*(?:cibil|score|credit\s*score))?$/i.test(stripped) ||
+    /\b(?:cibil|credit\s*score|score\s*is|score\b)\s*[3-9]\d{2}\b/i.test(clean)
   ) {
     return true;
   }
 
-  // 2-digit age (18-85)
+  // 2-digit age (18-85) - handles "23", "23 age", "age 23", "I am 23", "my age is 23", "23 years old", "23 yrs", "23 saal", "age: 23"
   if (
-    /^(?:age\s*)?(?:1[8-9]|[2-8]\d)\s*(?:years?|yrs?|yr|years\s*old)?$/i.test(clean) ||
-    /^(?:age\s*)?(?:1[8-9]|[2-8]\d)\s*(?:years?|yrs?|yr|years\s*old)?$/i.test(stripped)
+    /^(?:(?:i\s*am|i'?m|my\s*age\s*is|age\s*is|age\s*[:=-]?)\s*)?(?:1[8-9]|[2-8]\d)\s*(?:years?\s*old|years?|yrs?|yr|saal|sal|age)?$/i.test(clean) ||
+    /^(?:(?:i\s*am|i'?m|my\s*age\s*is|age\s*is|age\s*[:=-]?)\s*)?(?:1[8-9]|[2-8]\d)\s*(?:years?\s*old|years?|yrs?|yr|saal|sal|age)?$/i.test(stripped) ||
+    /\b(?:i\s*am|i'?m|my\s*age\s*is|age\s*is|age\s*[:=-])\s*(?:1[8-9]|[2-8]\d)\b/i.test(clean) ||
+    /\b(?:1[8-9]|[2-8]\d)\s*(?:years?\s*old|yrs?\s*old|years?|yrs?|saal)\b/i.test(clean) ||
+    /\b(?:1[8-9]|[2-8]\d)\s*age\b/i.test(clean)
   ) {
     return true;
   }
@@ -1570,6 +2228,8 @@ export function extractCompanyCandidateFromText(text: string): string | undefine
   if (!text) return undefined;
   const raw = text.trim();
   if (isKnownBankName(raw)) return undefined;
+  if (isFinancialOrProfileInput(raw)) return undefined;
+  if (isLocationInput(raw)) return undefined;
 
   // 1. Explicit key-value labels or employment phrases
   const explicitMatch = raw.match(
@@ -1577,7 +2237,7 @@ export function extractCompanyCandidateFromText(text: string): string | undefine
   );
   if (explicitMatch) {
     const candidate = explicitMatch[1].trim();
-    if (!isInvalidCompanyName(candidate) && !isFinancialOrProfileInput(candidate)) {
+    if (!isInvalidCompanyName(candidate) && !isFinancialOrProfileInput(candidate) && !isLocationInput(candidate)) {
       return candidate;
     }
   }
@@ -1593,6 +2253,7 @@ export function extractCompanyCandidateFromText(text: string): string | undefine
         cleanSeg.length >= 2 &&
         !isInvalidCompanyName(cleanSeg) &&
         !isFinancialOrProfileInput(cleanSeg) &&
+        !isLocationInput(cleanSeg) &&
         !/^(?:i\s+need|i\s+want|can\s+i|please|hello|hi|hey|personal\s+loan|loan)\b/i.test(cleanSeg) &&
         !/^(?:age|salary|income|cibil|credit\s*score|loan|amount|tenure|months|years|emi)\s*[:=-]?\s*.*$/i.test(cleanSeg)
       ) {
@@ -1605,12 +2266,13 @@ export function extractCompanyCandidateFromText(text: string): string | undefine
   if (
     !isFinancialOrProfileInput(raw) &&
     !isInvalidCompanyName(raw) &&
+    !isLocationInput(raw) &&
     !/^(?:i\s+need|i\s+want|can\s+i|personal\s+loan|loan)\b/i.test(raw)
   ) {
     const clean = raw
       .replace(/^(?:i\s+(?:work|am\s+working)\s+(?:at|in)|(?:my\s+)?(?:employer|company)\s+is|(?:work|working|employed)\s+(?:at|in|by)|employer\s*[:=-]|company\s*[:=-]|at|in)\s+/i, "")
       .trim();
-    if (!isFinancialOrProfileInput(clean) && !isInvalidCompanyName(clean)) {
+    if (!isFinancialOrProfileInput(clean) && !isInvalidCompanyName(clean) && !isLocationInput(clean)) {
       return clean;
     }
   }
@@ -2100,21 +2762,46 @@ export function extractSecondaryParameters(
     }
   }
 
-  // 9. Location & Pincode (if mentioned)
+  // 9. Location & Pincode (if mentioned, strictly guarding against financial amounts)
+  const isFinancialField =
+    targetExpectedField === "loanAmount" ||
+    targetExpectedField === "monthlyIncome" ||
+    targetExpectedField === "existingEmi" ||
+    targetExpectedField === "cibil" ||
+    targetExpectedField === "age" ||
+    targetExpectedField === "tenureMonths";
+
   const pinMatch = text.match(/\b([1-9]\d{5})\b/);
-  if (pinMatch && !applicant.pincode) {
-    applicant.pincode = pinMatch[1];
-    const resolvedCity = resolvePincodeToCity(pinMatch[1]);
-    if (resolvedCity && !applicant.location) {
-      applicant.location = resolvedCity;
+  if (pinMatch && !applicant.pincode && !isFinancialField) {
+    const candPin = pinMatch[1];
+    const isFinancialValue =
+      candPin === String(applicant.loanAmount) ||
+      candPin === String(applicant.monthlyIncome) ||
+      candPin === String(applicant.existingEmi);
+
+    if (isValidIndianPincode(candPin) && !isFinancialValue) {
+      applicant.pincode = candPin;
+      const resolvedCity = resolvePincodeToCity(candPin);
+      if (resolvedCity && !applicant.location) {
+        applicant.location = resolvedCity;
+      }
     }
   }
+
   const cityMatch = text.match(/\b(?:in|at|from|city\s*(?:is|:)?|based\s*in|live\s*in|stay\s*in)\s+([a-zA-Z\s]+)/i);
   if (cityMatch && !applicant.location) {
     const rawCity = cityMatch[1].trim().split(/\s*[,.]|\s+(?:and|with|for)\s+/)[0].trim();
-    if (rawCity.length >= 2 && rawCity.length <= 30 && !/^(?:bank|loan|personal|finance|ltd|limited)\b/i.test(rawCity)) {
+    if (rawCity.length >= 2 && rawCity.length <= 30 && !/^\d+$/.test(rawCity) && !/^(?:bank|loan|personal|finance|ltd|limited)\b/i.test(rawCity)) {
       applicant.location = rawCity;
     }
+  }
+
+  // Ensure loanAmount or other financial numbers never contaminate location or pincode
+  if (applicant.pincode && (!isValidIndianPincode(applicant.pincode) || applicant.pincode === String(applicant.loanAmount) || applicant.pincode === String(applicant.monthlyIncome))) {
+    applicant.pincode = undefined;
+  }
+  if (applicant.location && (/^\d+$/.test(applicant.location) || applicant.location === String(applicant.loanAmount) || applicant.location === String(applicant.monthlyIncome))) {
+    applicant.location = undefined;
   }
 }
 

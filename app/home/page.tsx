@@ -29,6 +29,12 @@ export default function HomePage() {
   const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0].id)
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null)
+  const [actionMenuConvId, setActionMenuConvId] = useState<string | null>(null)
+  const [editingConvId, setEditingConvId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState("")
+  const [deleteModalConv, setDeleteModalConv] = useState<any | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [clearHistoryModalOpen, setClearHistoryModalOpen] = useState(false)
   const [messageActions, setMessageActions] = useState<Record<string, { liked: boolean; disliked: boolean }>>({})
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const [messagesRef, setMessagesRef] = useState<HTMLDivElement | null>(null)
@@ -174,10 +180,13 @@ export default function HomePage() {
       if (contextMenu && !(e.target as HTMLElement).closest(".conversation-context-menu")) {
         setContextMenu(null)
       }
+      if (actionMenuConvId && !(e.target as HTMLElement).closest(".chat-conversation-actions, .chat-action-menu-dropdown")) {
+        setActionMenuConvId(null)
+      }
     }
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [contextMenu])
+  }, [contextMenu, actionMenuConvId])
 
   async function checkAuth() {
     const res = await fetch("/api/auth/verify", { credentials: "include" })
@@ -227,7 +236,7 @@ export default function HomePage() {
   function saveState() {
     try {
       const activeId = activeConvIdRef.current || activeConversationId
-      if (activeId && messagesByConvRef.current[activeId] === undefined) {
+      if (activeId) {
         messagesByConvRef.current[activeId] = messages
       }
       localStorage.setItem(
@@ -356,8 +365,6 @@ export default function HomePage() {
 
   async function loadConversationMessages(conversationId: string) {
     if (!conversationId) return []
-    const cached = messagesByConvRef.current[conversationId]
-    if (cached) return cached
     try {
       const res = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}`, {
         credentials: "include",
@@ -368,41 +375,115 @@ export default function HomePage() {
       return msgs
     } catch (e) {
       console.error("Failed to load conversation messages", e)
-      return []
+      return messagesByConvRef.current[conversationId] || []
     }
   }
 
   async function selectConversation(conversationId: string) {
-    // Persist the currently active conversation's messages before switching.
-    if (activeConvIdRef.current && messagesByConvRef.current[activeConvIdRef.current] === undefined) {
-      messagesByConvRef.current[activeConvIdRef.current] = messages
+    if (!conversationId) return
+    const activeId = activeConvIdRef.current || activeConversationId
+    if (conversationId === activeId) return
+
+    // Persist currently active conversation's messages before switching
+    if (activeId) {
+      messagesByConvRef.current[activeId] = messages
     }
-    const msgs = await loadConversationMessages(conversationId)
-    messagesByConvRef.current[conversationId] = msgs
+
     activeConvIdRef.current = conversationId
-    setMessages(msgs)
     setActiveConversationId(conversationId)
-    setSidebarOpen(false)
+    setActionMenuConvId(null)
+    setEditingConvId(null)
+
+    if (typeof window !== "undefined" && window.innerWidth <= 768) {
+      setSidebarOpen(false)
+    }
+
+    const msgs = await loadConversationMessages(conversationId)
+    setMessages(msgs)
   }
 
   async function newConversation() {
-    if (activeConvIdRef.current && messagesByConvRef.current[activeConvIdRef.current] === undefined) {
-      messagesByConvRef.current[activeConvIdRef.current] = messages
+    const currentId = activeConvIdRef.current || activeConversationId
+    if (currentId && messages.length > 0) {
+      messagesByConvRef.current[currentId] = messages
     }
+
+    if (currentId && messages.length === 0) {
+      return
+    }
+
+    try {
+      const res = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "New Chat" }),
+        credentials: "include",
+      })
+      const data = await res.json()
+      if (data.success && data.conversation) {
+        const newId = String(data.conversation.id)
+        setConversations((prev) => [data.conversation, ...prev.filter((c) => String(c.id) !== newId)])
+        activeConvIdRef.current = newId
+        setActiveConversationId(newId)
+        setMessages([])
+        messagesByConvRef.current[newId] = []
+        setInput("")
+        setActionMenuConvId(null)
+        setEditingConvId(null)
+        return
+      }
+    } catch (e) {
+      console.error("Failed to create new conversation via API", e)
+    }
+
     setMessages([])
     setActiveConversationId(null)
     activeConvIdRef.current = null
+    setInput("")
+    setActionMenuConvId(null)
+    setEditingConvId(null)
   }
 
-  async function deleteConversation(id: string) {
-    if (!confirm("Clear this conversation?")) return
-    await fetch(`/api/conversations/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "include" })
-    setConversations((prev) => prev.filter((c) => c.id !== id))
-    if (activeConversationId === id) {
-      setMessages([])
-      setActiveConversationId(null)
-    }
+  function deleteConversation(id: string) {
+    const target = conversations.find((c) => String(c.id) === String(id)) || { id, title: "this conversation" }
+    setDeleteModalConv(target)
+    setActionMenuConvId(null)
     setContextMenu(null)
+  }
+
+  async function confirmDeleteConversation() {
+    if (!deleteModalConv || isDeleting) return
+    const id = String(deleteModalConv.id)
+    setIsDeleting(true)
+
+    try {
+      const res = await fetch(`/api/conversations/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        credentials: "include",
+      })
+      const data = await res.json()
+      if (data.success) {
+        setConversations((prev) => prev.filter((c) => String(c.id) !== id))
+        delete messagesByConvRef.current[id]
+
+        const currentActive = activeConvIdRef.current || activeConversationId
+        const wasActive = currentActive === id
+
+        setDeleteModalConv(null)
+        setActionMenuConvId(null)
+
+        if (wasActive) {
+          await newConversation()
+        }
+      } else {
+        console.error("Delete conversation failed", data.error)
+      }
+    } catch (e) {
+      console.error("Error deleting conversation", e)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalConv(null)
+    }
   }
 
   async function togglePinConversation(id: string, pinned: boolean) {
@@ -413,26 +494,68 @@ export default function HomePage() {
       credentials: "include",
     })
     setConversations((prev) =>
-      (prev.map((c) => (c.id === id ? { ...c, pinned } : c)))
+      prev.map((c) => (String(c.id) === String(id) ? { ...c, pinned } : c))
     )
     setContextMenu(null)
+    setActionMenuConvId(null)
   }
 
   async function renameConversation(id: string, newTitle: string) {
-    await fetch(`/api/conversations/${encodeURIComponent(id)}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: newTitle }),
-      credentials: "include",
-    })
-    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title: newTitle } : c)))
+    const trimmed = (newTitle || "").trim()
+    if (!trimmed) return
+    try {
+      const res = await fetch(`/api/conversations/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmed }),
+        credentials: "include",
+      })
+      const data = await res.json()
+      if (data.success) {
+        setConversations((prev) =>
+          prev.map((c) => (String(c.id) === String(id) ? { ...c, title: trimmed } : c))
+        )
+      }
+    } catch (e) {
+      console.error("Failed to rename conversation", e)
+    }
     setContextMenu(null)
+    setActionMenuConvId(null)
+  }
+
+  async function handleSaveRename(id: string) {
+    const trimmed = editingTitle.trim()
+    if (!trimmed) {
+      setEditingConvId(null)
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/conversations/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmed }),
+        credentials: "include",
+      })
+      const data = await res.json()
+      if (data.success) {
+        setConversations((prev) =>
+          prev.map((c) => (String(c.id) === String(id) ? { ...c, title: trimmed } : c))
+        )
+      }
+    } catch (e) {
+      console.error("Failed to rename conversation", e)
+    } finally {
+      setEditingConvId(null)
+      setEditingTitle("")
+      setActionMenuConvId(null)
+    }
   }
 
   function filteredConversations() {
     if (!searchQuery.trim()) return conversations
     const q = searchQuery.toLowerCase()
-    return conversations.filter((c) => c.title.toLowerCase().includes(q))
+    return conversations.filter((c) => String(c.title || "").toLowerCase().includes(q))
   }
 
   function formatTime(value: string) {
@@ -447,31 +570,44 @@ export default function HomePage() {
     const date = new Date(value)
     if (isNaN(date.getTime())) return ""
     const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    if (diff < 86400000) return "Today"
-    if (diff < 172800000) return "Yesterday"
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const startOfYesterday = startOfToday - 24 * 60 * 60 * 1000
+
+    const t = date.getTime()
+    if (t >= startOfToday) return "Today"
+    if (t >= startOfYesterday) return "Yesterday"
     return date.toLocaleDateString([], { month: "short", day: "numeric" })
   }
 
-  function getConversationSectionKey(value: string) {
+  function getConversationSectionKey(value: string): "Today" | "Yesterday" | "Previous 7 Days" | "Older" {
+    if (!value) return "Older"
     const date = new Date(value)
     if (isNaN(date.getTime())) return "Older"
+
     const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    if (diff < 86400000) return "Today"
-    if (diff < 172800000) return "Yesterday"
-    const startOfYear = new Date(now.getFullYear(), 0, 1).getTime()
-    if (date.getTime() >= startOfYear) return "This Year"
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const startOfYesterday = startOfToday - 24 * 60 * 60 * 1000
+    const startOf7Days = startOfToday - 7 * 24 * 60 * 60 * 1000
+
+    const t = date.getTime()
+    if (t >= startOfToday) return "Today"
+    if (t >= startOfYesterday) return "Yesterday"
+    if (t >= startOf7Days) return "Previous 7 Days"
     return "Older"
   }
 
   function groupConversationsBySection(list: any[]) {
     const sections: { key: string; title: string; items: any[] }[] = []
-    const order = ["Today", "Yesterday", "This Year", "Older"]
+    const order: ("Today" | "Yesterday" | "Previous 7 Days" | "Older")[] = [
+      "Today",
+      "Yesterday",
+      "Previous 7 Days",
+      "Older",
+    ]
     const map = new Map<string, any[]>()
     for (const key of order) map.set(key, [])
     for (const c of list) {
-      const key = getConversationSectionKey(c.createdAt)
+      const key = getConversationSectionKey(c.updatedAt || c.createdAt)
       map.get(key)!.push(c)
     }
     for (const key of order) {
@@ -1892,53 +2028,129 @@ export default function HomePage() {
                     <span className="chat-history-section-title">{section.title}</span>
                     <span className="badge">{section.items.length}</span>
                   </div>
-                  {section.items.map((conversation) => (
-                    <div
-                      key={conversation.id}
-                      className={`chat-conversation-item ${conversation.id === activeConversationId ? "active" : ""}`}
-                      onClick={() => {
-                        selectConversation(conversation.id)
-                      }}
-                      onContextMenu={(e) => {
-                        e.preventDefault()
-                        setContextMenu({ id: conversation.id, x: e.clientX, y: e.clientY })
-                      }}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="chat-conversation-title">
-                          {conversation.pinned && <i className="bi bi-pin-fill" style={{ color: "var(--accent)", marginRight: "0.25rem" }} />}
-                          {conversation.title}
+                  {section.items.map((conversation) => {
+                    const convIdStr = String(conversation.id)
+                    const isEditing = editingConvId === convIdStr
+                    const isMenuOpen = actionMenuConvId === convIdStr
+                    const isActive = convIdStr === (activeConvIdRef.current || activeConversationId)
+
+                    return (
+                      <div
+                        key={convIdStr}
+                        className={`chat-conversation-item ${isActive ? "active" : ""} ${isMenuOpen ? "menu-open" : ""}`}
+                        onClick={() => {
+                          if (!isEditing) {
+                            selectConversation(convIdStr)
+                          }
+                        }}
+                        onContextMenu={(e) => {
+                          e.preventDefault()
+                          setActionMenuConvId(null)
+                          setContextMenu({ id: convIdStr, x: e.clientX, y: e.clientY })
+                        }}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <div style={{ flex: 1, minWidth: 0, paddingRight: "4px" }}>
+                          {isEditing ? (
+                            <form
+                              onSubmit={(e) => {
+                                e.preventDefault()
+                                handleSaveRename(convIdStr)
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%" }}
+                            >
+                              <input
+                                type="text"
+                                autoFocus
+                                className="chat-rename-input"
+                                value={editingTitle}
+                                onChange={(e) => setEditingTitle(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Escape") {
+                                    setEditingConvId(null)
+                                  }
+                                }}
+                                onBlur={() => handleSaveRename(convIdStr)}
+                              />
+                              <button
+                                type="submit"
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", padding: 0, fontSize: "11px" }}
+                                title="Save"
+                              >
+                                <i className="bi bi-check-lg" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingConvId(null)}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-muted)", padding: 0, fontSize: "11px" }}
+                                title="Cancel"
+                              >
+                                <i className="bi bi-x-lg" />
+                              </button>
+                            </form>
+                          ) : (
+                            <>
+                              <div className="chat-conversation-title" title={conversation.title}>
+                                {conversation.pinned && <i className="bi bi-pin-fill" style={{ color: "var(--accent)", marginRight: "0.25rem" }} />}
+                                {conversation.title || "New Chat"}
+                              </div>
+                              <div className="chat-conversation-meta">{formatDate(conversation.updatedAt || conversation.createdAt)}</div>
+                            </>
+                          )}
                         </div>
-                        <div className="chat-conversation-meta">{formatDate(conversation.createdAt)}</div>
+
+                        {!isEditing && (
+                          <div className="chat-conversation-actions" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              className={`chat-conversation-menu-btn ${isMenuOpen ? "active" : ""}`}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setContextMenu(null)
+                                setActionMenuConvId((prev) => (prev === convIdStr ? null : convIdStr))
+                              }}
+                              title="Options"
+                              aria-label="Options"
+                            >
+                              <i className="bi bi-three-dots" />
+                            </button>
+
+                            {isMenuOpen && (
+                              <div className="chat-action-menu-dropdown" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  className="chat-action-menu-item"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setActionMenuConvId(null)
+                                    setEditingConvId(convIdStr)
+                                    setEditingTitle(conversation.title || "")
+                                  }}
+                                >
+                                  <i className="bi bi-pencil" style={{ fontSize: "11px" }} />
+                                  <span>Rename</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="chat-action-menu-item danger"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setActionMenuConvId(null)
+                                    deleteConversation(convIdStr)
+                                  }}
+                                >
+                                  <i className="bi bi-trash3" style={{ fontSize: "11px" }} />
+                                  <span>Delete</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <div style={{ display: "flex", gap: "4px" }} onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            togglePinConversation(conversation.id, !conversation.pinned)
-                          }}
-                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", color: "var(--ink-muted)" }}
-                          title={conversation.pinned ? "Unpin" : "Pin"}
-                        >
-                          <i className={conversation.pinned ? "bi bi-pin-fill" : "bi bi-pin"} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            deleteConversation(conversation.id)
-                          }}
-                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", color: "var(--danger)" }}
-                          title="Delete"
-                        >
-                          <i className="bi bi-trash3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ))
             )}
@@ -2004,12 +2216,7 @@ export default function HomePage() {
             <button
               id="clearHistoryBtn"
               onClick={() => {
-                if (confirm("Clear all chat history?")) {
-                  setMessages([])
-                  setConversations([])
-                  setActiveConversationId(null)
-                  localStorage.removeItem(STORAGE_KEY)
-                }
+                setClearHistoryModalOpen(true)
               }}
             >
               <i className="bi bi-trash3" style={{ marginRight: "0.25rem" }} /> Clear History
@@ -2164,12 +2371,11 @@ export default function HomePage() {
           <button
             className="conversation-context-item"
             onClick={() => {
-              const conv = conversations.find((c) => c.id === contextMenu.id)
+              const conv = conversations.find((c) => String(c.id) === String(contextMenu.id))
+              setContextMenu(null)
               if (conv) {
-                const newTitle = prompt("Rename conversation:", conv.title)
-                if (newTitle && newTitle.trim()) {
-                  renameConversation(contextMenu.id, newTitle.trim())
-                }
+                setEditingConvId(String(conv.id))
+                setEditingTitle(conv.title || "")
               }
             }}
           >
@@ -2177,17 +2383,162 @@ export default function HomePage() {
           </button>
           <button
             className="conversation-context-item"
-            onClick={() => togglePinConversation(contextMenu.id, !conversations.find((c) => c.id === contextMenu.id)?.pinned)}
+            onClick={() => togglePinConversation(contextMenu.id, !conversations.find((c) => String(c.id) === String(contextMenu.id))?.pinned)}
           >
-            📌 {conversations.find((c) => c.id === contextMenu.id)?.pinned ? "Unpin" : "Pin"}
+            📌 {conversations.find((c) => String(c.id) === String(contextMenu.id))?.pinned ? "Unpin" : "Pin"}
           </button>
           <div className="conversation-context-divider" />
           <button
             className="conversation-context-item danger"
-            onClick={() => deleteConversation(contextMenu.id)}
+            onClick={() => {
+              const convId = contextMenu.id
+              setContextMenu(null)
+              deleteConversation(convId)
+            }}
           >
             🗑 Delete
           </button>
+        </div>
+      )}
+
+      {/* Custom Delete Conversation Modal */}
+      {deleteModalConv && (
+        <div
+          className="modal-backdrop"
+          style={{ zIndex: 9999 }}
+          onClick={() => {
+            if (!isDeleting) setDeleteModalConv(null)
+          }}
+        >
+          <div
+            className="modal-content"
+            style={{ maxWidth: "420px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h5 className="modal-title" style={{ fontSize: "1rem", fontWeight: 600 }}>
+                Delete conversation?
+              </h5>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeleteModalConv(null)}
+                style={{ background: "none", border: "none", cursor: isDeleting ? "not-allowed" : "pointer", color: "var(--ink-muted)", fontSize: "1.1rem", padding: 0 }}
+                aria-label="Close"
+              >
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
+            <div className="modal-body" style={{ color: "var(--ink-soft)", fontSize: "0.875rem", lineHeight: 1.5 }}>
+              This conversation will be permanently deleted. This action cannot be undone.
+            </div>
+            <div className="modal-footer" style={{ borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                disabled={isDeleting}
+                onClick={() => setDeleteModalConv(null)}
+                style={{
+                  padding: "0.4rem 0.85rem",
+                  fontSize: "0.8125rem",
+                  borderRadius: "var(--radius-md)",
+                  cursor: isDeleting ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={isDeleting}
+                onClick={confirmDeleteConversation}
+                style={{
+                  padding: "0.4rem 0.85rem",
+                  fontSize: "0.8125rem",
+                  borderRadius: "var(--radius-md)",
+                  background: "var(--danger, #dc2626)",
+                  color: "#ffffff",
+                  border: "none",
+                  cursor: isDeleting ? "not-allowed" : "pointer",
+                  opacity: isDeleting ? 0.7 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                }}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Clear History Modal */}
+      {clearHistoryModalOpen && (
+        <div
+          className="modal-backdrop"
+          style={{ zIndex: 9999 }}
+          onClick={() => setClearHistoryModalOpen(false)}
+        >
+          <div
+            className="modal-content"
+            style={{ maxWidth: "420px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h5 className="modal-title" style={{ fontSize: "1rem", fontWeight: 600 }}>
+                Clear all chat history?
+              </h5>
+              <button
+                type="button"
+                onClick={() => setClearHistoryModalOpen(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-muted)", fontSize: "1.1rem", padding: 0 }}
+                aria-label="Close"
+              >
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
+            <div className="modal-body" style={{ color: "var(--ink-soft)", fontSize: "0.875rem", lineHeight: 1.5 }}>
+              All your conversations and messages will be permanently cleared from this device.
+            </div>
+            <div className="modal-footer" style={{ borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() => setClearHistoryModalOpen(false)}
+                style={{
+                  padding: "0.4rem 0.85rem",
+                  fontSize: "0.8125rem",
+                  borderRadius: "var(--radius-md)",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  setMessages([])
+                  setConversations([])
+                  setActiveConversationId(null)
+                  localStorage.removeItem(STORAGE_KEY)
+                  setClearHistoryModalOpen(false)
+                }}
+                style={{
+                  padding: "0.4rem 0.85rem",
+                  fontSize: "0.8125rem",
+                  borderRadius: "var(--radius-md)",
+                  background: "var(--danger, #dc2626)",
+                  color: "#ffffff",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </main>

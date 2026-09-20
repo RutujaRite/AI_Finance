@@ -18,6 +18,8 @@ import {
   isInvalidCompanyName,
   isFinancialOrProfileInput,
   extractApplicantDetails,
+  extractSecondaryParameters,
+  detectTargetedFieldInMessage,
   getRequiredPolicyFields,
   evaluateApplicantAgainstAllBanks,
   formatDynamicEligibilityReport,
@@ -36,13 +38,24 @@ import {
   BankManagerSearchEntities,
   PostEligibilityStage,
   isSameBank,
+  isValidIndianPincode,
+  recordMatchesBranch,
+  isLocationInput,
+  KNOWN_MAJOR_CITIES,
+  isConfirmationResponse,
+  extractTypedLoanEntities,
+  detectLoanType,
+  logFlowDebug,
+  updateNormalizedLoanState,
+  formatStateSummary,
+  TypedLoanEntities,
 } from "@/lib/dynamicEligibilityEngine";
 import { resolveCompanyCategories } from "@/lib/companyCategoryResolver";
 import { classifyIntentWithLLM, IntentClassificationResult, ExtractedEntities, cleanLlmJsonOutput } from "@/lib/ai/intentClassifier";
 import { normalizeModelSlug } from "@/lib/openrouter";
 import { getResolvedMasterPolicies } from "@/lib/masterPolicies";
 import { getMasterPolicyFileContent } from "@/lib/masterPolicyParser";
-import { incraaxSearch, isIncraaxSearchConfigured } from "@/lib/incraax";
+import { searchIncraax, incraaxSearch, isIncraaxSearchConfigured, fetchLiveCompanyIntelligence } from "@/lib/incraax";
 
 const LLM_TIMEOUT_MS = 25000;
 
@@ -2484,97 +2497,49 @@ async function executeIncraaxSearch(
 
 function extractPincodeFromManager(mgr: BankManagerRecord, userPincode?: string): string {
   const extra = mgr.extra_info as Record<string, any> | null;
-  if (extra?.pincode) return String(extra.pincode);
-  if (extra?.pin) return String(extra.pin);
-  if (extra?.pin_code) return String(extra.pin_code);
+  if (extra?.pincode && isValidIndianPincode(extra.pincode)) return String(extra.pincode);
+  if (extra?.pin && isValidIndianPincode(extra.pin)) return String(extra.pin);
+  if (extra?.pin_code && isValidIndianPincode(extra.pin_code)) return String(extra.pin_code);
   const locMatch = String(mgr.location || "").match(/\b([1-9]\d{5})\b/);
-  if (locMatch) return locMatch[1];
+  if (locMatch && isValidIndianPincode(locMatch[1])) return locMatch[1];
   const branchMatch = String(mgr.branch || "").match(/\b([1-9]\d{5})\b/);
-  if (branchMatch) return branchMatch[1];
-  const extraStr = JSON.stringify(extra || "");
-  const extraMatch = extraStr.match(/\b([1-9]\d{5})\b/);
-  if (extraMatch) return extraMatch[1];
-  if (userPincode && /\b([1-9]\d{5})\b/.test(userPincode)) {
+  if (branchMatch && isValidIndianPincode(branchMatch[1])) return branchMatch[1];
+  if (userPincode && isValidIndianPincode(userPincode)) {
     return userPincode;
   }
   return "";
 }
 
+export function formatApplicationInitiatedMessage(bank: string, branch?: string, city?: string, state = "Maharashtra"): string {
+  const normBranch = (branch || "").trim();
+  const normCity = (city || "").trim();
+
+  if (normBranch && normCity && normBranch.toLowerCase() !== normCity.toLowerCase()) {
+    return `Application process initiated for ${bank} at ${normBranch}, ${normCity}, ${state}. Our official representative will assist you.`;
+  }
+  if (normCity) {
+    return `Application process initiated for ${bank} in ${normCity}, ${state}. Our official representative will assist you.`;
+  }
+  if (normBranch) {
+    return `Application process initiated for ${bank} at ${normBranch}, ${state}. Our official representative will assist you.`;
+  }
+  return `Application process initiated for ${bank} in ${state}. Our official representative will assist you.`;
+}
+
 export function formatDynamicBankManagersTable(
   managers: BankManagerRecord[],
-  userPincode?: string
+  userPincode?: string,
+  userCity?: string,
+  userBranch?: string
 ): string {
-  if (!managers || managers.length === 0) {
-    return "";
-  }
-
-  const hasPincode = managers.some((m) => Boolean(extractPincodeFromManager(m, userPincode)));
-  const hasContact = managers.some(
-    (m) => m.phone && m.phone !== "N/A" && m.phone !== "#ERROR!" && m.phone.trim() !== ""
-  );
-  const hasEmail = managers.some(
-    (m) => m.email && m.email !== "N/A" && !m.email.includes("example.com") && m.email.trim() !== ""
-  );
-  const hasEmployeeNo = managers.some(
-    (m) => m.employee_code && m.employee_code !== "N/A" && m.employee_code.trim() !== ""
-  );
-
-  const headers: string[] = ["Bank", "Branch", "City"];
-  if (hasPincode) headers.push("Pincode");
-  headers.push("Manager Name");
-  if (hasContact) headers.push("Contact");
-  if (hasEmail) headers.push("Email");
-  if (hasEmployeeNo) headers.push("Employee No.");
-
-  let table = `| ${headers.join(" | ")} |\n`;
-  table += `| ${headers.map(() => ":---").join(" | ")} |\n`;
-
-  for (const mgr of managers) {
-    const row: string[] = [];
-    row.push(mgr.bank_name ? `**${mgr.bank_name}**` : "—");
-    row.push(mgr.branch || mgr.location || "—");
-    const cityVal = mgr.city || (mgr.location && mgr.location !== mgr.branch ? mgr.location : "—");
-    row.push(cityVal || "—");
-    if (hasPincode) {
-      const pin = extractPincodeFromManager(mgr, userPincode);
-      row.push(pin ? `\`${pin}\`` : "—");
-    }
-    const nameVal = mgr.name
-      ? (mgr.role ? `**${mgr.name}** *(${mgr.role})*` : `**${mgr.name}**`)
-      : "—";
-    row.push(nameVal);
-    if (hasContact) {
-      const phoneVal =
-        mgr.phone && mgr.phone !== "N/A" && mgr.phone !== "#ERROR!" && mgr.phone.trim() !== ""
-          ? `\`${mgr.phone}\``
-          : "—";
-      row.push(phoneVal);
-    }
-    if (hasEmail) {
-      const emailVal =
-        mgr.email && mgr.email !== "N/A" && !mgr.email.includes("example.com") && mgr.email.trim() !== ""
-          ? `\`${mgr.email}\``
-          : "—";
-      row.push(emailVal);
-    }
-    if (hasEmployeeNo) {
-      const empVal =
-        mgr.employee_code && mgr.employee_code !== "N/A" && mgr.employee_code.trim() !== ""
-          ? `\`${mgr.employee_code}\``
-          : "—";
-      row.push(empVal);
-    }
-    table += `| ${row.join(" | ")} |\n`;
-  }
-
-  return table.trim();
+  return formatBankManagersTable(managers, { userPincode, userCity, userBranch });
 }
 
 /**
  * 8. Tool Executor: search_bank_managers
  */
 async function executeSearchBankManagers(
-  args: { bank_name?: string; city?: string; pincode?: string; role?: string; branch?: string },
+  args: { bank_name?: string; city?: string; pincode?: string; role?: string; branch?: string; area?: string },
   userMessage: string,
   isEligibleFlowActive?: boolean,
   eligibilitySession?: any,
@@ -2584,6 +2549,8 @@ async function executeSearchBankManagers(
     bank_name: eligibilitySession?.lastBankManagerSearch?.bank_name || eligibilitySession?.chosenBank || undefined,
     city: eligibilitySession?.lastBankManagerSearch?.city || eligibilitySession?.city || eligibilitySession?.location || undefined,
     branch: eligibilitySession?.lastBankManagerSearch?.branch || eligibilitySession?.branch || undefined,
+    branchName: eligibilitySession?.lastBankManagerSearch?.branchName || eligibilitySession?.branchName || eligibilitySession?.branch || undefined,
+    area: eligibilitySession?.lastBankManagerSearch?.area || eligibilitySession?.area || undefined,
     pincode: eligibilitySession?.lastBankManagerSearch?.pincode || eligibilitySession?.pincode || undefined,
     location: eligibilitySession?.lastBankManagerSearch?.location || eligibilitySession?.location || undefined,
     role: eligibilitySession?.lastBankManagerSearch?.role || undefined,
@@ -2600,6 +2567,7 @@ async function executeSearchBankManagers(
   if (args.bank_name && !extractedParams.bankName) extractedParams.bankName = args.bank_name;
   if (args.city && !extractedParams.city) extractedParams.city = args.city;
   if (args.pincode && !extractedParams.pincode) extractedParams.pincode = args.pincode;
+  if (args.area && !extractedParams.area) extractedParams.area = args.area;
   if (args.branch && !extractedParams.branch) extractedParams.branch = args.branch;
   if (args.role && !extractedParams.role) extractedParams.role = args.role;
 
@@ -2612,14 +2580,16 @@ async function executeSearchBankManagers(
     }
   );
 
-  const filters: { bank_name?: string; city?: string; pincode?: string; branch_name?: string; role?: string; query?: string } = {};
+  const filters: { bank_name?: string; city?: string; pincode?: string; branch_name?: string; area?: string; role?: string; query?: string } = {};
   if (finalEntities.bank_name) filters.bank_name = finalEntities.bank_name;
   if (finalEntities.city) filters.city = finalEntities.city;
   if (finalEntities.branch) filters.branch_name = finalEntities.branch;
+  if (finalEntities.area) filters.area = finalEntities.area;
+  if (finalEntities.pincode) filters.pincode = finalEntities.pincode;
   if (finalEntities.role) filters.role = finalEntities.role;
 
   // Never generate search query from stale state when latest message contains a correction
-  const finalQuery = [finalEntities.bank_name, finalEntities.branch, finalEntities.city || finalEntities.pincode].filter(Boolean).join(" ");
+  const finalQuery = [finalEntities.bank_name, finalEntities.branch, finalEntities.area, finalEntities.city || finalEntities.pincode].filter(Boolean).join(" ");
   filters.query = finalQuery || undefined;
 
   const bankData = await searchBankManager(filters);
@@ -2629,10 +2599,13 @@ async function executeSearchBankManagers(
       ...(eligibilitySession || {}),
       chosenBank: finalEntities.bank_name,
       city: finalEntities.city,
+      area: finalEntities.area,
       location: finalEntities.location || finalEntities.city,
       branch: finalEntities.branch,
+      branchName: finalEntities.branchName || finalEntities.branch,
       pincode: finalEntities.pincode,
       postEligibilityStage: bankData?.length ? "BANK_MANAGER_RESULTS" : "BANK_MANAGER_DETAILS_INPUT",
+      locationStep: bankData?.length ? "MANAGER_RESULTS" : "LOCATION_SELECTION",
       managerFound: Boolean(bankData?.length),
       lastBankManagerSearch: finalEntities,
       updatedAt: Date.now(),
@@ -2640,12 +2613,13 @@ async function executeSearchBankManagers(
   }
 
   if (bankData?.length) {
-    let reply = formatDynamicBankManagersTable(bankData, finalEntities.pincode);
+    let reply = formatDynamicBankManagersTable(bankData, finalEntities.pincode, finalEntities.city, finalEntities.branch);
     if (!reply) {
-      reply = formatBankManagersTable(bankData);
-    }
-    if (!reply) {
-      reply = formatManagers(bankData, finalQuery);
+      reply = formatBankManagersTable(bankData, {
+        userPincode: finalEntities.pincode,
+        userCity: finalEntities.city,
+        userBranch: finalEntities.branch,
+      });
     }
     const locHeader = [finalEntities.branch, finalEntities.city || finalEntities.pincode].filter(Boolean).join(", ");
     return {
@@ -3427,7 +3401,7 @@ function nextEligibilityQuestion(field?: string): string {
 async function liveCompanySources(query: string) {
   if (!isIncraaxSearchConfigured()) return [];
   try {
-    return (await incraaxSearch(`${query} company official`, 3)).map((result) => ({
+    return (await searchIncraax(`${query} company official`, { maxResults: 3, deep: true })).map((result) => ({
       title: result.title,
       url: result.url,
       snippet: result.snippet,
@@ -3463,7 +3437,8 @@ async function handleCompanySelectionFlow(
   input: string,
   applicant: ApplicantProfile,
   session: any,
-  action?: CompanySelectionAction
+  action?: CompanySelectionAction,
+  conversationHistory?: Array<{ role: string; content: string }>
 ): Promise<AgentResult | null> {
   const flow = session?.companyFlow;
   const isCompanyStep = session?.expectedField === "companyName" || (session?.missingFields || []).includes("companyName");
@@ -3472,18 +3447,38 @@ async function handleCompanySelectionFlow(
   // If already in ELIGIBILITY_INPUT stage or evaluation is completed and no explicit company action or explicit company phrase, continue flow
   const isExplicitCompanyPhrase = /^(?:(?:i\s+(?:work|am\s+working)\s+(?:at|in)|(?:my\s+)?(?:employer|company)\s+is|(?:work|working|employed)\s+(?:at|in|by)|employer\s*[:=-]|company\s*[:=-])|(?:change|update|correct)\s+(?:my\s+)?(?:company|employer))\b/i.test(trimmedInput);
 
+  const lastAssistantMsg = (conversationHistory || [])
+    .filter((m) => m.role === "assistant" || m.role === "ai" || m.role === "bot")
+    .slice(-1)[0]?.content || "";
+
+  const assistantAskedLocation =
+    /(?:which|what|enter|provide|your|share|tell\s+me)\s+(?:city|branch|location|pincode|area)|where\s+are\s+you\s+(?:located|based)|which\s+city\s+you'?re\s+located\s+in/i.test(
+      lastAssistantMsg
+    );
+
+  const isLocationMsg = isLocationInput(trimmedInput);
+
   const isBankMsg = isKnownBankName(trimmedInput) || Boolean(resolveBankName(trimmedInput, session?.eligible_banks));
   const isPostEvalOrBankFlow = Boolean(
     session?.hasCompletedEvaluation ||
     session?.evaluationCompleted ||
     session?.expectedField === "chosenBank" ||
+    session?.expectedField === "selectedBank" ||
     session?.expectedField === "cityOrPincode" ||
+    session?.expectedField === "preferredBranch" ||
     session?.expectedField === "branchSelection" ||
     session?.chosenBank ||
+    session?.selectedBank ||
     (session?.eligible_banks && session.eligible_banks.length > 0)
   );
 
-  if (!action && (isBankMsg || isPostEvalOrBankFlow || (flow?.stage === "ELIGIBILITY_INPUT" && !isCompanyStep)) && !isExplicitCompanyPhrase) {
+  const isNonCompanyEligibilityStep = Boolean(
+    session?.in_eligibility_flow &&
+    session?.expectedField &&
+    session?.expectedField !== "companyName"
+  );
+
+  if (!action && (isBankMsg || isPostEvalOrBankFlow || isNonCompanyEligibilityStep || isLocationMsg || assistantAskedLocation || (flow?.stage === "ELIGIBILITY_INPUT" && !isCompanyStep)) && !isExplicitCompanyPhrase) {
     return null;
   }
 
@@ -3611,7 +3606,19 @@ async function handleCompanySelectionFlow(
     session?.hasCompletedEvaluation ||
     session?.evaluationCompleted
   );
-  const isStandaloneCompanyName = !isCompanyAlreadyConfirmed && !isCompanyStep && !flow && extracted && !isFinancialOrProfileInput(trimmedInput) && !isInvalidCompanyName(trimmedInput) && !isKnownBankName(trimmedInput) && !Boolean(resolveBankName(trimmedInput, session?.eligible_banks)) && trimmedInput.split(/\s+/).length <= 5;
+  const isStandaloneCompanyName =
+    !isCompanyAlreadyConfirmed &&
+    !isNonCompanyEligibilityStep &&
+    !isCompanyStep &&
+    !flow &&
+    extracted &&
+    !isFinancialOrProfileInput(trimmedInput) &&
+    !isInvalidCompanyName(trimmedInput) &&
+    !isLocationInput(trimmedInput) &&
+    !assistantAskedLocation &&
+    !isKnownBankName(trimmedInput) &&
+    !Boolean(resolveBankName(trimmedInput, session?.eligible_banks)) &&
+    trimmedInput.split(/\s+/).length <= 5;
 
   if (!extracted || (!isCompanyStep && !flow && !isExplicitCompanyPhrase && !isStandaloneCompanyName)) {
     return null;
@@ -3855,6 +3862,236 @@ function answerCommonBankingQuestion(userMessage: string): string | null {
   return null;
 }
 
+export interface ExtractedFieldAwareResult {
+  field: string;
+  value: any;
+  isValid: boolean;
+  clarificationPrompt?: string;
+}
+
+/**
+ * Field-aware entity extractor with authoritative priority for active eligibility steps.
+ * Dynamically maps user input according to the expectedField or explicitly identified fields.
+ * Validates inputs against banking rules and provides clarification prompts for invalid/ambiguous inputs.
+ */
+export function extractFieldAwareEntity(
+  userMessage: string,
+  expectedField: string,
+  currentApplicant?: Partial<ApplicantProfile>
+): ExtractedFieldAwareResult {
+  const norm = userMessage.toLowerCase().trim();
+
+  // 1. Check if user explicitly targeted a different field than expectedField
+  const explicitTarget = detectTargetedFieldInMessage(userMessage, expectedField);
+  const targetField = explicitTarget || expectedField;
+
+  // 2. AGE
+  if (targetField === "age") {
+    const explicitAgeMatch =
+      userMessage.match(/(?:age\s*is|my\s*age\s*is|i\s*am|i'?m|aged|age\s*[:=-]?)\s*(\d{1,3})/i) ||
+      userMessage.match(/(\d{1,3})\s*(?:years?\s*old|yrs?\s*old|years?|yrs?|saal|sal|age)\b/i);
+    let ageNum: number | null = null;
+    if (explicitAgeMatch) {
+      ageNum = parseInt(explicitAgeMatch[1], 10);
+    } else {
+      const numMatch = userMessage.match(/\b(\d{1,3})\b/);
+      if (numMatch) {
+        ageNum = parseInt(numMatch[1], 10);
+      }
+    }
+
+    if (ageNum !== null) {
+      if (ageNum >= 18 && ageNum <= 85) {
+        return { field: "age", value: ageNum, isValid: true };
+      } else {
+        return {
+          field: "age",
+          value: ageNum,
+          isValid: false,
+          clarificationPrompt: "Under partner bank policies, eligible applicant age must typically be between 18 and 65 years. Could you please confirm your current age?",
+        };
+      }
+    }
+    return {
+      field: "age",
+      value: null,
+      isValid: false,
+      clarificationPrompt: "Could you please share your current age in years (e.g. 25) so I can verify partner bank age eligibility criteria?",
+    };
+  }
+
+  // 3. CIBIL
+  if (targetField === "cibil") {
+    if (/\b(?:no|zero|0|nil|none|unknown|never\s*checked|don'?t\s*know|na|n\/a)\b/i.test(norm)) {
+      return { field: "cibil", value: 0, isValid: true };
+    }
+    const explicitCibilMatch =
+      userMessage.match(/(?:cibil|credit\s*score|score)(?:\s*is)?(?:\s*[:=-])?\s*([3-9]\d{2})/i) ||
+      userMessage.match(/([3-9]\d{2})\s*(?:cibil|credit\s*score|score)/i);
+    let cibilNum: number | null = null;
+    if (explicitCibilMatch) {
+      cibilNum = parseInt(explicitCibilMatch[1], 10);
+    } else {
+      const numMatch = userMessage.match(/\b(\d{3})\b/);
+      if (numMatch) {
+        cibilNum = parseInt(numMatch[1], 10);
+      }
+    }
+
+    if (cibilNum !== null) {
+      if (cibilNum >= 300 && cibilNum <= 900) {
+        return { field: "cibil", value: cibilNum, isValid: true };
+      } else {
+        return {
+          field: "cibil",
+          value: cibilNum,
+          isValid: false,
+          clarificationPrompt: "CIBIL scores range from 300 to 900. Could you please share your approximate credit score, or reply 'Not sure' if you haven't checked it?",
+        };
+      }
+    }
+    return {
+      field: "cibil",
+      value: null,
+      isValid: false,
+      clarificationPrompt: "Could you please provide your approximate CIBIL score (e.g. 750) or reply 'Not sure' to check your eligibility?",
+    };
+  }
+
+  // 4. LOAN AMOUNT
+  if (targetField === "loanAmount") {
+    const parsedLoan = parseFinancialAmount(userMessage);
+    if (parsedLoan !== null && parsedLoan >= 10000) {
+      return { field: "loanAmount", value: parsedLoan, isValid: true };
+    } else if (parsedLoan !== null && parsedLoan < 10000) {
+      return {
+        field: "loanAmount",
+        value: parsedLoan,
+        isValid: false,
+        clarificationPrompt: "The minimum personal loan amount across partner banks is ₹10,000. Could you please specify how much you wish to borrow?",
+      };
+    }
+    return {
+      field: "loanAmount",
+      value: null,
+      isValid: false,
+      clarificationPrompt: "Could you please provide the loan amount you wish to borrow (e.g. ₹5,00,000)?",
+    };
+  }
+
+  // 5. MONTHLY INCOME
+  if (targetField === "monthlyIncome") {
+    if (/^(?:0|zero|no\s*income|nil|none)\b/i.test(norm)) {
+      return { field: "monthlyIncome", value: 0, isValid: true };
+    }
+    const parsedIncome = parseFinancialAmount(userMessage);
+    if (parsedIncome !== null && parsedIncome >= 0) {
+      return { field: "monthlyIncome", value: parsedIncome, isValid: true };
+    }
+    return {
+      field: "monthlyIncome",
+      value: null,
+      isValid: false,
+      clarificationPrompt: "Could you please share your net monthly take-home salary (e.g. ₹50,000)?",
+    };
+  }
+
+  // 6. TENURE MONTHS
+  if (targetField === "tenureMonths") {
+    const yMatch = userMessage.match(/(\d+)\s*(?:years?|yrs?|y\b|saal|sal)/i);
+    if (yMatch) {
+      const y = parseInt(yMatch[1], 10);
+      if (y > 0 && y <= 30) {
+        return { field: "tenureMonths", value: y * 12, isValid: true };
+      }
+    }
+    const mMatch = userMessage.match(/(\d+)\s*(?:months?|m\b)/i);
+    if (mMatch) {
+      const m = parseInt(mMatch[1], 10);
+      if (m > 0 && m <= 360) {
+        return { field: "tenureMonths", value: m, isValid: true };
+      }
+    }
+    const numMatch = userMessage.match(/\b(\d+)\b/);
+    if (numMatch) {
+      const n = parseInt(numMatch[1], 10);
+      if (n >= 1 && n <= 7) {
+        return { field: "tenureMonths", value: n * 12, isValid: true };
+      } else if (n >= 12 && n <= 360) {
+        return { field: "tenureMonths", value: n, isValid: true };
+      }
+    }
+    return {
+      field: "tenureMonths",
+      value: null,
+      isValid: false,
+      clarificationPrompt: "Could you please specify your preferred loan tenure in years or months (e.g. 3 years or 36 months)?",
+    };
+  }
+
+  // 7. EXISTING EMI
+  if (targetField === "existingEmi") {
+    if (
+      /^(?:no|none|nil|zero|0|nothing|nope|clear|sab\s*clear)\b/i.test(norm) ||
+      /\b(?:no|zero|0|nil)\s*(?:existing\s*)?emi/i.test(norm) ||
+      /\b(?:no|zero|nil|0)\s*(?:existing\s*|ongoing\s*|current\s*)?loans?/i.test(norm) ||
+      /zero\s*debt|sab\s*clear|no\s*debt/i.test(norm)
+    ) {
+      return { field: "existingEmi", value: 0, isValid: true };
+    }
+    const emiAmt = parseFinancialAmount(userMessage);
+    if (emiAmt !== null && emiAmt >= 0) {
+      return { field: "existingEmi", value: emiAmt, isValid: true };
+    }
+    return {
+      field: "existingEmi",
+      value: null,
+      isValid: false,
+      clarificationPrompt: "Could you please state your total current monthly EMIs (or reply '0' if you have none)?",
+    };
+  }
+
+  return {
+    field: targetField,
+    value: null,
+    isValid: false,
+    clarificationPrompt: `Could you please provide your ${targetField}?`,
+  };
+}
+
+/**
+ * Prints the 7 required debug lines on every turn.
+ */
+export function printRouterDebug(info: {
+  currentStep: string;
+  expectedField: string;
+  userMessage: string;
+  extractedEntity: any;
+  routedHandler: string;
+  updatedEligibilityState: any;
+  nextStep: string;
+}) {
+  console.log(`CURRENT STEP: ${info.currentStep}`);
+  console.log(`EXPECTED FIELD: ${info.expectedField}`);
+  console.log(`USER MESSAGE: ${info.userMessage}`);
+  console.log(
+    `EXTRACTED ENTITY: ${
+      typeof info.extractedEntity === "object" && info.extractedEntity !== null
+        ? JSON.stringify(info.extractedEntity)
+        : info.extractedEntity ?? "null"
+    }`
+  );
+  console.log(`ROUTED HANDLER: ${info.routedHandler}`);
+  console.log(
+    `UPDATED ELIGIBILITY STATE: ${
+      typeof info.updatedEligibilityState === "object" && info.updatedEligibilityState !== null
+        ? JSON.stringify(info.updatedEligibilityState)
+        : info.updatedEligibilityState ?? "{}"
+    }`
+  );
+  console.log(`NEXT STEP: ${info.nextStep}`);
+}
+
 /**
  * Main CreditWise AI Central Agent.
  * Fully LLM-driven for conversation understanding.
@@ -3945,7 +4182,8 @@ export async function runCentralAgent(opts: {
     userMessage,
     currentApplicant,
     eligibilitySession,
-    companySelectionAction
+    companySelectionAction,
+    conversationHistory
   );
   if (companyFlowResult) return companyFlowResult;
 
@@ -3958,6 +4196,467 @@ export async function runCentralAgent(opts: {
     ((eligibilitySession as any)?.evaluatedBanks && (eligibilitySession as any).evaluatedBanks.length > 0) ||
     Boolean((eligibilitySession as any)?.evaluationReport)
   );
+
+  // 3b. Authoritative Active Eligibility Field Collection Handler
+  // Router priority order:
+  // session state → current eligibility step → field/entity extraction → eligibility handler → generic intent detection → company search
+  const isPostEvalOrBankFlow = Boolean(
+    hasCompletedEvaluation ||
+    eligibilitySession?.expectedField === "selectedBank" ||
+    eligibilitySession?.expectedField === "chosenBank" ||
+    eligibilitySession?.expectedField === "cityOrPincode" ||
+    eligibilitySession?.expectedField === "preferredBranch" ||
+    eligibilitySession?.expectedField === "branchSelection" ||
+    eligibilitySession?.chosenBank ||
+    eligibilitySession?.selectedBank
+  );
+
+  const isCollectingEligibilityField = Boolean(
+    isEligibleFlowActive &&
+    !isPostEvalOrBankFlow &&
+    eligibilitySession?.expectedField &&
+    eligibilitySession.expectedField !== "companyName"
+  );
+
+  // 2b. State-Aware Entity Extraction & Generic NLU Flow Handling
+  // State Priority:
+  // 1. active conversation state
+  // 2. current flow
+  // 3. current step
+  // 4. expected entity
+  // 5. user intent
+  // 6. entity extraction
+  const lastAssistantTurn = (conversationHistory || [])
+    .filter((m) => m.role === "assistant" || m.role === "ai" || m.role === "bot")
+    .slice(-1)[0]?.content || "";
+
+  const assistantAskedConfirmation =
+    /(?:would\s+you\s+like|shall\s+i|should\s+we|do\s+you\s+want|to\s+proceed|please\s+confirm|can\s+we\s+proceed|confirm\s+this)/i.test(
+      lastAssistantTurn
+    );
+
+  const assistantAskedLocation =
+    /(?:which|what|enter|provide|your|share|tell\s+me)\s+(?:city|branch|location|pincode|area)|where\s+are\s+you\s+(?:located|based)|which\s+city\s+you'?re\s+located\s+in/i.test(
+      lastAssistantTurn
+    );
+
+  const assistantAskedBank =
+    /(?:which|what|select|choose)\s+(?:partner\s*)?bank|select\s+one\s+bank|which\s+(?:partner\s*)?bank\s+would\s+you\s+like/i.test(
+      lastAssistantTurn
+    );
+
+  let currentFlow = "LOAN_ASSESSMENT";
+  if (isEligibleFlowActive && eligibilitySession?.expectedField && eligibilitySession.expectedField !== "companyName") {
+    currentFlow = "ELIGIBILITY";
+  } else if (eligibilitySession?.companyFlow?.stage) {
+    currentFlow = "COMPANY_SELECTION";
+  } else if (eligibilitySession?.postEligibilityStage || eligibilitySession?.hasCompletedEvaluation) {
+    currentFlow = "POST_ELIGIBILITY";
+  }
+
+  let currentStep = eligibilitySession?.currentStep || "INITIAL";
+  let expectedEntity = eligibilitySession?.expectedEntity || eligibilitySession?.expectedField || "none";
+
+  if (eligibilitySession?.expectedEntity) {
+    expectedEntity = eligibilitySession.expectedEntity;
+    currentStep = eligibilitySession.currentStep || eligibilitySession.expectedEntity.toUpperCase();
+  } else if (eligibilitySession?.expectedField) {
+    expectedEntity = eligibilitySession.expectedField;
+    currentStep = eligibilitySession.expectedField.toUpperCase();
+  } else if (assistantAskedConfirmation) {
+    expectedEntity = "confirmation";
+    currentStep = "CONFIRMATION";
+  } else if (assistantAskedBank) {
+    expectedEntity = "selectedBank";
+    currentStep = "BANK_SELECTION";
+  } else if (assistantAskedLocation) {
+    expectedEntity = "city";
+    currentStep = "LOCATION_COLLECTION";
+  }
+
+  let detectedIntent = "GENERAL";
+  if (isConfirmationResponse(userMessage).isConfirmation) {
+    detectedIntent = "CONFIRMATION";
+  } else if (resolveBankName(userMessage, eligibilitySession?.eligible_banks)) {
+    detectedIntent = "BANK_SELECTION";
+  } else if (isLocationInput(userMessage) || assistantAskedLocation) {
+    detectedIntent = "LOCATION_INPUT";
+  } else if (detectLoanType(userMessage)) {
+    detectedIntent = "LOAN_TYPE_SELECTION";
+  }
+
+  const extractedEntities = extractTypedLoanEntities(
+    userMessage,
+    expectedEntity,
+    eligibilitySession?.eligible_banks,
+    currentApplicant
+  );
+
+  const updatedSessionState = updateNormalizedLoanState(
+    eligibilitySession,
+    extractedEntities,
+    currentApplicant,
+    expectedEntity
+  );
+
+  logFlowDebug({
+    currentFlow,
+    currentStep,
+    expectedEntity,
+    userMessage,
+    detectedIntent,
+    extractedEntities,
+    previousState: formatStateSummary(eligibilitySession, currentApplicant),
+    updatedState: formatStateSummary(updatedSessionState, updatedSessionState.applicant),
+  });
+
+  // Dynamic Handling of Confirmation Responses in Intake Flow
+  // Preserves existing bank, branch, city, loanAmount, tenure, loanType completely!
+  if (
+    !hasCompletedEvaluation &&
+    (expectedEntity === "confirmation" || assistantAskedConfirmation || eligibilitySession?.currentStep === "CONFIRMATION") &&
+    extractedEntities.CONFIRMATION !== undefined
+  ) {
+    if (extractedEntities.CONFIRMATION === true) {
+      updatedSessionState.confirmation = true;
+      updatedSessionState.currentStep = "CONFIRMED";
+      updatedSessionState.expectedEntity = "none";
+      await saveEligibilityState(conversationId, updatedSessionState);
+
+      const selBank = updatedSessionState.selectedBank || updatedSessionState.chosenBank || "partner bank";
+      const selLoc = [updatedSessionState.preferredBranch, updatedSessionState.city].filter(Boolean).join(", ");
+      return {
+        reply: `✅ **Application initiated with ${selBank}**${selLoc ? ` at **${selLoc}**` : ""}.\n\nOur official branch manager / loan specialist will assist you with the next steps and documentation.`,
+      };
+    } else {
+      updatedSessionState.confirmation = false;
+      await saveEligibilityState(conversationId, updatedSessionState);
+      return {
+        reply: `Understood. Would you like to select a different bank, update your preferred branch/location, or modify your loan details?`,
+      };
+    }
+  }
+
+  // Dynamic Handling of Bank Selection in Intake Flow
+  // BANK != CITY, BANK != BRANCH. Preserves location, updates only bank.
+  if (
+    !hasCompletedEvaluation &&
+    (expectedEntity === "selectedBank" || assistantAskedBank || eligibilitySession?.currentStep === "BANK_SELECTION") &&
+    extractedEntities.BANK &&
+    !isCollectingEligibilityField
+  ) {
+    updatedSessionState.selectedBank = extractedEntities.BANK;
+    updatedSessionState.chosenBank = extractedEntities.BANK;
+
+    if (updatedSessionState.preferredBranch || updatedSessionState.city) {
+      updatedSessionState.currentStep = "CONFIRMATION";
+      updatedSessionState.expectedEntity = "confirmation";
+      updatedSessionState.expectedField = "confirmation";
+      await saveEligibilityState(conversationId, updatedSessionState);
+
+      const bName = updatedSessionState.selectedBank;
+      const locPart = [updatedSessionState.preferredBranch, updatedSessionState.city].filter(Boolean).join(", ");
+      return {
+        reply: `I have noted your selection of **${bName}**${locPart ? ` at **${locPart}**` : ""}.\n\nWould you like me to proceed and connect you with the official branch representative?`,
+      };
+    } else {
+      updatedSessionState.currentStep = "BRANCH_COLLECTION";
+      updatedSessionState.expectedEntity = "preferredBranch";
+      updatedSessionState.expectedField = "branch";
+      await saveEligibilityState(conversationId, updatedSessionState);
+
+      return {
+        reply: `You selected **${updatedSessionState.selectedBank}**. Please provide your preferred branch name so I can connect you with your official representative.`,
+      };
+    }
+  }
+
+  // Dynamic Handling of Location Input in Intake Flow
+  // Natural-language filler stripped dynamically.
+  if (
+    !hasCompletedEvaluation &&
+    !isCollectingEligibilityField &&
+    (extractedEntities.CITY || extractedEntities.BRANCH || extractedEntities.PINCODE) &&
+    (assistantAskedLocation || isLocationInput(userMessage) || expectedEntity === "city" || expectedEntity === "preferredBranch")
+  ) {
+    if (updatedSessionState.selectedBank) {
+      updatedSessionState.currentStep = "CONFIRMATION";
+      updatedSessionState.expectedEntity = "confirmation";
+      updatedSessionState.expectedField = "confirmation";
+      await saveEligibilityState(conversationId, updatedSessionState);
+
+      const displayLoc = [updatedSessionState.preferredBranch, updatedSessionState.city].filter(Boolean).join(", ");
+      return {
+        reply: `I have noted your location as **${displayLoc}** for **${updatedSessionState.selectedBank}**.\n\nWould you like me to connect you with the branch manager at **${displayLoc}**?`,
+      };
+    } else {
+      updatedSessionState.currentStep = "BANK_SELECTION";
+      updatedSessionState.expectedEntity = "selectedBank";
+      updatedSessionState.expectedField = "selectedBank";
+      await saveEligibilityState(conversationId, updatedSessionState);
+
+      const displayLoc = [updatedSessionState.preferredBranch, updatedSessionState.city].filter(Boolean).join(", ");
+      const isGold =
+        updatedSessionState.loanType === "Gold Loan" ||
+        updatedSessionState.loanType === "GOLD_LOAN" ||
+        /\bgold\b/i.test(updatedSessionState.applicant?.loanType || "") ||
+        (conversationHistory || []).some((m) => /\bgold\b/i.test(m.content));
+
+      if (isGold) {
+        updatedSessionState.loanType = "Gold Loan";
+        updatedSessionState.applicant.loanType = "Gold Loan";
+        currentApplicant.loanType = "Gold Loan";
+        await saveEligibilityState(conversationId, updatedSessionState);
+      }
+
+      const amtStr = updatedSessionState.applicant.loanAmount ? `for **₹${Number(updatedSessionState.applicant.loanAmount).toLocaleString("en-IN")}**` : "";
+      const tenureStr = updatedSessionState.applicant.tenureMonths ? `over **${updatedSessionState.applicant.tenureMonths} months**` : "";
+
+      let reply = `I have noted your location as **${displayLoc}** ${amtStr} ${tenureStr}.\n\n`;
+      if (isGold) {
+        reply += `Since gold loans are secured against your gold ornaments, **no income proof, salary slips, or ITR are required**, making this 100% accessible even while unemployed.\n\n### 🏦 Partner Bank Gold Loan Options in ${displayLoc}:\n- **HDFC Bank**\n- **ICICI Bank**\n- **State Bank of India (SBI)**\n\nWhich partner bank would you like to select to connect with the branch manager?`;
+      } else {
+        reply += `Which partner bank from our network would you like to proceed with (e.g. HDFC Bank, ICICI Bank, SBI)?`;
+      }
+      return { reply };
+    }
+  }
+
+
+
+  if (isCollectingEligibilityField && eligibilitySession?.expectedField) {
+    const currentStepField = eligibilitySession.expectedField;
+    const currentStep = currentStepField.toUpperCase();
+
+    // A. Reset / Cancellation
+    if (/^(?:cancel|reset|restart|stop|exit)\b/i.test(norm)) {
+      await clearEligibilityState(conversationId);
+      printRouterDebug({
+        currentStep,
+        expectedField: currentStepField,
+        userMessage,
+        extractedEntity: null,
+        routedHandler: "RESET_SESSION",
+        updatedEligibilityState: {},
+        nextStep: "NONE",
+      });
+      return { reply: "I have reset your loan assessment session. How else can I assist you today?" };
+    }
+
+    // B. Unemployed check
+    if (/(?:unemployed|lost\s*(?:my\s*)?job|laid\s*off|no\s*job|without\s*(?:a\s*)?job|jobless)\b/i.test(norm)) {
+      await clearEligibilityState(conversationId);
+      printRouterDebug({
+        currentStep,
+        expectedField: currentStepField,
+        userMessage,
+        extractedEntity: { employmentStatus: "unemployed" },
+        routedHandler: "ELIGIBILITY_UNEMPLOYED",
+        updatedEligibilityState: { ...currentApplicant, employmentStatus: "unemployed" },
+        nextStep: "NONE",
+      });
+      return {
+        reply: "Under partner bank policies, unsecured personal loans require active employment (Salaried or Self-Employed) with regular verifiable monthly income. Unemployed applicants are currently not eligible for unsecured personal loans.",
+      };
+    }
+
+    // C. Common banking questions (answer concept and re-prompt field)
+    const commonQAns = answerCommonBankingQuestion(userMessage);
+    if (commonQAns) {
+      const fieldDescriptions: Record<string, string> = {
+        companyName: "which company you currently work for",
+        monthlyIncome: "your approximate net monthly take-home salary",
+        loanAmount: "the loan amount you wish to borrow",
+        tenureMonths: "your preferred repayment tenure",
+        cibil: "your approximate CIBIL score (or let me know if not sure)",
+        age: "your current age",
+        existingEmi: "your total existing monthly loan EMIs (or 0 if none)",
+      };
+      const fieldLabel = fieldDescriptions[currentStepField] || currentStepField;
+      const reply = `${commonQAns}\n\nCould you please share ${fieldLabel} so we can continue your loan eligibility assessment?`;
+      printRouterDebug({
+        currentStep,
+        expectedField: currentStepField,
+        userMessage,
+        extractedEntity: null,
+        routedHandler: "ELIGIBILITY_QUESTION_ANSWER",
+        updatedEligibilityState: currentApplicant,
+        nextStep: currentStep,
+      });
+      return { reply };
+    }
+
+    // D. Explicit bank policy inquiry
+    const isExplicitBankPolicyQuery =
+      /(?:policy|guidelines?|rules?|criteria|cutoff|cut-off)\b/i.test(norm) &&
+      /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata\s*capital|idfc|indusind|bandhan|yes\s*bank|piramal|poonawalla|chola|smfg|finnable|fibe|sbm|utkarsh)/i.test(norm) &&
+      !/(?:am\s*i\s*eligible|my\s*eligibility|can\s*i\s*get|i\s*need|i\s*want)/i.test(norm);
+
+    if (isExplicitBankPolicyQuery) {
+      let bankMatch = /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata\s*capital|idfc|indusind|bandhan|yes\s*bank|piramal|poonawalla|chola|smfg|finnable|fibe|sbm|utkarsh)/i.exec(userMessage);
+      const bankToQuery = bankMatch ? bankMatch[0] : "";
+      const policyReply = await answerBankPolicyWithMasterPolicy(bankToQuery, userMessage, requestedModel);
+      const fieldDescriptions: Record<string, string> = {
+        companyName: "which company you currently work for",
+        monthlyIncome: "your approximate net monthly take-home salary",
+        loanAmount: "the loan amount you wish to borrow",
+        tenureMonths: "your preferred repayment tenure",
+        cibil: "your approximate CIBIL score (or let me know if not sure)",
+        age: "your current age",
+        existingEmi: "your total existing monthly loan EMIs (or 0 if none)",
+      };
+      const fieldLabel = fieldDescriptions[currentStepField] || currentStepField;
+      const reply = `${policyReply}\n\n---\n*(To resume your loan eligibility check: Could you please share ${fieldLabel}?)*`;
+      printRouterDebug({
+        currentStep,
+        expectedField: currentStepField,
+        userMessage,
+        extractedEntity: null,
+        routedHandler: "BANK_POLICY",
+        updatedEligibilityState: currentApplicant,
+        nextStep: currentStep,
+      });
+      return { reply };
+    }
+
+    // E. Extract Field-Aware Entity
+    const extractedResult = extractFieldAwareEntity(userMessage, currentStepField, currentApplicant);
+
+    if (extractedResult.isValid) {
+      const updatedApplicant: ApplicantProfile = {
+        ...currentApplicant,
+        [extractedResult.field]: extractedResult.value,
+      };
+
+      // Also extract any secondary parameters explicitly mentioned in the userMessage
+      extractSecondaryParameters(
+        updatedApplicant,
+        userMessage,
+        norm,
+        extractedResult.field
+      );
+
+      const remainingMissing = getRequiredPolicyFields(updatedApplicant);
+
+      if (remainingMissing.length > 0) {
+        const nextField = remainingMissing[0];
+        let nextQuestion = "";
+        try {
+          const dynamicQ = await generateDynamicSingleQuestionWithLLM(
+            nextField,
+            updatedApplicant,
+            userMessage,
+            requestedModel,
+            undefined,
+            conversationHistory
+          );
+          if (dynamicQ && dynamicQ.trim().length > 10 && !dynamicQ.includes("⚠️")) {
+            nextQuestion = dynamicQ.trim();
+          }
+        } catch {}
+
+        if (!nextQuestion) {
+          const fieldDescriptions: Record<string, string> = {
+            companyName: "which company you currently work for",
+            monthlyIncome: "your approximate net monthly take-home salary",
+            loanAmount: "the loan amount you wish to borrow",
+            tenureMonths: "your preferred repayment tenure",
+            cibil: "your approximate CIBIL score (or let me know if not sure)",
+            age: "your current age",
+            existingEmi: "your total existing monthly loan EMIs (or 0 if none)",
+          };
+          const label = fieldDescriptions[nextField] || nextField;
+          nextQuestion = `Could you please share ${label} to complete your loan eligibility check across our partner banks?`;
+        }
+
+        await saveEligibilityState(conversationId, {
+          ...eligibilitySession,
+          applicant: updatedApplicant,
+          expectedField: nextField,
+          lastAnsweredField: extractedResult.field,
+          missingFields: remainingMissing,
+          in_eligibility_flow: true,
+          updatedAt: Date.now(),
+        } as any);
+
+        printRouterDebug({
+          currentStep,
+          expectedField: currentStepField,
+          userMessage,
+          extractedEntity: { [extractedResult.field]: extractedResult.value },
+          routedHandler: "ELIGIBILITY_FIELD_COLLECTION",
+          updatedEligibilityState: updatedApplicant,
+          nextStep: nextField.toUpperCase(),
+        });
+
+        return { reply: nextQuestion };
+      } else {
+        // All required fields collected -> run evaluation!
+        const evalResult = await evaluateApplicantAgainstAllBanks(updatedApplicant, updatedApplicant.loanType || "Personal Loan");
+        const report = formatDynamicEligibilityReport(updatedApplicant, evalResult);
+
+        await saveEligibilityState(conversationId, {
+          applicant: updatedApplicant,
+          expectedField: "selectedBank",
+          missingFields: [],
+          in_eligibility_flow: false,
+          hasCompletedEvaluation: true,
+          evaluationCompleted: true,
+          eligible_banks: (evalResult.eligibleBanks || []).map((b) => b.bankName),
+          topBank: evalResult.recommendedBank?.bankName || (evalResult.eligibleBanks?.[0]?.bankName) || "",
+          selectedBank: "",
+          chosenBank: "",
+          postEligibilityStage: "ELIGIBILITY_CONFIRMED",
+          ineligibleBanks: (evalResult.ineligibleBanks || []).map((b) => ({
+            bankName: b.bankName,
+            failureReasons: b.failureReasons,
+          })),
+          updatedAt: Date.now(),
+        } as any);
+
+        const bankDataForClient = evalResult.evaluations.map((ev) => ({
+          bank_id: ev.bankId,
+          bank_name: ev.bankName,
+          status: ev.status,
+          is_eligible: ev.isEligible,
+          roi: ev.roi,
+          monthly_emi: ev.monthlyEmi,
+          calculated_foir: ev.calculatedFoir,
+          max_loan_eligible: ev.maxLoanEligible,
+          failure_reasons: ev.failureReasons,
+        }));
+
+        printRouterDebug({
+          currentStep,
+          expectedField: currentStepField,
+          userMessage,
+          extractedEntity: { [extractedResult.field]: extractedResult.value },
+          routedHandler: "ELIGIBILITY_EVALUATION",
+          updatedEligibilityState: updatedApplicant,
+          nextStep: "BANK_SELECTION",
+        });
+
+        return { reply: report, bankData: bankDataForClient };
+      }
+    } else {
+      // Ambiguous or invalid input: ask clarification question instead of routing to Company Search!
+      const clarificationPrompt =
+        extractedResult.clarificationPrompt ||
+        `Could you please provide your ${currentStepField}?`;
+
+      printRouterDebug({
+        currentStep,
+        expectedField: currentStepField,
+        userMessage,
+        extractedEntity: null,
+        routedHandler: "ELIGIBILITY_CLARIFICATION",
+        updatedEligibilityState: currentApplicant,
+        nextStep: currentStep,
+      });
+
+      return { reply: clarificationPrompt };
+    }
+  }
   const eligibleBanks: string[] = eligibilitySession?.eligible_banks || (eligibilitySession as any)?.evaluatedBanks || [];
   const topRecommendedBank: string = eligibilitySession?.topBank || eligibleBanks[0] || "";
   const existingChosenBank: string = eligibilitySession?.selectedBank || eligibilitySession?.chosenBank || "";
@@ -4066,6 +4765,17 @@ export async function runCentralAgent(opts: {
         await saveEligibilityState(conversationId, {
           applicant: currentApplicant,
           expectedField: "selectedBank",
+          currentStep: "BANK_SELECTION",
+          expectedEntity: "selectedBank",
+          collectedEntities: {
+            companyName: currentApplicant.companyName,
+            monthlyIncome: currentApplicant.monthlyIncome,
+            loanAmount: currentApplicant.loanAmount,
+            tenureMonths: currentApplicant.tenureMonths,
+            cibil: currentApplicant.cibil,
+            age: currentApplicant.age,
+            existingEmi: currentApplicant.existingEmi,
+          },
           missingFields: [],
           in_eligibility_flow: false,
           hasCompletedEvaluation: true,
@@ -4183,19 +4893,54 @@ export async function runCentralAgent(opts: {
       }
 
       // 2. Build previous entities from session and reconcile dynamically
+      const safePrevPincode =
+        isValidIndianPincode(eligibilitySession?.pincode) && String(eligibilitySession?.pincode) !== String(currentApplicant.loanAmount)
+          ? eligibilitySession?.pincode
+          : (isValidIndianPincode(currentApplicant.pincode) && String(currentApplicant.pincode) !== String(currentApplicant.loanAmount) ? currentApplicant.pincode : undefined);
+
+      const safePrevLocation =
+        eligibilitySession?.location && !/^\d+$/.test(eligibilitySession.location) && eligibilitySession.location !== String(currentApplicant.loanAmount)
+          ? eligibilitySession.location
+          : (currentApplicant.location && !/^\d+$/.test(currentApplicant.location) && currentApplicant.location !== String(currentApplicant.loanAmount) ? currentApplicant.location : undefined);
+
+      const safePrevBranch = eligibilitySession?.preferredBranch || eligibilitySession?.branch || undefined;
+      const cleanPrevBranch = safePrevBranch && !/^\d+$/.test(safePrevBranch) && safePrevBranch !== String(currentApplicant.loanAmount)
+        ? safePrevBranch
+        : undefined;
+      const safePrevArea = eligibilitySession?.area || currentApplicant?.area || undefined;
+
       const prevEntities: BankManagerSearchEntities = {
         bank_name: existingChosenBank || undefined,
         city: existingCity || undefined,
-        branch: eligibilitySession?.branch || undefined,
-        pincode: currentApplicant.pincode || eligibilitySession?.pincode || undefined,
-        location: eligibilitySession?.location || currentApplicant.location || undefined,
+        branch: cleanPrevBranch,
+        branchName: cleanPrevBranch,
+        area: safePrevArea,
+        pincode: safePrevPincode,
+        location: safePrevLocation,
       };
 
+      // Check for confirmation in post-eligibility flow: confirmation must NEVER become branch/city
+      if (isConfirmationResponse(userMessage).isConfirmation) {
+        const confVal = isConfirmationResponse(userMessage).value;
+        if (confVal) {
+          const bankName = existingChosenBank || topRecommendedBank || "Partner Bank";
+          const locStr = [cleanPrevBranch, existingCity].filter(Boolean).join(", ");
+          return {
+            reply: `✅ **Application confirmed for ${bankName}${locStr ? ` (${locStr})` : ""}.** Our official representative will assist you with the next steps and documentation.`,
+          };
+        } else {
+          return {
+            reply: `Understood. Would you like to select a different bank from your eligible list, or update your preferred branch/location?`,
+          };
+        }
+      }
+
+      const expectedFieldForTurn = eligibilitySession?.expectedEntity || eligibilitySession?.expectedField;
       const extractedParams = extractBankBranchLocationParams(
         userMessage,
         prevEntities.bank_name,
         eligibleBanks,
-        eligibilitySession?.expectedField,
+        expectedFieldForTurn,
         prevEntities.city
       );
 
@@ -4207,7 +4952,7 @@ export async function runCentralAgent(opts: {
         prevEntities,
         extractedParams,
         {
-          expectedField: eligibilitySession?.expectedField,
+          expectedField: expectedFieldForTurn,
           isPriorSearchCompleted: isPriorSearchDone,
         }
       );
@@ -4219,9 +4964,17 @@ export async function runCentralAgent(opts: {
       let updatedCity = finalEntities.city || "";
       let updatedPincode = finalEntities.pincode || "";
       let updatedBranch = finalEntities.branch || "";
+      let updatedArea = finalEntities.area || "";
+
+      // Ensure numeric strings are NEVER assigned to branch, city, area, or pincode
+      if (updatedBranch && /^\d+$/.test(updatedBranch.trim())) updatedBranch = "";
+      if (updatedArea && /^\d+$/.test(updatedArea.trim())) updatedArea = "";
+      if (updatedCity && /^\d+$/.test(updatedCity.trim())) updatedCity = "";
+      if (updatedPincode && !isValidIndianPincode(updatedPincode)) updatedPincode = "";
 
       if (updatedPincode) currentApplicant.pincode = updatedPincode;
       if (updatedCity) currentApplicant.location = updatedCity;
+      if (updatedArea) currentApplicant.area = updatedArea;
       if (updatedChosenBank && updatedChosenBank !== existingChosenBank) {
         currentStage = "BANK_SELECTION";
       }
@@ -4232,6 +4985,7 @@ export async function runCentralAgent(opts: {
         const numChoice = parseInt(userMessage.trim(), 10);
         if (!isNaN(numChoice) && numChoice >= 1 && numChoice <= availableBranches.length) {
           updatedBranch = availableBranches[numChoice - 1];
+          updatedArea = "";
         } else {
           const normInput = userMessage.toLowerCase().replace(/[^\w]/g, " ").trim();
           const branchCandidate = availableBranches.find((b) => {
@@ -4240,6 +4994,7 @@ export async function runCentralAgent(opts: {
           });
           if (branchCandidate) {
             updatedBranch = branchCandidate;
+            updatedArea = "";
           }
         }
       }
@@ -4249,13 +5004,13 @@ export async function runCentralAgent(opts: {
         let continuation = "";
         const locDisplay = updatedPincode || updatedCity;
         if (updatedChosenBank && !updatedBranch && !locDisplay) {
-          continuation = `\n\n---\n*(To proceed with your **${updatedChosenBank}** application, please provide the branch name and your location/city or pincode.)*`;
+          continuation = `\n\n---\n*(To proceed with your **${updatedChosenBank}** application, please share your preferred city or pincode.)*`;
         } else if (updatedChosenBank && !updatedBranch && locDisplay) {
           continuation = `\n\n---\n*(I have your location as **${locDisplay}**. Which **${updatedChosenBank}** branch would you like to proceed with?)*`;
         } else if (updatedChosenBank && updatedBranch && !locDisplay) {
-          continuation = `\n\n---\n*(I have your branch as **${updatedBranch}**. Which city, location, or pincode are you located in for **${updatedChosenBank}**?)*`;
+          continuation = `\n\n---\n*(I have your branch as **${updatedBranch}**. Which city or pincode are you located in for **${updatedChosenBank}**?)*`;
         } else if (updatedChosenBank) {
-          continuation = `\n\n---\n*(To proceed with your **${updatedChosenBank}** application, please share your branch or location.)*`;
+          continuation = `\n\n---\n*(To proceed with your **${updatedChosenBank}** application, please share your preferred city or pincode.)*`;
         } else {
           continuation = `\n\n---\n*(To proceed with your application, which partner bank from your eligible list would you like to select?)*`;
         }
@@ -4269,12 +5024,25 @@ export async function runCentralAgent(opts: {
           topBank: topRecommendedBank,
           selectedBank: updatedChosenBank,
           chosenBank: updatedChosenBank,
-          city: updatedCity,
-          location: updatedCity,
-          pincode: updatedPincode,
+          preferredBranch: updatedBranch,
           branch: updatedBranch,
+          branchName: updatedBranch,
+          city: updatedCity,
+          area: updatedArea,
+          location: [updatedBranch, updatedArea, updatedCity || updatedPincode].filter(Boolean).join(", "),
+          pincode: updatedPincode,
+          currentStep: eligibilitySession?.currentStep || (updatedChosenBank ? (updatedBranch ? "CITY_OR_PINCODE_COLLECTION" : "CITY_OR_PINCODE_COLLECTION") : "BANK_SELECTION"),
+          locationStep: eligibilitySession?.locationStep || (updatedChosenBank ? (updatedBranch ? "MANAGER_RESULTS" : "CITY_OR_PINCODE") : undefined),
+          expectedEntity: eligibilitySession?.expectedEntity || (updatedChosenBank ? "cityOrPincode" : "selectedBank"),
+          collectedEntities: {
+            selectedBank: updatedChosenBank,
+            preferredBranch: updatedBranch,
+            city: updatedCity,
+            area: updatedArea,
+            pincode: updatedPincode,
+          },
           postEligibilityStage: currentStage,
-          expectedField: eligibilitySession?.expectedField || (updatedChosenBank ? "branch" : "selectedBank"),
+          expectedField: eligibilitySession?.expectedField || (updatedChosenBank ? "cityOrPincode" : "selectedBank"),
           updatedAt: Date.now(),
         } as any);
 
@@ -4282,10 +5050,22 @@ export async function runCentralAgent(opts: {
       }
 
       // 5. Evaluate next step and maintain explicit state:
-      // ELIGIBILITY_CONFIRMED -> BANK_SELECTION -> BANK_MANAGER_DETAILS_INPUT -> BRANCH_SELECTION -> BANK_MANAGER_RESULTS
+      // ELIGIBILITY_CONFIRMED -> BANK_SELECTION -> CITY_OR_PINCODE -> LOCATION_SELECTION -> BANK_MANAGER_RESULTS
 
       // Step A: Bank is NOT yet selected
       if (!updatedChosenBank) {
+        const currentStep = "BANK_SELECTION";
+        const expectedEntity = "selectedBank";
+        const collectedEntities = {
+          companyName: currentApplicant.companyName,
+          monthlyIncome: currentApplicant.monthlyIncome,
+          loanAmount: currentApplicant.loanAmount,
+          tenureMonths: currentApplicant.tenureMonths,
+          cibil: currentApplicant.cibil,
+          age: currentApplicant.age,
+          existingEmi: currentApplicant.existingEmi,
+        };
+
         await saveEligibilityState(conversationId, {
           ...eligibilitySession,
           applicant: currentApplicant,
@@ -4295,6 +5075,16 @@ export async function runCentralAgent(opts: {
           topBank: topRecommendedBank,
           selectedBank: "",
           chosenBank: "",
+          preferredBranch: "",
+          branch: "",
+          branchName: "",
+          area: "",
+          city: "",
+          pincode: "",
+          currentStep,
+          locationStep: undefined,
+          expectedEntity,
+          collectedEntities,
           rejectedBanks: updatedRejectedBanks,
           postEligibilityStage: "ELIGIBILITY_CONFIRMED",
           expectedField: "selectedBank",
@@ -4307,30 +5097,104 @@ export async function runCentralAgent(opts: {
       }
 
       // Step B: Bank IS selected.
-      // Case 1: BOTH branch AND location/city/pincode are available!
-      if (updatedBranch && (updatedCity || updatedPincode)) {
-        const locationQuery = [updatedBranch, updatedCity || updatedPincode].filter(Boolean).join(" ");
-        const searchFilters = {
-          bank_name: updatedChosenBank,
-          branch_name: updatedBranch,
-          city: updatedCity || resolvePincodeToCity(updatedPincode) || updatedPincode || undefined,
-          query: locationQuery || undefined,
-        };
+      const resolvedCity = updatedCity || (isValidIndianPincode(updatedPincode) ? resolvePincodeToCity(updatedPincode) : "") || "";
 
-        console.log("[DEBUG] SELECTED ELIGIBLE BANK:", updatedChosenBank);
-        console.log("[DEBUG] LATEST LOCATION ENTITIES:", {
-          branch: updatedBranch,
-          city: updatedCity,
-          pincode: updatedPincode,
+      // Check discovery intent: "tell available branches for Pune", "show branches in Pune", etc.
+      const isDiscoveryRequest = Boolean(
+        extractedParams.isDiscoveryRequest ||
+        /(?:tell|show|list|give|view|check|find)\s+(?:all\s+)?(?:available\s+)?(?:branches|locations)\b/i.test(userMessage) ||
+        /(?:what|which)\s+(?:are\s+)?(?:the\s+)?(?:available\s+)?(?:branches|locations)\b/i.test(userMessage) ||
+        /(?:what|which)\s+(?:branches|locations)\s+are\s+available\b/i.test(userMessage) ||
+        /(?:branches|locations)\s+are\s+available\b/i.test(userMessage) ||
+        /(?:available\s+branches|available\s+locations)\b/i.test(userMessage) ||
+        /^(?:branches|locations)\s+(?:in|for|of)\b/i.test(userMessage)
+      );
+
+      // Sub-case B0: Discovery request with city/pincode known
+      if (isDiscoveryRequest) {
+        if (resolvedCity) {
+          const dbBranches = await findBankBranches(updatedChosenBank, resolvedCity);
+          if (dbBranches.length > 0) {
+            const formattedList = dbBranches.map((b, idx) => `${idx + 1}. **${b}**`).join("\n");
+            await saveEligibilityState(conversationId, {
+              ...eligibilitySession,
+              applicant: currentApplicant,
+              hasCompletedEvaluation: true,
+              evaluationCompleted: true,
+              eligible_banks: eligibleBanks,
+              topBank: topRecommendedBank,
+              selectedBank: updatedChosenBank,
+              chosenBank: updatedChosenBank,
+              city: resolvedCity,
+              pincode: updatedPincode || undefined,
+              location: resolvedCity,
+              currentStep: "BRANCH_SELECTION",
+              locationStep: "LOCATION_SELECTION",
+              expectedEntity: "branchSelection",
+              postEligibilityStage: "BRANCH_SELECTION",
+              expectedField: "branchSelection",
+              availableBranches: dbBranches,
+              lastBankManagerSearch: finalEntities,
+              updatedAt: Date.now(),
+            } as any);
+
+            return {
+              reply: `Available ${updatedChosenBank} branches in ${resolvedCity}:\n\n${formattedList}\n\nPlease select a branch to view manager details.`,
+            };
+          } else {
+            await saveEligibilityState(conversationId, {
+              ...eligibilitySession,
+              applicant: currentApplicant,
+              hasCompletedEvaluation: true,
+              evaluationCompleted: true,
+              eligible_banks: eligibleBanks,
+              topBank: topRecommendedBank,
+              selectedBank: updatedChosenBank,
+              chosenBank: updatedChosenBank,
+              city: "",
+              pincode: "",
+              currentStep: "CITY_OR_PINCODE_COLLECTION",
+              locationStep: "CITY_OR_PINCODE",
+              expectedEntity: "cityOrPincode",
+              postEligibilityStage: "BANK_MANAGER_DETAILS_INPUT",
+              expectedField: "cityOrPincode",
+              lastBankManagerSearch: finalEntities,
+              updatedAt: Date.now(),
+            } as any);
+
+            return {
+              reply: `No branches or locations found for **${updatedChosenBank}** in **${resolvedCity}**. Please provide a valid city or pincode.`,
+            };
+          }
+        } else {
+          return {
+            reply: `Please provide your preferred city or pincode to check available branches for **${updatedChosenBank}**.`,
+          };
+        }
+      }
+
+      // Sub-case B1: User has selected a Branch from available branches (or provided a branch with city/pincode)
+      if (updatedBranch && (resolvedCity || updatedPincode)) {
+        const finalBankFilter = updatedChosenBank;
+        const finalBranchFilter = updatedBranch;
+        const finalCityFilter = resolvedCity || undefined;
+        const finalPincodeFilter = isValidIndianPincode(updatedPincode) ? updatedPincode : undefined;
+
+        const rawMgrList = await searchBankManager({
+          bank_name: finalBankFilter,
+          branch_name: finalBranchFilter,
+          city: finalCityFilter || finalPincodeFilter,
         });
-        console.log("[DEBUG] FINAL SEARCH FILTERS:", searchFilters);
 
-        const rawMgrList = await searchBankManager(searchFilters);
-        // Mandatory Bank Filter (Rule 10): NEVER display managers from another bank
-        const mgrList = (rawMgrList || []).filter((m) => isSameBank(m.bank_name, updatedChosenBank));
+        let mgrList = (rawMgrList || []).filter((m) => {
+          return isSameBank(m.bank_name, finalBankFilter) && recordMatchesBranch(m, finalBranchFilter);
+        });
 
-        console.log("[DEBUG] DATABASE MATCH COUNT:", mgrList.length);
-        console.log("[DEBUG] RETURNED MANAGER RECORDS:", mgrList);
+        // Fallback priority: If no records explicitly match the branch name (because branch is null in DB or matches location),
+        // fallback to bank + city managers:
+        if (mgrList.length === 0 && rawMgrList && rawMgrList.length > 0) {
+          mgrList = rawMgrList.filter((m) => isSameBank(m.bank_name, finalBankFilter));
+        }
 
         if (mgrList.length > 0) {
           await saveEligibilityState(conversationId, {
@@ -4340,12 +5204,17 @@ export async function runCentralAgent(opts: {
             evaluationCompleted: true,
             eligible_banks: eligibleBanks,
             topBank: topRecommendedBank,
-            selectedBank: updatedChosenBank,
-            chosenBank: updatedChosenBank,
-            city: updatedCity,
-            location: updatedCity || updatedPincode,
-            pincode: updatedPincode,
-            branch: updatedBranch,
+            selectedBank: finalBankFilter,
+            chosenBank: finalBankFilter,
+            preferredBranch: finalBranchFilter,
+            branch: finalBranchFilter,
+            branchName: finalBranchFilter,
+            city: finalCityFilter,
+            location: [finalBranchFilter, finalCityFilter || finalPincodeFilter].filter(Boolean).join(", "),
+            pincode: finalPincodeFilter,
+            currentStep: "BANK_MANAGER_RESULTS",
+            locationStep: "MANAGER_RESULTS",
+            expectedEntity: "completed",
             postEligibilityStage: "BANK_MANAGER_RESULTS",
             expectedField: "completed",
             managerFound: true,
@@ -4353,33 +5222,22 @@ export async function runCentralAgent(opts: {
             updatedAt: Date.now(),
           } as any);
 
-          const tableMarkdown = formatDynamicBankManagersTable(mgrList, updatedPincode);
+          const tableMarkdown = formatDynamicBankManagersTable(mgrList, finalPincodeFilter, finalCityFilter, finalBranchFilter);
           const distinctBranches = Array.from(new Set(mgrList.map((m) => m.branch || m.location).filter(Boolean)));
           const multiBranchNote =
             distinctBranches.length > 1
               ? `\n*Multiple branch records found (${distinctBranches.join(", ")}). You may specify a branch if you wish to narrow down.*`
               : "";
+          const appMessage = formatApplicationInitiatedMessage(finalBankFilter, finalBranchFilter, finalCityFilter);
 
           return {
-            reply: `### 👔 Official Bank Manager Directory: **${updatedChosenBank}** (${[updatedBranch, updatedCity || updatedPincode].filter(Boolean).join(", ")})\n\n${tableMarkdown}${multiBranchNote}\n\n---\n✅ **Application process initiated for ${updatedChosenBank} at ${updatedBranch} (${[updatedCity, updatedPincode].filter(Boolean).join(" ")}). Our official representative will assist you.**`,
+            reply: `### 👔 Official Bank Manager Directory: **${finalBankFilter}** (${[finalBranchFilter, finalCityFilter || finalPincodeFilter].filter(Boolean).join(", ")})\n\n${tableMarkdown}${multiBranchNote}\n\n---\n✅ **${appMessage}**`,
           };
         } else {
-          // Rule 16: If no exact branch match exists but nearby/valid database records exist in city, display them clearly as nearby
-          const cityTarget = updatedCity || resolvePincodeToCity(updatedPincode) || updatedPincode;
-          let nearbyRecords: BankManagerRecord[] = [];
-          if (cityTarget) {
-            const nearbyFilters = {
-              bank_name: updatedChosenBank,
-              city: cityTarget,
-            };
-            console.log("[DEBUG] NEARBY SEARCH FILTERS:", nearbyFilters);
-            const rawNearby = await searchBankManager(nearbyFilters);
-            nearbyRecords = (rawNearby || []).filter((m) => isSameBank(m.bank_name, updatedChosenBank));
-            console.log("[DEBUG] NEARBY DATABASE MATCH COUNT:", nearbyRecords.length);
-            console.log("[DEBUG] NEARBY RETURNED MANAGER RECORDS:", nearbyRecords);
-          }
-
-          if (nearbyRecords.length > 0) {
+          // Exact branch returned 0 records. Retrieve available locations from DB:
+          const dbBranches = await findBankBranches(finalBankFilter, finalCityFilter || "");
+          if (dbBranches.length > 0) {
+            const formattedList = dbBranches.map((b, idx) => `${idx + 1}. **${b}**`).join("\n");
             await saveEligibilityState(conversationId, {
               ...eligibilitySession,
               applicant: currentApplicant,
@@ -4387,25 +5245,25 @@ export async function runCentralAgent(opts: {
               evaluationCompleted: true,
               eligible_banks: eligibleBanks,
               topBank: topRecommendedBank,
-              selectedBank: updatedChosenBank,
-              chosenBank: updatedChosenBank,
-              city: updatedCity,
-              location: updatedCity || updatedPincode,
-              pincode: updatedPincode,
-              branch: updatedBranch,
-              postEligibilityStage: "BANK_MANAGER_RESULTS",
-              expectedField: "branch",
-              managerFound: true,
+              selectedBank: finalBankFilter,
+              chosenBank: finalBankFilter,
+              city: finalCityFilter,
+              pincode: finalPincodeFilter,
+              currentStep: "BRANCH_SELECTION",
+              locationStep: "LOCATION_SELECTION",
+              expectedEntity: "branchSelection",
+              postEligibilityStage: "BRANCH_SELECTION",
+              expectedField: "branchSelection",
+              availableBranches: dbBranches,
               lastBankManagerSearch: finalEntities,
               updatedAt: Date.now(),
             } as any);
 
-            const nearbyTableMarkdown = formatDynamicBankManagersTable(nearbyRecords, updatedPincode);
             return {
-              reply: `No exact bank manager records were found for **${updatedChosenBank}** at **${updatedBranch}**. However, here are the available/nearby official records for **${updatedChosenBank}** in **${cityTarget}**:\n\n${nearbyTableMarkdown}\n\n---\n*You may select one of the available branches above or provide another branch/city/pincode.*`,
+              reply: `I couldn't find an exact manager record for the selected location (${finalBranchFilter}${finalCityFilter ? `, ${finalCityFilter}` : ""}).\n\nHere are the available ${finalBankFilter} branches/locations I found in ${finalCityFilter || "this region"}:\n\n${formattedList}\n\nPlease select a branch to view the available manager details.`,
             };
           } else {
-            // Rule 17: No records exist in DB for this bank in this branch/city/pincode
+            // Keep city, DO NOT reset city!
             await saveEligibilityState(conversationId, {
               ...eligibilitySession,
               applicant: currentApplicant,
@@ -4413,32 +5271,44 @@ export async function runCentralAgent(opts: {
               evaluationCompleted: true,
               eligible_banks: eligibleBanks,
               topBank: topRecommendedBank,
-              selectedBank: updatedChosenBank,
-              chosenBank: updatedChosenBank,
-              city: updatedCity,
-              location: updatedCity || updatedPincode,
-              pincode: updatedPincode,
-              branch: updatedBranch,
+              selectedBank: finalBankFilter,
+              chosenBank: finalBankFilter,
+              city: finalCityFilter,
+              pincode: finalPincodeFilter,
+              currentStep: "CITY_OR_PINCODE_COLLECTION",
+              locationStep: "CITY_OR_PINCODE",
+              expectedEntity: "cityOrPincode",
               postEligibilityStage: "BANK_MANAGER_DETAILS_INPUT",
-              expectedField: "branch",
-              managerFound: false,
+              expectedField: "cityOrPincode",
               lastBankManagerSearch: finalEntities,
               updatedAt: Date.now(),
             } as any);
 
             return {
-              reply: `No matching bank manager records were found for **${updatedChosenBank}** at **${[updatedBranch, cityTarget].filter(Boolean).join(", ")}**. Please provide another valid branch name, city, or pincode so I can locate your representative.`,
+              reply: `No matching or exact bank manager records were found for **${finalBankFilter}** at **${finalBranchFilter}** (${[finalCityFilter, finalPincodeFilter].filter(Boolean).join(" ")}). Please provide a valid city or pincode.`,
             };
           }
         }
       }
 
-      // Case 2: Location / Pincode is provided, but branch is MISSING!
-      if ((updatedCity || updatedPincode) && !updatedBranch) {
-        const locDisplay = updatedPincode || updatedCity;
-        const dbBranches = await findBankBranches(updatedChosenBank, updatedCity || resolvePincodeToCity(updatedPincode) || "");
+      // Sub-case B2: Area is provided (e.g. "Katraj", "Swargate", "MG Road", "FC Road", "Hadapsar", or compound "Pune Katraj")
+      if (updatedArea) {
+        const finalBankFilter = updatedChosenBank;
+        const finalCityFilter = resolvedCity || undefined;
+        const finalPincodeFilter = isValidIndianPincode(updatedPincode) ? updatedPincode : undefined;
 
-        if (dbBranches.length > 1) {
+        // Try direct area search in bank managers
+        const rawAreaMgrs = await searchBankManager({
+          bank_name: finalBankFilter,
+          city: finalCityFilter,
+          area: updatedArea,
+        });
+
+        const areaMgrs = (rawAreaMgrs || []).filter((m) => {
+          return isSameBank(m.bank_name, finalBankFilter) && recordMatchesBranch(m, updatedArea);
+        });
+
+        if (areaMgrs.length > 0) {
           await saveEligibilityState(conversationId, {
             ...eligibilitySession,
             applicant: currentApplicant,
@@ -4446,28 +5316,218 @@ export async function runCentralAgent(opts: {
             evaluationCompleted: true,
             eligible_banks: eligibleBanks,
             topBank: topRecommendedBank,
-            selectedBank: updatedChosenBank,
-            chosenBank: updatedChosenBank,
-            city: updatedCity,
-            location: updatedCity || updatedPincode,
-            pincode: updatedPincode,
-            branch: "",
-            postEligibilityStage: "BRANCH_SELECTION",
-            expectedField: "branchSelection",
-            availableBranches: dbBranches,
+            selectedBank: finalBankFilter,
+            chosenBank: finalBankFilter,
+            preferredBranch: updatedArea,
+            branch: updatedArea,
+            branchName: updatedArea,
+            area: updatedArea,
+            city: finalCityFilter,
+            location: [updatedArea, finalCityFilter || finalPincodeFilter].filter(Boolean).join(", "),
+            pincode: finalPincodeFilter,
+            currentStep: "BANK_MANAGER_RESULTS",
+            locationStep: "MANAGER_RESULTS",
+            expectedEntity: "completed",
+            postEligibilityStage: "BANK_MANAGER_RESULTS",
+            expectedField: "completed",
+            managerFound: true,
             lastBankManagerSearch: finalEntities,
             updatedAt: Date.now(),
           } as any);
 
-          const branchListFormatted = dbBranches
-            .map((b, idx) => `${idx + 1}. **${b}**`)
-            .join("\n");
-
+          const tableMarkdown = formatDynamicBankManagersTable(areaMgrs, finalPincodeFilter, finalCityFilter, updatedArea);
+          const appMessage = formatApplicationInitiatedMessage(finalBankFilter, updatedArea, finalCityFilter);
           return {
-            reply: `I have your location as **${locDisplay}**. I found ${dbBranches.length} branches for **${updatedChosenBank}** in **${updatedCity}**:\n\n${branchListFormatted}\n\nWhich **${updatedChosenBank}** branch would you like to proceed with so I can connect you with your official bank representative?`,
+            reply: `### 👔 Official Bank Manager Directory: **${finalBankFilter}** (${[updatedArea, finalCityFilter || finalPincodeFilter].filter(Boolean).join(", ")})\n\n${tableMarkdown}\n\n---\n✅ **${appMessage}**`,
           };
+        } else {
+          // No official manager record for this specific area!
+          // Retrieve available branches from DB for this bank in this city
+          const dbBranches = await findBankBranches(finalBankFilter, finalCityFilter || "");
+          if (dbBranches.length > 0) {
+            const formattedList = dbBranches.map((b, idx) => `${idx + 1}. **${b}**`).join("\n");
+            await saveEligibilityState(conversationId, {
+              ...eligibilitySession,
+              applicant: currentApplicant,
+              hasCompletedEvaluation: true,
+              evaluationCompleted: true,
+              eligible_banks: eligibleBanks,
+              topBank: topRecommendedBank,
+              selectedBank: finalBankFilter,
+              chosenBank: finalBankFilter,
+              city: finalCityFilter,
+              area: updatedArea,
+              pincode: finalPincodeFilter,
+              currentStep: "BRANCH_SELECTION",
+              locationStep: "LOCATION_SELECTION",
+              expectedEntity: "branchSelection",
+              postEligibilityStage: "BRANCH_SELECTION",
+              expectedField: "branchSelection",
+              availableBranches: dbBranches,
+              lastBankManagerSearch: finalEntities,
+              updatedAt: Date.now(),
+            } as any);
+
+            return {
+              reply: `I couldn't find an exact manager record for the selected location (${updatedArea}${finalCityFilter ? `, ${finalCityFilter}` : ""}).\n\nHere are the available ${finalBankFilter} branches/locations I found in ${finalCityFilter || "this region"}:\n\n${formattedList}\n\nPlease select a branch to view the available manager details.`,
+            };
+          } else {
+            // Keep city, DO NOT reset city: ""!
+            await saveEligibilityState(conversationId, {
+              ...eligibilitySession,
+              applicant: currentApplicant,
+              hasCompletedEvaluation: true,
+              evaluationCompleted: true,
+              eligible_banks: eligibleBanks,
+              topBank: topRecommendedBank,
+              selectedBank: finalBankFilter,
+              chosenBank: finalBankFilter,
+              city: finalCityFilter,
+              area: updatedArea,
+              pincode: finalPincodeFilter,
+              currentStep: "CITY_OR_PINCODE_COLLECTION",
+              locationStep: "CITY_OR_PINCODE",
+              expectedEntity: "cityOrPincode",
+              postEligibilityStage: "BANK_MANAGER_DETAILS_INPUT",
+              expectedField: "cityOrPincode",
+              lastBankManagerSearch: finalEntities,
+              updatedAt: Date.now(),
+            } as any);
+
+            return {
+              reply: `No branches or locations found for **${finalBankFilter}** in **${finalCityFilter || updatedArea}**. Please provide a valid city or pincode.`,
+            };
+          }
+        }
+      }
+
+      // Sub-case B3: Pincode is provided
+      if (updatedPincode) {
+        const finalBankFilter = updatedChosenBank;
+        const finalCityFilter = resolvedCity || undefined;
+        const finalPincodeFilter = updatedPincode;
+
+        // 1. Search exact: bank + city + pincode
+        const rawPincodeMgrs = await searchBankManager({
+          bank_name: finalBankFilter,
+          city: finalCityFilter,
+          pincode: finalPincodeFilter,
+        });
+
+        let exactPincodeMgrs = (rawPincodeMgrs || []).filter((m) => isSameBank(m.bank_name, finalBankFilter));
+
+        // 2. Fallback Priority: If no manager records explicitly contain this pincode,
+        // check if pincode resolves to this city (e.g. 411009 resolves to Pune):
+        const cityFromPin = resolvePincodeToCity(finalPincodeFilter);
+        const pinMatchesCity = Boolean(
+          (cityFromPin && finalCityFilter && cityFromPin.toLowerCase() === finalCityFilter.toLowerCase()) ||
+          (!finalCityFilter && cityFromPin)
+        );
+
+        if (exactPincodeMgrs.length === 0 && pinMatchesCity) {
+          const effectiveCity = finalCityFilter || cityFromPin || "";
+          const cityMgrs = await searchBankManager({
+            bank_name: finalBankFilter,
+            city: effectiveCity,
+          });
+          if (cityMgrs && cityMgrs.length > 0) {
+            exactPincodeMgrs = cityMgrs.filter((m) => isSameBank(m.bank_name, finalBankFilter));
+          }
         }
 
+        if (exactPincodeMgrs.length > 0) {
+          const effectiveCity = finalCityFilter || cityFromPin || "Pune";
+          await saveEligibilityState(conversationId, {
+            ...eligibilitySession,
+            applicant: currentApplicant,
+            hasCompletedEvaluation: true,
+            evaluationCompleted: true,
+            eligible_banks: eligibleBanks,
+            topBank: topRecommendedBank,
+            selectedBank: finalBankFilter,
+            chosenBank: finalBankFilter,
+            city: effectiveCity,
+            location: effectiveCity,
+            pincode: finalPincodeFilter,
+            currentStep: "BANK_MANAGER_RESULTS",
+            locationStep: "MANAGER_RESULTS",
+            expectedEntity: "completed",
+            postEligibilityStage: "BANK_MANAGER_RESULTS",
+            expectedField: "completed",
+            managerFound: true,
+            lastBankManagerSearch: finalEntities,
+            updatedAt: Date.now(),
+          } as any);
+
+          const tableMarkdown = formatDynamicBankManagersTable(exactPincodeMgrs, finalPincodeFilter, effectiveCity);
+          const appMessage = formatApplicationInitiatedMessage(finalBankFilter, undefined, effectiveCity);
+
+          return {
+            reply: `### 👔 Official Bank Manager Directory: **${finalBankFilter}** (${[effectiveCity, finalPincodeFilter].filter(Boolean).join(" ")})\n\n${tableMarkdown}\n\n---\n✅ **${appMessage}**`,
+          };
+        } else {
+          // Exact record does not exist for this pincode (e.g. 999999).
+          // Section 6: Show available branches within the same city!
+          const effectiveCity = finalCityFilter || "Pune";
+          const dbBranches = await findBankBranches(finalBankFilter, effectiveCity);
+          if (dbBranches.length > 0) {
+            const formattedList = dbBranches.map((b, idx) => `${idx + 1}. **${b}**`).join("\n");
+            await saveEligibilityState(conversationId, {
+              ...eligibilitySession,
+              applicant: currentApplicant,
+              hasCompletedEvaluation: true,
+              evaluationCompleted: true,
+              eligible_banks: eligibleBanks,
+              topBank: topRecommendedBank,
+              selectedBank: finalBankFilter,
+              chosenBank: finalBankFilter,
+              city: effectiveCity,
+              pincode: finalPincodeFilter,
+              currentStep: "BRANCH_SELECTION",
+              locationStep: "LOCATION_SELECTION",
+              expectedEntity: "branchSelection",
+              postEligibilityStage: "BRANCH_SELECTION",
+              expectedField: "branchSelection",
+              availableBranches: dbBranches,
+              lastBankManagerSearch: finalEntities,
+              updatedAt: Date.now(),
+            } as any);
+
+            return {
+              reply: `I couldn't find an exact manager record for pincode ${finalPincodeFilter}.\n\nHere are the available ${finalBankFilter} branches/locations I found in ${effectiveCity}:\n\n${formattedList}\n\nPlease select a branch to view the available manager details.`,
+            };
+          } else {
+            // Keep city, DO NOT reset city: ""!
+            await saveEligibilityState(conversationId, {
+              ...eligibilitySession,
+              applicant: currentApplicant,
+              hasCompletedEvaluation: true,
+              evaluationCompleted: true,
+              eligible_banks: eligibleBanks,
+              topBank: topRecommendedBank,
+              selectedBank: finalBankFilter,
+              chosenBank: finalBankFilter,
+              city: effectiveCity,
+              pincode: finalPincodeFilter,
+              currentStep: "CITY_OR_PINCODE_COLLECTION",
+              locationStep: "CITY_OR_PINCODE",
+              expectedEntity: "cityOrPincode",
+              postEligibilityStage: "BANK_MANAGER_DETAILS_INPUT",
+              expectedField: "cityOrPincode",
+              lastBankManagerSearch: finalEntities,
+              updatedAt: Date.now(),
+            } as any);
+
+            return {
+              reply: `No branches or locations found for **${finalBankFilter}** in **${effectiveCity}** for pincode **${finalPincodeFilter}**. Please provide a valid city or pincode.`,
+            };
+          }
+        }
+      }
+
+      // Sub-case B4: City ONLY is provided (neither branch, area, nor pincode)
+      if (resolvedCity && !updatedPincode && !updatedBranch && !updatedArea && !isDiscoveryRequest) {
+        const finalBankFilter = updatedChosenBank;
         await saveEligibilityState(conversationId, {
           ...eligibilitySession,
           applicant: currentApplicant,
@@ -4475,25 +5535,30 @@ export async function runCentralAgent(opts: {
           evaluationCompleted: true,
           eligible_banks: eligibleBanks,
           topBank: topRecommendedBank,
-          selectedBank: updatedChosenBank,
-          chosenBank: updatedChosenBank,
-          city: updatedCity,
-          location: updatedCity || updatedPincode,
-          pincode: updatedPincode,
+          selectedBank: finalBankFilter,
+          chosenBank: finalBankFilter,
+          city: resolvedCity,
+          location: resolvedCity,
+          pincode: "",
           branch: "",
+          branchName: "",
+          area: "",
+          currentStep: "CITY_OR_PINCODE_COLLECTION",
+          locationStep: "CITY_OR_PINCODE",
+          expectedEntity: "cityOrPincode",
           postEligibilityStage: "BANK_MANAGER_DETAILS_INPUT",
-          expectedField: "branch",
+          expectedField: "cityOrPincode",
           lastBankManagerSearch: finalEntities,
           updatedAt: Date.now(),
         } as any);
 
         return {
-          reply: `I have your location as **${locDisplay}**. Please provide your branch name for **${updatedChosenBank}** so I can connect you with your official bank representative.`,
+          reply: `Please share your pincode or preferred branch name in ${resolvedCity} so I can find the relevant bank manager.`,
         };
       }
 
-      // Case 3: Branch is provided, but location / city / pincode is MISSING!
-      if (updatedBranch && !updatedCity && !updatedPincode) {
+      // Sub-case B4: Branch is provided, but NO city and NO pincode
+      if (updatedBranch && !resolvedCity && !updatedPincode) {
         await saveEligibilityState(conversationId, {
           ...eligibilitySession,
           applicant: currentApplicant,
@@ -4503,7 +5568,12 @@ export async function runCentralAgent(opts: {
           topBank: topRecommendedBank,
           selectedBank: updatedChosenBank,
           chosenBank: updatedChosenBank,
+          preferredBranch: updatedBranch,
           branch: updatedBranch,
+          branchName: updatedBranch,
+          currentStep: "CITY_OR_PINCODE_COLLECTION",
+          locationStep: "CITY_OR_PINCODE",
+          expectedEntity: "cityOrPincode",
           postEligibilityStage: "BANK_MANAGER_DETAILS_INPUT",
           expectedField: "cityOrPincode",
           lastBankManagerSearch: finalEntities,
@@ -4515,7 +5585,7 @@ export async function runCentralAgent(opts: {
         };
       }
 
-      // Case 4: Only Bank was selected, neither branch nor location is provided yet
+      // Sub-case B5: Only Bank is selected, neither branch, area, city, nor pincode is provided yet
       await saveEligibilityState(conversationId, {
         ...eligibilitySession,
         applicant: currentApplicant,
@@ -4525,14 +5595,19 @@ export async function runCentralAgent(opts: {
         topBank: topRecommendedBank,
         selectedBank: updatedChosenBank,
         chosenBank: updatedChosenBank,
+        preferredBranch: "",
+        branch: "",
+        currentStep: "CITY_OR_PINCODE_COLLECTION",
+        locationStep: "CITY_OR_PINCODE",
+        expectedEntity: "cityOrPincode",
         postEligibilityStage: "BANK_MANAGER_DETAILS_INPUT",
-        expectedField: "branch",
+        expectedField: "cityOrPincode",
         lastBankManagerSearch: finalEntities,
         updatedAt: Date.now(),
       } as any);
 
       return {
-        reply: `You selected **${updatedChosenBank}**. Please provide your branch name.`,
+        reply: `You selected **${updatedChosenBank}**. Please provide your preferred city or pincode.`,
       };
     }
   }
@@ -4677,11 +5752,14 @@ export async function runCentralAgent(opts: {
 
   // 8b. Handle Corporate Company Category Searches
   const isCompanySearch =
-    analysis.userIntent === "COMPANY_SEARCH" ||
-    ((/(?:company|employer)\s+(?:category|tier|rating|listing)|(?:is|check)\s+.*\s+(?:listed|categorized)|\bcategory\s*rating\b/i.test(norm)) &&
-      !analysis.isLoanIntent &&
-      !isEligibleFlowActive &&
-      !isPolicyQuery);
+    !isEligibleFlowActive &&
+    !isFinancialOrProfileInput(userMessage) &&
+    !isLocationInput(userMessage) &&
+    !assistantAskedLocation &&
+    (analysis.userIntent === "COMPANY_SEARCH" ||
+      ((/(?:company|employer)\s+(?:category|tier|rating|listing)|(?:is|check)\s+.*\s+(?:listed|categorized)|\bcategory\s*rating\b/i.test(norm)) &&
+        !analysis.isLoanIntent &&
+        !isPolicyQuery));
 
   if (isCompanySearch) {
     let compName = analysis.companyQuery || analysis.extractedDetails?.companyName;

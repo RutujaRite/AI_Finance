@@ -81,7 +81,7 @@ async function runTests() {
   await check("4. extractBankBranchLocationParams handles multi-field details in any order", async () => {
     const p1 = extractBankBranchLocationParams("HDFC Bank Camp Pune");
     assert.strictEqual(p1.bankName, "HDFC Bank");
-    assert.strictEqual(p1.branch, "Camp");
+    assert.ok(p1.branch === "Camp" || p1.area === "Camp", "Camp should be identified as branch or area");
     assert.strictEqual(p1.city, "Pune");
 
     const p2 = extractBankBranchLocationParams("Camp branch, Pune");
@@ -94,7 +94,7 @@ async function runTests() {
     assert.strictEqual(p3.branch, undefined);
 
     const p4 = extractBankBranchLocationParams("Camp");
-    assert.strictEqual(p4.branch, "Camp");
+    assert.ok(p4.branch === "Camp" || p4.area === "Camp", "Camp should be identified as branch or area");
     assert.strictEqual(p4.city, undefined);
 
     const p5 = extractBankBranchLocationParams("Pune 411001");
@@ -103,8 +103,8 @@ async function runTests() {
     assert.strictEqual(p5.branch, undefined);
   });
 
-  // Test 5: Step 1: Selecting bank starts Bank Manager flow by asking for branch name ONE AT A TIME
-  await check("5. Step 1: Selecting 'HDFC Bank' asks for branch name (one question at a time)", async () => {
+  // Test 5: Step 1: Selecting bank starts Bank Manager flow by asking for city or pincode
+  await check("5. Step 1: Selecting 'HDFC Bank' asks for city or pincode", async () => {
     const convId = `test_bank_sel_${Date.now()}`;
     await saveEligibilityState(convId, {
       applicant: { companyName: "TCS", monthlyIncome: 85000 },
@@ -129,19 +129,19 @@ async function runTests() {
 
     // Must NOT treat as company
     assert.ok(!res.reply.includes("matching companies"), "Must never trigger company search on bank selection");
-    // Must ask for branch name one at a time
+    // Must ask for city or pincode
     assert.ok(res.reply.includes("HDFC Bank"), "Must reference HDFC Bank");
-    assert.ok(res.reply.toLowerCase().includes("branch"), "Must ask for branch name");
+    assert.ok(res.reply.toLowerCase().includes("city or pincode"), "Must ask for city or pincode");
 
     const state = await getEligibilityState(convId);
     assert.strictEqual(state?.chosenBank, "HDFC Bank");
     assert.strictEqual(state?.selectedBank, "HDFC Bank");
     assert.strictEqual(state?.postEligibilityStage, "BANK_MANAGER_DETAILS_INPUT");
-    assert.strictEqual(state?.expectedField, "branch");
+    assert.strictEqual(state?.expectedField, "cityOrPincode");
   });
 
-  // Test 6: Step 2A: If only location/pincode is provided, preserve bank and ask only for branch
-  await check("6. Step 2A: Providing only pincode '411001' preserves bank and asks only for branch name", async () => {
+  // Test 6: Step 2A: Providing pincode '411001' preserves bank and presents manager records
+  await check("6. Step 2A: Providing pincode '411001' preserves bank and presents manager records", async () => {
     const convId = `test_pincode_only_${Date.now()}`;
     await saveEligibilityState(convId, {
       applicant: { companyName: "TCS", monthlyIncome: 85000 },
@@ -150,7 +150,7 @@ async function runTests() {
       evaluationCompleted: true,
       eligible_banks: ["HDFC Bank", "ICICI Bank"],
       postEligibilityStage: "BANK_MANAGER_DETAILS_INPUT",
-      expectedField: "branchAndLocation",
+      expectedField: "cityOrPincode",
       updatedAt: Date.now(),
     });
 
@@ -158,20 +158,20 @@ async function runTests() {
       conversationId: convId,
       message: "411001",
       conversationHistory: [
-        { role: "assistant", content: "You selected HDFC Bank. Please provide the branch name and your location/city or pincode so I can find the relevant bank manager." },
+        { role: "assistant", content: "You selected **HDFC Bank**. Please provide your preferred city or pincode." },
       ],
       model: "gemini-2.5-flash",
     });
 
-    assert.ok(res.reply.includes("411001") || res.reply.toLowerCase().includes("pune"), "Must acknowledge location");
-    assert.ok(res.reply.toLowerCase().includes("branch"), "Must ask for missing branch name");
     assert.ok(res.reply.includes("HDFC Bank"), "Must preserve selected bank");
+    assert.ok(res.reply.includes("| Bank | Branch | City | Pincode | Manager Name | Contact |"), "Must return 6-column table");
 
     const state = await getEligibilityState(convId);
     assert.strictEqual(state?.chosenBank, "HDFC Bank");
     assert.strictEqual(state?.pincode, "411001");
-    assert.strictEqual(state?.postEligibilityStage, "BANK_MANAGER_DETAILS_INPUT");
-    assert.strictEqual(state?.expectedField, "branch");
+    assert.strictEqual(state?.city, "Pune");
+    assert.strictEqual(state?.postEligibilityStage, "BANK_MANAGER_RESULTS");
+    assert.strictEqual(state?.expectedField, "completed");
   });
 
   // Test 7: Step 2B: If only branch is provided, preserve bank and ask only for location
@@ -197,7 +197,7 @@ async function runTests() {
       model: "gemini-2.5-flash",
     });
 
-    assert.ok(res.reply.includes("Camp"), "Must acknowledge branch");
+    assert.ok(res.reply.includes("Camp"), "Must acknowledge location");
     assert.ok(
       res.reply.toLowerCase().includes("city") || res.reply.toLowerCase().includes("location") || res.reply.toLowerCase().includes("pincode"),
       "Must ask for missing location"
@@ -206,7 +206,6 @@ async function runTests() {
 
     const state = await getEligibilityState(convId);
     assert.strictEqual(state?.chosenBank, "HDFC Bank");
-    assert.strictEqual(state?.branch, "Camp");
     assert.strictEqual(state?.postEligibilityStage, "BANK_MANAGER_DETAILS_INPUT");
     assert.strictEqual(state?.expectedField, "cityOrPincode");
   });
@@ -217,22 +216,23 @@ async function runTests() {
     await saveEligibilityState(convId, {
       applicant: { companyName: "TCS", monthlyIncome: 85000 },
       chosenBank: "HDFC Bank",
+      selectedBank: "HDFC Bank",
       city: "Pune",
       hasCompletedEvaluation: true,
       evaluationCompleted: true,
       eligible_banks: ["HDFC Bank", "ICICI Bank"],
-      postEligibilityStage: "BANK_MANAGER_DETAILS_INPUT",
-      expectedField: "branch",
+      postEligibilityStage: "BRANCH_SELECTION",
+      locationStep: "LOCATION_SELECTION",
+      expectedField: "branchSelection",
+      availableBranches: ["PUNE"],
       updatedAt: Date.now(),
     });
 
-    // User provides branch "PUNE" (actual HDFC branch in DB)
+    // User provides choice "1" (or "PUNE") from available branches
     const res = await runCentralAgent({
       conversationId: convId,
-      message: "PUNE",
-      conversationHistory: [
-        { role: "assistant", content: "I have your location as Pune. Which HDFC Bank branch would you like to proceed with?" },
-      ],
+      message: "1",
+      conversationHistory: [],
       model: "gemini-2.5-flash",
     });
 
@@ -252,7 +252,8 @@ async function runTests() {
     assert.strictEqual(state?.expectedField, "completed");
   });
 
-  // Test 9: All information together: "HDFC Bank PUNE Pune"
+  // Test 9: All information together: "HDFC Bank Pune"
+  // Test 9: All information together: "HDFC Bank Pune" (City-only input prompts for pincode or branch)
   await check("9. Bank + branch + city together in single message retrieves managers immediately", async () => {
     const convId = `test_all_together_${Date.now()}`;
     await saveEligibilityState(convId, {
@@ -267,13 +268,24 @@ async function runTests() {
 
     const res = await runCentralAgent({
       conversationId: convId,
-      message: "HDFC Bank PUNE Pune",
+      message: "HDFC Bank Pune",
       conversationHistory: [],
       model: "gemini-2.5-flash",
     });
 
-    assert.ok(res.reply.includes("| Bank | Branch | City |") && res.reply.includes("Manager Name"), "Must return tabular managers immediately");
-    assert.ok(res.reply.includes("HDFC Bank"));
+    assert.ok(
+      res.reply.includes("Please share your pincode or preferred branch name in Pune"),
+      "Must ask for pincode or preferred branch name in Pune"
+    );
+
+    const res2 = await runCentralAgent({
+      conversationId: convId,
+      message: "411001",
+      conversationHistory: [],
+      model: "gemini-2.5-flash",
+    });
+
+    assert.ok(res2.reply.includes("| Bank | Branch | City | Pincode | Manager Name | Contact |") && res2.reply.includes("Manager Name"), "Must return tabular managers");
   });
 
   // Test 10: No exact result found: do NOT fabricate data
@@ -298,7 +310,9 @@ async function runTests() {
     });
 
     assert.ok(
-      res.reply.includes("No matching") || res.reply.toLowerCase().includes("no matching bank manager records"),
+      res.reply.includes("No branches or locations found") ||
+      res.reply.includes("No matching") ||
+      res.reply.toLowerCase().includes("no matching bank manager records"),
       "Must explain no records found"
     );
     assert.ok(res.reply.includes("HDFC Bank"));

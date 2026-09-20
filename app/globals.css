@@ -1668,10 +1668,11 @@ body:has(.chat-page) {
 }
 
 .chat-conversation-item {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.28rem 0.5rem;
+    padding: 0.35rem 0.5rem;
     border-radius: var(--radius);
     color: var(--ink-soft);
     font-size: 0.78125rem;
@@ -1699,6 +1700,92 @@ body:has(.chat-page) {
 .chat-conversation-meta {
     font-size: 0.65rem;
     color: var(--ink-muted);
+}
+
+.chat-conversation-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.chat-conversation-item:hover .chat-conversation-actions,
+.chat-conversation-item.active .chat-conversation-actions,
+.chat-conversation-item.menu-open .chat-conversation-actions {
+    opacity: 1;
+}
+
+.chat-conversation-menu-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--ink-muted);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.chat-conversation-menu-btn:hover,
+.chat-conversation-menu-btn.active {
+    background: var(--surface-3, rgba(0, 0, 0, 0.08));
+    color: var(--ink);
+}
+
+.chat-action-menu-dropdown {
+    position: absolute;
+    right: 0.5rem;
+    top: calc(100% + 2px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: 0.25rem;
+    z-index: 1070;
+    min-width: 130px;
+}
+
+.chat-action-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.375rem 0.625rem;
+    background: transparent;
+    border: none;
+    font-size: 0.75rem;
+    color: var(--ink);
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.chat-action-menu-item:hover {
+    background: var(--surface-2);
+}
+
+.chat-action-menu-item.danger {
+    color: var(--danger, #dc2626);
+}
+
+.chat-action-menu-item.danger:hover {
+    background: rgba(220, 38, 38, 0.08);
+}
+
+.chat-rename-input {
+    width: 100%;
+    font-size: 0.78125rem;
+    padding: 2px 6px;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    background: var(--surface);
+    color: var(--ink);
+    outline: none;
 }
 
 .chat-sidebar-footer {

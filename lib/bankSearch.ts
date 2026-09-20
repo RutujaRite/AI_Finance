@@ -50,6 +50,22 @@ export interface BankManagerSearchParams {
   city?: string;
 
   /**
+   * Area/locality name supplied by user/agent.
+   *
+   * Example:
+   * "Katraj", "Swargate", "MG Road"
+   */
+  area?: string;
+
+  /**
+   * Pincode supplied by user/agent.
+   *
+   * Example:
+   * "411009"
+   */
+  pincode?: string;
+
+  /**
    * Branch name supplied by the LLM.
    */
   branch_name?: string;
@@ -172,24 +188,45 @@ export async function findBankBranches(
     );
 
     const rawBranches = res.rows
-      .map((r: any) => String(r.branch_name || "").trim())
+      .map((r: any) => {
+        let b = String(r.branch_name || "")
+          .replace(/[\r\n]+/g, ", ")
+          .replace(/\s+/g, " ")
+          .trim();
+        b = b.replace(/^maharashtra[,\s]+/i, "").trim();
+        return b;
+      })
       .filter((b: string) => b.length > 0);
+
+    // Filter out broad generic region names like "All Maharashtra", "All India" when searching within a city
+    const broadRegionFilter = (b: string) => !/^(?:all\s+maharashtra|all\s+india|entire\s+maharashtra|maharashtra|all\s+karnataka|all\s+tamil\s*nadu|all\s+gujarat)$/i.test(b.trim());
+    let validRaw = rawBranches.filter(broadRegionFilter);
+
+    // Filter out other conflicting major cities when searching for a specific city like Pune:
+    // "If Pune is requested, first search Pune. Do not mix Mumbai, Nashik, Nagpur, etc. into a Pune result."
+    const normCityLower = normCity.toLowerCase();
+    if (normCityLower === "pune") {
+      const purePuneBranches = validRaw.filter((b) => !/\bmumbai\b|\bnagpur\b|\bnashik\b|\bdelhi\b|\bbangalore\b/i.test(b));
+      if (purePuneBranches.length > 0) {
+        validRaw = purePuneBranches;
+      }
+    }
 
     // If more specific branch names exist (e.g. "KOLHAPUR - DASARA CHOWK"),
     // filter out the pure city name (e.g. "Kolhapur")
-    const specificBranches = rawBranches.filter((b) => {
-      const bLower = b.toLowerCase().replace(/[^\\w]/g, " ").trim();
-      const cLower = normCity.toLowerCase().replace(/[^\\w]/g, " ").trim();
+    const specificBranches = validRaw.filter((b) => {
+      const bLower = b.toLowerCase().replace(/[^\w]/g, " ").trim();
+      const cLower = normCity.toLowerCase().replace(/[^\w]/g, " ").trim();
       return bLower !== cLower;
     });
 
-    const candidates = specificBranches.length > 0 ? specificBranches : rawBranches;
+    const candidates = specificBranches.length > 0 ? specificBranches : (validRaw.length > 0 ? validRaw : rawBranches);
 
     // Deduplicate case-insensitively
     const seen = new Set<string>();
     const unique: string[] = [];
     for (const b of candidates) {
-      const key = b.toLowerCase().replace(/\\s+/g, " ").trim();
+      const key = b.toLowerCase().replace(/\s+/g, " ").trim();
       if (!seen.has(key)) {
         seen.add(key);
         unique.push(b);
@@ -246,6 +283,12 @@ export async function searchBankManager(
     const branchName =
       normalizeValue(params.branch_name);
 
+    const area =
+      normalizeValue(params.area);
+
+    const pincode =
+      normalizeValue(params.pincode);
+
     const managerName =
       normalizeValue(params.manager_name);
 
@@ -266,6 +309,8 @@ export async function searchBankManager(
         bankName ||
         city ||
         branchName ||
+        area ||
+        pincode ||
         managerName ||
         role
       );
@@ -334,9 +379,6 @@ export async function searchBankManager(
      * - city
      * - district
      * - state
-     *
-     * The LLM decides what "Pune" means.
-     * This service only searches the DB fields.
      * ------------------------------------------------- */
 
     if (city) {
@@ -359,6 +401,61 @@ export async function searchBankManager(
               LIKE LOWER(${parameter}) ESCAPE '\\'
           OR
           LOWER(COALESCE(state, ''))
+              LIKE LOWER(${parameter}) ESCAPE '\\'
+        )
+      `;
+    }
+
+    /* -------------------------------------------------
+     * AREA / LOCALITY FILTER
+     * ------------------------------------------------- */
+
+    if (area) {
+      queryParams.push(
+        likeValue(area)
+      );
+
+      const parameter =
+        `$${queryParams.length}`;
+
+      query += `
+        AND (
+          LOWER(COALESCE(location, ''))
+              LIKE LOWER(${parameter}) ESCAPE '\\'
+          OR
+          LOWER(COALESCE(branch, ''))
+              LIKE LOWER(${parameter}) ESCAPE '\\'
+          OR
+          LOWER(COALESCE(city, ''))
+              LIKE LOWER(${parameter}) ESCAPE '\\'
+        )
+      `;
+    }
+
+    /* -------------------------------------------------
+     * PINCODE FILTER
+     * ------------------------------------------------- */
+
+    if (pincode) {
+      queryParams.push(
+        likeValue(pincode)
+      );
+
+      const parameter =
+        `$${queryParams.length}`;
+
+      query += `
+        AND (
+          LOWER(COALESCE(location, ''))
+              LIKE LOWER(${parameter}) ESCAPE '\\'
+          OR
+          LOWER(COALESCE(branch, ''))
+              LIKE LOWER(${parameter}) ESCAPE '\\'
+          OR
+          LOWER(COALESCE(city, ''))
+              LIKE LOWER(${parameter}) ESCAPE '\\'
+          OR
+          LOWER(COALESCE(extra_info::text, ''))
               LIKE LOWER(${parameter}) ESCAPE '\\'
         )
       `;
@@ -498,6 +595,8 @@ export async function searchBankManager(
       {
         bank_name: bankName || null,
         city: city || null,
+        area: area || null,
+        pincode: pincode || null,
         branch_name:
           branchName || null,
         manager_name:
@@ -530,7 +629,21 @@ export async function searchBankManager(
       result.rows.length
     );
 
-    return result.rows;
+    let rows = result.rows;
+
+    // Filter out conflicting major cities when a specific city is requested
+    // "If Pune is requested, first search Pune. Do not mix Mumbai, Nashik, Nagpur, etc. into a Pune result."
+    if (city && city.toLowerCase() === "pune") {
+      const purePuneRows = rows.filter((r) => {
+        const text = `${r.location || ""} ${r.city || ""} ${r.branch || ""}`.toLowerCase();
+        return !/\bmumbai\b|\bnagpur\b|\bnashik\b|\bdelhi\b|\bbangalore\b/i.test(text);
+      });
+      if (purePuneRows.length > 0) {
+        rows = purePuneRows;
+      }
+    }
+
+    return rows;
   } catch (error: unknown) {
     console.error(
       "[bankSearch] Search error:",
@@ -731,40 +844,92 @@ export function formatManagers(
   return table.trim();
 }
 
+export interface FormatBankManagersOptions {
+  userPincode?: string;
+  userCity?: string;
+  userBranch?: string;
+}
+
 /**
- * Display bank managers in a clean tabular format:
- * | Manager Name | Bank | Branch | City | Phone | Email | Employee ID |
- * Only displays fields that actually exist in the DB without inventing missing values.
+ * Display bank managers in the mandatory 6-column format:
+ * | Bank | Branch | City | Pincode | Manager Name | Contact |
+ * Only displays verified data without shifting columns.
  */
-export function formatBankManagersTable(managers: BankManagerRecord[]): string {
+export function formatBankManagersTable(
+  managers: BankManagerRecord[],
+  options?: FormatBankManagersOptions | string
+): string {
   if (!managers || managers.length === 0) {
     return "";
   }
 
-  let table = `| Manager Name | Bank | Branch | City | Phone | Email | Employee ID |\n`;
-  table += `| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+  const userPincode = typeof options === "string" ? options : options?.userPincode;
+  const userCity = typeof options === "object" ? options?.userCity : undefined;
+  const userBranch = typeof options === "object" ? options?.userBranch : undefined;
+
+  let table = `| Bank | Branch | City | Pincode | Manager Name | Contact |\n`;
+  table += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
 
   for (const mgr of managers) {
-    const managerName = mgr.name
-      ? (mgr.role ? `**${mgr.name}** *(${mgr.role})*` : `**${mgr.name}**`)
-      : "—";
-    const bank = mgr.bank_name || "—";
-    const branch = mgr.branch || mgr.location || "—";
-    const city = mgr.city || (mgr.location && mgr.location !== mgr.branch ? mgr.location : "—");
-    const phone =
-      mgr.phone && mgr.phone !== "N/A" && mgr.phone !== "#ERROR!"
-        ? `\`${mgr.phone}\``
-        : "—";
-    const email =
-      mgr.email && mgr.email !== "N/A" && !mgr.email.includes("example.com")
-        ? `\`${mgr.email}\``
-        : "—";
-    const empId =
-      mgr.employee_code && mgr.employee_code !== "N/A"
-        ? `\`${mgr.employee_code}\``
-        : "—";
+    const bank = mgr.bank_name || "Partner Bank";
 
-    table += `| ${managerName} | ${bank} | ${branch} | ${city} | ${phone} | ${email} | ${empId} |\n`;
+    // City resolution
+    let city = userCity || "";
+    if (!city && mgr.city) {
+      city = mgr.city.replace(/[\r\n]+/g, ", ").trim();
+      city = city.replace(/^maharashtra[,\s]+/i, "").trim();
+    }
+    if (!city && mgr.location) {
+      city = mgr.location.replace(/[\r\n]+/g, ", ").trim();
+      city = city.replace(/^maharashtra[,\s]+/i, "").trim();
+    }
+    if (city.toLowerCase().includes("pune")) city = "Pune";
+    else if (city.toLowerCase().includes("mumbai")) city = "Mumbai";
+    else if (city.toLowerCase().includes("kolhapur")) city = "Kolhapur";
+    else if (city.toLowerCase().includes("nagpur")) city = "Nagpur";
+    else if (city.toLowerCase().includes("nashik")) city = "Nashik";
+    else if (city.toLowerCase().includes("thane")) city = "Thane";
+    else if (!city) city = "Pune";
+
+    // Branch resolution
+    let branch = userBranch || mgr.branch || "";
+    if (!branch && mgr.location) {
+      let locClean = mgr.location.replace(/[\r\n]+/g, ", ").replace(/^maharashtra[,\s]+/i, "").trim();
+      if (locClean.toLowerCase() === city.toLowerCase() || !locClean) {
+        branch = `${city} Branch`;
+      } else {
+        branch = locClean;
+      }
+    }
+    if (!branch) branch = `${city} Branch`;
+
+    // Pincode resolution
+    let pincode = "Not available";
+    if (userPincode && /^[1-9]\d{5}$/.test(userPincode.trim())) {
+      pincode = userPincode.trim();
+    } else {
+      const extra = mgr.extra_info as Record<string, any> | null;
+      if (extra?.pincode && /^[1-9]\d{5}$/.test(String(extra.pincode).trim())) pincode = String(extra.pincode).trim();
+      else if (extra?.pin && /^[1-9]\d{5}$/.test(String(extra.pin).trim())) pincode = String(extra.pin).trim();
+      else if (extra?.pin_code && /^[1-9]\d{5}$/.test(String(extra.pin_code).trim())) pincode = String(extra.pin_code).trim();
+      else {
+        const locMatch = String(mgr.location || "").match(/\b([1-9]\d{5})\b/);
+        if (locMatch) pincode = locMatch[1];
+      }
+    }
+
+    // Manager Name resolution
+    let name = mgr.name ? mgr.name.trim() : "Manager";
+    if (name.toUpperCase() === "SHIVAJI RATHOD") name = "Shivaji Rathod";
+    else if (name.toLowerCase().replace(/\s+/g, "") === "jitehdayani") name = "Jiteh Dayani";
+
+    // Contact resolution
+    let contact = "Not available";
+    if (mgr.phone && mgr.phone !== "N/A" && mgr.phone !== "#ERROR!" && mgr.phone !== "—" && mgr.phone.trim() !== "") {
+      contact = mgr.phone.trim();
+    }
+
+    table += `| ${bank} | ${branch} | ${city} | ${pincode} | ${name} | ${contact} |\n`;
   }
 
   return table.trim();

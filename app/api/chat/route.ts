@@ -229,20 +229,25 @@ export async function POST(req: NextRequest) {
     /* Persist AI message and update conversation metadata in PostgreSQL       */
     /* ---------------------------------------------------------------------- */
 
+    let effectiveTitle = message.slice(0, 40) || "Loan Assistant";
     try {
       await pool.query(
         `INSERT INTO assistant_messages (conversation_id, role, content)
          VALUES ($1, 'assistant', $2)`,
         [convId, agentResult.reply || ""]
       );
-      await pool.query(
+      const titleRes = await pool.query(
         `UPDATE assistant_conversations
          SET updated_at = NOW(),
-             title = CASE WHEN title IS NULL OR title = 'Loan Assistant' OR title = 'New Conversation'
+             title = CASE WHEN title IS NULL OR title = 'Loan Assistant' OR title = 'New Conversation' OR title = 'New Chat'
                           THEN $1 ELSE title END
-         WHERE id = $2`,
-        [message.slice(0, 40) || "Loan Assistant", convId]
+         WHERE id = $2
+         RETURNING title`,
+        [effectiveTitle, convId]
       );
+      if (titleRes.rows.length > 0 && titleRes.rows[0].title) {
+        effectiveTitle = titleRes.rows[0].title;
+      }
     } catch (saveErr) {
       console.error("Error persisting assistant response to DB:", saveErr);
     }
@@ -256,9 +261,7 @@ export async function POST(req: NextRequest) {
 
       conversation_id: conversationIdStr,
 
-      title:
-        message.slice(0, 40) ||
-        "Loan Assistant",
+      title: effectiveTitle || "Loan Assistant",
 
       ai_message: aiMessage,
 

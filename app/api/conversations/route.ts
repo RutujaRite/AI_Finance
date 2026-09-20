@@ -89,40 +89,55 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const userId = await getAuthenticatedUserId(req);
+  if (!userId) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
   const { id, title, pinned } = body;
 
-  if (!id) {
-    return NextResponse.json({ success: false, error: "id is required" }, { status: 400 });
-  }
-
-  // Allow the client to pass a DB id (integer) or a client-generated id.
-  const convId = Number(id);
-  const useDb = Number.isFinite(convId);
-
-  if (useDb && userId) {
-    const client = await pool.connect();
-    try {
-      await client.query(
+  const client = await pool.connect();
+  try {
+    let convRow: any;
+    const convId = id ? Number(id) : NaN;
+    if (Number.isFinite(convId)) {
+      const res = await client.query(
         `INSERT INTO assistant_conversations (id, user_id, title)
          VALUES ($1, $2, $3)
-         ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title`,
-        [convId, userId, title || "New Conversation"]
+         ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, updated_at = NOW()
+         RETURNING id, title, user_id, created_at, updated_at`,
+        [convId, userId, title || "New Chat"]
       );
-      return NextResponse.json({ success: true, id: convId });
-    } catch (err: any) {
-      console.error("Create conversation error:", err);
-    } finally {
-      client.release();
+      convRow = res.rows[0];
+    } else {
+      const res = await client.query(
+        `INSERT INTO assistant_conversations (user_id, title)
+         VALUES ($1, $2)
+         RETURNING id, title, user_id, created_at, updated_at`,
+        [userId, title || "New Chat"]
+      );
+      convRow = res.rows[0];
     }
-  }
 
-  conversations.set(id, {
-    id,
-    title: title || "New Conversation",
-    pinned: pinned || false,
-    createdAt: new Date().toISOString(),
-  });
-  return NextResponse.json({ success: true });
+    const conversationObj = {
+      id: String(convRow.id),
+      title: convRow.title || "New Chat",
+      pinned: Boolean(pinned),
+      createdAt: convRow.created_at,
+      updatedAt: convRow.updated_at,
+      preview: "",
+      messageCount: 0,
+    };
+
+    return NextResponse.json({
+      success: true,
+      id: String(convRow.id),
+      conversation: conversationObj,
+    });
+  } catch (err: any) {
+    console.error("Create conversation error:", err);
+    return NextResponse.json({ success: false, error: "Failed to create conversation" }, { status: 500 });
+  } finally {
+    client.release();
+  }
 }
 
 export async function PUT(req: NextRequest) {
