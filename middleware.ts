@@ -13,6 +13,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/_next') ||
     pathname === '/favicon.ico' ||
     pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/chat') ||
     pathname === '/login' ||
     pathname === '/register'
   ) {
@@ -38,6 +39,16 @@ export async function middleware(request: NextRequest) {
 }
 
 function redirectToLogin(request: NextRequest) {
+  // CRITICAL: API requests must NEVER be redirected to an HTML page.
+  // Redirecting an API route to /login causes fetch().json() in browser to parse HTML,
+  // throwing "JSON.parse: unexpected character at line 1 column 1 of the JSON data".
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.json(
+      { success: false, error: 'Unauthorized', message: 'Authentication required' },
+      { status: 401 }
+    )
+  }
+
   const loginUrl = new URL('/login', request.url)
   if (!request.nextUrl.pathname.startsWith('/login')) {
     loginUrl.searchParams.set('from', request.nextUrl.pathname)

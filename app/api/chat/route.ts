@@ -181,6 +181,33 @@ export async function POST(req: NextRequest) {
     }
 
     /* ---------------------------------------------------------------------- */
+    /* Dynamic System Time (IST) & System Prompt Refactor                    */
+    /* ---------------------------------------------------------------------- */
+
+    // 1. DYNAMIC SYSTEM TIME: Compute current Indian Standard Time (IST) dynamically on each request
+    const currentTime = new Date().toLocaleString('en-US', {
+      timeZone: 'Asia/Kolkata',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true,
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    // 2. SYSTEM PROMPT REFACTOR: Clean dynamic context and behavior instructions
+    const systemPrompt = `You are CreditWise AI, a helpful, expert financial assistant specializing in personal loan eligibility, EMI calculations, bank loan policies, and branch manager contacts.
+
+### DYNAMIC CONTEXT:
+- Current Local Time: ${currentTime}
+
+### BEHAVIOR RULES:
+- TIME AWARENESS: Always use the provided Current Local Time. If the user gives a greeting that contradicts the current time (e.g., saying "Good morning" at 10:45 PM), politely acknowledge the current time in a warm, conversational tone (e.g., "Good evening! It's late night, but I'm here to help you with your loan queries!").
+- NATURAL & ADAPTIVE: Do not act like a rigid step-by-step form or force single-question loops. Converse naturally like ChatGPT while gathering missing information efficiently.
+- ACCURACY: Follow the provided Bank Data, Loan Policy, and Manager Contact records strictly for calculations and recommendations.`;
+
+    /* ---------------------------------------------------------------------- */
     /* Central AI Agent                                                       */
     /* ---------------------------------------------------------------------- */
 
@@ -190,6 +217,8 @@ export async function POST(req: NextRequest) {
       conversationHistory,
       model: requestedModel,
       companySelectionAction,
+      currentTime,
+      systemPrompt,
     });
 
     /* ---------------------------------------------------------------------- */

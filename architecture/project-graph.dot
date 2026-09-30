@@ -293,7 +293,7 @@ digraph G {
 		height=0.32986,
 		pos="161.75,4325.9",
 		width=1.5451];
-	"lib/ai/tavilyService.ts"	[color="#cfffac",
+	"lib/ai/incraaxService.ts"	[color="#cfffac",
 		fontcolor="#cfffac",
 		height=0.32986,
 		pos="830.5,1267.9",
@@ -986,7 +986,7 @@ digraph G {
 		pos="516.75,1267.9",
 		width=3.2951];
 	"scratch/test_tools_decision_maker.ts" -> "lib/ai/agent.ts"	[pos="e,782.55,1303.5 609.87,1280.2 630.95,1283.1 653.25,1286.1 674,1288.9 706.18,1293.2 742.09,1298.1 771.3,1302"];
-	"scratch/test_tools_decision_maker.ts" -> "lib/ai/tavilyService.ts"	[pos="e,761.67,1267.9 635.61,1267.9 674.04,1267.9 715.75,1267.9 750.61,1267.9"];
+	"scratch/test_tools_decision_maker.ts" -> "lib/ai/incraaxService.ts"	[pos="e,761.67,1267.9 635.61,1267.9 674.04,1267.9 715.75,1267.9 750.61,1267.9"];
 	"scratch/test_tools_decision_maker.ts" -> "lib/dynamicEligibilityEngine.ts"	[pos="e,828.01,1843.9 635.69,1268.4 649.73,1272.7 662.98,1279.2 674,1288.9 759.31,1363.5 813.61,1735.2 826.52,1832.5"];
 	"scratch/test_ui_changes.ts"	[height=0.32986,
 		pos="516.75,2023.9",

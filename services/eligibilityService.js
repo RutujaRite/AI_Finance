@@ -1659,13 +1659,13 @@ async function evaluateWithBankSpecificCategories(pool, applicant) {
 
      const companyRes = await pool.query(
        `SELECT DISTINCT cr.bank_name, cr.company_category
-        FROM company_records cr
+        FROM bank_company_data cr
         WHERE LOWER(TRIM(cr.company_name)) = LOWER(TRIM($1))
         ORDER BY cr.bank_name`,
        [normalizedCompany]
      );
 
-     console.log("[HANDOFF] Raw company_records rows: " + companyRes.rowCount);
+     console.log("[HANDOFF] Raw bank_company_data rows: " + companyRes.rowCount);
      companyRes.rows.forEach(r => {
        console.log("[HANDOFF]   RAW: bank=" + r.bank_name + " | category=" + r.company_category);
      });

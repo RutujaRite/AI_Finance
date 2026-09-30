@@ -300,6 +300,7 @@ async function fetchLiveCompanySummary(companyName) {
   url.searchParams.set("q", `${query} company overview headquarters website products services leadership locations business recent developments`);
   url.searchParams.set("format", "json");
   url.searchParams.set("deep", "true");
+  url.searchParams.set("categories", "general,news");
 
   try {
     const response = await fetch(url.toString(), {

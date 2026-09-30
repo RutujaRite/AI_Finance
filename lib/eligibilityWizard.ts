@@ -1,5 +1,4 @@
 import pool from "@/lib/db";
-import { searchCompany, formatCompanyResponse, formatCompanyCandidateList } from "@/lib/companySearch";
 import { searchBankManager, formatManagers } from "@/lib/bankSearch";
 import {
   calculateEmi as dynamicCalculateEmi,

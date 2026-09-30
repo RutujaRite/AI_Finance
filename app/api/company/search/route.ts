@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchCompany } from "../../../../lib/companySearch";
+import { searchCompany, formatCompanyResponse } from "../../../../lib/companySearch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,127 +8,7 @@ function nowISO() {
   return new Date().toISOString();
 }
 
-/**
- * Build final response for the selected company.
- *
- * Sections:
- * 1. Company Live Information
- * 2. Basic Information
- * 3. Bank Records
- * 4. Financial Information
- */
-function buildCompanyReply(
-  name: string,
-  overview: string,
-  basic: any,
-  financial: any,
-  bankRecords: any[]
-) {
-  // 1. Live information from Exa/live search
-  const liveSection = overview
-    ? `### Company Live Information\n\n${overview}\n`
-    : "";
 
-  // 2. Basic information
-  const basicRows = [
-    ["Company Name", name],
-    ["Industry", basic?.industry],
-    ["Country", basic?.country],
-    ["Incorporation Date", basic?.incorporation_date],
-    ["Listing Status", basic?.listing_status],
-    ["CIN", basic?.cin],
-    ["Address", basic?.address],
-    ["Website", basic?.website],
-  ]
-    .filter(
-      ([, value]) =>
-        value !== null &&
-        value !== undefined &&
-        String(value).trim() !== ""
-    )
-    .map(([label, value]) => `| ${label} | ${value} |`)
-    .join("\n");
-
-  const basicSection = `
-### Basic Information
-
-| Field | Value |
-| --- | --- |
-${basicRows}
-`;
-
-  // 3. Bank records - remove duplicate bank names
-  const seenBanks = new Set<string>();
-
-  const uniqueBankRecords = (bankRecords || []).filter((record: any) => {
-    const bankName = String(record?.bank_name || "")
-      .trim()
-      .toLowerCase();
-
-    if (!bankName || seenBanks.has(bankName)) {
-      return false;
-    }
-
-    seenBanks.add(bankName);
-    return true;
-  });
-
-  const bankRows = uniqueBankRecords
-    .map(
-      (record: any) =>
-        `| ${record.bank_name || "-"} | ${
-          record.company_category || "-"
-        } | ${record.other_info || "-"} |`
-    )
-    .join("\n");
-
-  const bankSection = uniqueBankRecords.length
-    ? `
-### Bank Records
-
-| Bank Name | Category | Other Info |
-| --- | --- | --- |
-${bankRows}
-`
-    : "";
-
-  // 4. Financial information
-  const financialRows = [
-    ["Employees", financial?.employees],
-    ["Turnover", financial?.turnover],
-    ["Profit Status", financial?.profit_status],
-    ["Last AGM", financial?.last_agm],
-    ["Profit History", financial?.profit_history],
-  ]
-    .filter(
-      ([, value]) =>
-        value !== null &&
-        value !== undefined &&
-        String(value).trim() !== ""
-    )
-    .map(([label, value]) => `| ${label} | ${value} |`)
-    .join("\n");
-
-  const financialSection = financialRows
-    ? `
-### Financial Information
-
-| Field | Value |
-| --- | --- |
-${financialRows}
-`
-    : "";
-
-  // Return sections in the required order
-  return [
-    liveSection,
-    basicSection,
-    bankSection,
-    financialSection,
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -159,11 +39,9 @@ export async function POST(req: NextRequest) {
 
     /*
      * searchCompany handles:
-     * - Database search
+     * - Database search (bank_company_data only)
      * - Company matching
      * - Multiple-company detection
-     * - Exa/live search
-     * - Selected-company data
      */
     const result = await searchCompany(companyName);
 
@@ -274,15 +152,13 @@ export async function POST(req: NextRequest) {
 
     // ---------------------------------------------------------
     // 3. ONE COMPANY FOUND / SELECTED
+    // Live company intelligence already fetched and verified inside searchCompany (NEVER stored in DB)
     // ---------------------------------------------------------
+    const overview = result.overview || "";
+    const basicInfo = result.basicInfo || null;
+    const financialInfo = result.financialInfo || null;
 
-    const reply = buildCompanyReply(
-      result.primaryName,
-      result.overview || "",
-      result.basicInfo || {},
-      result.financialInfo || {},
-      result.bankRecords || []
-    );
+    const reply = formatCompanyResponse(result);
 
     return NextResponse.json({
       success: true,
@@ -294,23 +170,16 @@ export async function POST(req: NextRequest) {
       response: reply,
 
       /*
-       * Complete information of the selected company.
+       * Complete information of the selected company:
+       * - Verified partner bank records from bank_company_data
+       * - Real-time live overview/basic/financial from Incraax (NEVER stored in DB)
        */
       company_data: {
         company_name: result.primaryName,
-
-        // Exa/live information - 3 to 4 lines
-        overview: result.overview,
-
-        // CIN, address, website, industry, etc.
-        basic_info: result.basicInfo,
-
-        // Bank Name + Category + Other Info
-        // Duplicate bank names are removed in the response.
+        overview,
+        basic_info: basicInfo,
+        financial_info: financialInfo,
         bank_records: result.bankRecords,
-
-        // Employees, turnover, profit, AGM, etc.
-        financial_info: result.financialInfo,
       },
 
       company_query: companyName,
@@ -322,10 +191,10 @@ export async function POST(req: NextRequest) {
 
         company_data: {
           company_name: result.primaryName,
-          overview: result.overview,
-          basic_info: result.basicInfo,
+          overview,
+          basic_info: basicInfo,
+          financial_info: financialInfo,
           bank_records: result.bankRecords,
-          financial_info: result.financialInfo,
         },
 
         company_query: companyName,

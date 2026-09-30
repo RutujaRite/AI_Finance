@@ -222,24 +222,33 @@ export async function findBankBranches(
 
     const candidates = specificBranches.length > 0 ? specificBranches : (validRaw.length > 0 ? validRaw : rawBranches);
 
-    // Deduplicate case-insensitively
-    const seen = new Set<string>();
-    const unique: string[] = [];
-    for (const b of candidates) {
-      const key = b.toLowerCase().replace(/\s+/g, " ").trim();
-      if (!seen.has(key)) {
-        seen.add(key);
-        unique.push(b);
-      }
-    }
-
-    return unique;
+    return getUniqueBranches(candidates);
   } catch (error) {
     console.error("[bankSearch] findBankBranches error:", error);
     return [];
   } finally {
     client.release();
   }
+}
+
+/**
+ * Normalizes and deduplicates branch names using trim and case-insensitive comparison.
+ * Preserves the original casing of the first occurrence.
+ * Does NOT use fuzzy guessing to combine different branch names.
+ */
+export function getUniqueBranches(branches: string[]): string[] {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const b of branches) {
+    const clean = String(b || "").trim();
+    if (!clean) continue;
+    const key = clean.toLowerCase().replace(/\s+/g, " ");
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(clean);
+    }
+  }
+  return unique;
 }
 
 /* =====================================================
@@ -851,15 +860,64 @@ export interface FormatBankManagersOptions {
 }
 
 /**
+ * Extracts a 6-digit pincode strictly from a bank manager database record.
+ */
+export function extractPincode(mgr: BankManagerRecord): string {
+  const extra = mgr.extra_info as Record<string, any> | null;
+  if (extra?.pincode && /^[1-9]\d{5}$/.test(String(extra.pincode).trim())) return String(extra.pincode).trim();
+  if (extra?.pin && /^[1-9]\d{5}$/.test(String(extra.pin).trim())) return String(extra.pin).trim();
+  if (extra?.pin_code && /^[1-9]\d{5}$/.test(String(extra.pin_code).trim())) return String(extra.pin_code).trim();
+  const locMatch = String(mgr.location || "").match(/\b([1-9]\d{5})\b/);
+  if (locMatch) return locMatch[1];
+  const branchMatch = String(mgr.branch || "").match(/\b([1-9]\d{5})\b/);
+  if (branchMatch) return branchMatch[1];
+  return "";
+}
+
+/**
+ * Deduplicates exact manager records across all 6 columns:
+ * Bank, Branch, City, Pincode, Manager Name, Contact.
+ * Does NOT deduplicate only by manager name (different branches/contacts are preserved).
+ */
+export function getUniqueManagerRecords(managers: BankManagerRecord[]): BankManagerRecord[] {
+  if (!managers || managers.length === 0) return [];
+  const seen = new Set<string>();
+  const unique: BankManagerRecord[] = [];
+
+  for (const mgr of managers) {
+    const bank = (mgr.bank_name || "").trim().toLowerCase();
+    const branch = (mgr.branch || mgr.location || "").trim().toLowerCase();
+    const city = (mgr.city || "").trim().toLowerCase();
+    const pincode = extractPincode(mgr).toLowerCase();
+    const name = (mgr.name || "").trim().toLowerCase();
+    const contact = (mgr.phone && mgr.phone !== "N/A" && mgr.phone !== "#ERROR!" && mgr.phone !== "—" ? mgr.phone.trim() : "").toLowerCase();
+
+    const key = `${bank}|${branch}|${city}|${pincode}|${name}|${contact}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(mgr);
+    }
+  }
+
+  return unique;
+}
+
+/**
  * Display bank managers in the mandatory 6-column format:
  * | Bank | Branch | City | Pincode | Manager Name | Contact |
- * Only displays verified data without shifting columns.
+ * 100% database-driven: every value comes from the database result.
+ * Exact duplicates across all 6 fields are removed.
  */
 export function formatBankManagersTable(
   managers: BankManagerRecord[],
   options?: FormatBankManagersOptions | string
 ): string {
   if (!managers || managers.length === 0) {
+    return "";
+  }
+
+  const uniqueManagers = getUniqueManagerRecords(managers);
+  if (uniqueManagers.length === 0) {
     return "";
   }
 
@@ -870,58 +928,45 @@ export function formatBankManagersTable(
   let table = `| Bank | Branch | City | Pincode | Manager Name | Contact |\n`;
   table += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
 
-  for (const mgr of managers) {
-    const bank = mgr.bank_name || "Partner Bank";
+  for (const mgr of uniqueManagers) {
+    const bank = mgr.bank_name && mgr.bank_name.trim().length > 0 ? mgr.bank_name.trim() : "Partner Bank";
 
-    // City resolution
-    let city = userCity || "";
-    if (!city && mgr.city) {
-      city = mgr.city.replace(/[\r\n]+/g, ", ").trim();
-      city = city.replace(/^maharashtra[,\s]+/i, "").trim();
+    // Branch resolution: from DB branch, location, or userBranch
+    let branch = (mgr.branch || "").replace(/[\r\n]+/g, ", ").trim();
+    if (!branch && userBranch) {
+      branch = userBranch.trim();
+    }
+    if (!branch && mgr.location) {
+      branch = mgr.location.replace(/[\r\n]+/g, ", ").replace(/^maharashtra[,\s]+/i, "").trim();
+    }
+    if (!branch) {
+      branch = "Not available";
+    }
+
+    // City resolution: from DB city, location, or userCity
+    let city = (mgr.city || "").replace(/[\r\n]+/g, ", ").trim();
+    city = city.replace(/^maharashtra[,\s]+/i, "").trim();
+    if (!city && userCity) {
+      city = userCity.trim();
     }
     if (!city && mgr.location) {
-      city = mgr.location.replace(/[\r\n]+/g, ", ").trim();
-      city = city.replace(/^maharashtra[,\s]+/i, "").trim();
+      city = mgr.location.replace(/[\r\n]+/g, ", ").replace(/^maharashtra[,\s]+/i, "").trim();
     }
-    if (city.toLowerCase().includes("pune")) city = "Pune";
-    else if (city.toLowerCase().includes("mumbai")) city = "Mumbai";
-    else if (city.toLowerCase().includes("kolhapur")) city = "Kolhapur";
-    else if (city.toLowerCase().includes("nagpur")) city = "Nagpur";
-    else if (city.toLowerCase().includes("nashik")) city = "Nashik";
-    else if (city.toLowerCase().includes("thane")) city = "Thane";
-    else if (!city) city = "Pune";
-
-    // Branch resolution
-    let branch = userBranch || mgr.branch || "";
-    if (!branch && mgr.location) {
-      let locClean = mgr.location.replace(/[\r\n]+/g, ", ").replace(/^maharashtra[,\s]+/i, "").trim();
-      if (locClean.toLowerCase() === city.toLowerCase() || !locClean) {
-        branch = `${city} Branch`;
-      } else {
-        branch = locClean;
-      }
+    if (!city) {
+      city = "Not available";
     }
-    if (!branch) branch = `${city} Branch`;
 
-    // Pincode resolution
-    let pincode = "Not available";
-    if (userPincode && /^[1-9]\d{5}$/.test(userPincode.trim())) {
+    // Pincode resolution: strictly from DB record; if matching userPincode was searched, use it
+    let pincode = extractPincode(mgr);
+    if (!pincode && userPincode && /^[1-9]\d{5}$/.test(userPincode.trim())) {
       pincode = userPincode.trim();
-    } else {
-      const extra = mgr.extra_info as Record<string, any> | null;
-      if (extra?.pincode && /^[1-9]\d{5}$/.test(String(extra.pincode).trim())) pincode = String(extra.pincode).trim();
-      else if (extra?.pin && /^[1-9]\d{5}$/.test(String(extra.pin).trim())) pincode = String(extra.pin).trim();
-      else if (extra?.pin_code && /^[1-9]\d{5}$/.test(String(extra.pin_code).trim())) pincode = String(extra.pin_code).trim();
-      else {
-        const locMatch = String(mgr.location || "").match(/\b([1-9]\d{5})\b/);
-        if (locMatch) pincode = locMatch[1];
-      }
+    }
+    if (!pincode) {
+      pincode = "Not available";
     }
 
     // Manager Name resolution
-    let name = mgr.name ? mgr.name.trim() : "Manager";
-    if (name.toUpperCase() === "SHIVAJI RATHOD") name = "Shivaji Rathod";
-    else if (name.toLowerCase().replace(/\s+/g, "") === "jitehdayani") name = "Jiteh Dayani";
+    const name = mgr.name && mgr.name.trim().length > 0 ? mgr.name.trim() : "Not available";
 
     // Contact resolution
     let contact = "Not available";

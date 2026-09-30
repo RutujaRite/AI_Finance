@@ -3,7 +3,7 @@ dotenv.config();
 
 import { runCentralAgent, OPENROUTER_TOOLS } from "../lib/ai/agent";
 import { getEligibilityState, clearEligibilityState } from "../lib/dynamicEligibilityEngine";
-import { searchTavilyWeb } from "../lib/ai/tavilyService";
+import { searchIncraaxWeb } from "../lib/ai/incraaxService";
 
 async function runToolArchitectureVerification() {
   console.log("================================================================================");
@@ -92,7 +92,7 @@ async function runToolArchitectureVerification() {
 
   // 7. Test incraax_search service
   console.log("\n--- 7. Testing incraax_search Tool Action ---");
-  const searchOutput = await searchTavilyWeb("RBI repo rate latest announcement 2024");
+  const searchOutput = await searchIncraaxWeb("RBI repo rate latest announcement 2024");
   assert(typeof searchOutput === "string" && searchOutput.length > 0, "Web search service executes gracefully");
 
   // 8. Test Non-Interference: Active Eligibility NEVER Blocks Side Request

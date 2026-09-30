@@ -2,7 +2,7 @@
  * Bank-Specific Category Resolver
  *
  * Resolves the applicant's employer/category for each bank using:
- * 1. company_records lookup (company_name + bank match)
+ * 1. bank_company_data lookup (company_name + bank match)
  * 2. Master policy text extraction (keyword matching near company mentions)
  *
  * Never uses CIBIL/salary to guess the category.
@@ -48,11 +48,11 @@ async function resolveBankCategory(pool, bankId, bankName, companyName, employme
   const normCompany = normalizeText(companyName).toLowerCase();
   const normBank = normalizeText(bankName).toLowerCase();
 
-  // 1. Try company_records lookup
+  // 1. Try bank_company_data lookup
   try {
     const compRes = await pool.query(
       `SELECT company_category, other_info
-       FROM company_records
+       FROM bank_company_data
        WHERE (bank_name ILIKE $1 OR bank_name ILIKE $2)
          AND company_name ILIKE $3
        LIMIT 1`,
@@ -66,7 +66,7 @@ async function resolveBankCategory(pool, bankId, bankName, companyName, employme
       }
     }
   } catch (err) {
-    console.warn(`[RESOLVER] company_records lookup warning for ${bankName}:`, err.message);
+    console.warn(`[RESOLVER] bank_company_data lookup warning for ${bankName}:`, err.message);
   }
 
   // 2. Try master policy text extraction

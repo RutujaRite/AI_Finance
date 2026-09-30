@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "next dev -p 3001",
     "start": "next start",
-    "build": "next build"
+    "build": "next build",
+    "ingest:policy-embeddings": "npx tsx scripts/ingest-policy-embeddings.ts",
+    "test:policy-retrieval": "npx tsx scripts/test-policy-retrieval.ts",
+    "test:policy-rag": "npx tsx scripts/test-policy-rag.ts",
+    "test:conversational-rag": "npx tsx scripts/test-conversational-policy-rag.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

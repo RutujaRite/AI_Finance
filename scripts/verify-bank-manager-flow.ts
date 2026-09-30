@@ -46,13 +46,13 @@ async function runVerification() {
 
   console.log("Turn 1 Reply:\n", resTurn1.reply, "\n");
   assert.ok(resTurn1.reply.includes("HDFC Bank"), "Must acknowledge HDFC Bank");
-  assert.ok(resTurn1.reply.toLowerCase().includes("city or pincode"), "Must ask for city or pincode");
+  assert.ok(resTurn1.reply.toLowerCase().includes("city"), "Must ask for city");
 
   const state1 = await getEligibilityState(convId);
   assert.strictEqual(state1?.selectedBank, "HDFC Bank", "selectedBank must be stored in state");
   assert.strictEqual(state1?.chosenBank, "HDFC Bank", "chosenBank must be stored for compatibility");
-  assert.strictEqual(state1?.expectedField, "cityOrPincode", "expectedField must be 'cityOrPincode'");
-  console.log("✓ Turn 1 Verified: Stored selectedBank='HDFC Bank', asked for city/pincode.\n");
+  assert.strictEqual(state1?.expectedField, "city", "expectedField must be 'city'");
+  console.log("✓ Turn 1 Verified: Stored selectedBank='HDFC Bank', asked for city.\n");
 
   // Turn 2: User provides city "Pune"
   console.log("--- Turn 2: User replies 'Pune' ---");
@@ -60,27 +60,27 @@ async function runVerification() {
     conversationId: convId,
     message: "Pune",
     conversationHistory: [
-      { role: "assistant", content: "You selected **HDFC Bank**. Please provide your preferred city or pincode." },
+      { role: "assistant", content: "You selected **HDFC Bank**. Please provide your city." },
     ],
     model: "gemini-2.5-flash",
   });
 
   console.log("Turn 2 Reply:\n", resTurn2.reply, "\n");
   assert.ok(
-    resTurn2.reply.includes("Please share your pincode or preferred branch name in Pune"),
-    "Must ask for pincode or preferred branch name in Pune"
+    resTurn2.reply.includes("Available HDFC Bank branches in Pune") || resTurn2.reply.includes("Please select a branch"),
+    "Must search database and show available branches in Pune"
   );
 
   const state2 = await getEligibilityState(convId);
   assert.strictEqual(state2?.selectedBank, "HDFC Bank", "selectedBank must be preserved");
   assert.strictEqual(state2?.city, "Pune", "city must be stored as 'Pune'");
-  console.log("✓ Turn 2 Verified: Stored city='Pune', asked for pincode or branch.\n");
+  console.log("✓ Turn 2 Verified: Stored city='Pune', listed available branches.\n");
 
-  // Turn 3: User provides pincode "411001"
-  console.log("--- Turn 3: User replies '411001' ---");
+  // Turn 3: User selects branch "1"
+  console.log("--- Turn 3: User replies '1' ---");
   const resTurn3 = await runCentralAgent({
     conversationId: convId,
-    message: "411001",
+    message: "1",
     conversationHistory: [],
     model: "gemini-2.5-flash",
   });
@@ -191,6 +191,7 @@ async function runVerification() {
   assert.ok(
     resSwarget.reply.includes("couldn't find an exact") ||
     resSwarget.reply.includes("couldn't find an official") ||
+    resSwarget.reply.includes("couldn't find an ICICI Bank manager record") ||
     resSwarget.reply.includes("No matching or exact") ||
     resSwarget.reply.includes("no exact bank manager records were found"),
     "Must inform user no exact records found"

@@ -49,7 +49,7 @@ export function normalizeBankKey(name: string): string {
 const companyCategoryCache = new Map<string, CompanyCategoryMatch>();
 
 /**
- * Resolves the user's company to bank-specific categories from the company_records table (591k records).
+ * Resolves the user's company to bank-specific categories from the bank_company_data table (591k records).
  * Identifies the applicant's company, its exact category for mapped partner banks, and its overall category tier.
  */
 export async function resolveCompanyCategories(companyQuery: string): Promise<CompanyCategoryMatch> {
@@ -112,13 +112,13 @@ export async function resolveCompanyCategories(companyQuery: string): Promise<Co
       }
     } catch {}
 
-    // 1. Ranked search for best matching company name in company_records
+    // 1. Ranked search for best matching company name in bank_company_data
     let bestName: string | null = null;
     const searchPattern = `%${target.replace(/[\s,.-]+/g, "%")}%`;
 
     const rankRes = await pool.query(
       `SELECT company_name
-       FROM company_records
+       FROM bank_company_data
        WHERE company_name ILIKE $1
        GROUP BY company_name
        ORDER BY 
@@ -141,7 +141,7 @@ export async function resolveCompanyCategories(companyQuery: string): Promise<Co
       const origPattern = `%${query.replace(/[\s,.-]+/g, "%")}%`;
       const fallbackRank = await pool.query(
         `SELECT company_name
-         FROM company_records
+         FROM bank_company_data
          WHERE company_name ILIKE $1
          GROUP BY company_name
          ORDER BY 
@@ -176,7 +176,7 @@ export async function resolveCompanyCategories(companyQuery: string): Promise<Co
     const baseCleanName = bestName.replace(/[.\s]+$/, "");
     const rowsRes = await pool.query(
       `SELECT bank_name, company_name, company_category, other_info
-       FROM company_records
+       FROM bank_company_data
        WHERE company_name ILIKE $1 OR company_name ILIKE $2
        ORDER BY id ASC`,
       [baseCleanName, `${baseCleanName}%`]

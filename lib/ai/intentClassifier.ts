@@ -1,4 +1,13 @@
-import { parseFinancialAmount, extractCompanyCandidateFromText } from "@/lib/dynamicEligibilityEngine";
+import {
+  parseFinancialAmount,
+  extractCompanyCandidateFromText,
+  isPureGreeting,
+  hasGreetingPrefix,
+  stripGreetingPrefix,
+  isCompanyInfoOrSearchIntent,
+  isInvalidCompanyName,
+  extractTargetCompanyFromMessage,
+} from "@/lib/dynamicEligibilityEngine";
 
 const getApiKey = () => process.env.OPENROUTER_API_KEY || "";
 const getModel = () => (process.env.OPENROUTER_MODEL || "openrouter/auto").replace(/^["']|["']$/g, "").trim();
@@ -11,6 +20,40 @@ export type UserIntentType =
   | "CHANGING_DETAILS"
   | "GREETINGS"
   | "ANOTHER_TOPIC";
+
+export type MessageType = "QUESTION" | "ANSWER" | "COMMAND" | "STATEMENT" | "MIXED";
+
+export type ConversationAction =
+  | "CONTINUE"              // Answering expected field or advancing flow
+  | "TEMPORARY_INTERRUPT"   // Asking a side question mid-flow; expects eventual resumption
+  | "TOPIC_SWITCH"          // Explicitly abandoning or shifting flow
+  | "CORRECTION"            // Correcting previously submitted information
+  | "RESUME"                // Explicit command to return to suspended task
+  | "RESET"                 // Command to wipe session and restart
+  | "NEW_TASK"              // Starting a brand new workflow
+  | "NONE";                 // General remark, small talk, or greeting
+
+export type MainUserGoal =
+  | "PERSONAL_LOAN"
+  | "EMI_CALCULATION"
+  | "COMPANY_SEARCH"
+  | "BANK_POLICY"
+  | "BANK_MANAGER_SEARCH"
+  | "GENERAL_ASSISTANCE"
+  | "UNKNOWN";
+
+export interface ConfidenceScores {
+  intentConfidence: number;   // 0.0 to 1.0 (Signal only, never bypasses validation)
+  entityConfidence: number;   // 0.0 to 1.0
+  stateConfidence: number;    // 0.0 to 1.0
+}
+
+export interface EntityCorrection {
+  field: "monthlyIncome" | "loanAmount" | "tenureMonths" | "cibil" | "age" | "companyName" | "existingEmi";
+  oldValue?: string | number;
+  newValue: string | number;
+  rawExpression: string;
+}
 
 export interface ExtractedEntities {
   companyName?: string;
@@ -29,6 +72,25 @@ export interface ExtractedEntities {
   questionTopic?: string;
 }
 
+export interface StructuredNluResult {
+  messageType: MessageType;
+  primaryIntent: string;
+  secondaryIntents: string[];
+  conversationAction: ConversationAction;
+  mainUserGoal: MainUserGoal;
+  confidence: ConfidenceScores;
+  entities: ExtractedEntities;
+  corrections: EntityCorrection[];
+  targetBank?: string;
+  questionTopic?: string;
+  clarificationRequired?: {
+    isAmbiguous: boolean;
+    reason: string;
+    clarificationPrompt: string;
+  };
+  rawReasoning?: string;
+}
+
 export interface IntentClassificationResult {
   intent: UserIntentType;
   subIntent?: string;
@@ -36,6 +98,17 @@ export interface IntentClassificationResult {
   loanType: string;
   extracted: ExtractedEntities;
   rawResponse?: string;
+}
+
+export interface NluContext {
+  isFlowActive?: boolean;
+  expectedField?: string;
+  existingApplicant?: any;
+  recentMessages?: Array<{ role: string; content: string }>;
+  activeFlow?: string;
+  mainUserGoal?: string;
+  taskStack?: any[];
+  lastAssistantQuestion?: string;
 }
 
 /**
@@ -66,112 +139,104 @@ export function cleanLlmJsonOutput(raw: string): string {
 }
 
 /**
- * Classifies user intent using OpenRouter LLM.
- * Strictly analyzes every user message semantically before eligibility processing.
+ * Main Conversational Intelligence & Semantic NLU Engine.
+ * Analyzes every user message semantically in multi-turn conversation context.
+ * Interpretation layer ONLY: Never calls DB, calculates finance values, or mutates state.
  */
-export async function classifyIntentWithLLM(
+export async function analyzeConversationSemanticIntent(
   userMessage: string,
-  context?: {
-    isFlowActive?: boolean;
-    expectedField?: string;
-    existingApplicant?: any;
-    recentMessages?: Array<{ role: string; content: string }>;
-  },
+  context?: NluContext,
   modelOverride?: string
-): Promise<IntentClassificationResult> {
+): Promise<StructuredNluResult> {
   const primaryModel = modelOverride || getModel();
   const messageText = String(userMessage || "").trim();
 
   if (!messageText) {
     return {
-      intent: "ANOTHER_TOPIC",
-      subIntent: "EMPTY",
-      confidence: 1.0,
-      loanType: "Personal Loan",
-      extracted: {},
+      messageType: "STATEMENT",
+      primaryIntent: "GENERAL_ASSISTANCE",
+      secondaryIntents: [],
+      conversationAction: "NONE",
+      mainUserGoal: (context?.mainUserGoal as MainUserGoal) || "UNKNOWN",
+      confidence: { intentConfidence: 1.0, entityConfidence: 1.0, stateConfidence: 1.0 },
+      entities: {},
+      corrections: [],
     };
   }
 
-  const prompt = [
-    {
-      role: "system",
-      content:
-        `You are the Intent Classification and Entity Extraction Engine for CreditWise AI, a banking and loan intelligence platform.\n` +
-        `Your task is to analyze the user's message semantically and classify it into EXACTLY ONE of the following 6 intent categories:\n\n` +
-        `1. "LOAN_ELIGIBILITY":\n` +
-        `   - User asks about personal loan eligibility, which banks they qualify for, apply for a personal loan, start an eligibility assessment, OR expresses loan intent naturally (e.g. "What banks am I eligible for?", "Which banks can I get a loan from?", "Which bank is best for my loan?", "Am I eligible for a loan?", "Which banks will give me a loan?", "Where can I get a loan?", "I need a loan", "I want a personal loan", "I want to apply for a loan", "Can I get a loan?", "I need ₹5 lakh loan", "Need a personal loan", "Looking for a loan", "Can I get credit/loan?").\n` +
-        `   - Also includes providing personal profile details (e.g. employer name, monthly salary, CIBIL, loan amount, tenure, EMIs, age) to advance an in-progress eligibility assessment.\n\n` +
-        `2. "CALCULATION":\n` +
-        `   - User asks to calculate monthly EMI, interest payable, installment, or borrowing capacity (e.g. "What will my EMI be for 10 lakhs at 11% for 5 years?", "Calculate EMI for 500000", "What is my monthly installment?"). Supports partial calculations where only some numbers are given.\n\n` +
-        `3. "GENERAL_INFORMATION":\n` +
-        `   - User asks questions about bank policies (e.g. CIBIL cutoffs, FOIR percentage, interest rates, age limits), official bank manager contacts / branch directory, employer corporate listings or category ratings (Super Cat A, Cat A, Elite, Diamond), general banking concepts (e.g. "What is FOIR?", "How does personal loan interest work?"), or assistant capabilities / FAQs.\n\n` +
-        `4. "CHANGING_DETAILS":\n` +
-        `   - User explicitly asks to change, update, modify, or correct previously provided profile details (e.g. "Change my salary to 2 lakhs", "Actually my CIBIL is 750", "Update my company to TCS", "Make tenure 3 years", "I want to change loan amount to 15L").\n\n` +
-        `5. "GREETINGS":\n` +
-        `   - User is saying hello, hi, hey, good morning, greetings, namaste, etc. (CRITICAL: Greetings are NEVER loan requests or company searches).\n\n` +
-        `6. "ANOTHER_TOPIC":\n` +
-        `   - User is asking an off-topic question, making casual pleasantries / small talk ("who made you", "thank you", "goodbye"), or requesting to cancel/reset ("cancel", "reset", "start over").\n\n` +
-        `CRITICAL CONVERSATIONAL & MULTI-TURN RULES:\n` +
-        `- NEVER use hardcoded keyword matching. Understand the user's semantic intent from the message in context of the ongoing conversation.\n` +
-        `- Multi-Turn Context: Analyze previous assistant questions and user answers. If the assistant asked for a specific detail (e.g. salary or age), evaluate whether the user is answering, raising an objection ("Why do you need my age?"), asking a side question ("Is checking this going to affect my CIBIL?"), correcting a previous answer ("Actually I work at Google"), or giving an unexpected reply ("I don't know my cibil score").\n` +
-        `- Objections & Questions: If the user asks "Why age?", "Why company?", "Why salary?", "Is my data safe?", "Will this pull a hard inquiry?", "Can I prepay?", "What is FOIR?", or raises any other objection or question mid-assessment, classify intent as "GENERAL_INFORMATION" with subIntent "OBJECTION" or "CONCEPT_DEFINITION". If the message ALSO provides profile information (e.g. "I earn 80k at TCS, but why do you need my age?"), extract the profile parameters into "extracted"!\n` +
-        `- Conversational & Employment Status Answers: If the user says "I am jobless", "unemployed", "I have no job", "without job", "lost my job", "laid off", "student", or "freelancer", understand this as employmentType (and NOT a company name). For "jobless" or "unemployed", set employmentType to "Unemployed", monthlyIncome to 0, and companyName to null. For "freelancer" or "self employed", set employmentType to "Self-Employed" and companyName to "Self-Employed".\n` +
-        `- Zero Values: When the user replies "0rs", "0", "nil", "zero", "nothing", "no income", or "no emi" to a question about salary or existing EMIs, accurately extract 0 for that field. If the user says "don't know", "never checked", "not sure", or "unknown" when asked for CIBIL, set "cibil" to "Not provided" (never 0 or Standard). Only set 0 if the user explicitly specifies a score of 0.\n` +
-        `- Corrections: When the user says "actually", "wait", "my bad", "make that", "change to", or corrects a previous parameter (e.g. "Actually my salary is 95000 not 80k"), classify as "CHANGING_DETAILS" and specify the field in "changeFields".\n` +
-        `- Bank Policy Requests (subIntent: "BANK_POLICY" or "POLICY_INQUIRY"): If the user asks for the policy, guidelines, rules, or cutoff of ANY bank (whether a partner bank, an unsupported bank like Citibank/Bank of Baroda/PNB, or an unavailable bank, e.g. "Tell me the policy of a bank that isn't available", "What is Citibank policy?", "What is HDFC bank policy?"), classify as "GENERAL_INFORMATION" with subIntent: "BANK_POLICY", and extract targetBank if mentioned. NEVER classify bank policy questions as LOAN_ELIGIBILITY or generic FAQ.\n` +
-        `- Keep bank policy questions separate: Specific bank policy inquiries asking for an official bank's rules/guidelines (e.g. "What is HDFC bank policy?", "What are ICICI guidelines?", "Axis Bank CIBIL cutoff policy") belong to "GENERAL_INFORMATION" (subIntent: "BANK_POLICY"). In contrast, any question about user qualification or which bank is best for the user's loan ("What banks am I eligible for?", "Which banks can I get a loan from?", "Which bank is best for my loan?", "Am I eligible for a loan?") belongs strictly to "LOAN_ELIGIBILITY".\n` +
-        `- If an eligibility conversation is active, but the user asks a policy question, an EMI calculation, a manager contact, a general definition, or asks to change a detail, you MUST classify that specific intent ("GENERAL_INFORMATION", "CALCULATION", "CHANGING_DETAILS"), NOT "LOAN_ELIGIBILITY".\n` +
-        `- Only classify as "LOAN_ELIGIBILITY" if the user is expressing loan intent, directly answering the expected eligibility question, or asking to proceed with eligibility evaluation.\n\n` +
-        `Context:\n` +
-        `- Eligibility Flow Active: ${context?.isFlowActive ? "true" : "false"}\n` +
-        `- Expected Field: ${context?.expectedField || "none"}\n` +
-        `- Known Applicant Profile: ${JSON.stringify(context?.existingApplicant || {})}\n\n` +
-        `Entity Extraction (extract whatever parameters are explicitly mentioned):\n` +
-        `- companyName: employer or corporate name. If the message lists an organization or begins with a company name (e.g. "Capgemini, Age 28...", "Company: TCS", or "work at Wipro"), extract that organization as "companyName". (DO NOT assign greetings, numbers, amounts, or employment status phrases like "jobless", "unemployed", "freelancer", "student" as company name)\n` +
-        `- monthlyIncome: net monthly salary in INR as a number (CRITICAL: If the user indicates zero income, 0rs, zero, nil, nothing, or that they are unemployed/jobless/student with no income, set monthlyIncome to 0, NOT null)\n` +
-        `- loanAmount: loan amount needed in INR as a number\n` +
-        `- tenureMonths: tenure in months (e.g. 3 years = 36) as a number\n` +
-        `- cibil: credit score (300-900) as a number (or "Not provided" if unknown / not sure / never checked / don't know, null if unmentioned)\n` +
-        `- existingEmi: ongoing monthly loan EMIs in INR as a number (0 if none/no loans/nil)\n` +
-        `- age: applicant age in years as a number\n` +
-        `- employmentType: "Salaried", "Self-Employed", "Unemployed", or "Student" if mentioned or implied (e.g. "I am jobless" -> "Unemployed", "student" -> "Student", "freelancer" -> "Self-Employed")\n` +
-        `- interestRate: annual interest rate percentage as a number (e.g. 10.5)\n` +
-        `- targetBank: specific bank name if mentioned (e.g. HDFC, ICICI, Axis)\n` +
-        `- city: city name if mentioned (e.g. Pune, Mumbai)\n` +
-        `- changeFields: array of field names being changed if intent is CHANGING_DETAILS (e.g. ["monthlyIncome"])\n` +
-        `- questionTopic: topic of the question if GENERAL_INFORMATION\n\n` +
-        `CRITICAL DATA INTEGRITY & ENTITY EXTRACTION RULES:\n` +
-        `- NEVER invent, default, guess, or assume entity values that are not explicitly stated in the user's message.\n` +
-        `- Return null for any parameter not explicitly stated in the user message.\n` +
-        `- NEVER copy or carry over unmentioned fields from "Known Applicant Profile" into extracted entities.\n` +
-        `- If the user has not explicitly provided or asked about a CIBIL score, "cibil" MUST be null.\n` +
-        `- When the intent is "CHANGING_DETAILS" (e.g. "Change salary to 1.2L"), ONLY extract the specific field(s) being changed, and list them in "changeFields" (e.g. ["monthlyIncome"]). All unmentioned fields in "extracted" MUST be null.\n\n` +
-        `Return strictly valid JSON only in this exact format:\n` +
-        `{\n` +
-        `  "intent": "LOAN_ELIGIBILITY" | "CALCULATION" | "GENERAL_INFORMATION" | "CHANGING_DETAILS" | "GREETINGS" | "ANOTHER_TOPIC",\n` +
-        `  "subIntent": "...",\n` +
-        `  "confidence": 0.95,\n` +
-        `  "loanType": "Personal Loan",\n` +
-        `  "extracted": {\n` +
-        `    "companyName": null,\n` +
-        `    "monthlyIncome": null,\n` +
-        `    "loanAmount": null,\n` +
-        `    "tenureMonths": null,\n` +
-        `    "cibil": null,\n` +
-        `    "existingEmi": null,\n` +
-        `    "age": null,\n` +
-        `    "employmentType": null,\n` +
-        `    "interestRate": null,\n` +
-        `    "targetBank": null,\n` +
-        `    "city": null,\n` +
-        `    "changeFields": [],\n` +
-        `    "questionTopic": null\n` +
-        `  }\n` +
-        `}`
-    }
-  ];
+  const systemInstruction =
+    `You are the Conversational Intelligence & Semantic NLU Engine for CreditWise AI, a banking and loan intelligence platform.\n` +
+    `Analyze the user's message semantically within the context of recent dialogue turns and current flow state.\n` +
+    `Output STRICT JSON matching StructuredNluResult.\n\n` +
+    `CORE RULES:\n` +
+    `1. Message categories are NOT mutually exclusive. A single turn carries:\n` +
+    `   - messageType: "QUESTION" | "ANSWER" | "COMMAND" | "STATEMENT" | "MIXED"\n` +
+    `   - primaryIntent: e.g. "LOAN_ELIGIBILITY", "EMI_CALCULATION", "BANK_DOCUMENT_REQUIREMENTS", "BANK_POLICY", "BANK_MANAGER_SEARCH", "COMPANY_SEARCH", "CONCEPTUAL_FINANCIAL_QUESTION", "GENERAL_ASSISTANCE", "CONVERSATION_CONTROL", "OUT_OF_DOMAIN"\n` +
+    `   - secondaryIntents: array of secondary intents if any (e.g. ["FOIR_EXPLANATION"])\n` +
+    `   - conversationAction: "CONTINUE" | "TEMPORARY_INTERRUPT" | "TOPIC_SWITCH" | "CORRECTION" | "RESUME" | "RESET" | "NEW_TASK" | "NONE"\n` +
+    `   - mainUserGoal: "PERSONAL_LOAN" | "EMI_CALCULATION" | "COMPANY_SEARCH" | "BANK_POLICY" | "BANK_MANAGER_SEARCH" | "GENERAL_ASSISTANCE" | "UNKNOWN"\n\n` +
+    `2. Separate mainUserGoal from current user request:\n` +
+    `   - "I want a personal loan, but first explain FOIR" -> mainUserGoal: "PERSONAL_LOAN", primaryIntent: "CONCEPTUAL_FINANCIAL_QUESTION", conversationAction: "TEMPORARY_INTERRUPT", questionTopic: "FOIR".\n` +
+    `   - "Forget the loan, show TCS details" -> mainUserGoal: "COMPANY_SEARCH", primaryIntent: "COMPANY_SEARCH", conversationAction: "TOPIC_SWITCH".\n` +
+    `   - "My salary is 45k, not 39k" -> conversationAction: "CORRECTION", corrections: [{ field: "monthlyIncome", newValue: 45000, rawExpression: "45k, not 39k" }].\n\n` +
+    `3. QUESTION ≠ ENTITY UPDATE:\n` +
+    `   - Questions containing numbers or financial words (e.g. "What salary is required for a ₹5 lakh loan?", "What CIBIL score is required?") must have messageType: "QUESTION". Do NOT extract loanAmount: 500000 or monthlyIncome as applicant values! "entities" MUST be empty {}\n\n` +
+    `4. Context-aware Numeric Disambiguation (The "76" Principle):\n` +
+    `   - If expected field is "cibil" and user sends "76": 76 is invalid for CIBIL (valid range 300-900). Do NOT extract as age or CIBIL. Set clarificationRequired: { isAmbiguous: true, reason: "CIBIL score out of range", clarificationPrompt: "CIBIL scores range from 300 to 900. Did you mean a different score?" }.\n` +
+    `   - If expected field is "loanAmount" and user sends standalone "76": do NOT convert to 76k or 76L automatically. Set clarificationRequired: { isAmbiguous: true, reason: "Ambiguous loan amount scale", clarificationPrompt: "Could you please clarify if by 76 you mean ₹76 Lakhs or ₹76,000? (Personal loans typically start from ₹50,000)." }.\n` +
+    `   - If expected field is "monthlyIncome" and user sends standalone "76": do NOT convert to 76k automatically. Set clarificationRequired: { isAmbiguous: true, reason: "Ambiguous salary scale", clarificationPrompt: "Could you please clarify if by 76 you mean ₹76,000/month?" }.\n` +
+    `   - If unanchored (no expected field) and user sends "76": set clarificationRequired: { isAmbiguous: true, reason: "Unanchored number", clarificationPrompt: "Could you please clarify what 76 refers to — is it your age, tenure, or something else?" }.\n\n` +
+    `5. Multi-Entity Extraction:\n` +
+    `   - If the user provides multiple pieces of information (e.g. "I need 8 lakh for 5 years, salary is 40k and CIBIL is 760"), extract all mentioned entities in "entities".\n\n` +
+    `6. Bank Policy & Document Inquiries:\n` +
+    `   - "Which documents are required for HDFC?" -> primaryIntent: "BANK_DOCUMENT_REQUIREMENTS", targetBank: "HDFC Bank", conversationAction: "TEMPORARY_INTERRUPT" (if loan flow active).\n` +
+    `   - "What is HDFC policy?" -> primaryIntent: "BANK_POLICY", targetBank: "HDFC Bank".\n\n` +
+    `7. Conversation Controls:\n` +
+    `   - "continue", "proceed", "next" -> conversationAction: "CONTINUE"\n` +
+    `   - "resume", "go back to loan" -> conversationAction: "RESUME"\n` +
+    `   - "cancel", "reset", "start over", "restart" -> conversationAction: "RESET"\n` +
+    `   - "stop", "pause" -> conversationAction: "NONE", primaryIntent: "CONVERSATION_CONTROL"\n\n` +
+    `Context:\n` +
+    `- Flow Active: ${context?.isFlowActive ? "true" : "false"}\n` +
+    `- Active Flow: ${context?.activeFlow || "IDLE"}\n` +
+    `- Expected Field: ${context?.expectedField || "none"}\n` +
+    `- Main Goal: ${context?.mainUserGoal || "UNKNOWN"}\n` +
+    `- Known Profile: ${JSON.stringify(context?.existingApplicant || {})}\n\n` +
+    `Return strictly valid JSON only in this exact format:\n` +
+    `{\n` +
+    `  "messageType": "QUESTION" | "ANSWER" | "COMMAND" | "STATEMENT" | "MIXED",\n` +
+    `  "primaryIntent": "LOAN_ELIGIBILITY" | "EMI_CALCULATION" | "BANK_DOCUMENT_REQUIREMENTS" | "BANK_POLICY" | "BANK_MANAGER_SEARCH" | "COMPANY_SEARCH" | "CONCEPTUAL_FINANCIAL_QUESTION" | "GENERAL_ASSISTANCE" | "CONVERSATION_CONTROL" | "OUT_OF_DOMAIN",\n` +
+    `  "secondaryIntents": [],\n` +
+    `  "conversationAction": "CONTINUE" | "TEMPORARY_INTERRUPT" | "TOPIC_SWITCH" | "CORRECTION" | "RESUME" | "RESET" | "NEW_TASK" | "NONE",\n` +
+    `  "mainUserGoal": "PERSONAL_LOAN" | "EMI_CALCULATION" | "COMPANY_SEARCH" | "BANK_POLICY" | "BANK_MANAGER_SEARCH" | "GENERAL_ASSISTANCE" | "UNKNOWN",\n` +
+    `  "confidence": {\n` +
+    `    "intentConfidence": 0.95,\n` +
+    `    "entityConfidence": 0.95,\n` +
+    `    "stateConfidence": 0.95\n` +
+    `  },\n` +
+    `  "entities": {\n` +
+    `    "companyName": null,\n` +
+    `    "monthlyIncome": null,\n` +
+    `    "loanAmount": null,\n` +
+    `    "tenureMonths": null,\n` +
+    `    "cibil": null,\n` +
+    `    "existingEmi": null,\n` +
+    `    "age": null,\n` +
+    `    "employmentType": null,\n` +
+    `    "interestRate": null,\n` +
+    `    "targetBank": null,\n` +
+    `    "city": null,\n` +
+    `    "changeFields": [],\n` +
+    `    "questionTopic": null\n` +
+    `  },\n` +
+    `  "corrections": [],\n` +
+    `  "targetBank": null,\n` +
+    `  "questionTopic": null,\n` +
+    `  "clarificationRequired": null\n` +
+    `}`;
 
-  // Feed previous dialogue turns so the LLM has complete conversational context
+  const prompt: any[] = [{ role: "system", content: systemInstruction }];
+
   if (context?.recentMessages && context.recentMessages.length > 0) {
     const historySlice = context.recentMessages.slice(-6);
     for (const msg of historySlice) {
@@ -184,20 +249,12 @@ export async function classifyIntentWithLLM(
     }
   }
 
-  prompt.push({
-    role: "user",
-    content: messageText,
-  });
+  prompt.push({ role: "user", content: messageText });
 
   const apiKey = getApiKey();
   if (apiKey) {
     const rawEnv = getModel();
-    const modelsToTry = [
-      primaryModel,
-      rawEnv,
-      "openrouter/auto",
-      "openrouter/free",
-    ].filter(Boolean) as string[];
+    const modelsToTry = [primaryModel, rawEnv, "openrouter/auto", "openrouter/free"].filter(Boolean) as string[];
     const uniqueModels = Array.from(new Set(modelsToTry));
 
     for (const model of uniqueModels) {
@@ -216,7 +273,7 @@ export async function classifyIntentWithLLM(
           },
           body: JSON.stringify({
             model,
-            max_tokens: 600,
+            max_tokens: 700,
             temperature: 0.1,
             messages: prompt,
           }),
@@ -232,97 +289,157 @@ export async function classifyIntentWithLLM(
             try {
               const cleaned = cleanLlmJsonOutput(content);
               parsed = JSON.parse(cleaned);
-            } catch {
-              const intentMatch = content.match(/"intent"\s*:\s*"([A-Za-z_]+)"/i);
-              if (intentMatch) {
-                const topicMatch = content.match(/"questionTopic"\s*:\s*"([^"]+)"/i);
-                const bankMatch = content.match(/"targetBank"\s*:\s*"([^"]+)"/i);
-                parsed = {
-                  intent: intentMatch[1],
-                  extracted: {
-                    questionTopic: topicMatch ? topicMatch[1] : undefined,
-                    targetBank: bankMatch ? bankMatch[1] : undefined,
-                  },
-                };
-              }
-            }
-            if (parsed && parsed.intent) {
-              const normalizedIntent = normalizeIntentName(parsed.intent);
-              const extracted: ExtractedEntities = parsed.extracted || {};
+            } catch {}
 
-              // Normalize numeric fields if received as strings
-              if (extracted.monthlyIncome && typeof extracted.monthlyIncome === "string") {
-                extracted.monthlyIncome = parseFinancialAmount(extracted.monthlyIncome) || undefined;
+            if (parsed && (parsed.primaryIntent || parsed.intent)) {
+              const rawEntities = parsed.entities || parsed.extracted || {};
+              const normalizedEntities: ExtractedEntities = { ...rawEntities };
+
+              // Normalize numeric amounts
+              if (normalizedEntities.monthlyIncome && typeof normalizedEntities.monthlyIncome === "string") {
+                normalizedEntities.monthlyIncome = parseFinancialAmount(normalizedEntities.monthlyIncome) || undefined;
               }
-              if (extracted.loanAmount && typeof extracted.loanAmount === "string") {
-                extracted.loanAmount = parseFinancialAmount(extracted.loanAmount) || undefined;
+              if (normalizedEntities.loanAmount && typeof normalizedEntities.loanAmount === "string") {
+                normalizedEntities.loanAmount = parseFinancialAmount(normalizedEntities.loanAmount) || undefined;
               }
-              if (extracted.existingEmi !== undefined && extracted.existingEmi !== null && typeof extracted.existingEmi === "string") {
-                const parsedEmi = parseFinancialAmount(extracted.existingEmi);
-                extracted.existingEmi = parsedEmi !== null ? parsedEmi : undefined;
+              if (normalizedEntities.existingEmi !== undefined && normalizedEntities.existingEmi !== null && typeof normalizedEntities.existingEmi === "string") {
+                const pEmi = parseFinancialAmount(normalizedEntities.existingEmi);
+                normalizedEntities.existingEmi = pEmi !== null ? pEmi : undefined;
               }
-              if (extracted.tenureMonths && typeof extracted.tenureMonths === "string") {
-                const parsedTenure = parseInt(String(extracted.tenureMonths), 10);
-                extracted.tenureMonths = !isNaN(parsedTenure) ? parsedTenure : undefined;
+              if (normalizedEntities.tenureMonths && typeof normalizedEntities.tenureMonths === "string") {
+                const pTen = parseInt(String(normalizedEntities.tenureMonths), 10);
+                normalizedEntities.tenureMonths = !isNaN(pTen) ? pTen : undefined;
               }
-              if (typeof extracted.tenureMonths === "number" && extracted.tenureMonths >= 1 && extracted.tenureMonths <= 7) {
-                extracted.tenureMonths = extracted.tenureMonths * 12;
+              if (typeof normalizedEntities.tenureMonths === "number" && normalizedEntities.tenureMonths >= 1 && normalizedEntities.tenureMonths <= 7) {
+                normalizedEntities.tenureMonths = normalizedEntities.tenureMonths * 12;
               }
-              if (extracted.cibil !== undefined && extracted.cibil !== null && typeof extracted.cibil === "string") {
-                const s = String(extracted.cibil).trim();
+              if (normalizedEntities.cibil !== undefined && normalizedEntities.cibil !== null && typeof normalizedEntities.cibil === "string") {
+                const s = String(normalizedEntities.cibil).trim();
                 if (/not\s*provided|unknown|not\s*sure|don'?t\s*know|na|n\/a/i.test(s)) {
-                  extracted.cibil = "Not provided";
+                  normalizedEntities.cibil = "Not provided";
                 } else {
-                  const parsedCibil = parseInt(s, 10);
-                  extracted.cibil = !isNaN(parsedCibil) ? parsedCibil : "Not provided";
+                  const pCib = parseInt(s, 10);
+                  normalizedEntities.cibil = !isNaN(pCib) ? pCib : "Not provided";
                 }
               }
-              if (typeof extracted.cibil === "number") {
-                if (extracted.cibil === 0 && (/don'?t\s*know|unknown|not\s*sure|never\s*checked|no\s*idea/i.test(messageText))) {
-                  extracted.cibil = "Not provided";
-                } else if (extracted.cibil !== 0 && (extracted.cibil < 300 || extracted.cibil > 900)) {
-                  extracted.cibil = undefined;
+              if (typeof normalizedEntities.cibil === "number") {
+                if (normalizedEntities.cibil < 300 || normalizedEntities.cibil > 900) {
+                  normalizedEntities.cibil = undefined;
                 }
               }
-              if (extracted.age && typeof extracted.age === "string") {
-                const parsedAge = parseInt(String(extracted.age), 10);
-                extracted.age = !isNaN(parsedAge) ? parsedAge : undefined;
+              if (normalizedEntities.age && typeof normalizedEntities.age === "string") {
+                const pAge = parseInt(String(normalizedEntities.age), 10);
+                normalizedEntities.age = !isNaN(pAge) ? pAge : undefined;
               }
-              if (extracted.employmentType && typeof extracted.employmentType === "string") {
-                const normEmp = extracted.employmentType.toLowerCase();
-                if (/self|business|proprietor|partner|freelanc|doctor|trader/i.test(normEmp)) {
-                  extracted.employmentType = "Self-Employed";
-                } else if (/salaried|job|pvt|corp|employee/i.test(normEmp)) {
-                  extracted.employmentType = "Salaried";
+
+              // QUESTION != ENTITY UPDATE guard
+              const isMsgQuestion =
+                parsed.messageType === "QUESTION" ||
+                /^(?:what|which|how|who|where|why|can\s*(?:you|i)|could|is\s*there|does|tell\s*me|explain)\b/i.test(messageText.trim()) ||
+                /\?$/.test(messageText.trim());
+
+              if (isMsgQuestion) {
+                normalizedEntities.monthlyIncome = undefined;
+                normalizedEntities.loanAmount = undefined;
+                normalizedEntities.cibil = undefined;
+                normalizedEntities.tenureMonths = undefined;
+                normalizedEntities.existingEmi = undefined;
+                normalizedEntities.age = undefined;
+              }
+
+              // Context-aware "76" ambiguity guard on LLM output
+              let clarification = parsed.clarificationRequired || undefined;
+              const pureNumMatch = messageText.match(/^\s*(?:rs\.?|₹)?\s*(\d{1,8})\s*$/i);
+              if (pureNumMatch) {
+                const val = parseInt(pureNumMatch[1], 10);
+                if (val > 0 && val <= 100) {
+                  if (context?.expectedField === "cibil") {
+                    clarification = {
+                      isAmbiguous: true,
+                      reason: "CIBIL score out of range (300-900)",
+                      clarificationPrompt: "CIBIL scores range from 300 to 900. Did you mean a different score?",
+                    };
+                    normalizedEntities.cibil = undefined;
+                  } else if (context?.expectedField === "loanAmount") {
+                    clarification = {
+                      isAmbiguous: true,
+                      reason: "Ambiguous loan amount scale",
+                      clarificationPrompt: `Could you please clarify if by **${val}** you mean **₹${val} Lakhs** or **₹${val},000**? (Personal loans typically start from ₹50,000).`,
+                    };
+                    normalizedEntities.loanAmount = undefined;
+                  } else if (context?.expectedField === "monthlyIncome") {
+                    clarification = {
+                      isAmbiguous: true,
+                      reason: "Ambiguous salary scale",
+                      clarificationPrompt: `Could you please clarify if by **${val}** you mean **₹${val},000/month**?`,
+                    };
+                    normalizedEntities.monthlyIncome = undefined;
+                  } else if (!context?.expectedField || context.expectedField === "companyName") {
+                    clarification = {
+                      isAmbiguous: true,
+                      reason: "Unanchored numeric input",
+                      clarificationPrompt: `Could you please clarify what ${val} refers to — is it your age, tenure, or something else?`,
+                    };
+                  }
                 }
               }
 
-              if (!extracted.companyName) {
-                const cand = extractCompanyCandidateFromText(messageText);
-                if (cand) {
-                  extracted.companyName = cand;
-                }
-              }
-
-              return {
-                intent: normalizedIntent,
-                subIntent: parsed.subIntent || parsed.sub_intent,
-                confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.95,
-                loanType: parsed.loanType || "Personal Loan",
-                extracted,
-                rawResponse: content,
+              const result: StructuredNluResult = {
+                messageType: parsed.messageType || (isMsgQuestion ? "QUESTION" : "ANSWER"),
+                primaryIntent: parsed.primaryIntent || parsed.intent || "GENERAL_ASSISTANCE",
+                secondaryIntents: Array.isArray(parsed.secondaryIntents) ? parsed.secondaryIntents : [],
+                conversationAction: parsed.conversationAction || (isMsgQuestion && context?.isFlowActive ? "TEMPORARY_INTERRUPT" : "CONTINUE"),
+                mainUserGoal: parsed.mainUserGoal || (context?.mainUserGoal as MainUserGoal) || (context?.isFlowActive ? "PERSONAL_LOAN" : "UNKNOWN"),
+                confidence: {
+                  intentConfidence: parsed.confidence?.intentConfidence ?? (typeof parsed.confidence === "number" ? parsed.confidence : 0.95),
+                  entityConfidence: parsed.confidence?.entityConfidence ?? 0.95,
+                  stateConfidence: parsed.confidence?.stateConfidence ?? 0.95,
+                },
+                entities: normalizedEntities,
+                corrections: Array.isArray(parsed.corrections) ? parsed.corrections : [],
+                targetBank: parsed.targetBank || normalizedEntities.targetBank || undefined,
+                questionTopic: parsed.questionTopic || normalizedEntities.questionTopic || undefined,
+                clarificationRequired: clarification,
+                rawReasoning: content,
               };
+
+              return result;
             }
           }
         }
       } catch (err: any) {
-        console.warn(`LLM intent call with ${model} failed or timed out:`, err?.message || err);
+        console.warn(`LLM semantic NLU call with ${model} failed or timed out:`, err?.message || err);
       }
     }
   }
 
-  // Resilient fallback parser strictly in case LLM network request fails
-  return fallbackIntentParser(messageText, context);
+  // Resilient deterministic fallback parser
+  return fallbackMultidimensionalNluParser(messageText, context);
+}
+
+/**
+ * Backward-compatible wrapper for classifyIntentWithLLM.
+ * Calls analyzeConversationSemanticIntent and maps to legacy IntentClassificationResult.
+ */
+export async function classifyIntentWithLLM(
+  userMessage: string,
+  context?: {
+    isFlowActive?: boolean;
+    expectedField?: string;
+    existingApplicant?: any;
+    recentMessages?: Array<{ role: string; content: string }>;
+  },
+  modelOverride?: string
+): Promise<IntentClassificationResult> {
+  const res = await analyzeConversationSemanticIntent(userMessage, context, modelOverride);
+  return {
+    intent: normalizeIntentName(res.primaryIntent),
+    subIntent: res.questionTopic || (res.secondaryIntents.length > 0 ? res.secondaryIntents[0] : undefined),
+    confidence: res.confidence.intentConfidence,
+    loanType: "Personal Loan",
+    extracted: res.entities,
+    rawResponse: res.rawReasoning,
+  };
 }
 
 /**
@@ -505,14 +622,16 @@ function extractEntitiesFromText(
     extracted.employmentType = "Self-Employed";
   }
 
-  // 8. Company Name (strictly avoid assigning employment status or zero answers as company)
-  const compCandidate = extractCompanyCandidateFromText(text);
-  if (compCandidate) {
-    extracted.companyName = compCandidate;
-  } else if (context?.expectedField === "companyName") {
-    const clean = text.replace(/^(?:i\s+)?(?:work\s+at|works\s+at|working\s+at|employed\s+at|company\s+is|employer\s+is|at)\s+/i, "").trim();
-    if (clean.length >= 2) {
-      extracted.companyName = clean;
+  // 8. Company Name (strictly avoid assigning search intents, employment status, or zero answers as company)
+  if (!isCompanyInfoOrSearchIntent(text) && !isInvalidCompanyName(text)) {
+    const compCandidate = extractCompanyCandidateFromText(text);
+    if (compCandidate && !isCompanyInfoOrSearchIntent(compCandidate) && !isInvalidCompanyName(compCandidate)) {
+      extracted.companyName = compCandidate;
+    } else if (context?.expectedField === "companyName") {
+      const clean = text.replace(/^(?:i\s+)?(?:work\s+at|works\s+at|working\s+at|employed\s+at|company\s+is|employer\s+is|at)\s+/i, "").trim();
+      if (clean.length >= 2 && !isInvalidCompanyName(clean) && !isCompanyInfoOrSearchIntent(clean)) {
+        extracted.companyName = clean;
+      }
     }
   }
 
@@ -529,244 +648,466 @@ function extractEntitiesFromText(
 }
 
 /**
+ * Normalizes common bank nicknames to canonical display names.
+ */
+export function normalizeBankName(raw: string): string {
+  const s = raw.toLowerCase().trim();
+  if (s.includes("aditya") || s.includes("abfl") || s.includes("birla")) return "Aditya Birla Capital";
+  if (s.includes("hdfc")) return "HDFC Bank";
+  if (s.includes("icici")) return "ICICI Bank";
+  if (s.includes("axis") && (s.includes("finance") || s.includes("afl"))) return "Axis Finance";
+  if (s.includes("axis")) return "Axis Bank";
+  if (s.includes("sbi") || s.includes("state bank")) return "SBI";
+  if (s.includes("kotak")) return "Kotak Mahindra Bank";
+  if (s.includes("bajaj") && (s.includes("market") || s.includes("bfl"))) return "Bajaj Markets";
+  if (s.includes("bajaj")) return "Bajaj Finserv";
+  if (s.includes("tata capital") || (s.includes("tata") && !s.includes("consultancy") && !s.includes("tcs"))) return "Tata Capital";
+  if (s.includes("idfc")) return "IDFC FIRST Bank";
+  if (s.includes("indusind")) return "IndusInd Bank";
+  if (s.includes("bandhan")) return "Bandhan Bank";
+  if (s.includes("yes")) return "Yes Bank";
+  if (s.includes("piramal")) return "Piramal Finance";
+  if (s.includes("poonawalla") || s.includes("poonawala")) return "Poonawalla Fincorp";
+  if (s.includes("chola") || s.includes("cholamandalam")) return "Cholamandalam Investment & Finance";
+  if (s.includes("smfg") || s.includes("fullerton")) return "SMFG India Credit";
+  if (s.includes("fibe") || s.includes("earlysalary")) return "Fibe (EarlySalary)";
+  if (s.includes("finnable")) return "Finnable Credit";
+  if (s.includes("sbm")) return "SBM Bank India";
+  if (s.includes("utkarsh")) return "Utkarsh Small Finance Bank";
+  if (s.includes("home loan")) return "Home Loan Services";
+  if (s.includes("l&t") || s.includes("ltf") || s.includes("lt finance")) return "L&T Finance";
+  return raw;
+}
+
+/**
+ * Resilient deterministic fallback parser returning StructuredNluResult.
+ * Handles numbers, currency, salary, loan amount, tenure, CIBIL, age, yes/no, not sure,
+ * resume/reset/cancel/switch commands, and strict QUESTION != ENTITY UPDATE guards.
+ */
+export function fallbackMultidimensionalNluParser(
+  text: string,
+  context?: NluContext
+): StructuredNluResult {
+  const norm = text.toLowerCase().trim();
+  const strippedText = stripGreetingPrefix(text);
+  const effectiveNorm = strippedText.toLowerCase().trim() || norm;
+
+  // 1. Reset / Cancel commands
+  if (/^(?:cancel|reset|restart|start\s*over|clear\s*(?:chat|session|all)?)\b/i.test(norm)) {
+    return {
+      messageType: "COMMAND",
+      primaryIntent: "CONVERSATION_CONTROL",
+      secondaryIntents: ["RESET"],
+      conversationAction: "RESET",
+      mainUserGoal: "UNKNOWN",
+      confidence: { intentConfidence: 0.98, entityConfidence: 1.0, stateConfidence: 1.0 },
+      entities: {},
+      corrections: [],
+    };
+  }
+
+  // 2. Resume commands
+  if (/^(?:resume|go\s*back(?:\s*to\s*(?:the\s*)?loan)?|continue\s*(?:with\s*)?(?:the\s*)?loan|back\s*to\s*loan)\b/i.test(norm)) {
+    return {
+      messageType: "COMMAND",
+      primaryIntent: "LOAN_ELIGIBILITY",
+      secondaryIntents: ["RESUME"],
+      conversationAction: "RESUME",
+      mainUserGoal: "PERSONAL_LOAN",
+      confidence: { intentConfidence: 0.98, entityConfidence: 1.0, stateConfidence: 1.0 },
+      entities: {},
+      corrections: [],
+    };
+  }
+
+  // 3. Topic Switch commands
+  if (/(?:i\s*changed\s*my\s*mind|change\s*my\s*mind|forget\s*(?:the\s*)?loan|leave\s*loan|switch\s*to|instead\s*of\s*loan|calculate\s*emi\s*instead|show\s*emi\s*instead)/i.test(norm)) {
+    if (/(?:calculate|compute|show)?\s*emi/i.test(norm)) {
+      return {
+        messageType: "COMMAND",
+        primaryIntent: "EMI_CALCULATION",
+        secondaryIntents: ["TOPIC_SWITCH"],
+        conversationAction: "TOPIC_SWITCH",
+        mainUserGoal: "EMI_CALCULATION",
+        confidence: { intentConfidence: 0.95, entityConfidence: 0.95, stateConfidence: 0.95 },
+        entities: {},
+        corrections: [],
+      };
+    }
+  }
+  if (isCompanyInfoOrSearchIntent(text) || /(?:forget\s*(?:the\s*)?loan|leave\s*loan|switch\s*to|show\s*(?:me\s*)?(?:the\s*)?company|show\s*tcs|company\s*details)/i.test(norm)) {
+    const knownCompany = norm.match(/\b(tcs|infosys|wipro|accenture|cognizant|hcl|ibm|capgemini|google|microsoft|amazon|reliance)\b/i)?.[1]?.toUpperCase();
+    const candidate = extractTargetCompanyFromMessage(text) || extractCompanyCandidateFromText(text);
+    const cleanedCandidate = candidate ? candidate.replace(/^(?:show|details\s+for|info\s+on)\s+/i, "").replace(/\s+details\.?$/i, "").trim() : undefined;
+    const compMatch = knownCompany || (cleanedCandidate && !isCompanyInfoOrSearchIntent(cleanedCandidate) && !isInvalidCompanyName(cleanedCandidate) ? cleanedCandidate : undefined);
+    const isExplicitAbandon = /(?:forget\s*(?:the\s*)?loan|leave\s*loan|cancel\s*loan|stop\s*loan|abandon)/i.test(norm);
+    return {
+      messageType: "COMMAND",
+      primaryIntent: "COMPANY_SEARCH",
+      secondaryIntents: ["COMPANY_SEARCH"],
+      conversationAction: isExplicitAbandon ? "TOPIC_SWITCH" : (context?.isFlowActive ? "TEMPORARY_INTERRUPT" : "NEW_TASK"),
+      mainUserGoal: isExplicitAbandon ? "COMPANY_SEARCH" : ((context?.mainUserGoal as MainUserGoal) || (context?.isFlowActive ? "PERSONAL_LOAN" : "COMPANY_SEARCH")),
+      confidence: { intentConfidence: 0.95, entityConfidence: 0.95, stateConfidence: 0.95 },
+      entities: compMatch ? { companyName: compMatch } : {},
+      corrections: [],
+    };
+  }
+
+  // 4. Pure Greetings
+  if (isPureGreeting(text) || isPureGreeting(norm)) {
+    return {
+      messageType: "STATEMENT",
+      primaryIntent: "GREETINGS",
+      secondaryIntents: [],
+      conversationAction: "NONE",
+      mainUserGoal: (context?.mainUserGoal as MainUserGoal) || "UNKNOWN",
+      confidence: { intentConfidence: 0.98, entityConfidence: 1.0, stateConfidence: 1.0 },
+      entities: {},
+      corrections: [],
+    };
+  }
+
+  // 5. Corrections (e.g., "My salary is 45k, not 39k" or "salary 45k not 39k" or "change salary to 45k")
+  const correctionMatch = text.match(
+    /(?:my\s+)?(salary|income|loan(?:\s*amount)?|cibil|tenure|age|emi)\s*(?:is|=|:)?\s*([\w\d,.\s₹]+?)\s*(?:,\s*|\s+)not\s+([\w\d,.\s₹]+)/i
+  ) || text.match(
+    /(?:change|update|correct)\s+(?:my\s+)?(salary|income|loan(?:\s*amount)?|cibil|tenure|age|emi)\s*(?:to|=)?\s*([\w\d,.\s₹]+)/i
+  );
+
+  if (correctionMatch) {
+    const rawField = correctionMatch[1].toLowerCase();
+    const rawNewVal = correctionMatch[2].trim();
+    const rawOldVal = correctionMatch[3] ? correctionMatch[3].trim() : undefined;
+
+    let fieldName: EntityCorrection["field"] = "monthlyIncome";
+    let parsedNewVal: any = rawNewVal;
+    let parsedOldVal: any = rawOldVal;
+
+    if (rawField.includes("salary") || rawField.includes("income")) {
+      fieldName = "monthlyIncome";
+      parsedNewVal = parseFinancialAmount(rawNewVal) ?? rawNewVal;
+      if (rawOldVal) parsedOldVal = parseFinancialAmount(rawOldVal) ?? rawOldVal;
+    } else if (rawField.includes("loan")) {
+      fieldName = "loanAmount";
+      parsedNewVal = parseFinancialAmount(rawNewVal) ?? rawNewVal;
+      if (rawOldVal) parsedOldVal = parseFinancialAmount(rawOldVal) ?? rawOldVal;
+    } else if (rawField.includes("cibil")) {
+      fieldName = "cibil";
+      parsedNewVal = parseInt(rawNewVal.replace(/\D/g, ""), 10) || rawNewVal;
+      if (rawOldVal) parsedOldVal = parseInt(rawOldVal.replace(/\D/g, ""), 10) || rawOldVal;
+    } else if (rawField.includes("tenure")) {
+      fieldName = "tenureMonths";
+      const yrs = rawNewVal.match(/(\d+)\s*(?:yr|year)/i);
+      parsedNewVal = yrs ? parseInt(yrs[1], 10) * 12 : (parseInt(rawNewVal.replace(/\D/g, ""), 10) || rawNewVal);
+    } else if (rawField.includes("emi")) {
+      fieldName = "existingEmi";
+      parsedNewVal = parseFinancialAmount(rawNewVal) ?? rawNewVal;
+      if (rawOldVal) parsedOldVal = parseFinancialAmount(rawOldVal) ?? rawOldVal;
+    } else if (rawField.includes("age")) {
+      fieldName = "age";
+      parsedNewVal = parseInt(rawNewVal.replace(/\D/g, ""), 10) || rawNewVal;
+    }
+
+    const corrections: EntityCorrection[] = [{
+      field: fieldName,
+      newValue: parsedNewVal,
+      oldValue: parsedOldVal,
+      rawExpression: text,
+    }];
+
+    const entities: ExtractedEntities = {};
+    (entities as any)[fieldName] = parsedNewVal;
+
+    return {
+      messageType: "STATEMENT",
+      primaryIntent: "CHANGING_DETAILS",
+      secondaryIntents: [],
+      conversationAction: "CORRECTION",
+      mainUserGoal: (context?.mainUserGoal as MainUserGoal) || "PERSONAL_LOAN",
+      confidence: { intentConfidence: 0.95, entityConfidence: 0.95, stateConfidence: 0.95 },
+      entities,
+      corrections,
+    };
+  }
+
+  // 6. Context-Aware "76" Ambiguity Guard (Standalone small numbers)
+  const pureNumMatch = norm.match(/^(?:rs\.?|₹)?\s*(\d{1,8})\s*$/i);
+  if (pureNumMatch) {
+    const val = parseInt(pureNumMatch[1], 10);
+    if (val > 0 && val <= 100) {
+      if (context?.expectedField === "cibil") {
+        return {
+          messageType: "ANSWER",
+          primaryIntent: "LOAN_ELIGIBILITY",
+          secondaryIntents: [],
+          conversationAction: "CONTINUE",
+          mainUserGoal: "PERSONAL_LOAN",
+          confidence: { intentConfidence: 0.5, entityConfidence: 0.2, stateConfidence: 0.8 },
+          entities: {},
+          corrections: [],
+          clarificationRequired: {
+            isAmbiguous: true,
+            reason: "CIBIL score out of range (300-900)",
+            clarificationPrompt: "CIBIL scores range from 300 to 900. Did you mean a different score?",
+          },
+        };
+      }
+      if (context?.expectedField === "loanAmount") {
+        return {
+          messageType: "ANSWER",
+          primaryIntent: "LOAN_ELIGIBILITY",
+          secondaryIntents: [],
+          conversationAction: "CONTINUE",
+          mainUserGoal: "PERSONAL_LOAN",
+          confidence: { intentConfidence: 0.5, entityConfidence: 0.2, stateConfidence: 0.8 },
+          entities: {},
+          corrections: [],
+          clarificationRequired: {
+            isAmbiguous: true,
+            reason: "Ambiguous loan amount scale",
+            clarificationPrompt: `Could you please clarify if by **${val}** you mean **₹${val} Lakhs** or **₹${val},000**? (Personal loans typically start from ₹50,000).`,
+          },
+        };
+      }
+      if (context?.expectedField === "monthlyIncome") {
+        return {
+          messageType: "ANSWER",
+          primaryIntent: "LOAN_ELIGIBILITY",
+          secondaryIntents: [],
+          conversationAction: "CONTINUE",
+          mainUserGoal: "PERSONAL_LOAN",
+          confidence: { intentConfidence: 0.5, entityConfidence: 0.2, stateConfidence: 0.8 },
+          entities: {},
+          corrections: [],
+          clarificationRequired: {
+            isAmbiguous: true,
+            reason: "Ambiguous salary scale",
+            clarificationPrompt: `Could you please clarify if by **${val}** you mean **₹${val},000/month**?`,
+          },
+        };
+      }
+      if (!context?.expectedField || context.expectedField === "companyName") {
+        return {
+          messageType: "ANSWER",
+          primaryIntent: "GENERAL_ASSISTANCE",
+          secondaryIntents: [],
+          conversationAction: "NONE",
+          mainUserGoal: "UNKNOWN",
+          confidence: { intentConfidence: 0.5, entityConfidence: 0.2, stateConfidence: 0.5 },
+          entities: {},
+          corrections: [],
+          clarificationRequired: {
+            isAmbiguous: true,
+            reason: "Unanchored numeric input",
+            clarificationPrompt: `Could you please clarify what ${val} refers to — is it your age, tenure, or something else?`,
+          },
+        };
+      }
+    }
+  }
+
+  // 6c. Dedicated Bank Policy / Guidelines Detection
+  const isNaturalLoanQuestion = /^(?:can\s*i\s*get\s*a\s*loan|can\s*i\s*get\s*personal\s*loan|am\s*i\s*eligible\s*for\s*(?:a\s*)?loan)/i.test(effectiveNorm);
+
+  const isBankPolicyPhrase =
+    /(?:policy|policies|guidelines?|rules?|criteria|cutoff|cut-off|\bfoir\b|requirement|requirements|\bdocs?\b|\bdocuments?\b|tenure|roi|interest\s*rate|eligibility\s*criteria|what.*loan\s*amount|how\s*much.*loan|loan\s*amount.*approve|max(?:imum)?\s*(?:loan|foir|tenure|amount)|min(?:imum)?\s*(?:salary|cibil|income|amount|age)|\bcibil\b|require(?:\s+\w+)?\s*(?:salary|income)|how\s*much.*lend|minimum\s*income)\b/i.test(effectiveNorm) &&
+    /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata\s*capital|\btata\b(?!.*consultancy)|idfc|indusind|bandhan|yes\s*bank|\byes\b|piramal|poonawalla|poonawala|chola|smfg|finnable|fibe|sbm|utkarsh|aditya|abfl|birla|citibank|citi|baroda|bob|pnb|canara|union|rbl|hsbc|standard\s*chartered|scb|partner\s*banks?)/i.test(effectiveNorm) &&
+    !isNaturalLoanQuestion;
+
+  if (isBankPolicyPhrase) {
+    const bankMatch = text.match(/\b(hdfc|icici|axis|sbi|kotak|bajaj|tata\s*capital|idfc|indusind|bandhan|yes\s*bank|yes|piramal|poonawalla|poonawala|chola|smfg|finnable|fibe|sbm|utkarsh|aditya|abfl|birla|citibank|citi|baroda|bob|pnb|canara|union|rbl|hsbc|standard\s*chartered|scb)\b/i);
+    const targetBank = bankMatch ? normalizeBankName(bankMatch[1]) : undefined;
+    return {
+      messageType: "QUESTION",
+      primaryIntent: "BANK_POLICY",
+      secondaryIntents: ["BANK_POLICY"],
+      conversationAction: "TOPIC_SWITCH",
+      mainUserGoal: "BANK_POLICY",
+      confidence: { intentConfidence: 0.98, entityConfidence: 1.0, stateConfidence: 0.98 },
+      entities: {},
+      corrections: [],
+      targetBank,
+      questionTopic: "BANK_POLICY",
+    };
+  }
+
+  // 6d. Proceed with Bank Loan / Connect with Branch or Manager Detection
+  const isProceedWithBankPhrase =
+    /(?:proceed\s+with\s+(?:the\s+|this\s+)?(?:bank|loan)?|apply\s+(?:for|with)\s+(?:the\s+|this\s+)?(?:bank|loan)?|i\s+want\s+to\s+proceed|how\s+to\s+proceed|how\s+to\s+apply|connect\s+(?:me\s+)?with\s+(?:the\s+)?(?:branch|manager)|contact\s+(?:the\s+)?manager|talk\s+to\s+(?:the\s+)?manager|find\s+(?:the\s+)?(?:bank\s+)?branch)/i.test(effectiveNorm) ||
+    (effectiveNorm.startsWith("proceed") && (effectiveNorm.includes("bank") || effectiveNorm.includes("loan")));
+
+  if (isProceedWithBankPhrase) {
+    const bankMatch = text.match(/\b(hdfc|icici|axis|sbi|kotak|bajaj|tata\s*capital|idfc|indusind|bandhan|yes\s*bank|yes|piramal|poonawalla|poonawala|chola|smfg|finnable|fibe|sbm|utkarsh|aditya|abfl|birla|citibank|citi|baroda|bob|pnb|canara|union|rbl|hsbc|standard\s*chartered|scb)\b/i);
+    const targetBank = bankMatch ? normalizeBankName(bankMatch[1]) : ((context as any)?.targetBank || undefined);
+    return {
+      messageType: "COMMAND",
+      primaryIntent: "BANK_MANAGER_SEARCH",
+      secondaryIntents: ["PROCEED_WITH_BANK"],
+      conversationAction: "TOPIC_SWITCH",
+      mainUserGoal: "BANK_MANAGER_SEARCH",
+      confidence: { intentConfidence: 0.95, entityConfidence: 0.9, stateConfidence: 0.95 },
+      entities: extractEntitiesFromText(text, context),
+      corrections: [],
+      targetBank,
+      questionTopic: "BANK_MANAGER",
+    };
+  }
+
+  // 7. Question Detection: QUESTION != ENTITY UPDATE
+  const isQuestionSyntax =
+    /^(?:what|which|how|who|where|why|can\s*(?:you|i)|could|is\s*there|does|tell\s*me|explain)\b/i.test(effectiveNorm) ||
+    /\?$/.test(text.trim()) ||
+    /(?:documents\s*required|eligibility\s*criteria\s*for|what\s*documents|what\s*is\s*foir|explain\s*foir|policies|policy)/i.test(effectiveNorm);
+
+  if (isQuestionSyntax && !isNaturalLoanQuestion) {
+    let qIntent = "GENERAL_ASSISTANCE";
+    let qTopic: string | undefined = undefined;
+    let targetBank: string | undefined = undefined;
+
+    if (/(?:document|docs?|paperwork|kyc)/i.test(norm)) {
+      qIntent = "BANK_DOCUMENT_REQUIREMENTS";
+      qTopic = "BANK_DOCUMENT_REQUIREMENTS";
+    } else if (/(?:category|rating|listing|tier)\s+(?:of|for)\b/i.test(norm) || /(?:what\s+is\s+(?:the\s+)?category)/i.test(norm)) {
+      qIntent = "COMPANY_SEARCH";
+      qTopic = "COMPANY_CATEGORY";
+    } else if (/(?:manager|contact|phone|mobile|branch\s*head|\basm\b|\brsm\b|\bzsm\b|\brh\b|\brm\b)/i.test(norm)) {
+      qIntent = "BANK_MANAGER_SEARCH";
+      qTopic = "BANK_MANAGER";
+    } else if (
+      /(?:policy|guideline|rules?|criteria|cutoff|cut-off|requirement)/i.test(norm) ||
+      /(?:min(?:imum)?\s*(?:cibil|salary|income|loan|amount|tenure)|max(?:imum)?\s*(?:loan|amount|foir|tenure|salary))/i.test(norm) ||
+      /(?:cibil\s*(?:score\s*)?(?:required|cutoff|rule|requirement|criteria)|foir\s*(?:allowed|limit|cap|max|rule))/i.test(norm)
+    ) {
+      qIntent = "BANK_POLICY";
+      qTopic = "BANK_POLICY";
+    } else if (/(?:cibil|credit\s*score)/i.test(norm)) {
+      qIntent = "CONCEPTUAL_FINANCIAL_QUESTION";
+      qTopic = "CIBIL";
+    } else if (/(?:emi|equated\s*monthly\s*installment)/i.test(norm)) {
+      qIntent = "CONCEPTUAL_FINANCIAL_QUESTION";
+      qTopic = "EMI";
+    } else if (/(?:foir|apr|irr|roi|multiplier|part[\s-]*payment|foreclosure|prepayment)/i.test(norm)) {
+      qIntent = "CONCEPTUAL_FINANCIAL_QUESTION";
+      qTopic = norm.includes("foir") ? "FOIR" : "FINANCIAL_CONCEPT";
+    }
+
+    const bankMatch = text.match(/\b(hdfc|icici|axis|sbi|kotak|bajaj|tata\s*capital|idfc|indusind|bandhan|yes\s*bank|piramal|poonawalla|chola|smfg|finnable|fibe|sbm|utkarsh|aditya|abfl|birla|citibank|citi|baroda|bob|pnb|canara|union|rbl|hsbc|standard\s*chartered|scb)\b/i);
+    if (bankMatch) {
+      targetBank = normalizeBankName(bankMatch[1]);
+    }
+
+    // STRICT INVARIANT: QUESTION != ENTITY UPDATE
+    // Numbers or figures in questions must NEVER be extracted as applicant state!
+    return {
+      messageType: "QUESTION",
+      primaryIntent: qIntent,
+      secondaryIntents: qTopic ? [qTopic] : [],
+      conversationAction: context?.isFlowActive ? "TEMPORARY_INTERRUPT" : "NONE",
+      mainUserGoal: (context?.mainUserGoal as MainUserGoal) || (context?.isFlowActive ? "PERSONAL_LOAN" : "UNKNOWN"),
+      confidence: { intentConfidence: 0.95, entityConfidence: 1.0, stateConfidence: 0.95 },
+      entities: {},
+      corrections: [],
+      targetBank,
+      questionTopic: qTopic,
+    };
+  }
+
+  // 8. Calculations (EMI)
+  const isEmiCalc =
+    /(?:calculate|compute)\s+(?:my\s+)?(?:emi|installment|interest|loan)/i.test(norm) ||
+    /(?:what\s+(?:is|will\s+be)\s+my\s+emi|how\s+much\s+(?:is\s+the\s+)?emi)/i.test(norm) ||
+    /\bcalculate\s+emi\b/i.test(norm);
+
+  if (isEmiCalc && context?.expectedField !== "existingEmi") {
+    const extracted = extractEntitiesFromText(text, context);
+    return {
+      messageType: "COMMAND",
+      primaryIntent: "EMI_CALCULATION",
+      secondaryIntents: [],
+      conversationAction: context?.isFlowActive ? "TOPIC_SWITCH" : "NEW_TASK",
+      mainUserGoal: "EMI_CALCULATION",
+      confidence: { intentConfidence: 0.92, entityConfidence: 0.9, stateConfidence: 0.9 },
+      entities: extracted,
+      corrections: [],
+    };
+  }
+
+  // 9. Standard Entity Extraction & Multi-Entity
+  const extracted = extractEntitiesFromText(text, context);
+  const applicantCount = [
+    extracted.monthlyIncome,
+    extracted.cibil,
+    extracted.loanAmount,
+    extracted.tenureMonths,
+    extracted.companyName,
+    extracted.existingEmi,
+    extracted.age,
+    extracted.employmentType,
+  ].filter((v) => v !== undefined && v !== null && v !== "").length;
+
+  // 10. Natural Loan Intent phrases
+  const isNaturalLoan =
+    /(?:i\s*(?:need|want|require|wish|am\s*looking\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(effectiveNorm) ||
+    /(?:apply\s*(?:for)?\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(effectiveNorm) ||
+    /(?:can\s*i\s*(?:get|have|avail|take|apply\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(effectiveNorm) ||
+    /(?:can\s*i\s*get\s*(?:a\s*)?loan)/i.test(effectiveNorm) ||
+    /^(?:i\s*need\s*a\s*loan|i\s*want\s*a\s*loan|can\s*i\s*get\s*a\s*loan|loan\s*chahiye|need\s*loan|get\s*me\s*a\s*loan)\b/i.test(effectiveNorm) ||
+    /(?:check|evaluate|calculate|find\s*out)\s*(?:my\s*)?(?:personal\s*)?(?:loan\s*)?eligib/i.test(effectiveNorm);
+
+  if (isNaturalLoan || applicantCount >= 2) {
+    return {
+      messageType: applicantCount > 0 ? "STATEMENT" : "COMMAND",
+      primaryIntent: "LOAN_ELIGIBILITY",
+      secondaryIntents: [],
+      conversationAction: "CONTINUE",
+      mainUserGoal: "PERSONAL_LOAN",
+      confidence: { intentConfidence: 0.95, entityConfidence: 0.95, stateConfidence: 0.95 },
+      entities: extracted,
+      corrections: [],
+    };
+  }
+
+  // 11. Answering active expected field in flow
+  if (context?.isFlowActive && context?.expectedField) {
+    return {
+      messageType: "ANSWER",
+      primaryIntent: "LOAN_ELIGIBILITY",
+      secondaryIntents: [],
+      conversationAction: "CONTINUE",
+      mainUserGoal: (context?.mainUserGoal as MainUserGoal) || "PERSONAL_LOAN",
+      confidence: { intentConfidence: 0.95, entityConfidence: 0.9, stateConfidence: 0.95 },
+      entities: extracted,
+      corrections: [],
+    };
+  }
+
+  // 12. General fallback
+  return {
+    messageType: "STATEMENT",
+    primaryIntent: "GENERAL_ASSISTANCE",
+    secondaryIntents: [],
+    conversationAction: "NONE",
+    mainUserGoal: (context?.mainUserGoal as MainUserGoal) || "UNKNOWN",
+    confidence: { intentConfidence: 0.7, entityConfidence: 0.7, stateConfidence: 0.7 },
+    entities: extracted,
+    corrections: [],
+  };
+}
+
+/**
  * Resilient fallback parser used ONLY if the LLM endpoint is unreachable.
  */
-function fallbackIntentParser(
+export function fallbackIntentParser(
   text: string,
   context?: { isFlowActive?: boolean; expectedField?: string }
 ): IntentClassificationResult {
-  const norm = text.toLowerCase().trim();
-
-  // 1. Cancel / Reset commands
-  if (/^(cancel|reset|restart|stop|exit)\b/i.test(norm)) {
-    return {
-      intent: "ANOTHER_TOPIC",
-      subIntent: "CANCEL_RESET",
-      confidence: 0.95,
-      loanType: "Personal Loan",
-      extracted: {},
-    };
-  }
-
-  // 2. Greetings
-  if (
-    /^(hi|hello|hey|good\s*(morning|afternoon|evening|day)|howdy|greetings|namaste|hi\s*there|hello\s*there|hey\s*there|yo)\b/i.test(
-      norm
-    ) &&
-    norm.length < 35 &&
-    !/(?:loan|borrow|foir|cibil|policy|emi|rate|interest|salary|\d+)/i.test(norm)
-  ) {
-    return {
-      intent: "GREETINGS",
-      confidence: 0.95,
-      loanType: "Personal Loan",
-      extracted: {},
-    };
-  }
-
-  // 3. Changing details
-  const isExplicitChange =
-    /\b(?:change|update|modify|edit|correct|instead\s*of|rather\s*than)\b/i.test(norm) ||
-    /(?:change|update|correct)\s+(?:my|the)/i.test(norm) ||
-    /\bactually\s+(?:change|update|make|set|increase|decrease|reduce)\b/i.test(norm) ||
-    (/\bactually\b/i.test(norm) && /(?:salary|loan|cibil|tenure|company|employer|emi|age|income)\b/i.test(norm) && !context?.isFlowActive);
-
-  if (isExplicitChange) {
-    const extracted = extractEntitiesFromText(text, context);
-    const changeFields: string[] = [];
-    if (extracted.monthlyIncome !== undefined) changeFields.push("monthlyIncome");
-    if (extracted.loanAmount !== undefined) changeFields.push("loanAmount");
-    if (extracted.tenureMonths !== undefined) changeFields.push("tenureMonths");
-    if (extracted.cibil !== undefined) changeFields.push("cibil");
-    if (extracted.existingEmi !== undefined) changeFields.push("existingEmi");
-    if (extracted.age !== undefined) changeFields.push("age");
-    if (extracted.companyName !== undefined) changeFields.push("companyName");
-    if (extracted.employmentType !== undefined) changeFields.push("employmentType");
-    extracted.changeFields = changeFields;
-
-    return {
-      intent: "CHANGING_DETAILS",
-      confidence: 0.95,
-      loanType: "Personal Loan",
-      extracted,
-    };
-  }
-
-  // 4. Calculations (EMI, installment, interest)
-  const isCalculation =
-    /(?:calculate|compute)\s+(?:my\s+)?(?:emi|installment|interest|loan)/i.test(norm) ||
-    /(?:what\s+(?:is|will\s+be)\s+my\s+emi|how\s+much\s+(?:is\s+the\s+)?emi|monthly\s+installment\s+for)/i.test(norm) ||
-    /(?:emi|installment)\s+for\s+[\d,]+/i.test(norm) ||
-    /\bcalculate\s+emi\b/i.test(norm) ||
-    /\binterest\s+payable\b/i.test(norm) ||
-    (/(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:k|lakhs?|lacs?|l|cr)?\s+at\s+[\d.]+\s*%\s+(?:for\s+)?\d+\s*(?:years?|yrs?|months?)/i.test(norm));
-
-  const isAnsweringEmi =
-    context?.isFlowActive &&
-    context?.expectedField === "existingEmi" &&
-    !/(?:calculate|compute)\s+emi/i.test(norm);
-
-  if (isCalculation && !isAnsweringEmi) {
-    return {
-      intent: "CALCULATION",
-      subIntent: "EMI_CALCULATION",
-      confidence: 0.9,
-      loanType: "Personal Loan",
-      extracted: extractEntitiesFromText(text, context),
-    };
-  }
-
-  // 5. Casual pleasantries / small talk
-  if (
-    /^(how\s*are\s*you|hows\s*it\s*going|whats\s*up|what\s*can\s*you\s*do|who\s*are\s*you|tell\s*me\s*about\s*yourself|what\s*is\s*your\s*name|who\s*made\s*you|fine|bye|goodbye|see\s*you)\b/i.test(
-      norm
-    ) &&
-    norm.length < 50
-  ) {
-    return {
-      intent: "ANOTHER_TOPIC",
-      subIntent: "CASUAL_CHAT",
-      confidence: 0.9,
-      loanType: "Personal Loan",
-      extracted: {},
-    };
-  }
-
-  // 6. Natural Loan Intent phrases & Bank Policy queries (MUST be checked before generic question words!)
-  const isBankPolicyQuery =
-    /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata\s*capital|\btata\b(?!.*consultancy)|idfc|indusind|bandhan|yes\s*bank|piramal|poonawalla|chola|smfg|finnable|fibe|sbm|utkarsh|citibank|citi|baroda|bob|pnb|canara|union|rbl|hsbc|standard\s*chartered|scb|bank)\s*(?:'s)?\s*(?:policy|guidelines?|rules?|criteria|cutoff|cut-off|foir\s*norm)/i.test(norm) ||
-    (/(?:policy|guidelines?|rules?|criteria|cut-off|cutoff|foir\s*norm)\s*(?:of|for|from|regarding)?\s*(?:a\s*|an\s*|any\s*|the\s*)?(?:[a-z0-9\s&'.-]+)?\s*banks?\b/i.test(norm)) ||
-    (/(?:policy|guidelines?|rules?|cut-off|cutoff)\b/i.test(norm) && /\bbanks?\b/i.test(norm)) ||
-    (/(?:policy|guidelines?|rules?|cut-off|cutoff)\b/i.test(norm) && /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata\s*capital|\btata\b(?!.*consultancy)|idfc|indusind|bandhan|yes\s*bank|piramal|poonawalla|chola|smfg|finnable|fibe|sbm|utkarsh|citibank|citi|baroda|bob|pnb|canara|union|rbl|hsbc|standard\s*chartered|scb)/i.test(norm));
-
-  if (isBankPolicyQuery) {
-    const extracted = extractEntitiesFromText(text, context);
-    const knownBank = /icici|hdfc|axis|sbi|kotak|indusind|idfc|bajaj|piramal|poonawalla|yes\s*bank|\byes\b|bandhan|chola|fibe|finnable|smfg|utkarsh|sbm|tata\s*capital|\btata\b(?!.*consultancy)|citibank|citi|baroda|bob|pnb|canara|union|rbl|hsbc|standard\s*chartered|scb/i.exec(text);
-    if (knownBank) {
-      extracted.targetBank = knownBank[0];
-    }
-    return {
-      intent: "GENERAL_INFORMATION",
-      subIntent: "BANK_POLICY",
-      confidence: 0.95,
-      loanType: "Personal Loan",
-      extracted,
-    };
-  }
-
-  const isGenericQuestion =
-    /^(?:what\s+is|what\s+are|how\s+does|how\s+do|explain|difference\s+between|tell\s+me\s+about|documents\s+required|eligibility\s+criteria\s+for|what\s+documents)\b/i.test(norm) &&
-    !/(?:for\s+me|am\s+i|can\s+i\s+get|i\s+need|i\s+want|check\s+my|my\s+eligib)/i.test(norm);
-
-  const isNaturalLoanIntent =
-    !isBankPolicyQuery &&
-    !isGenericQuestion &&
-    (/(?:i\s*(?:need|want|require|wish|am\s*looking\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
-     /(?:apply\s*(?:for)?\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
-     /(?:can\s*i\s*(?:get|have|avail|take|apply\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
-     /(?:can\s*i\s*get\s*(?:a\s*)?loan)/i.test(norm) ||
-     /(?:(?:what|which)\s*banks?\s*(?:am\s*i|can\s*i|could\s*i|would\s*i|should\s*i)\s*(?:be\s*)?(?:eligible|qualif\w*|get|apply))/i.test(norm) ||
-     /(?:(?:which|what)\s*banks?\s*(?:can\s*i|could\s*i|will|would|do\s*i)\s*(?:get|take|avail|receive|apply\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
-     /(?:(?:which|what)\s*banks?\s*(?:is|are|would\s*be)\s*(?:best|good|ideal|suitable|better|recommended)\s*for\s*(?:my\s*)?(?:personal\s*)?loan)/i.test(norm) ||
-     /(?:(?:am\s*i|is\s*it\s*possible\s*for\s*me\s*to\s*be|could\s*i\s*be)\s*eligible\s*(?:for\s*(?:a\s*)?(?:personal\s*)?loan)?)/i.test(norm) ||
-     /(?:(?:which|what)\s*banks?\s*will\s*(?:give|provide|grant|approve|sanction)\s*(?:me\s*)?(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
-     /(?:(?:where|how)\s*can\s*i\s*(?:get|apply\s*for|avail|take)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(norm) ||
-     /(?:(?:my\s*loan\s*options|options\s*for\s*(?:my\s*)?loan|what\s*are\s*my\s*loan\s*options))/i.test(norm) ||
-     /(?:(?:do\s*i\s*qualify\s*for\s*(?:a\s*)?(?:personal\s*)?loan))/i.test(norm) ||
-     /(?:(?:need|want|require)\s*(?:rs\.?|₹)?\s*[\d,]+(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr)?\s*(?:loan|for\s*\d+\s*(?:years?|yrs?|months?)))/i.test(norm) ||
-     /(?:(?:need|want|require)\s*(?:rs\.?|₹)?\s*[\d,]+(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr)\b)/i.test(norm) ||
-     /(?:(?:check|evaluate|calculate|test|find\s*out)\s*(?:my\s*)?(?:personal\s*)?(?:loan\s*)?eligib\w*)/i.test(norm) ||
-     /^(?:i\s*need\s*a\s*loan|i\s*want\s*a\s*loan|can\s*i\s*get\s*a\s*loan|loan\s*chahiye|need\s*loan|get\s*me\s*a\s*loan|looking\s*for\s*(?:a\s*)?loan)\b/i.test(norm));
-
-  const candidateEntities = extractEntitiesFromText(text, context);
-  const applicantProfileCount = [
-    candidateEntities.monthlyIncome,
-    candidateEntities.cibil,
-    candidateEntities.loanAmount,
-    candidateEntities.tenureMonths,
-    candidateEntities.companyName,
-    candidateEntities.existingEmi,
-    candidateEntities.age,
-    candidateEntities.employmentType,
-  ].filter((v) => v !== undefined && v !== null && v !== "").length;
-
-  if (!isBankPolicyQuery && (isNaturalLoanIntent || applicantProfileCount >= 2)) {
-    return {
-      intent: "LOAN_ELIGIBILITY",
-      confidence: 0.95,
-      loanType: "Personal Loan",
-      extracted: candidateEntities,
-    };
-  }
-
-  // 7. Bank Manager, Company, Policy, or General Information queries
-  const isManagerQuery =
-    /(?:manager|contact|phone|mobile|branch\s*head|\basm\b|\brsm\b|\bzsm\b|\brh\b|\brm\b)/i.test(norm) &&
-    !/(?:salary|cibil|age|tenure|existing)/i.test(norm);
-
-  const isCompanyCategoryQuery =
-    /(?:category|rating|listing|tier)\s+(?:of|for)\b/i.test(norm) ||
-    /(?:what\s+is\s+(?:the\s+)?category)/i.test(norm) ||
-    /(?:is\s+[a-z0-9\s&'.-]+\s+(?:listed|cat\s*[a-d]|super\s*cat|elite|diamond))/i.test(norm);
-
-  const isConceptQuery =
-    /(?:what\s+is|what\s+are|what\s+does|explain|meaning\s+of|tell\s*me\s*about|how\s+does)\s+(?:foir|cibil|apr|irr|roi|part[\s-]*payment|foreclosure|prepayment|personal\s*loan|credit\s*score)\b/i.test(norm) ||
-    /\bwhat\s+is\s+foir\b/i.test(norm) ||
-    /\bexplain\s+foir\b/i.test(norm);
-
-  const isPolicyQuery =
-    /(?:cutoff|cut-off|guideline|guidelines|rules?|multiplier|eligibility\s*criteria|min(?:imum)?\s*(?:salary|cibil|income|age)|max(?:imum)?\s*(?:tenure|loan|ticket))/i.test(norm) ||
-    (/^(?:what|which|how|can\s*i|is\s*there|does)\b/i.test(norm) && /(?:bank|policy|tenure|cibil|salary|foir|rate|interest)/i.test(norm)) ||
-    (/\?/i.test(norm) && /(?:bank|policy|tenure|cutoff|foir|hdfc|icici|axis|sbi|kotak|bajaj|tata)/i.test(norm));
-
-  const isQuestion =
-    /^(?:what|which|how|who|where|why|can\s*(?:you|i)|could|does|is\s*there|tell\s*me|explain)\b/i.test(norm) ||
-    /\?/i.test(norm) ||
-    /(?:cutoff|cut-off|guideline|rules?|criteria|difference|meaning)/i.test(norm) ||
-    /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata|idfc|bank)\s*(?:'s)?\s*(?:policy|tenure|cutoff|cibil|rate|foir|criteria|rule|limit|max|min)/i.test(norm);
-
-  // Guard: User stating personal values is NEVER a policy query, UNLESS it's an explicit question
-  const isPersonalAnswer =
-    !isQuestion &&
-    (/^(?:my\s*cibil\s*is|cibil\s*(?:is|:)?\s*\d+|my\s*salary\s*is|i\s*work\s*at|i\s*need|no\s*existing\s*emi|i\s*am\s*\d+)/i.test(norm) ||
-      (context?.isFlowActive && context?.expectedField && isPersonalFieldMention(context.expectedField, text)));
-
-  if ((isManagerQuery || isCompanyCategoryQuery || isConceptQuery || isPolicyQuery || isQuestion) && !isPersonalAnswer) {
-    const extracted = extractEntitiesFromText(text, context);
-    return {
-      intent: "GENERAL_INFORMATION",
-      confidence: 0.9,
-      loanType: "Personal Loan",
-      extracted,
-    };
-  }
-
-  // 7. If an active eligibility session is expecting a specific field
-  if (context?.isFlowActive) {
-    const extracted = extractEntitiesFromText(text, context);
-    return {
-      intent: "LOAN_ELIGIBILITY",
-      confidence: 0.95,
-      loanType: "Personal Loan",
-      extracted,
-    };
-  }
-
-  // 8. Default to Loan Eligibility if loan words present
-  if (/(?:personal\s*loan|loan|borrow|need\s*money|apply\s*for|eligib)/i.test(norm)) {
-    const extracted = extractEntitiesFromText(text, context);
-    return {
-      intent: "LOAN_ELIGIBILITY",
-      confidence: 0.85,
-      loanType: "Personal Loan",
-      extracted,
-    };
-  }
-
+  const res = fallbackMultidimensionalNluParser(text, context);
   return {
-    intent: "ANOTHER_TOPIC",
-    confidence: 0.7,
+    intent: normalizeIntentName(res.primaryIntent),
+    subIntent: res.questionTopic || (res.secondaryIntents.length > 0 ? res.secondaryIntents[0] : undefined),
+    confidence: res.confidence.intentConfidence,
     loanType: "Personal Loan",
-    extracted: extractEntitiesFromText(text, context),
+    extracted: res.entities,
+    rawResponse: res.rawReasoning,
   };
 }

@@ -24,21 +24,26 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   `| Bank | Status | CIBIL | Tenure | Est. EMI |`
 - Use actual stored policy data; never guess or use defaults.
 
-# Bank Policy Response Guidelines
+# Bank Policy Response Guidelines (SYSTEM INSTRUCTION FOR POLICY FILES)
 
-When asked for a bank policy, show only a simple policy summary table with 3 sections using 2-column tables (`Criteria | Details`):
-1. **Loan products offered**
-2. **Eligibility criteria (max loan amount, tenure, CIBIL, age, salary, employment/company criteria, FOIR/EMI)**
-3. **Other important conditions**
+1. Whenever a user inquires about a specific bank/company loan policy (e.g., Finnable Credit), parse the uploaded `.txt` document and summarize the key criteria comprehensively.
+2. Structure the output clearly using Markdown sections:
+   - **Eligibility Criteria (Age, CIBIL, Work Experience)**
+   - **Salary & Bank Requirements (NTH, Payment Mode)**
+   - **Loan Parameters (Min/Max Amount, Tenure, ROI)**
+   - **Document Requirements**
+   - **Rejection Rules & Exceptions**
+3. Avoid truncating responses into small incomplete tables.
 
 ## Formatting & Design:
-- Use 2-column tables (`| Criteria | Details |`) under each section heading.
-- Renders as modern white/light-gray cards with teal/light-blue headers, rounded borders, and subtle shadows.
-- Show general policy-level values and ranges; explicitly mention when values vary by CAT (e.g. `*(varies by CAT)*`).
-- Show detailed CAT tables/rules only when specifically asked.
+- Use structured Markdown sections (`###` / `####`) with bold criteria labels, clean bullet points, and complete details from the policy.
+- Show general policy-level values, ranges, and explicitly mention when values vary by city tier or CAT (e.g. `*(varies by CAT)*`).
+- Avoid truncating policy details, rejection conditions, or document requirements into cramped tables.
 
 ## Strict Data & Accuracy Constraints:
 - Use **only** the bank's stored policy data.
 - **Never guess missing values**; explicitly state **"Not specified in the available policy."**
-- Keep the answer concise, structured, and professional.
+- Keep the answer comprehensive, structured, and professional.
 - Do not output internal tokens, parser notes, or instructions (such as `NOT_DEFINED`, `NEEDS_REVIEW`, `[REVIEW]`, `postgresql`).
+- If the user asks ONLY for a single specific parameter (e.g. only "What is the CIBIL cutoff?"), answer that specific parameter directly and accurately.
+

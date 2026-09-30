@@ -22,6 +22,11 @@ function normalizeCompanyName(value) {
 
 const COMPANY_ALIASES = {
   'TCS': 'TATA CONSULTANCY SERVICES LIMITED',
+  'M THREE': 'MTHREE CONSULTING',
+  'MTHREE': 'MTHREE CONSULTING',
+  'M-THREE': 'MTHREE CONSULTING',
+  'WILEY EDGE': 'WILEY EDGE (MTHREE CONSULTING)',
+  'WILEY': 'WILEY INDIA PVT LTD',
   'TATA CONSULTANCY SERVICES': 'TATA CONSULTANCY SERVICES LIMITED',
   'TCS LIMITED': 'TATA CONSULTANCY SERVICES LIMITED',
   'TATA CONSULTANCY SERVICES PVT LTD': 'TATA CONSULTANCY SERVICES LIMITED',
@@ -118,10 +123,6 @@ const COMPANY_ALIASES = {
   'MICROSOFT INDIA': 'MICROSOFT INDIA DEVELOPMENT CENTRE PRIVATE LIMITED',
   'GOOGLE': 'GOOGLE INDIA PRIVATE LIMITED',
   'GOOGLE INDIA': 'GOOGLE INDIA PRIVATE LIMITED',
-  'ALPHABET': 'GOOGLE INDIA PRIVATE LIMITED',
-  'META': 'META PLATFORMS IRELAND LIMITED',
-  'META INDIA': 'META PLATFORMS IRELAND LIMITED',
-  'FACEBOOK': 'META PLATFORMS IRELAND LIMITED',
   'AMAZON.COM': 'AMAZON.COM INDIA PRIVATE LIMITED',
   'SALESFORCE': 'SALESFORCE.COM INDIA PRIVATE LIMITED',
   'SALESFORCE INDIA': 'SALESFORCE.COM INDIA PRIVATE LIMITED',
@@ -141,14 +142,10 @@ const COMPANY_ALIASES = {
   'EBAY INDIA': 'EBAY INDIA PRIVATE LIMITED',
   'LINKEDIN': 'LINKEDIN INDIA PRIVATE LIMITED',
   'LINKEDIN INDIA': 'LINKEDIN INDIA PRIVATE LIMITED',
-  'TWITTER': 'X CORP PRIVATE LIMITED',
-  'TWITTER INDIA': 'X CORP PRIVATE LIMITED',
   'X CORP': 'X CORP PRIVATE LIMITED',
   'TCS': 'TATA CONSULTANCY SERVICES LIMITED',
   'CONTRACT': 'CONTRACT EMPLOYEE',
   'TATA CONSULTANCY SERVICES LIMITED': 'TATA CONSULTANCY SERVICES LIMITED',
-  'Birla': 'ADITYA BIRLA GROUP LIMITED',
-  'ADITYA BIRLA': 'ADITYA BIRLA FINANCE LIMITED',
   'ABFL': 'ADITYA BIRLA FINANCE LIMITED',
   'ADITYA BIRLA FINANCE': 'ADITYA BIRLA FINANCE LIMITED',
   'Tata Projects': 'Tata Projects Limited',
@@ -194,32 +191,47 @@ function resolveCompanyAlias(companyName) {
   const normalized = normalizeCompanyName(companyName);
   if (!normalized) return null;
 
+  // 1. Direct exact match in dictionary
   if (COMPANY_ALIASES[normalized]) {
     return COMPANY_ALIASES[normalized];
   }
 
+  // 2. Normalized match against alias keys
   for (const [alias, canonical] of Object.entries(COMPANY_ALIASES)) {
     if (normalizeCompanyName(alias) === normalized) {
       return canonical;
     }
   }
 
-  const tokens = normalized.split(/[\s&]+/).filter(t => t.length > 0);
-  for (const token of tokens) {
-    if (token.length >= 3 && COMPANY_ALIASES[token]) {
-      return COMPANY_ALIASES[token];
+  // 3. Normalized stripped of generic corporate suffixes (e.g. "TCS PVT LTD" -> "TCS")
+  const stripped = normalized
+    .replace(/\b(?:PRIVATE\s+LIMITED|PVT\.?\s*LIMITED|PVT\.?|LIMITED|LTD\.?|COMPANY|CORP|CORPORATION|CO|INC|LLP|INDIA|THE)\b/gi, '')
+    .trim()
+    .replace(/\s+/g, ' ');
+
+  if (stripped) {
+    if (COMPANY_ALIASES[stripped]) {
+      return COMPANY_ALIASES[stripped];
+    }
+    for (const [alias, canonical] of Object.entries(COMPANY_ALIASES)) {
+      const aliasStripped = normalizeCompanyName(alias)
+        .replace(/\b(?:PRIVATE\s+LIMITED|PVT\.?\s*LIMITED|PVT\.?|LIMITED|LTD\.?|COMPANY|CORP|CORPORATION|CO|INC|LLP|INDIA|THE)\b/gi, '')
+        .trim()
+        .replace(/\s+/g, ' ');
+      if (aliasStripped && aliasStripped === stripped) {
+        return canonical;
+      }
     }
   }
 
-  const upperName = normalized.toUpperCase();
-  for (const [alias, canonical] of Object.entries(COMPANY_ALIASES)) {
-    const aliasNorm = normalizeCompanyName(alias);
-    if (aliasNorm && upperName === aliasNorm) {
+  // 4. If normalized exactly matches a canonical target
+  for (const canonical of Object.values(COMPANY_ALIASES)) {
+    if (normalizeCompanyName(canonical) === normalized) {
       return canonical;
     }
   }
 
-  return normalizeCompanyName(companyName);
+  return null;
 }
 
 function getCompanyMatchPatterns(resolvedName) {

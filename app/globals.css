@@ -4195,3 +4195,102 @@ body:has(.chat-page) {
     border-color: rgba(239, 68, 68, 0.35);
     color: #fca5a5;
 }
+
+/* Clickable Company Cards */
+.company-candidates-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 480px;
+    gap: 0.5rem;
+}
+
+.company-candidates-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: 100%;
+}
+
+.company-clickable-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.625rem 0.875rem;
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 0.625rem;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    text-align: left;
+    width: 100%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.company-clickable-card:hover {
+    border-color: var(--accent);
+    background: var(--surface-2);
+    transform: translateX(3px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+}
+
+.company-card-left {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.company-card-icon {
+    font-size: 1.125rem;
+    line-height: 1;
+}
+
+.company-card-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.company-card-name {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.company-card-sub {
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+}
+
+.company-card-arrow {
+    font-size: 0.95rem;
+    color: var(--accent);
+    font-weight: 600;
+    transition: transform 0.15s ease-in-out;
+}
+
+.company-clickable-card:hover .company-card-arrow {
+    transform: translateX(3px);
+}
+
+[data-bs-theme="dark"] .company-clickable-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-bs-theme="dark"] .company-clickable-card:hover {
+    background: rgba(94, 106, 210, 0.12);
+    border-color: rgba(94, 106, 210, 0.4);
+}
+
+[data-bs-theme="dark"] .company-card-name {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .company-card-sub {
+    color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .company-card-arrow {
+    color: #a5b4fc;
+}

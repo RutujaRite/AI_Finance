@@ -2,7 +2,7 @@
  * Bank-Specific Category Resolver
  *
  * Resolves the correct bank-specific Program and Category using:
- * - company_records lookup (company_name + bank match)
+ * - bank_company_data lookup (company_name + bank match)
  * - Bank master policy text extraction (keyword matching near company mentions)
  *
  * Uses only Company Name + Employment Type for resolution.
@@ -69,11 +69,11 @@ async function resolveBankCategory(pool, bankId, bankName, companyName, employme
   const firstWord = normBank.split(/\s+/)[0];
   const recordBankName = companyRecordBankName || bankName;
 
-  // 1. Try company_records lookup
+  // 1. Try bank_company_data lookup
   try {
     const compRes = await pool.query(
       `SELECT company_category, other_info
-       FROM company_records
+       FROM bank_company_data
        WHERE (bank_name ILIKE $1 OR bank_name ILIKE $2 OR bank_name ILIKE $3 OR bank_name ILIKE $4)
          AND company_name ILIKE $5
        LIMIT 1`,
@@ -87,7 +87,7 @@ async function resolveBankCategory(pool, bankId, bankName, companyName, employme
       }
     }
   } catch (err) {
-    console.warn(`[RESOLVER] company_records lookup warning for ${bankName}:`, err.message);
+    console.warn(`[RESOLVER] bank_company_data lookup warning for ${bankName}:`, err.message);
   }
 
   // 2. Try master policy text extraction
@@ -145,7 +145,7 @@ async function resolveAllBankCategories(pool, banks, applicant) {
   try {
     const companyRes = await pool.query(
       `SELECT DISTINCT cr.bank_name, cr.company_category
-       FROM company_records cr
+       FROM bank_company_data cr
        WHERE cr.company_name ILIKE $1
        ORDER BY cr.bank_name`,
        [`%${applicant.companyName}%`]
@@ -153,7 +153,7 @@ async function resolveAllBankCategories(pool, banks, applicant) {
 
     companyRecords = companyRes.rows;
   } catch (err) {
-    console.warn("[RESOLVER] company_records lookup failed:", err.message);
+    console.warn("[RESOLVER] bank_company_data lookup failed:", err.message);
   }
 
   const supportedBanks = [];
@@ -171,7 +171,7 @@ async function resolveAllBankCategories(pool, banks, applicant) {
     });
 
     if (match) {
-      console.log(`[RESOLVER] Supported bank: ${bank.bank_name} (matched via company_records: ${match.bank_name})`);
+      console.log(`[RESOLVER] Supported bank: ${bank.bank_name} (matched via bank_company_data: ${match.bank_name})`);
       supportedBanks.push({ ...bank, companyRecordBankName: match.bank_name, companyCategory: match.company_category });
     } else {
       console.log(`[RESOLVER] Unsupported bank: ${bank.bank_name}`);
@@ -204,7 +204,7 @@ async function resolveAllBankCategories(pool, banks, applicant) {
 
   for (const bank of banks) {
     if (!supportedBanks.find(b => b.bank_id === bank.bank_id)) {
-      resolutions.set(bank.bank_id, { category: null, status: "unsupported", reason: `Company "${applicant.companyName}" not found in ${bank.bank_name} company_records` });
+      resolutions.set(bank.bank_id, { category: null, status: "unsupported", reason: `Company "${applicant.companyName}" not found in ${bank.bank_name} bank_company_data` });
     }
   }
 

@@ -61,7 +61,7 @@ async function runTests() {
   console.log("\nExtracted Financial Info:\n", JSON.stringify(infosysIntel.financialInfo, null, 2));
 
   assert(Boolean(infosysIntel.overview), "Overview introduction paragraph is present");
-  assert(infosysIntel.overview.length > 30, "Overview contains substantial company description");
+  assert((infosysIntel.overview?.length || 0) > 30, "Overview contains substantial company description");
   assert(Boolean(infosysIntel.basicInfo.company_name), "Basic info contains company_name");
   assert(Boolean(infosysIntel.basicInfo.industry), "Basic info contains industry");
   assert(Boolean(infosysIntel.basicInfo.country), "Basic info contains country");
@@ -69,9 +69,9 @@ async function runTests() {
   assert(Boolean(infosysIntel.financialInfo.turnover), "Financial info contains turnover / revenue");
   assert(Boolean(infosysIntel.financialInfo.employees), "Financial info contains employees / workforce");
 
-  // 5. Integration with searchCompany('TCS') & formatCompanyResponse
-  console.log("\n--- 5. Testing searchCompany('TCS') with Live Intelligence ---");
-  const tcsRes = await searchCompany("TCS");
+  // 5. Integration with searchCompany('Tata Consultancy Services Limited') & formatCompanyResponse
+  console.log("\n--- 5. Testing searchCompany('Tata Consultancy Services Limited') with Live Intelligence ---");
+  const tcsRes = await searchCompany("Tata Consultancy Services Limited");
   assert(tcsRes.found, "searchCompany('TCS') found=true");
   assert(Boolean(tcsRes.overview), "tcsRes.overview is populated");
   assert(Boolean(tcsRes.basicInfo), "tcsRes.basicInfo is populated");

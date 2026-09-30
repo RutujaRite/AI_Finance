@@ -258,7 +258,14 @@ export default function HomePage() {
   async function loadConversations() {
     try {
       const res = await fetch("/api/conversations", { credentials: "include" })
-      const data = await res.json()
+      if (!res.ok) {
+        if (res.status === 401) {
+          router.replace("/login")
+        }
+        return
+      }
+      const data = await res.json().catch(() => null)
+      if (!data) return
       if (Array.isArray(data.conversations)) {
         setConversations((prev) => {
           const map = new Map<string, any>()
@@ -305,7 +312,22 @@ export default function HomePage() {
         body: JSON.stringify({ message: resolvedText, conversation_id: currentConvId, model: selectedModel, company_selection: companySelection }),
         credentials: "include",
       })
-      const data = await res.json()
+      if (!res.ok) {
+        if (res.status === 401) {
+          router.replace("/login")
+          return
+        }
+        let errMsg = `Request failed with status ${res.status}`
+        try {
+          const errData = await res.json()
+          if (errData?.error) errMsg = errData.error
+        } catch {}
+        throw new Error(errMsg)
+      }
+      const data = await res.json().catch(() => null)
+      if (!data) {
+        throw new Error("Invalid response received from server")
+      }
       if (data.success) {
         const returnedConvId = data.conversation_id ? String(data.conversation_id) : null
         const effectiveConvId = returnedConvId || currentConvId
@@ -369,8 +391,9 @@ export default function HomePage() {
       const res = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}`, {
         credentials: "include",
       })
-      const data = await res.json()
-      const msgs = Array.isArray(data.messages) ? data.messages : []
+      if (!res.ok) return []
+      const data = await res.json().catch(() => null)
+      const msgs = (data && Array.isArray(data.messages)) ? data.messages : []
       messagesByConvRef.current[conversationId] = msgs
       return msgs
     } catch (e) {
@@ -419,8 +442,12 @@ export default function HomePage() {
         body: JSON.stringify({ title: "New Chat" }),
         credentials: "include",
       })
-      const data = await res.json()
-      if (data.success && data.conversation) {
+      if (!res.ok) {
+        if (res.status === 401) router.replace("/login")
+        return
+      }
+      const data = await res.json().catch(() => null)
+      if (data && data.success && data.conversation) {
         const newId = String(data.conversation.id)
         setConversations((prev) => [data.conversation, ...prev.filter((c) => String(c.id) !== newId)])
         activeConvIdRef.current = newId
@@ -461,8 +488,9 @@ export default function HomePage() {
         method: "DELETE",
         credentials: "include",
       })
-      const data = await res.json()
-      if (data.success) {
+      if (!res.ok) return
+      const data = await res.json().catch(() => null)
+      if (data && data.success) {
         setConversations((prev) => prev.filter((c) => String(c.id) !== id))
         delete messagesByConvRef.current[id]
 
@@ -476,7 +504,7 @@ export default function HomePage() {
           await newConversation()
         }
       } else {
-        console.error("Delete conversation failed", data.error)
+        console.error("Delete conversation failed", data?.error)
       }
     } catch (e) {
       console.error("Error deleting conversation", e)
@@ -510,8 +538,9 @@ export default function HomePage() {
         body: JSON.stringify({ title: trimmed }),
         credentials: "include",
       })
-      const data = await res.json()
-      if (data.success) {
+      if (!res.ok) return
+      const data = await res.json().catch(() => null)
+      if (data && data.success) {
         setConversations((prev) =>
           prev.map((c) => (String(c.id) === String(id) ? { ...c, title: trimmed } : c))
         )
@@ -537,8 +566,9 @@ export default function HomePage() {
         body: JSON.stringify({ title: trimmed }),
         credentials: "include",
       })
-      const data = await res.json()
-      if (data.success) {
+      if (!res.ok) return
+      const data = await res.json().catch(() => null)
+      if (data && data.success) {
         setConversations((prev) =>
           prev.map((c) => (String(c.id) === String(id) ? { ...c, title: trimmed } : c))
         )
@@ -1482,8 +1512,32 @@ export default function HomePage() {
     const companyData = message.company_data
 
     // Disambiguation or typo confirmation step (multiple candidate companies found or awaiting user confirmation)
-    if (companyData && (companyData.needs_disambiguation || companyData.company_flow === "COMPANY_CONFIRMATION") && Array.isArray(companyData.candidates)) {
-      return renderMarkdown(message.content)
+    const hasDisambiguationData = Boolean(
+      (companyData && (
+        Boolean(companyData.needs_disambiguation) ||
+        companyData.company_flow === "COMPANY_CONFIRMATION" ||
+        companyData.company_flow === "COMPANY_SELECTION"
+      ) && (
+        (Array.isArray(companyData.candidates) && companyData.candidates.length > 0) ||
+        (Array.isArray(companyData.candidateOptions) && companyData.candidateOptions.length > 0)
+      )) ||
+      (message.content && (
+        message.content.includes('class="disambiguation-candidate"') ||
+        /Matching Companies Found in Bank Records/i.test(message.content)
+      ))
+    );
+
+    if (hasDisambiguationData) {
+      let content = message.content || "";
+      // Strip raw HTML buttons wrapper from markdown content if present to avoid duplication with React cards
+      content = content.replace(/<div class="disambiguation-candidates"[\s\S]*?<\/div>/gi, "").trim();
+      const lines = content.split("\n");
+      const filteredLines = lines.filter((line: string) => !/^\s*(?:\d+\.|\*|-)\s+(?:\*\*)?[A-Za-z0-9\s&.,'-]+(?:\*\*)?$/i.test(line) && !/Reply with \*\*\d+\*\*/i.test(line) && !/\*\(Click any company above/i.test(line));
+      content = filteredLines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+      if (!content) {
+        content = "Please select your employer from the matching options below, or enter your exact company name:";
+      }
+      return renderMarkdown(content);
     }
 
     // Single company selected / returned: Render tabular format ONCE followed by any eligibility continuation prompt
@@ -1573,35 +1627,98 @@ export default function HomePage() {
 
   function renderCompanySelection(message: any) {
     const data = message.company_data
-    const candidates = Array.isArray(data?.candidates) ? data.candidates.filter(Boolean) : []
-    if (!data || candidates.length === 0) return null
-    const flow = data.company_flow
-    if (flow !== "COMPANY_CONFIRMATION" && flow !== "COMPANY_SELECTION") return null
-    const suggested = data.typo_suggestion || candidates[0]
-    if (flow === "COMPANY_CONFIRMATION") {
+    let rawCandidates = (Array.isArray(data?.candidates) && data.candidates.length > 0)
+      ? data.candidates.filter(Boolean)
+      : (Array.isArray(data?.candidateOptions) && data.candidateOptions.length > 0)
+      ? data.candidateOptions.filter(Boolean)
+      : []
+
+    // Resilient fallback: If data?.candidates is missing (e.g. past conversation loaded from database
+    // where company_data is not stored in assistant_messages, or API returned plain text disambiguation),
+    // extract candidates directly from message.content
+    if (rawCandidates.length === 0 && message.content) {
+      const btnMatches = Array.from(message.content.matchAll(/class="disambiguation-candidate"[^>]*><strong>\d+\.<\/strong>\s*([^<]+)<\/button>/gi));
+      if (btnMatches.length > 0) {
+        rawCandidates = btnMatches.map((m: any) => m[1].trim());
+      } else {
+        const listMatches = Array.from(message.content.matchAll(/^\s*\d+\.\s+\*\*([^*]+)\*\*/gm));
+        if (listMatches.length > 0) {
+          rawCandidates = listMatches.map((m: any) => m[1].trim());
+        }
+      }
+    }
+
+    if (rawCandidates.length === 0) return null
+
+    const isSelectionFlow =
+      data?.company_flow === "COMPANY_SELECTION" ||
+      data?.company_flow === "COMPANY_CONFIRMATION" ||
+      Boolean(data?.needs_disambiguation) ||
+      (message.content && (
+        message.content.includes('class="disambiguation-candidate"') ||
+        /Matching Companies Found/i.test(message.content)
+      ))
+
+    if (!isSelectionFlow) return null
+
+    const candidates = rawCandidates.map((c: any, idx: number) => {
+      if (typeof c === "string") {
+        return { id: String(idx + 1), name: c, source: "database" }
+      }
+      return {
+        id: String(c.id || idx + 1),
+        name: c.name || c.company_name || String(c),
+        source: c.source || "database",
+      }
+    })
+
+    const flow = data?.company_flow || (data?.needs_disambiguation ? "COMPANY_SELECTION" : "COMPANY_SELECTION")
+    const rawSuggested = data?.typo_suggestion || candidates[0]
+    const suggestedName = typeof rawSuggested === "string" ? rawSuggested : (rawSuggested?.name || rawSuggested?.company_name || candidates[0]?.name || "")
+
+    if (flow === "COMPANY_CONFIRMATION" && data?.company_flow === "COMPANY_CONFIRMATION") {
       return (
         <div className="company-selection-actions">
-          <button type="button" className="company-selection-button" onClick={() => sendMessage(`Yes, ${suggested.name}`, { type: "confirm" })}>
-            Yes, {suggested.name}
+          <button type="button" className="company-selection-button" onClick={() => sendMessage(`Yes, ${suggestedName}`, { type: "confirm" })}>
+            ✅ Yes, {suggestedName}
           </button>
           <button type="button" className="company-selection-button secondary" onClick={() => sendMessage("No, enter again", { type: "retry" })}>
-            No, enter again
+            ❌ No, enter different company
           </button>
         </div>
       )
     }
     return (
-      <div className="company-selection-actions">
-        {candidates.map((candidate: any) => (
-          <button
-            key={String(candidate.id)}
-            type="button"
-            className="company-selection-button"
-            onClick={() => sendMessage(candidate.name, { type: "select", company_id: String(candidate.id), company_name: candidate.name })}
-          >
-            {candidate.name}
-          </button>
-        ))}
+      <div className="company-selection-actions company-candidates-container">
+        <div className="company-candidates-list">
+          {candidates.map((candidate: any, idx: number) => (
+            <button
+              key={String(candidate.id || idx)}
+              type="button"
+              className="company-clickable-card"
+              onClick={() => sendMessage(candidate.name, { type: "select", company_id: String(candidate.id), company_name: candidate.name })}
+            >
+              <div className="company-card-left">
+                <span className="company-card-icon">🏢</span>
+                <div className="company-card-details">
+                  <span className="company-card-name">{candidate.name}</span>
+                  <span className="company-card-sub">
+                    {candidate.source === "database" ? "Verified Partner Employer" : "Active Corporate Entity"}
+                  </span>
+                </div>
+              </div>
+              <span className="company-card-arrow">→</span>
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="company-selection-button secondary"
+          style={{ marginTop: "0.5rem" }}
+          onClick={() => sendMessage("No, enter again", { type: "retry" })}
+        >
+          ❌ None of these, enter different company
+        </button>
       </div>
     )
   }
@@ -2271,6 +2388,16 @@ export default function HomePage() {
                         <div
                           className="chat-bubble"
                           dangerouslySetInnerHTML={{ __html: renderMessageContent(message) }}
+                          onClick={(e) => {
+                            const btn = (e.target as HTMLElement).closest(".disambiguation-candidate") as HTMLElement | null;
+                            if (btn) {
+                              const candNum = btn.getAttribute("data-candidate");
+                              const candText = btn.innerText.replace(/^\d+\.\s*/, "").trim();
+                              if (candText) {
+                                sendMessage(candText, { type: "select", company_id: candNum || candText, company_name: candText });
+                              }
+                            }
+                          }}
                         />
                         {renderCompanySelection(message)}
                         <div className="message-meta">

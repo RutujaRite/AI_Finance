@@ -46,7 +46,7 @@ async function searchCompanyNames(pool, companyInput, limit = 10) {
     
     const result = await pool.query(
       `SELECT DISTINCT company_name
-       FROM company_records
+       FROM bank_company_data
        WHERE company_name ILIKE $1
        ORDER BY company_name ASC
        LIMIT $2`,
@@ -79,13 +79,13 @@ async function selectAndResolveCompany(pool, selectedCompanyName) {
   }
 
   try {
-    // Query company_records with exact normalized match to get all banks for this company
+    // Query bank_company_data with exact normalized match to get all banks for this company
     const result = await pool.query(
       `SELECT DISTINCT
         bank_name,
         company_category,
         other_info
-       FROM company_records
+       FROM bank_company_data
        WHERE LOWER(TRIM(company_name)) = $1
        ORDER BY bank_name ASC`,
       [normalized]
@@ -142,7 +142,7 @@ async function selectAndResolveCompany(pool, selectedCompanyName) {
 
 /**
  * Get company category for a specific company + bank pair
- * Returns the exact category from company_records, or null if no match
+ * Returns the exact category from bank_company_data, or null if no match
  * 
  * @param {Object} pool - PostgreSQL connection pool
  * @param {string} selectedCompanyName - Exact company name
@@ -164,7 +164,7 @@ async function getCompanyCategoryForBank(pool, selectedCompanyName, bankName) {
   try {
     const result = await pool.query(
       `SELECT company_category
-       FROM company_records
+       FROM bank_company_data
        WHERE LOWER(TRIM(company_name)) = $1
          AND LOWER(TRIM(bank_name)) = LOWER(TRIM($2))
        LIMIT 1`,
