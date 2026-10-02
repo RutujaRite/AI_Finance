@@ -1,0 +1,278 @@
+================================================================================
+BAJAJ FINSERV PERSONAL LOAN - POLICY RULEBOOK
+Generated: 2026-08-27
+Source Bank: Bajaj Finserv (BAJAJ_FINSERV)
+================================================================================
+
+PURPOSE:
+This is a concise eligibility and pricing rulebook for Bajaj Finserv Personal Loan.
+It is derived from all source documents and PostgreSQL policy records.
+Use this for AI decision-making, eligibility checks, and policy validation.
+
+SECTIONS:
+1. PROGRAM OVERVIEW
+2. ELIGIBILITY CRITERIA
+3. COMPANY/EMPLOYER CATEGORIES
+4. PRICING & ROI
+5. LOAN PARAMETERS
+6. FOIR & MULTIPLIER RULES
+7. NTH / SALARY REQUIREMENTS
+8. BT / CCBT / APP LOAN RULES
+9. DOCUMENT REQUIREMENTS
+10. EXCEPTIONS & DEVIATIONS
+11. CONFLICTS/REVIEW ITEMS
+
+================================================================================
+1. PROGRAM OVERVIEW
+================================================================================
+
+Active Programs:
+- 50 Lakh Program
+- 96 Month Program
+- ABB Program
+- Bureau No-Hit (CIBIL 0/-1)
+- Credit Card BT
+- Full Underwriting Program
+- Paperless BT
+
+Loan Products:
+- Term Loan
+- Dropline Flexi
+- Hybrid Flexi
+
+================================================================================
+2. ELIGIBILITY CRITERIA
+================================================================================
+
+CIBIL/PL Score Requirements:
+- CIBIL: As per annexure 14.1
+- PL Score >650 allowed
+- PL Score <650 allowed with conditions (ABB >15k in Prime/G1/G2, >12k in G3/G4)
+- Bureau No-Hit program: CIBIL 0/-1 with CRIF score trigger
+
+Age Requirements:
+- Minimum Age: 25 years
+- Age range across versions: 25 - 55 years [REVIEW]
+- Maximum Age at loan maturity: 59 years (standard)
+- With Retirement proof: 62 years (Govt employees)
+- For professors: 65 years (Govt & University employees)
+- BSNL employees: Maximum age 50 years
+
+Employment Types:
+- Self-Employed
+- Salaried
+
+Work Experience:
+- Minimum work experience: 6 months
+- Employment confirmation: EPFO mandatory
+- Work from home profiles: Not allowed
+- Office premises as co-working space: Not allowed
+- Contractual employees: Not allowed
+- Proprietorships/Partnerships/HUF/Trusts/Co-operative societies: Not to be funded
+- Applicant should not be promoter of company/partner in firm
+
+================================================================================
+3. COMPANY/EMPLOYER CATEGORIES
+================================================================================
+
+Eligible Company Categories:
+- Diamond
+- Platinum
+- Gold
+- Silver
+- Blue
+- Bronze
+- Pvt Ltd Company
+- Listed Govt employees / Central Govt Entity / State Govt Entity / PSU
+
+Company Vintage Requirements (ABB Program):
+- Proprietorship/Partnership/LLP: 3 years
+- MCA listed companies: 2 years
+- EPFO strength >=30 employees required for non-BFL listed companies
+
+Super Edge / Super CAT A Eligibility:
+- A to AAA CRISIL-rated companies
+- Fortune 500 / BSE 500 / NSE 500 companies
+- Govt. employees and Govt. teachers (NTH > ₹50K/month)
+- CIBIL Score: 730+
+- Minimum Age: 24 years
+- Minimum NTH: > ₹350,000 per month
+
+================================================================================
+4. PRICING & ROI
+================================================================================
+
+ROI Pricing Grid:
+Loan Amount       | Regular | Super Edge | Bharat | Green Band STP | Super Edge >=10L
+<10 Lacs          | 13.50%  | 13.25%     | 17.00% | 14.75%         | 12.50%
+10.00 - 25 Lacs   | 12.75%  | 12.50%     | -      | -              | 12.99%
+25 Lacs - 50 Lacs | 11.50%  | 11.25%     | -      | -              | -
+>=25 Lacs         | 11.50%  | 11.25%     | -      | -              | -
+
+Processing Fees:
+- Super Edge: As per policy
+- Bharat Program: Rs 999/- FLAT
+- Green Band STP: Rs 2999/- FLAT
+
+Special Pricing:
+- Super Edge Green Band (>=10L): 12.50% IRR
+- Super Edge Yellow Band (>=10L): 12.99% IRR
+- Green Band + Yellow Band All-in-One: 16.25% IRR
+- Bharat Program: 17.00% IRR + Rs 999/- FLAT PFEE
+- Green Band STP: 14.75% IRR + Rs 2999/- FLAT PFEE
+
+================================================================================
+5. LOAN PARAMETERS
+================================================================================
+
+Loan Amount Limits:
+- Regular SAL PL: ₹30,00,000
+- Super CAT A: ₹50,00,000
+- 50 Lakh Program: ₹50,00,000
+- 96 Month Program: ₹96,00,000
+- ABB Program: ₹17,00,000
+- Bharat Program: ₹3,50,000
+- Credit Card BT: As per existing SAL PL policy
+- Paperless BT: Original finance amount + 5%
+
+Tenure:
+- Standard tenure: Up to 60 months
+- Maximum tenure: 84 months
+- 96 Month Program: Up to 96 months
+- Bharat Program: 48 months
+- ABB Program: As per FUW program
+- Hybrid Flexi: Only 84 months allowed for LA > 5L
+
+================================================================================
+6. FOIR & MULTIPLIER RULES
+================================================================================
+
+FOIR Limits:
+- Standard FOIR: 75%
+- Super CAT A: 75%
+- ABB Program: 55%
+- Bharat Program: 50%
+- Credit Card BT: As per existing SAL PL policy
+
+Multiplier Grid (Super CAT A):
+NMI Band        | Multiplier
+>=50 - <75      | 0.7
+>=75 - <150     | 1.0
+>=150 - <300    | 1.5
+>=300           | 2.0
+
+Multiplier Grid (Bharat Program):
+NMI Band        | Multiplier
+>75k            | 0.5
+
+================================================================================
+7. NTH / SALARY REQUIREMENTS
+================================================================================
+
+Monthly NTH Requirements:
+- Super CAT A / Super Edge: > ₹350,000
+- Regular: ₹1,07,874
+- NSP: ₹1,07,874
+- Skilled Worker (Cat C/D/U): ₹30,000
+- Bharat Program (Cat A): ₹1,00,000
+- Bharat Program (Cat D/NSP): ₹20,000
+
+Salary Considerations:
+- Monthly/Quarterly incentive: Considered as recurring income with deviation capture
+- NTH norms: Fixed salary with fixed components
+- CAT C/D/U: Can process cases basis NTH norms
+- Salary credit date: Latest month first, then previous month
+- Offer letter-based processing: Not allowed in Bureau No-Hit program
+
+================================================================================
+8. BT / CCBT / APP LOAN RULES
+================================================================================
+
+Balance Transfer (BT) Rules:
+- Pure BT and top-up allowed for Super CAT A
+- PL Shift Plus: Takeover of Personal Loans with seasoning >= 1 month
+- Existing BFL SALPL loan: Process in BTTP only, parallel funding not allowed
+- CCBT: Max 4 cards can be clubbed
+- CC outstanding >₹10L: Not allowed
+- Live PL CS loan: Not allowed
+- Paperless BT: Original finance amount + 5% allowed
+- Foreclosure charges up to 5% of BT Loan Amount if BT bank POS + Foreclosure > BT loan amount
+
+Credit Card BT (CCBT):
+- Program cap: ₹25 Cr (Prime), ₹10 Cr (Growth), ₹5 Cr (Prof SAL)
+- CIBIL: >=720
+- Allowed only in Prime market & G1 locations of Growth market
+- Late fee/over limit fee in last 3 months: Not allowed
+- CC limit <₹1L: Not allowed
+- CC outstanding <₹50k: Not allowed
+- Overutilized card BT: Not allowed
+- Last 3 months CC Statement mandatory
+- 5% of CC outstanding not obligated while computing eligibility
+
+App Loan Rules:
+- For loan amount >= ₹5L: Income proof required
+- For loan amount ₹3L-5L: No income proof required
+- MTS 100% BT norms to be met
+- No additional unsecured exposure in last 6 months (up to ₹50K loans not counted)
+
+================================================================================
+9. DOCUMENT REQUIREMENTS
+================================================================================
+
+Mandatory Documents:
+- 1 Year bank statement in PDF
+- 3 months payslip
+- Minimum 6 months bank statement (AA/Perfios verified)
+- EPFO validation for employment confirmation
+- Email & Domain check mandatory
+- Geo-tagging mandatory (BFL ON ROLL employee only)
+- PAN mandatory (Bureau No-hit program)
+- Mobile verification from Karza (Bureau No-hit program)
+- TAN check or Online website check (if employment check not verified through Email/EPFO)
+- Last 3 months CC Statement for CC BT
+- EPFO strength & Establishment year screenshot (ABB Program)
+
+================================================================================
+10. EXCEPTIONS & DEVIATIONS
+================================================================================
+
+Bounce & Delinquency Norms:
+- No DPD in bureau in last 12 months
+- EMI bounce in last 6 months banking: Not allowed
+- As per Annexure 14.2
+
+Leverage Norms:
+- >=3 Live PL not allowed at acquisition
+- >=2 unsecured loans in last 6 months: Not allowed
+- >=5 PL/BL enquiries in last 6 months: Not allowed
+
+Risk Segment Rules:
+- Only Super Green & Green segment allowed (standard)
+- Red segment: Not allowed for age <25 years
+- At least 1 BNPL / No BNPL - High not allowed
+- Majority BNPL: Not allowed
+- Dark Red segment: Allowed with conditions (ABB >15k in Prime/G1/G2, >12k in G3/G4)
+
+Other Exceptions:
+- Current outstanding on all Credit cards >= ₹10 Lacs: Not allowed
+- Owned house mandatory OR Ever HL mandatory
+- Bureau thick file mandatory
+- Negative area/OGL not allowed
+- No funding for customer staying in PG/Hostel/Guest house
+- Contractual employees: Not allowed
+- Proprietorships/Partnerships/HUF/Trusts/Co-operative societies: Not to be funded
+- Bureau No-Hit: Offer letter-based processing not allowed
+- No deviation on age norms in Credit Card BT program
+- No deviation allowed in Hybrid Flexi tenure combination
+
+================================================================================
+11. CONFLICTS/REVIEW ITEMS
+================================================================================
+
+1. AGE: Multiple values found across versions (25, 50, 55). [REVIEW]
+2. LOAN AMOUNT: Multiple values found across versions (17, 62, 96, 100000, 1000000, 5000000). [REVIEW]
+8. EMPLOYMENT TYPE: Mixed values found (Self-Employed, Salaried). [REVIEW]
+
+================================================================================
+END OF BAJAJ FINSERV PERSONAL LOAN POLICY RULEBOOK
+================================================================================

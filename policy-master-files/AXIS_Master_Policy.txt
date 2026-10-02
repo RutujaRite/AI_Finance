@@ -1,0 +1,404 @@
+====================================================================================================
+AXIS BANK MASTER POLICY - CLEANED CONSOLIDATION
+Generated: 2026-08-26
+Source Bank: Axis Bank
+====================================================================================================
+
+INSTRUCTIONS:
+- This file consolidates unique policy information from all Axis Bank source files.
+- Duplicates and repeated content have been removed.
+- Data is organized by policy category.
+- Source file names have been removed for clarity.
+- [REVIEW] marks conflicting or updated rules that require admin attention.
+- No values are invented or defaulted.
+
+
+================================================================================
+GENERAL PERSONAL LOAN RULES
+================================================================================
+
+=D = 1 Notification - Revision in Personal Loan guidelines -4th Jul 2025 == ——
+Thank you for your interest in
+inform you that we   would not  Reason, same can be visible in Mini CAM.
+We are processing your  The Loan account opening and disbursement
+6 months ePDF bank statement (current
+application.  (current statement is not proper / does not
+NACH mandate.
+Check
+chars and max 2 special chars in first 5 chars.
+Bank Statement details are
+One or all   FD ( s )   selected   are not eligible for
+customer. Pls allow 2   -   3 days for UW / FCU
+email on your registered
+Your sanction amount is in
+Disbursement.
+undergone changes.    Disbursement.
+Preapproved Offer Fetch Customer do not have BIU Offer. Pls create
+hours post update.
+This savings account scheme is not eligible for
+few hours post update.
+active NRO account
+journey with previously updated mobile no.
+At least 2 months gap in
+Invalid Transaction Status
+check   failed    customer to try again after some time.
+Loan slider parameters
+validation error
+customer's current mobile no.
+update the correct mobile number.
+Customer’s mobile number is invalid. please
+Mobile number has less   than
+retry after 3 hours post update.
+Error During Hunter Request Temporary technical failure. Ask the
+SOURCE FILE: Mahrashtra PL - Activate Location List.pdf
+•   DSA enters his registered mobile number and password to
+•   DSA needs to enter SM code, ASC Code and Mobile number of
+Customer HOLD screen:
+3. Customer consent has expired since 24 hours have
+1.   Avail Offer (Fresh Loan / Parallel)   –   No Bank Statement Upload is required.
+is required.
+1.   Account Aggregator   –
+to customer’s mobile number to complete
+Account Aggregator journey at their end.
+2.   Upload Bank Statement(s)   –
+an option to upload EPDF of 6 months
+Bank Statement.
+Rate deviation required
+named “Rate deviation required”. In CDS cases, the
+disbursement will be mandatory done through Ops (Physical).
+5.   In case   Perfios   not able to read Bank Statement, case will move
+with RAW Bank Statement option. For such scenario   –
+PD sheet (if loan > 15 lacs or WFH
+4.   Please Don’t upload password
+protected files; Bank Statement,
+available) before upload (e.g.
+6.   Refer checklist for mandatory
+mandatory to upload to move
+2.   Check Customer name which has
+with Backoffice users (FCU, Underwriter,
+Hunter, FI)
+UW Scenario #1   Approve  the case to customer. Link will be triggered to customer via SMS for completing disbursal
+UW Scenario #2
+UW Scenario #3   Rework
+2.   They can refer comments of the Backoffice users such as FCU/Hunter/FI/UW
+disbursal.
+Digital Disbursement: SMS will be triggered to
+customer to complete digital disbursement steps
+Physical Disbursement: Case will be disbursed
+required
+to customer for disbursal.
+Rate approval c ases shall disburse through Operations module:
+1.   Sales shall apply for CDS approval. MLP ID and DSA ID (It is a
+5 - digit unique ID) are mandatory fields to raise CDS approval
+2.   Once approved,   Sales shall submit the same along with other
+SMS with disbursal link post
+and completes mandatory
+successfully   sanctioned,   the   same   is   communicated   to   the   customer   along   with   the   information   that   the   sales   team   will   contact   the
+customer   to   process   Disbursal .
+axis bank email ID.
+5. NACH mandate (1 copy) should be signed by the customer
+“ Personal Loan application MLP00000XXXXX has been sanctioned for   Sirisha   Garimella
+through Maximus Lending Platform”
+
+
+================================================================================
+NMI/CIBIL THRESHOLDS
+================================================================================
+
+Required number of   salary
+regular salary credits). Pls ensure to check
+regular salary credits.
+have regular salary credits). Pls ensure to
+check regular salary credits.
+No positive income found for
+Salary statement is not Temporary technical failure. Ask the
+Salary credit gaps are more
+Salary for latest number of  6 months ePDF bank statement (current
+provided  regular salary credits). Pls ensure to check
+Invalid net monthly income
+Modes for verifying customer’s income.
+Salary Slip,   etc
+Salary Slip, Company ID card,   etc )
+Salary Slip
+Salary Slip  Salary Slip
+
+
+================================================================================
+LOAN AMOUNT & TENURE
+================================================================================
+
+——= 1. Change in policy norms for Physical Vanilla PL and MLP Assisted High tenure Cases ——
+ShahD. : The following revisions have been implemented for Physical Vanilla PL and MLP Assisted HighTenure = —
+1.   Agent will be shown the Loan Amount and other Loan
+2.   Agent can adjust the Applied Loan amount by using the slider
+1.   Loan Amount and other details page (as shown in image 1
+
+
+================================================================================
+CIBIL
+================================================================================
+
+= = cases, based on Net Monthly Income (NMI) and CIBIL score thresholds. =
+== | CSG- Hit NMI 35k & Cibil >=700 >=740 OR -—
+— i NMI >85k & cibil >=700 — ——
+&rReg.. — NCSG-HIT | NMi 50k & Cibil >=700 NMI 50K & Cibil >=740 —
+—— f MI 75k-100k & Cibil >=780 —
+— = Mi 75k & Cibil >=740 OR —
+= IMI > 100k & cibil >+740 Il IN =
+
+
+================================================================================
+FOIR
+================================================================================
+
+1.   Agent will be shown ALL running Obligations fetched from Bureau.
+2.   Agent needs to enter ONLY EMI Amount for the mentioned Obligations.
+Other Obligations
+Other Obligations  Other Obligations
+
+
+================================================================================
+BT SURROGATE
+================================================================================
+
+2.   Balance Transfer (BT / Consolidated)   –   Balance Transfer Details,
+3.   Without Balance Transfer (Perfios Offer / Parallel)   –   ONLY Bank Statement
+Credit Cards eligible for Balance Transfer.
+chosen or Balance Transfer and/or CDS is
+
+
+================================================================================
+PRICING/ROI
+================================================================================
+
+parameters such as   RoI , PF, etc.
+Approve   –   RoI   and/or PF changes  Sales shall apply for CDS approval. Upon receiving approval, Sales shall submit the same
+3.   Ops Maker shall change the   RoI /PF on Ops screen.
+
+
+================================================================================
+KYC/DOCUMENTS
+================================================================================
+
+Pls ask the customer to Re - try. Kindly upload
+technical difficulty. Kindly try  OR create   CMS SR .
+again to complete your loan  Kindly upload 6 months ePDF bank statement
+Authentication Failed    Kindly request customer to use the valid
+Error while performing NSDL
+Kindly request customer to update address   -
+Post update, kindly wait for few hours before
+KYC   response from Esb    customer to try again after some time.
+The customer’s KYC is due. Customer can
+update KYC by either   visiting nearest Branch
+customer kyc
+MLP - 637   Kyc   Required for user   Medium  or by updating address in IB/MB.
+Error while getting the   KYC Temporary technical failure. Ask the
+Kindly   check whether last 4 digits of mobile
+mobile number. Kindly ask the customer to
+AND completing KYC on the link received via SMS.
+•   Name on PAN CARD & AADHAR CARD must match for   eKYC , if not matching, guide
+customer to select option as “Submit Your KYC Document”
+Supporting Documents and Bank Statement Required
+details basis supporting documents.
+Document upload page once again
+document upload page for NTB customers
+1.   Agent needs to fill CKYC details for
+2.   Agent will not be shown CKYC
+documents such as BT supporting
+documents (if applied), Salary Slip,
+5.   Aadhar number must be
+“ Masked ” on all documents (if
+document details.
+Upload   documents
+7.   Documents marked as “*” are
+required (Commercial Deviation)  along with other Physical Documents to Ops Maker. Ops Maker shall change the   RoI /PF on
+Sales shall refer to the UW comments for additional document and collect the same. Sales
+shall resume the journey from “Document Upload” page and upload the relevant
+documents under “Additional Documents” block. The case shall be pushed to FCU & UW
+only if he had chosen E - kyc , had not applied for
+through Ops Module in case physical KYC was
+Physical Documents to Ops Maker.
+4.   Accordingly, Agents need to   relogin   in the journey and upload relevant document(s).
+Upload   documents  Upload   documents
+relevant documents in the
+added documents.
+ENACH, V - kyc , e - sign (if
+01   NTB   customer   applies   for   an   Instant   Personal   loan   on   the   MLP   journey .   Post   required   document   upload   and   credit   checks,   if   the   loan   is
+The customer is also asked to keep the required KYC and Disbursal Documents ready.
+03   Sales Team visits the customer for document collection as per Disbursement checklist (Annexure 1). While collecting the docum ent s the
+1. KYC documents (ID/Address/DOB proof) is attached in the file are self attested & OSV done.
+2. KYC documents are valid
+4. Ensure name on the KYC documents, application form and the ops module is same.
+Post collection of required documents, same to be submitted   at nearest RAC for initiating disbursal
+
+
+================================================================================
+ERROR CODES / OPERATIONAL GUIDELINES
+================================================================================
+
+SOURCE FILE: Error Codes Meaning.pdf
+Meaning of the Error Code   -
+After reviewing your  The case is declined / rejected. Pls DO NOT
+application, we regret to  High  Raise any Unidesk /   CMS SR   for Reject
+REJECT
+/ Customer ID   and ERROR Code   OR create
+MLP - 1917   High  statement is not proper / does not have
+Sorry we are   experiencing  Error Code.
+MLP - 1970  High
+MLP - 2802   High  mention MLP ID / Customer ID(s) of all   joint
+holders and Error Codes
+MLP - 2804   NO FD found for customer   High  mention MLP ID /   Customer ID(s) of all joint
+holders and Error Codes   OR create   CMS SR .
+N ACH   Mandate  Error Code   OR create   CMS SR .
+MLP - 2959   High
+The customer’s PAN is into updated in
+MLP - 412   High  Finacle. Customer can update PAN by either
+MLP - 414   High
+MLP - 601   Address validation failed   High  Customer can   update address by either
+The Pincode given by customer is incorrect /
+Pincode not found in master  not mapped in MLP Platform.   Customer can
+MLP - 614   High
+data    update Address by either visiting nearest
+MLP - 648   High  statement is not proper / does not   have
+MLP - 674   No eligible FD account   High  least 5 chars and max 2 special chars in first 5
+chars. Customer can update address by either
+MLP - 2912   Medium
+MLP - 405   Dedupe check failed   Medium
+MLP - 417   Medium
+MLP - 427   Medium
+MLP - 428   Medium  or by updating address using IB/MB.
+MLP - 609   Can't jump to target step   Medium  Loans. Pls mention MLP ID / Customer ID   and
+Error Code   OR create   CMS SR .
+MLP - 636   No active savings account   Medium
+MLP - 641   No active account for BIU   Medium
+MLP - 654   PAN for customer is invalid   Medium  Finacle. Customer can update PAN by either
+Customer is NRI and does not have active
+Customer is NRI and has no
+MLP - 693   Medium  NRO account. Pls create lead for Physical
+MLP - 695   Medium  mobile Nos. Pls ask the customer to continue
+for given pan in platform
+MLP - 721   Medium
+MLP - 804   Error During Sangam Check   Medium
+MLP - 833   Error   During Sangam Check   Medium
+MLP - 1502   Low
+MLP - 1913   Low  statement is not proper / does not have
+MLP - 1914   Low  statement is not proper / does not have
+MLP - 1915   Unmatched Statements.   Low  statement is not proper / does not have
+MLP - 1916   Low  statement is not proper / does not have
+MLP - 1918   Low
+MLP - 1919   Invalid client Transaction Id   Low
+MLP - 1920   Low  Platform. Pls create lead for Physical
+MLP - 1921   Low  statement is not proper / does not   have
+MLP - 1922  required months not  Low  statement is not proper / does not have
+MLP - 1926  from Esb. All retries  Low
+MLP ID and Error Code.
+MLP - 1929   Perfios Generate Link failed   Low  Loans. Pls mention MLP ID / Customer ID   and
+MLP - 2805   Bad Request for FD fetch   Low
+MLP - 2806   Low
+MLP - 2913   Low  Loans. Pls mention MLP ID / Customer   ID and
+MLP - 302   OTP   Generation failed   Low
+MLP - 304  to system issues. Pls try again  Low
+MLP - 310   Invalid Request   Low
+MLP - 401   Low
+MLP - 402   Low
+MLP - 409   Low  Loans. Pls mention MLP ID / Customer ID   and
+Fetch Finacle Pincode  not mapped in MLP Platform. Customer can
+MLP - 430   Low
+mapping failed    update Address by either visiting nearest
+MLP - 439   Low
+MLP - 448   Low
+MLP - 604   Low  Loans. Pls mention MLP ID / Customer ID   and
+MLP - 627   Email for customer is invalid   Low   Pls ask the customer update correct email ID
+MLP - 632   OTP Validation Failed   Low
+MLP - 634   Low  visit nearest ATM to update the correct
+MLP - 673   Demog check failed   for health   Low  avail ODFD facility. Customer cannot avail
+MLP - 701   Master data not found   Low
+update Address by   either visiting nearest
+Pincode is not available in our  not mapped in MLP Platform. Customer can
+MLP - 711   Low
+master data    update Address by either visiting nearest
+MLP - 717   Low  Platform. Pls create lead for Physical
+Error code received when
+MLP - 751  fetching Transaction Status  Low
+MLP - 802   Error During Hunter Check   Low
+MLP - 803   Low
+MLP - 653   Top up case   Low  or the outstanding of old loan is more than
+MLP - 2999   Low
+Sales (DSA/RO) shall receive all the UW decisioned cases (Accept, Rework, Reject) in his dashboard for necessary
+UW Scenario #4   Reject
+Error   –   MLP - 833  Customer consent error
+
+
+================================================================================
+OTHER CONDITIONS
+================================================================================
+
+SOURCE FILE: 7 Years Policy 16-07-25.jpeg
+The message on the screen  Occurrence   Action
+--- Page 1 ---
+Saathi   and Engage Pro
+Instruction to Agent :
+Agent Screens: How to trigger SMS?
+Instructions to Agent:
+•   Agent to enter customer’s mobile number
+•   Agent needs to wait until the customer gives consent by logging in
+•   Once Customer provides consent, Agent can click on Continue to
+Agent’s screens  Customer’s screen
+•   Once customer logs in, Agent needs to guide customer in giving consent.
+his part and Agent can now
+•   Agent needs to confirm if Customer got the hold screen at the end of the journey
+•   Agent can then click on Continue on his end.
+Agent Login Scenario #1: Agent has triggered link and Customer has provided consent
+Agent Login Scenario #2: Agent has triggered link and Customer has NOT
+Agent Login Scenario #3: Agent has triggered link and Customer has NOT
+Agent Login Scenario #4: Customer has provided Consent but 24 hours
+•   Agent needs to duly fill the application form   –   Personal Information,
+Basis customer needs, Agent can choose one of the 3 options:
+1.   Agent will be shown ALL running Personal Loans and
+2.   Agent needs to check the boxes of those PL/CC for which
+3.   Agent needs to expand such PL/CC (s) and enter all
+3.   Agent should click on Continue at the bottom
+•   Agent shall view a hold page until
+•   Upon clicking proceed, Agent would get
+•   Agent shall upload the same and wait for
+3.   If CDS needs to be raised, Agent needs to click on the checkbox
+4.   Agents can raise CDS after Underwriter’s approval (Sanction)
+will not get shown to sourcing agent)
+2.   Bank Statement need to be uploaded by Sourcing agent on
+3.   Bank Details need to be filled by sourcing agent after
+page for ETB customers.
+3.   Agent need to upload mandatory
+1.   Agent needs to fill Bank Details for
+2.   Agent needs to wait for 2 - 3 days for
+3.   Agent can view case status (Approve, Reject,
+S. No.   UW Scenarios   Instruction to Agents
+Agents shall resume the journey from   EngagePro /Channel Partner applications and push
+page after taking customer’s
+Partner App and land on this page after taking customer’s
+•   Agent shall click on the checkbox “Rate deviation required.
+3.   If Backoffice users have decisioned “Rework”, agents need to check the comments.
+1.   Agent shall login and upload
+2.   Once agent click on Proceed,
+3.   If Backoffice users have   decisoned   “Reject”, agents need to check the comments.
+Agent “triggers customer
+2.   Agent shall ensure that
+screen as shown, agent shall
+02   Once case is sanctioned, CRM will be assigned to the sales team (Sales Manager) as per the assignment logic provided by the p rod uct team.
+The Sales Manager will also receive a prefilled Loan Agreement and Loan mini Application form that are to be signed by the cu sto mer on his
+SMs will receive an email with the following message and attachments:
+Until, customer gives consent, RO  Until, customer gives consent, Agent
+will receive this message if clicked  will receive this message if clicked
+
+
+====================================================================================================
+CONFLICTS/REVIEW ITEMS
+====================================================================================================
+
+1. NMI THRESHOLDS: Multiple thresholds found (NMI 35k-85k & CIBIL >=700 vs NMI 50k & CIBIL >=740 vs NMI 75k-100k & CIBIL >=780). [REVIEW]
+2. CIBIL SCORE: Different thresholds for different NMI ranges. [REVIEW]
+3. LOAN AMOUNT: Policy.txt says 40 lacs, Policy 23-12-24.jpeg mentions Rs15 Lacs for Category 0. [REVIEW]
+4. ERROR CODES: Some MLP error codes may indicate policy thresholds. [REVIEW]
+
+====================================================================================================
+END OF CLEANED AXIS BANK MASTER POLICY
+====================================================================================================

@@ -1,0 +1,236 @@
+================================================================================
+SMFG INDIA CREDIT (FULLERTON) PERSONAL LOAN - MASTER POLICY
+================================================================================
+
+BANK: SMFG India Credit / Fullerton
+PRODUCT: Personal Loan
+PROFILE: Salaried
+
+================================================================================
+1. ELIGIBLE EMPLOYMENT PROFILES
+================================================================================
+
+Profile A:
+- Employee of Private Limited Company
+- Employee of Public Limited Company
+- Government Employee
+
+Profile B:
+- Employee of LLP
+- Employee of Proprietorship
+- Employee of Partnership
+
+4th Class Grade:
+- Allowed
+
+================================================================================
+2. AGE
+================================================================================
+
+- Minimum Age: 21 years
+- Maximum Age: 65 years
+
+================================================================================
+3. CIBIL
+================================================================================
+
+- Minimum CIBIL Score: 705+
+
+================================================================================
+4. LOAN AMOUNT
+================================================================================
+
+- Minimum Loan Amount: Rs. 1,00,000
+- Maximum Loan Amount: Rs. 25,00,000
+
+================================================================================
+5. TENURE
+================================================================================
+
+- Minimum Tenure: 1 year
+- Maximum Tenure: 5 years
+
+================================================================================
+6. MINIMUM NET MONTHLY INCOME
+================================================================================
+
+Private Ltd / Public Ltd / Government:
+- Minimum NMI: Rs. 19,000
+
+LLP / Proprietorship / Partnership:
+- Minimum NMI: Rs. 22,000
+
+================================================================================
+7. OWNERSHIP
+================================================================================
+
+Private Ltd / Public Ltd / Government:
+- Ownership not required
+
+LLP / Proprietorship / Partnership:
+- Ownership mandatory
+
+================================================================================
+8. AIP SCORE
+================================================================================
+
+Private Ltd / Public Ltd / Government:
+- Green AIP allowed
+- Amber AIP allowed
+
+LLP / Proprietorship / Partnership:
+- Only Green AIP allowed
+
+================================================================================
+9. FOIR / DBR
+================================================================================
+
+PRIVATE LTD / PUBLIC LTD / GOVERNMENT
+
+NMI Rs. 19,000 to Rs. 24,999:
+- Maximum DBR / FOIR: 60%
+
+NMI Rs. 25,000 to Rs. 34,999:
+- Maximum DBR / FOIR: 65%
+
+NMI Rs. 35,000 and above:
+- Maximum DBR / FOIR: 70%
+
+
+LLP / PROPRIETORSHIP / PARTNERSHIP
+
+NMI Rs. 22,000 to Rs. 24,999:
+- Maximum DBR / FOIR: 50%
+
+NMI Rs. 25,000 to Rs. 34,999:
+- Maximum DBR / FOIR: 55%
+
+NMI Rs. 35,000 and above:
+- Maximum DBR / FOIR: 60%
+
+================================================================================
+10. ABB
+================================================================================
+
+Private Ltd / Public Ltd / Government:
+- For NMI Rs. 30,000 and above, ABB will not be checked for loan amount
+  as stated in the supplied policy.
+
+================================================================================
+11. EMPLOYMENT STABILITY
+================================================================================
+
+- Minimum Stability Proof Required: 1 year
+
+================================================================================
+12. EPF
+================================================================================
+
+- EPF is not mandatory
+
+================================================================================
+13. BALANCE TRANSFER
+================================================================================
+
+- Up to 5 Credit Card BTs allowed
+- Up to 5 Loan BTs allowed
+
+================================================================================
+14. ROI GRID - NB PL SALARIED
+================================================================================
+
+APPLICABILITY:
+- Metro and Tier 1 Cities
+- ROI depends on Net Monthly Income and Risk Grade
+- Risk Grades: A, B, C, D, E
+
+Net Monthly Income <= Rs. 18,000:
+- Grade A: 30.00%
+- Grade B: 30.00%
+- Grade C: 30.00%
+- Grade D: 30.00%
+- Grade E: 30.00%
+
+Net Monthly Income Rs. 18,001 to Rs. 25,000:
+- Grade A: 28.50%
+- Grade B: 29.00%
+- Grade C: 30.00%
+- Grade D: 30.00%
+- Grade E: 30.00%
+
+Net Monthly Income Rs. 25,001 to Rs. 30,000:
+- Grade A: 24.00%
+- Grade B: 25.50%
+- Grade C: 27.50%
+- Grade D: 30.00%
+- Grade E: 30.00%
+
+Net Monthly Income Rs. 30,001 to Rs. 35,000:
+- Grade A: 23.00%
+- Grade B: 24.00%
+- Grade C: 25.00%
+- Grade D: 28.00%
+- Grade E: 30.00%
+
+Net Monthly Income Rs. 35,001 to Rs. 40,000:
+- Grade A: 21.50%
+- Grade B: 22.00%
+- Grade C: 23.50%
+- Grade D: 25.00%
+- Grade E: 30.00%
+
+Net Monthly Income Rs. 40,001 to Rs. 50,000:
+- Grade A: 19.50%
+- Grade B: 21.00%
+- Grade C: 22.00%
+- Grade D: 24.00%
+- Grade E: 30.00%
+
+Net Monthly Income Rs. 50,001 to Rs. 75,000:
+- Grade A: 17.50%
+- Grade B: 18.50%
+- Grade C: 20.00%
+- Grade D: 24.00%
+- Grade E: 30.00%
+
+Net Monthly Income Rs. 75,001 to Rs. 1,00,000:
+- Grade A: 16.50%
+- Grade B: 17.50%
+- Grade C: 20.00%
+- Grade D: 22.00%
+- Grade E: 30.00%
+
+Net Monthly Income Rs. 1,00,001 to Rs. 1,50,000:
+- Grade A: 16.00%
+- Grade B: 17.00%
+- Grade C: 19.50%
+- Grade D: 20.00%
+- Grade E: 30.00%
+
+Net Monthly Income above Rs. 1,50,001:
+- Grade A: 15.50%
+- Grade B: 16.50%
+- Grade C: 19.00%
+- Grade D: 20.00%
+- Grade E: 30.00%
+
+IMPORTANT:
+- The <= Rs. 18,000 row is a pricing row only.
+- It does not override the minimum eligibility NMI of Rs. 19,000 for
+  Private Ltd/Public Ltd/Government or Rs. 22,000 for LLP/Proprietorship/
+  Partnership profiles.
+
+================================================================================
+15. REQUIRED DOCUMENTS
+================================================================================
+
+- PAN Card
+- Aadhaar Card
+- Photograph
+- Latest 3 months Salary Slips
+- Latest 6 months Bank Statements
+- Loan Letter, if available
+
+================================================================================
+END OF SMFG INDIA CREDIT PERSONAL LOAN MASTER POLICY
+================================================================================

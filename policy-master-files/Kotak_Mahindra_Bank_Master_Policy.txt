@@ -1,0 +1,1243 @@
+================================================================================
+KOTAK MAHINDRA BANK PERSONAL LOAN - POLICY RULEBOOK
+Generated: 2026-09-01
+Source Bank: Kotak Mahindra Bank
+Product: Personal Loan
+================================================================================
+
+PURPOSE:
+This is a consolidated Personal Loan policy rulebook prepared only from the
+Kotak Mahindra Bank policy documents/images supplied for this task.
+
+It includes only policy-related:
+- Eligibility
+- Age
+- NTH / salary
+- CIBIL / bureau rules
+- Company categories
+- Loan amount
+- Tenure
+- FOIR
+- Multiplier
+- Other income
+- Bounce rules
+- Balance Transfer / Credit Card BT
+- Pricing / IRR / Processing Fee
+- Foreclosure / part payment
+- Address-proof / biometric rules
+- Merchant Navy / Army / special profiles
+- Hybrid OD eligibility and operating policy where explicitly relevant
+- Sector restrictions
+- Deviations / exceptions
+
+EXCLUDED:
+- Pincodes
+- Branch addresses
+- DMA / DSA contact information
+- CRN / application fields
+- Nomination forms
+- Generic legal boilerplate
+- Marketing slogans
+- Sales / turnaround-time promotional language
+- Decorative content
+- Any item that does not define eligibility, underwriting, pricing, repayment,
+  verification, documentation, or product-policy behavior
+
+SOURCE SET:
+1. KMBL PL POLICY 24-06-24.pdf
+2. KOTAK One Pager Updated Policy 12-03-25.pdf
+3. kotak pl april24 grid.pdf
+4. NO ADDRESS PROOF 01-08-24.pdf
+5. Acceptable Present address proofs List 28-10-24.jpeg
+6. OD Revised Policy 11-01-23.jpg
+7. OD AGREEMENT Version 1.4.pdf
+8. WhatsApp Image 2025-03-05 at 14.00.47.jpeg
+
+SOURCE-SAFETY RULES:
+1. Never invent a missing value.
+2. Never move a rule between company categories.
+3. Never move a rule between standard PL, BT, CC BT, Hybrid OD, Merchant Navy,
+   Army, Government, NTC/CIBIL 0/-1, or special-promo programs.
+4. Newer and older policy versions are kept separately when values differ.
+5. Where applicability is unclear or two supplied sources conflict, mark [REVIEW].
+6. Marketing artwork may confirm existence of a product/offer, but must not
+   override detailed underwriting rules.
+7. Historical pricing grids must only be applied if their version is active.
+8. If a mandatory value would otherwise need to be guessed, return NEEDS_REVIEW.
+
+SECTIONS:
+1. PROGRAM OVERVIEW
+2. CORE ELIGIBILITY
+3. COMPANY / CUSTOMER CATEGORIES
+4. NTH / INCOME REQUIREMENTS
+5. CIBIL / BUREAU RULES
+6. LOAN AMOUNT & TENURE
+7. FOIR RULES
+8. MULTIPLIER RULES
+9. OTHER INCOME & OBLIGATION RULES
+10. BOUNCE / BANKING RULES
+11. BALANCE TRANSFER / CREDIT CARD BT
+12. PRICING / IRR / PROCESSING FEE
+13. FORECLOSURE / PART PAYMENT
+14. ADDRESS PROOF / BIOMETRIC RULES
+15. MERCHANT NAVY / ARMY / SPECIAL PROFILES
+16. HYBRID OD POLICY
+17. SECTOR RESTRICTIONS
+18. CONFLICTS / REVIEW ITEMS
+19. AI / BACKEND EVALUATION RULES
+
+================================================================================
+1. PROGRAM OVERVIEW
+================================================================================
+
+Primary Product:
+- Kotak Mahindra Bank Personal Loan
+
+Primary profile from updated policy:
+- Salaried Employees
+
+Personal Loan Offer:
+- Loan Amount: Rs. 1 Lakh to Rs. 35 Lakhs
+- Age: Minimum 21 years to Maximum 60 years
+- Standard tenure: 1 year to 5 years in the 24-06-24 policy
+- Updated policy: 1 year to 6 years for selective customers
+
+Additional supported policy paths / profiles:
+- Fresh Personal Loan
+- Balance Transfer
+- Credit Card BT
+- CIBIL 0 / -1 fresh loan
+- Government / Army
+- Merchant Navy / Shipping
+- Work From Home
+- Applicant + Co-Applicant clubbed-income cases
+- Unlisted-company sourcing
+- Hybrid OD
+- Special Promo pricing
+- Kotak Salary Account / Non-Kotak Salary Account policy distinctions
+
+Updated policy also states:
+- Bachelor accommodation allowed
+- PG accommodation allowed
+- Listed / Not Listed companies allowed subject to positive MCA checks
+- Work From Home profiles allowed
+- Recent joined employee / offer-letter-based sourcing allowed
+- Trust, NGO, LLP, Navy and Army profiles allowed, subject to applicable policy
+- Unlisted Companies allowed with maximum loan amount Rs. 10 Lakhs
+
+================================================================================
+2. CORE ELIGIBILITY
+================================================================================
+
+--------------------------------------------------------------------------------
+2.1 AGE
+--------------------------------------------------------------------------------
+
+Standard Personal Loan:
+- Minimum Age: 21 years
+- Maximum Age: 60 years
+
+Army:
+- Minimum Age: 21 years
+- Maximum Age: 60 years at loan maturity
+
+IMPORTANT:
+- Use the exact profile/program age rule where explicitly stated.
+- No other age value should be inferred.
+
+--------------------------------------------------------------------------------
+2.2 EMPLOYMENT / SOURCING
+--------------------------------------------------------------------------------
+
+Updated policy:
+- Applicable to Salaried Employees
+- Current Employment:
+  * 1 month / Offer Letter based sourcing
+- Recent joined employee may be funded basis offer letter post joining
+- Work From Home profiles allowed
+- Listed and unlisted companies allowed subject to positive MCA checks
+
+24-06-24 policy:
+- Core salary / category / bureau / loan rules are defined for salaried profiles.
+
+================================================================================
+3. COMPANY / CUSTOMER CATEGORIES
+================================================================================
+
+Company categories explicitly used in supplied sources:
+- CAT AA
+- Super CAT A
+- CAT A
+- CAT B
+- CAT C
+- CAT D
+- CAT E
+- CAT F
+- CAT H
+- CAT J
+- Government
+- Central Government
+- PSU
+- Kotak Group Employee
+- Kotak Salary Account
+- Non-Kotak Salary Account
+
+April 2024 pricing tiers:
+
+PLATINUM:
+- Super CAT A
+- CAT A
+- Central Government
+- PSU
+
+DIAMOND:
+- CAT B
+- Rest of Government
+
+GOLD:
+- CAT C
+
+SILVER:
+- CAT D
+
+Multiplier mapping:
+- CAT E / F / H / J follow CAT C multiplier norms.
+
+CATEGORY SAFETY RULE:
+- Resolve category only from a verified Kotak-specific company/category mapping.
+- Do not use another bank's company category.
+- If category is required and unresolved:
+  NEEDS_REVIEW.
+
+================================================================================
+4. NTH / INCOME REQUIREMENTS
+================================================================================
+
+--------------------------------------------------------------------------------
+4.1 UPDATED POLICY 12-03-25 - MINIMUM NTH
+--------------------------------------------------------------------------------
+
+CAT AA / CAT A / CAT B / Government:
+- Minimum NTH: Rs. 25,000
+
+Others:
+- Minimum NTH: Rs. 35,000
+
+--------------------------------------------------------------------------------
+4.2 KMBL PL POLICY 24-06-24 - SALARY NORMS
+--------------------------------------------------------------------------------
+
+CAT AA / CAT A / CAT B:
+- Rs. 25,000
+- Applies for Kotak Salary Account and Non-Kotak Salary Account
+
+Government & Army:
+- Rs. 25,000
+- Kotak or Non-Kotak Salary Account
+
+CAT C:
+- Rs. 30,000
+
+CAT E / CAT F / CAT H / CAT J:
+- Rs. 30,000
+
+CAT D:
+- Rs. 30,000
+
+KPO / BPO under CAT D rule:
+- Rs. 35,000
+
+Insurance profile:
+- NTH >= Rs. 50,000
+
+Higher Loan Amount:
+- Salary > Rs. 1 Lakh required for loan amount above Rs. 20 Lakhs
+  as stated in the 24-06-24 policy.
+
+[REVIEW]:
+- Updated 12-03-25 one-pager simplifies minimum NTH to:
+  Rs.25K for AA/A/B/Govt and Rs.35K for others.
+- The 24-06-24 policy contains category-specific Rs.30K values for C/D/E/F/H/J.
+- Apply the currently active version; do not silently combine both.
+
+================================================================================
+5. CIBIL / BUREAU RULES
+================================================================================
+
+--------------------------------------------------------------------------------
+5.1 STANDARD CIBIL
+--------------------------------------------------------------------------------
+
+KMBL PL Policy 24-06-24:
+- CIBIL Score: > 700 (V3)
+
+CIBIL Enquiries:
+- < 3 unsecured-loan enquiries in 1 month
+
+--------------------------------------------------------------------------------
+5.2 CIBIL 0 / -1
+--------------------------------------------------------------------------------
+
+24-06-24:
+- Maximum tenure for CIBIL 0 / -1: 3 years
+
+Updated Policy 12-03-25:
+- CIBIL 0 / -1 fresh loan up to Rs. 10 Lakhs
+- Categories mentioned:
+  * CAT AA
+  * CAT A
+  * CAT B
+  * CAT C
+  * Government
+- Subject to conditions not fully enumerated in the one-pager
+
+RULE:
+- Do not reject CIBIL 0 / -1 by applying the normal CIBIL >700 rule.
+- Use the specific NTC / CIBIL 0/-1 policy path.
+- If the missing conditions are required for final eligibility:
+  NEEDS_REVIEW.
+
+--------------------------------------------------------------------------------
+5.3 6-YEAR TENURE BUREAU MITIGANTS
+--------------------------------------------------------------------------------
+
+For tenure of 6 years, 24-06-24 policy requires:
+- CIBIL > 750
+- Only Green Scorecard
+- Live or Closed Auto Loan / Home Loan track in CIBIL
+- No Personal Loan taken in recent 6 months
+
+Eligibility calculation for 6-year tenure:
+- Calculate eligibility on 5-year tenure basis.
+
+================================================================================
+6. LOAN AMOUNT & TENURE
+================================================================================
+
+--------------------------------------------------------------------------------
+6.1 STANDARD LOAN AMOUNT
+--------------------------------------------------------------------------------
+
+Loan Amount:
+- Rs. 1 Lakh to Rs. 35 Lakhs
+
+Additional condition:
+- Salary > Rs. 1 Lakh required for loan amount above Rs. 20 Lakhs
+  in the 24-06-24 policy.
+
+Unlisted Companies:
+- Maximum Loan Amount: Rs. 10 Lakhs
+  as per updated 12-03-25 one-pager.
+
+--------------------------------------------------------------------------------
+6.2 STANDARD TENURE
+--------------------------------------------------------------------------------
+
+24-06-24 Policy:
+- 1 year to 5 years
+
+Updated 12-03-25 Policy:
+- 1 year to 6 years for selective customers
+- 6-year flexible tenure basis profile
+- Special Government policy allowed for 6-year tenure, fresh funding as per policy
+
+6-Year Mitigants from 24-06-24:
+- CIBIL >750
+- Green Scorecard only
+- Live / Closed AL or HL track in CIBIL
+- No PL in recent 6 months
+- Eligibility calculated on 5-year tenure basis
+
+CIBIL 0 / -1:
+- Maximum tenure: 3 years
+
+================================================================================
+7. FOIR RULES
+================================================================================
+
+--------------------------------------------------------------------------------
+7.1 STANDARD FOIR GRID - 24-06-24
+--------------------------------------------------------------------------------
+
+Income <= Rs. 20K:
+- CAT AA / A / B / Govt / C: 50%
+- CAT D: 45%
+
+Income > Rs. 20K to Rs. 35K:
+- CAT AA / A / B / Govt / C: 60%
+- CAT D: 50%
+
+Income > Rs. 35K to Rs. 50K:
+- CAT AA / A / B / Govt / C: 60%
+- CAT D: 55%
+
+Income > Rs. 50K:
+- CAT AA / A / B / Govt / C: 70%
+- CAT D: 60%
+
+Additional FOIR:
+- Additional 5% FOIR allowed in CAT A / B / C / D & Government
+- Condition:
+  * Home Loan sanctioned amount >= Rs. 10 Lakhs
+  * Live or closed within 12 months as stated in source
+- Loan in guarantor capacity is not eligible for this additional FOIR.
+
+Unsecured FOIR:
+- Capped at 55%
+
+Unsecured FOIR cap not applicable if:
+- Customer has Rs. 10 Lakhs and above Live / Closed Home Loan
+  OR
+- Customer is staying in Owned House
+- OHP required where stated.
+
+--------------------------------------------------------------------------------
+7.2 UPDATED POLICY 12-03-25 - SPECIAL FOIR
+--------------------------------------------------------------------------------
+
+- 75% FOIR allowed with Live Home Loan tracks
+- 70% FOIR allowed when staying in Owned House in base location
+- 70% FOIR allowed when staying in Rented House in base location
+  if Live or Closed Home Loan > Rs. 10 Lakhs exists in CIBIL
+
+[REVIEW]:
+- These updated one-pager FOIR statements are profile/condition-based.
+- Do not treat 75% as a universal Kotak PL FOIR.
+
+--------------------------------------------------------------------------------
+7.3 FOIR REDUCTION FOR BT / CC BT
+--------------------------------------------------------------------------------
+
+Consolidation:
+- If BT is more than 3 Personal Loans:
+  FOIR is 5% lower than normal norms.
+
+Credit Card BT:
+- If Credit Card outstanding is more than 4 times NTH:
+  FOIR is 5% lower than normal norms.
+
+================================================================================
+8. MULTIPLIER RULES
+================================================================================
+
+Formula:
+- (NTH - Obligation) x Multiplier
+
+--------------------------------------------------------------------------------
+8.1 STANDARD MULTIPLIER GRID
+--------------------------------------------------------------------------------
+
+Income < Rs. 35K:
+- CAT AA: 19
+- CAT A: 19
+- Government: 19
+- CAT B: 15
+- CAT C: 9
+- CAT D: 8
+
+Income Rs. 35K to Rs. 50K:
+- CAT AA: 22
+- CAT A: 22
+- Government: 22
+- CAT B: 18
+- CAT C: 12
+- CAT D: 10
+
+Income Rs. 50K to Rs. 75K:
+- CAT AA: 30
+- CAT A: 26
+- Government: 26
+- CAT B: 24
+- CAT C: 18
+- CAT D: 16
+
+Income > Rs. 75K:
+- CAT AA: 31
+- CAT A: 30
+- Government: 30
+- CAT B: 26
+- CAT C: 20
+- CAT D: 18
+
+--------------------------------------------------------------------------------
+8.2 GREEN SCORECARD MULTIPLIER
+--------------------------------------------------------------------------------
+
+Income Rs. 50K to Rs. 75K:
+- CAT AA: 31
+- CAT A: 27
+- Government: 27
+- CAT B: 25
+- CAT C: 20
+- CAT D: 17
+
+Income > Rs. 75K:
+- CAT AA: 32
+- CAT A: 31
+- Government: 31
+- CAT B: 27
+- CAT C: 26
+- CAT D: 19
+
+CAT E / F / H / J:
+- Follow CAT C multiplier norms.
+
+================================================================================
+9. OTHER INCOME & OBLIGATION RULES
+================================================================================
+
+--------------------------------------------------------------------------------
+9.1 REGULAR FIXED INCENTIVE
+--------------------------------------------------------------------------------
+
+- 50% of regular fixed incentive can be considered with NTH.
+
+--------------------------------------------------------------------------------
+9.2 SALARY VARIANCE / FLUCTUATION
+--------------------------------------------------------------------------------
+
+- 10% salary variance: average it.
+- If fluctuating:
+  * average the amount
+  * consider 50% of the average amount
+
+--------------------------------------------------------------------------------
+9.3 BONUS
+--------------------------------------------------------------------------------
+
+- 50% of Bonus can be considered.
+- Use 50% of last 2 years' average Bonus.
+- Bonus amount considered should not be >50% of NTH.
+
+--------------------------------------------------------------------------------
+9.4 RENTAL INCOME
+--------------------------------------------------------------------------------
+
+- 70% of Rental Income can be considered.
+
+Required:
+- 6 months rental credit banking
+- Ownership proof
+- Rent agreement
+
+--------------------------------------------------------------------------------
+9.5 UPDATED POLICY - ADDITIONAL INCOME TYPES
+--------------------------------------------------------------------------------
+
+Updated one-pager states the following can be considered along with NTH
+to increase eligibility:
+- Bonus
+- Incentive
+- Rental income
+- Pension
+
+Specific pension calculation percentage:
+- NOT_DEFINED in supplied sources.
+
+--------------------------------------------------------------------------------
+9.6 APPLICANT + CO-APPLICANT
+--------------------------------------------------------------------------------
+
+- Applicant and Co-Applicant cases allowed by clubbing both salaries
+  where applicable.
+
+================================================================================
+10. BOUNCE / BANKING RULES
+================================================================================
+
+Bounce Norms:
+- NIL bounce in latest 3 months
+- 1 bounce can be considered in 6 months
+- Not more than 2 bounces in 12 months
+
+Exception:
+- If sufficient funds equal to the EMI amount are available in another account
+  on EMI date, it may be considered "Not a Bounce".
+
+Updated one-pager confirms:
+- Latest-month bounce cases may be allowed if equivalent EMI amount is
+  available in alternate banking.
+
+================================================================================
+11. BALANCE TRANSFER / CREDIT CARD BT
+================================================================================
+
+--------------------------------------------------------------------------------
+11.1 PERSONAL LOAN BT
+--------------------------------------------------------------------------------
+
+- Personal Loan Balance Transfer: Allowed
+
+Updated policy:
+- BT sourcing allowed post 6 MOB for selective / specific customers.
+
+--------------------------------------------------------------------------------
+11.2 CREDIT CARD BT
+--------------------------------------------------------------------------------
+
+- Credit Card BT: Allowed only once
+- Credit Card outstanding should not exceed 4 times salary
+- No Immediate Payment Charges
+- No Kotak Card BT
+- No Immediate Payment status in Kotak Credit Card
+
+FOIR adjustment:
+- If CC outstanding > 4 times NTH:
+  FOIR is 5% lower than normal norms.
+
+--------------------------------------------------------------------------------
+11.3 APRIL 2024 BT PRICING ADD-ON
+--------------------------------------------------------------------------------
+
+BT pricing relative to standard rack:
+
+Platinum:
+- +0.50% of rack
+
+Diamond:
+- +0.75% of rack
+
+Gold:
+- +1.00% of rack
+
+Silver:
+- +1.00% of rack
+
+================================================================================
+12. PRICING / IRR / PROCESSING FEE
+================================================================================
+
+IMPORTANT:
+The following April 2024 pricing is version-specific.
+Use only if this pricing version is active for the case.
+
+--------------------------------------------------------------------------------
+12.1 APRIL 2024 STANDARD RATE GRID
+    APPLICABLE TO DSA & DST
+--------------------------------------------------------------------------------
+
+Category Groups:
+- Platinum: Super CAT A / CAT A / Central Govt / PSU
+- Diamond: CAT B / Rest of Govt
+- Gold: CAT C
+- Silver: CAT D
+
+FRESH CASES:
+
+NTH > Rs. 75,000:
+- Platinum: 11.95%
+- Diamond: 12.70%
+- Gold: 13.70%
+- Silver: 16.70%
+
+NTH > Rs. 50,000 to <= Rs. 75,000:
+- Platinum: 11.95%
+- Diamond: 12.70%
+- Gold: 13.70%
+- Silver: 17.20%
+
+NTH > Rs. 35,000 to <= Rs. 50,000:
+- Platinum: 12.95%
+- Diamond: 13.70%
+- Gold: 14.70%
+- Silver: 17.20%
+
+NTH <= Rs. 35,000:
+- Platinum: 13.70%
+- Diamond: 15.20%
+- Gold: 16.20%
+- Silver: 20.20%
+
+Processing Fees:
+- Platinum: 1.10%
+- Diamond: 1.25%
+- Gold: 1.25%
+- Silver: 1.50%
+
+Kotak Group Employee:
+- ROI: 10.99% flat
+- Processing Fee: Rs. 1
+  (preserved exactly as shown in source)
+
+--------------------------------------------------------------------------------
+12.2 APRIL 2024 STANDARD RATE DEVIATION MATRIX
+--------------------------------------------------------------------------------
+
+RSM / LH:
+- IRR deviation: up to 0.50% from grid
+- Minimum IRR: 12.20%
+- PF deviation: NA
+- Minimum PF: NA
+
+VH:
+- IRR deviation: up to 2% from grid
+- Minimum IRR: 11.45%
+- PF deviation: up to 0.50%
+- Minimum PF: 0.75%
+
+BH:
+- IRR deviation: >2% waiver
+- PF deviation: >0.50%
+- Minimum IRR / Min PF: not explicitly printed
+
+--------------------------------------------------------------------------------
+12.3 APRIL 2024 SPECIAL PROMO CODE OFFER
+--------------------------------------------------------------------------------
+
+< Rs. 10 Lakhs:
+- Refer Standard Rate Grid
+- Special Promo Code Offer not applicable
+
+Rs. 10 Lakhs to <= Rs. 15 Lakhs:
+- Platinum: 11.70%
+- Diamond: 11.70%
+- Gold: NOT_DEFINED in supplied grid
+- CAT D: NOT_DEFINED in supplied grid
+
+> Rs. 15 Lakhs to <= Rs. 20 Lakhs:
+- Platinum: 11.45%
+- Diamond: 11.45%
+- Gold: 11.95%
+- CAT D: 12.45%
+
+> Rs. 20 Lakhs:
+- Platinum: 11.20%
+- Diamond: 11.45%
+- Gold: 11.69%
+- CAT D: 12.20%
+
+Benchmark Mandate:
+
+Platinum / Diamond side:
+- CIBIL Score >=730
+- Salary / NTH >= Rs. 50,000
+
+Gold / CAT D side:
+- CIBIL Score >=730
+- Salary / NTH >= Rs. 1,00,000
+
+Type:
+- Fresh +
+- BT only for the lenders explicitly listed in the source:
+  * HDFC
+  * ICICI
+  * IDFC
+  * Bajaj
+  * Yes Bank
+  * Tata Capital
+  * Axis
+  * SBI
+
+BT Condition:
+- BT pricing can be maximum up to 1.5% lower than existing rate,
+  subject to minimum applicable promo rate.
+
+Source examples:
+- If existing BT rate is 13.5% under Platinum category,
+  minimum offering can be 12% only.
+- If existing BT rate is 12% under Gold category,
+  minimum offering can be 11.49% only.
+
+Deviation:
+- Any deviation from Special Promo Code offer can be approved only by BH.
+
+Applicability note:
+- Same pricing process to be followed for all sourcing including
+  Corporate Salary and PaisaBazaar, as stated in source.
+
+--------------------------------------------------------------------------------
+12.4 UPDATED POLICY 12-03-25 SPECIAL PROMO
+--------------------------------------------------------------------------------
+
+Updated one-pager:
+- Special Promo Offer: 10.99%
+- Loan Amount: Rs. 15 Lakhs and above
+
+[REVIEW]:
+- This newer 2025 offer differs from the April 2024 promo grid.
+- Treat the 2025 offer as a separate version / offer.
+- Do not overwrite the historical April 2024 grid without activation/version check.
+
+================================================================================
+13. FORECLOSURE / PART PAYMENT
+================================================================================
+
+Updated Policy 12-03-25:
+
+Lock-in:
+- No Lock-in Period
+- Customer can close after 1 EMI
+
+Foreclosure:
+- Foreclosure after 1 month with charges
+
+Part Payment:
+- Allowed once in a year
+
+Exact foreclosure charge percentage:
+- NOT_DEFINED in the supplied one-pager.
+
+================================================================================
+14. ADDRESS PROOF / BIOMETRIC RULES
+================================================================================
+
+--------------------------------------------------------------------------------
+14.1 ACCEPTABLE PRESENT ADDRESS PROOFS
+    SOURCE: 28-10-24 IMAGE
+--------------------------------------------------------------------------------
+
+Acceptable present-address proof items explicitly listed:
+- Bank Statement not more than 2 months old
+- Credit Card Statement not more than 2 months old
+- Active Loan Account Statement not more than 2 months old
+- Utility Bill not more than 2 months old:
+  * Mobile
+  * DTH
+  * Landline
+  * Broadband
+- Latest Water Tax receipt
+- Latest Corporation Tax receipt
+- Registered Purchase Deed
+- Registered Rent Agreement
+  * Notarized agreement is NOT accepted
+- Insurance Policy
+- Piped Gas Bill
+- RC Copy of owned two-wheeler / four-wheeler
+
+--------------------------------------------------------------------------------
+14.2 NTB CUSTOMER - NO ADDRESS PROOF UPDATE 01-08-24
+--------------------------------------------------------------------------------
+
+If current address is on Aadhaar:
+- Physical Biometric must be done
+- Then no additional address proof and no additional OVD proof
+  such as DL / Voter ID / Passport is required.
+
+If current address differs from Aadhaar:
+- Physical Biometric must be done
+- Current Address Proof is required from listed options such as:
+  * Driving Licence
+  * Passport
+  * Voter ID
+  * Bank Statement
+  * Credit Card Statement
+  * Wi-Fi Bill
+  * Mobile Postpaid Bill
+
+--------------------------------------------------------------------------------
+14.3 ETB CUSTOMER - NO ADDRESS PROOF UPDATE 01-08-24
+--------------------------------------------------------------------------------
+
+Physical Biometric may be avoided when customer has:
+- Address proof such as:
+  * Driving Licence
+  * Passport
+  * Voter ID
+  * Bank Statement
+  * Credit Card Statement
+  * Wi-Fi Bill
+  * Mobile Postpaid Bill
+- AND OHP, as stated in source.
+
+For Non-Physical Biometric:
+- Additionally 1 OVD required:
+  * Passport
+  * Voter ID
+  * Driving Licence
+
+If current address is only on Aadhaar and customer has no address proof:
+- Physical Biometric must be done to waive address proof.
+
+================================================================================
+15. MERCHANT NAVY / ARMY / SPECIAL PROFILES
+================================================================================
+
+--------------------------------------------------------------------------------
+15.1 MERCHANT NAVY
+--------------------------------------------------------------------------------
+
+Eligible profiles listed:
+- Captain
+- Chief Officer
+- 1st Officer
+- 2nd Officer
+- 3rd Officer
+
+Structure:
+- Merchant Navy applicant considered as co-borrower in Kotak Loan.
+
+Repayment:
+- From Main Applicant's account
+  OR
+- Co-borrower's Savings Account
+
+Documents / Conditions:
+- Continuous Discharge Certificate (CDC) of last 3 years
+- Last 3 contract copies
+- Owned House mandatory
+
+Income:
+- 50% of average salary considered
+- Considered salary should be Rs. 1 Lakh or more
+
+--------------------------------------------------------------------------------
+15.2 ARMY
+--------------------------------------------------------------------------------
+
+- Funding from Field Marshal to Sepoy
+- Corporate Salary and Non-Corporate Salary allowed
+- Age: 21 to 60 years at maturity
+
+Source also states:
+- Multiplier, FOIR and product capping of CAT A for profiles above JCO ranks
+  but exact separate numeric grid is not supplied in visible policy text.
+
+If such special capping is needed:
+- NEEDS_REVIEW unless exact verified rule is available.
+
+--------------------------------------------------------------------------------
+15.3 OTHER UPDATED-POLICY PROFILES
+--------------------------------------------------------------------------------
+
+Updated one-pager states the following profiles are allowed:
+- Shipping
+- Trust
+- NGO
+- LLP
+- Navy
+- Army
+
+Use only subject to any applicable detailed policy conditions.
+Do not infer identical rules across all these profiles.
+
+================================================================================
+16. HYBRID OD POLICY
+================================================================================
+
+IMPORTANT:
+Hybrid OD is a separate Personal Loan Hybrid Overdraft product path.
+Do not mix its CIBIL/NTH/app-score rules into normal Personal Loan eligibility.
+
+--------------------------------------------------------------------------------
+16.1 UPDATED POLICY 12-03-25
+--------------------------------------------------------------------------------
+
+- Hybrid OD will be funded for Kotak Salary Account profiles.
+
+--------------------------------------------------------------------------------
+16.2 OD REVISED POLICY 11-01-23 - APP SCORE
+--------------------------------------------------------------------------------
+
+Kotak Salary Account:
+- Green & Yellow selective segment
+
+Non-Kotak Salary Account:
+- Only Green
+
+--------------------------------------------------------------------------------
+16.3 OD REVISED POLICY - KOTAK SALARY ACCOUNT
+--------------------------------------------------------------------------------
+
+CAT A / CAT B / Government:
+- App Score Green
+- CIBIL >=730
+- Allowed
+
+CAT A / CAT B with App Score Yellow:
+- CIBIL >=730
+- NTH >= Rs. 75,000
+- Allowed with CAT C multiplier
+
+CAT C - Information Technology sector:
+- App Score Green
+- CIBIL >=730
+- NTH >= Rs. 75,000
+- Allowed
+
+Minimum CIBIL:
+- >=730 for Kotak Salary Account
+
+Minimum Net Take Home:
+- Rs. 50,000 for Kotak Salary Account
+
+Repayment Mode:
+- SI in Kotak Salary Account
+
+--------------------------------------------------------------------------------
+16.4 OD REVISED POLICY - NON-KOTAK SALARY ACCOUNT
+--------------------------------------------------------------------------------
+
+Allowed categories / profile shown:
+- CAT AA
+- CAT A
+- CAT B
+- Government
+- CAT C - IT only
+
+Conditions:
+- App Score Green
+- CIBIL >=750
+
+Minimum CIBIL:
+- >=750
+
+Minimum Net Take Home:
+- Rs. 1 Lakh
+
+Repayment:
+- SI in Savings Account and ENACH / salary-credit-account arrangement
+  as stated in the source image.
+
+[REVIEW]:
+- 2023 OD source allows a Non-Kotak Salary path under stricter criteria.
+- 2025 updated one-pager says Hybrid OD will be funded for Kotak Salary A/c profiles.
+- Apply current active Hybrid OD version; do not guess.
+
+--------------------------------------------------------------------------------
+16.5 HYBRID OD AGREEMENT - POLICY-RELEVANT OPERATING TERMS
+--------------------------------------------------------------------------------
+
+Only operational/policy-relevant clauses are retained from the agreement.
+Generic legal boilerplate is excluded.
+
+Standing Instruction:
+- SI is set between Savings/Current Account and Kotak Hybrid/Dropline OD account.
+- Principal / interest / charges can be recovered from the linked account
+  when due, subject to sufficient balance.
+
+Interest:
+- Interest is charged on daily outstanding balance.
+- Monthly interest is debited to the OD account.
+- Interest debited for the month is required to be serviced before the next
+  month's interest debit as described in the agreement.
+
+Facility Limit:
+- Maximum Overdraft Limit is the maximum sanctioned limit.
+- Operating Limit may be lower.
+- For dropline structure, operating limit can reduce periodically as per agreement.
+- Bank may review the Maximum / Operating Limit annually.
+
+Annual Review / Monitoring:
+- Bank may review facility annually.
+- Monitoring may consider:
+  * utilization
+  * interest servicing
+  * over-utilization
+  * cheque returns
+  * payment regularity
+  * latest financials
+  * other relevant factors/documents
+- Bank may modify limit / tenure or discontinue facility based on review.
+
+Permitted Use:
+- Personal expenses
+- Must not be used for speculative purposes
+- Agreement also prohibits use for capital-market and real-estate activities.
+
+Charges:
+- Annual review, non-utilization, premature closure, swap, non-maintenance
+  and other charges are governed by Schedule A / applicable bank terms.
+- Exact percentages are not included here when not explicitly supplied in
+  the visible source values.
+
+================================================================================
+17. SECTOR RESTRICTIONS
+================================================================================
+
+KMBL PL Policy 24-06-24 lists restricted/excluded sectors.
+
+All Categories:
+- Construction and Real Estate
+- Manpower & Staffing
+- Aviation
+- Travel
+- Tourism
+- Restaurant
+
+CAT C & D restrictions also list:
+- Transport & Logistics
+- Media
+- Textiles
+- Jewellery
+- NBFCs
+
+Group Exceptions:
+The source states the above restriction is "Not Applicable" for the listed groups:
+- Tata
+- Godrej
+- Aditya Birla, except Vodafone
+- Murugappa
+- Reliance - Mukesh Ambani Group
+- Bharti
+- Sundaram
+- Infosys
+- Mahindra
+- Wipro
+- ITC
+- HDFC
+- Bajaj Finance
+- Bajaj Auto
+- SBI
+- Axis
+- L&T
+- ICICI
+- TVS
+
+RULE:
+- Preserve the sector restriction and group-exception scope exactly.
+- Do not generalize exemptions to companies not explicitly listed.
+
+================================================================================
+18. CONFLICTS / REVIEW ITEMS
+================================================================================
+
+1. MINIMUM NTH
+   24-06-24:
+   - AA/A/B/Govt: 25K
+   - C/D/E/F/H/J mostly 30K
+   - KPO/BPO 35K
+   12-03-25:
+   - AA/A/B/Govt: 25K
+   - Others: 35K
+   STATUS: [REVIEW / VERSION-SPECIFIC]
+
+2. TENURE
+   24-06-24:
+   - Standard 1-5 years
+   - 6 years only with defined mitigants
+   12-03-25:
+   - 1-6 years for selective customers
+   STATUS: [REVIEW / PROFILE-SPECIFIC]
+
+3. CIBIL 0/-1
+   Updated one-pager allows fresh loans up to 10L for named categories with
+   conditions, but full conditions are not supplied.
+   STATUS: [REVIEW when conditions are required]
+
+4. FOIR
+   Standard grid provides income/category percentages.
+   Updated one-pager separately advertises 70%-75% conditional FOIR.
+   STATUS:
+   Apply the exact applicable condition; never use one universal FOIR.
+
+5. APRIL 2024 PRICING VS MARCH 2025 PROMO
+   April 2024 provides category/NTH standard and promo grids.
+   March 2025 states 10.99% promo for LA >=15L.
+   STATUS: [VERSION-SPECIFIC]
+   Use active pricing version only.
+
+6. APRIL 2024 PROMO - 10L TO <=15L
+   Platinum and Diamond values are visible.
+   Gold and CAT D values are not printed in the supplied grid row.
+   STATUS:
+   Gold / CAT D = NOT_DEFINED, do not infer.
+
+7. HYBRID OD
+   2023 revised OD policy provides both Kotak and Non-Kotak Salary paths.
+   2025 updated PL one-pager says Hybrid OD funded for Kotak Salary A/c profiles.
+   STATUS: [REVIEW / CURRENT VERSION REQUIRED]
+
+8. ADDRESS PROOF
+   Present-address proof list and biometric-waiver rules are separate.
+   Apply NTB / ETB and Aadhaar-current-address logic exactly.
+
+9. MERCHANT NAVY / OTHER SPECIAL PROFILES
+   Detailed Merchant Navy rules are available.
+   Other listed profiles such as Trust/NGO/LLP do not have complete numeric
+   underwriting rules in supplied sources.
+   STATUS: NEEDS_REVIEW if exact eligibility criteria are required.
+
+10. SECTOR RESTRICTIONS
+    Restriction/exemption rules are based on 24-06-24 policy.
+    Verify current activation before applying to newer cases.
+
+================================================================================
+19. AI / BACKEND EVALUATION RULES
+================================================================================
+
+STANDARD PERSONAL LOAN PATH:
+Kotak Mahindra Bank
+-> Personal Loan
+-> Salaried
+-> normal CIBIL or CIBIL 0/-1
+-> exact Kotak company category
+-> exact NTH / salary rule
+-> age
+-> loan amount
+-> tenure / 6-year mitigants
+-> FOIR
+-> multiplier
+-> bounce / banking rules
+-> sector restriction if applicable
+-> applicable pricing version
+-> documents / address verification when required
+
+CIBIL 0/-1 PATH:
+- Do not apply standard CIBIL >700 decline logic.
+- Use specific CIBIL 0/-1 program.
+- If required conditions are missing:
+  NEEDS_REVIEW.
+
+6-YEAR TENURE PATH:
+- Apply only where selective-profile / mitigant conditions are met.
+- Use 5-year tenure for eligibility calculation where the 24-06-24 rule applies.
+
+BT PATH:
+- PL BT allowed
+- Verify minimum MOB where updated policy requires it
+- For CC BT, enforce one-time rule and credit-card restrictions
+- Apply 5% FOIR reduction where applicable
+- Use correct BT pricing version
+
+PRICING PATH:
+- Verify active pricing version
+- Exact category tier
+- Exact NTH band
+- Fresh vs BT
+- Exact loan amount band
+- Exact benchmark CIBIL/NTH
+- Exact deviation authority
+- Do not apply historical promo if a different current version is active
+
+ADDRESS-PROOF PATH:
+- Determine NTB vs ETB
+- Determine whether current address matches Aadhaar
+- Determine physical vs non-physical biometric
+- Apply only the corresponding proof requirements
+
+HYBRID OD PATH:
+- Treat as separate product/program
+- Resolve Kotak vs Non-Kotak Salary account applicability from active version
+- Apply app score, category, CIBIL, NTH and repayment rules from exact OD policy
+- Do not use OD thresholds for normal PL
+
+STATUS LOGIC:
+
+ELIGIBLE:
+- All mandatory applicable verified rules are available and passed.
+
+NOT_ELIGIBLE:
+- An explicit applicable verified Kotak policy rule fails.
+
+NEEDS_REVIEW:
+- Category unresolved
+- Active policy version unclear
+- Required CIBIL 0/-1 condition missing
+- Special-profile criteria incomplete
+- Historical/new pricing applicability unclear
+- Hybrid OD version applicability unclear
+- Required field would otherwise need to be guessed
+
+NEVER:
+- Invent a rule.
+- Borrow another bank's category.
+- Borrow another program's CIBIL/NTH/FOIR.
+- Mix Standard PL and Hybrid OD.
+- Mix normal CIBIL and CIBIL 0/-1.
+- Apply a marketing slogan as a complete underwriting rule.
+- Use pincodes / branch / DMA / DSA fields as eligibility criteria.
+- Silently overwrite a newer rule with an older policy value.
+
+================================================================================
+END OF KOTAK MAHINDRA BANK PERSONAL LOAN POLICY RULEBOOK
+================================================================================

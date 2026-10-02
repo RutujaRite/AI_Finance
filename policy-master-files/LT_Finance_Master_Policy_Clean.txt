@@ -1,0 +1,493 @@
+================================================================================
+L&T FINANCE PERSONAL LOAN - MASTER POLICY
+================================================================================
+
+BANK: L&T Finance
+PRODUCT: Personal Loan
+
+================================================================================
+1. TARGET SEGMENT
+================================================================================
+
+- Salaried individuals only.
+- NRI profiles are not allowed.
+- Partnership firms are not allowed.
+- Proprietorship firms are not allowed.
+
+================================================================================
+2. COMPANY CATEGORIES
+================================================================================
+
+Company categories:
+- Super CAT A
+- CAT A
+- CAT B
+- CAT C
+- CAT D
+- CAT E / Others
+
+Company category must be resolved from the L&T company master.
+
+================================================================================
+3. AGE
+================================================================================
+
+- Minimum Age: 21 years
+- Maximum Age: 60 years at loan maturity
+
+================================================================================
+4. MINIMUM NET MONTHLY SALARY
+================================================================================
+
+AGE <= 30 YEARS
+
+Metro:
+- Minimum Salary: Rs. 35,000
+
+Tier 1:
+- Super CAT A / CAT A / CAT B: Rs. 25,000
+- CAT C / CAT D / CAT E: Rs. 30,000
+
+Tier 2:
+- Minimum Salary: Rs. 25,000
+
+Tier 3+:
+- Minimum Salary: Rs. 20,000
+
+Company Category E:
+- Minimum Salary: Rs. 40,000
+
+
+AGE > 30 YEARS
+
+Metro:
+- Minimum Salary: Rs. 40,000
+
+Tier 1:
+- Minimum Salary: Rs. 35,000
+
+Tier 2:
+- Minimum Salary: Rs. 30,000
+
+Tier 3+:
+- Minimum Salary: Rs. 25,000
+
+Company Category E:
+- Minimum Salary: Rs. 50,000
+
+================================================================================
+5. CIBIL / NTC
+================================================================================
+
+Standard CIBIL:
+- CIBIL V3 >= 700
+
+NTC / CIBIL -1:
+- Allowed under separate NTC policy.
+
+NTC Maximum Loan Amount:
+- Super CAT A / CAT A: Up to Rs. 10 Lakhs
+- All other categories: Up to Rs. 5 Lakhs
+
+================================================================================
+6. LOAN AMOUNT
+================================================================================
+
+- Minimum Loan Amount: Rs. 1 Lakh
+- Maximum Loan Amount: Up to Rs. 30 Lakhs
+
+NTC:
+- Super CAT A / CAT A: Maximum Rs. 10 Lakhs
+- Other categories: Maximum Rs. 5 Lakhs
+
+================================================================================
+7. TENURE
+================================================================================
+
+- Minimum Tenure: 12 months
+- Maximum Tenure: 72 months
+
+Income up to Rs. 50,000:
+- Maximum Tenure: 48 months
+
+For eligible CAT A / B / C / D customers with salary Rs. 50,000+:
+- Tenure may go up to 72 months where applicable.
+- Eligibility calculation may be considered on 60-month basis where the
+  applicable policy requires it.
+
+================================================================================
+8. FOIR
+================================================================================
+
+Super CAT A / CAT A / CAT B:
+- FOIR: 60% to 80%
+
+CAT C:
+- FOIR: 55% to 75%
+
+CAT D / CAT E:
+- FOIR: 50% to 70%
+
+High-income policy:
+- Salary Rs. 1.5 Lakhs: FOIR up to 70%
+- Salary Rs. 2 Lakhs: FOIR up to 80%
+
+ABB:
+- Up to 1:1.5
+
+================================================================================
+9. ADDITIONAL INCOME
+================================================================================
+
+Bonus:
+- 50% of credited bonus amount may be considered.
+
+Rental Income:
+- Up to 100% may be considered subject to policy and documentation.
+
+Incentive:
+- Monthly credited incentive: 100%
+- Quarterly incentive: 50%
+- Half-yearly incentive: 50%
+
+Rental Income Documents:
+- Registered Rent Agreement
+- Rent credits in Bank Statement
+- Notarized rent agreement is not accepted.
+
+Consultancy Income Documents:
+- 26AS or Form 16(A)
+- Document should not be more than 15 months old.
+
+================================================================================
+10. ROI / PRICING GRID
+================================================================================
+
+CATEGORY COLUMNS:
+- Super CAT A & CAT A
+- CAT B
+- CAT C
+- CAT D / E & Others
+
+--------------------------------------------------------------------------------
+CIBIL 700 - 750
+--------------------------------------------------------------------------------
+
+INCOME Rs. 30K - 50K
+
+Loan Amount 50K - 4.99L:
+- Super CAT A / CAT A: 16.75%
+- CAT B: 17.00%
+- CAT C: 17.50%
+- CAT D / E & Others: 18.50%
+
+Loan Amount 5L - 7L:
+- Super CAT A / CAT A: 16.00%
+- CAT B: 16.75%
+- CAT C: 17.00%
+- CAT D / E & Others: 18.00%
+
+
+INCOME Rs. 50K - 1L
+
+Loan Amount 50K - 4.99L:
+- Super CAT A / CAT A: 15.50%
+- CAT B: 16.00%
+- CAT C: 16.50%
+- CAT D / E & Others: 17.00%
+
+Loan Amount 5L - 9.99L:
+- Super CAT A / CAT A: 15.25%
+- CAT B: 15.75%
+- CAT C: 16.75%
+- CAT D / E & Others: 16.50%
+
+Loan Amount 10L - 14.99L:
+- Super CAT A / CAT A: 15.00%
+- CAT B: 15.25%
+- CAT C: 16.25%
+- CAT D / E & Others: 16.50%
+
+Loan Amount 15L - 25L:
+- Super CAT A / CAT A: 14.75%
+- CAT B: 15.00%
+- CAT C: 16.00%
+- CAT D / E & Others: 16.50%
+
+
+INCOME Rs. 1L - 2L
+
+Loan Amount 50K - 4.99L:
+- Super CAT A / CAT A: 14.75%
+- CAT B: 15.00%
+- CAT C: 15.50%
+- CAT D / E & Others: 16.50%
+
+Loan Amount 5L - 9.99L:
+- Super CAT A / CAT A: 14.00%
+- CAT B: 14.50%
+- CAT C: 15.00%
+- CAT D / E & Others: 16.25%
+
+Loan Amount 10L - 14.99L:
+- Super CAT A / CAT A: 13.50%
+- CAT B: 13.50%
+- CAT C: 14.75%
+- CAT D / E & Others: 16.00%
+
+Loan Amount 15L - 30L:
+- Super CAT A / CAT A: 13.25%
+- CAT B: 13.50%
+- CAT C: 14.50%
+- CAT D / E & Others: 16.00%
+
+
+INCOME Rs. 2L+
+
+Loan Amount 50K - 4.99L:
+- Super CAT A / CAT A: 13.50%
+- CAT B: 14.00%
+- CAT C: 14.50%
+- CAT D / E & Others: 16.00%
+
+Loan Amount 5L - 9.99L:
+- Super CAT A / CAT A: 13.25%
+- CAT B: 13.25%
+- CAT C: 14.00%
+- CAT D / E & Others: 16.00%
+
+Loan Amount 10L - 14.99L:
+- Super CAT A / CAT A: 13.00%
+- CAT B: 12.50%
+- CAT C: 13.75%
+- CAT D / E & Others: 16.00%
+
+Loan Amount 15L - 30L:
+- Super CAT A / CAT A: 12.50%
+- CAT B: 13.00%
+- CAT C: 13.50%
+- CAT D / E & Others: 15.00%
+
+--------------------------------------------------------------------------------
+CIBIL 750+
+--------------------------------------------------------------------------------
+
+INCOME Rs. 30K - 50K
+
+Loan Amount 50K - 4.99L:
+- Super CAT A / CAT A: 15.00%
+- CAT B: 15.25%
+- CAT C: 16.00%
+- CAT D / E & Others: 16.50%
+
+Loan Amount 5L - 7L:
+- Super CAT A / CAT A: 14.50%
+- CAT B: 15.00%
+- CAT C: 15.75%
+- CAT D / E & Others: 16.50%
+
+
+INCOME Rs. 50K - 1L
+
+Loan Amount 50K - 4.99L:
+- Super CAT A / CAT A: 14.50%
+- CAT B: 15.00%
+- CAT C: 16.00%
+- CAT D / E & Others: 16.25%
+
+Loan Amount 5L - 9.99L:
+- Super CAT A / CAT A: 14.50%
+- CAT B: 14.75%
+- CAT C: 16.00%
+- CAT D / E & Others: 16.25%
+
+Loan Amount 10L - 14.99L:
+- Super CAT A / CAT A: 14.25%
+- CAT B: 14.50%
+- CAT C: 16.00%
+- CAT D / E & Others: 16.00%
+
+Loan Amount 15L - 25L:
+- Super CAT A / CAT A: 14.00%
+- CAT B: 14.25%
+- CAT C: 15.50%
+- CAT D / E & Others: 16.00%
+
+
+INCOME Rs. 1L - 2L
+
+Loan Amount 50K - 4.99L:
+- Super CAT A / CAT A: 14.00%
+- CAT B: 14.50%
+- CAT C: 15.00%
+- CAT D / E & Others: 16.25%
+
+Loan Amount 5L - 9.99L:
+- Super CAT A / CAT A: 13.00%
+- CAT B: 13.50%
+- CAT C: 14.25%
+- CAT D / E & Others: 16.00%
+
+Loan Amount 10L - 14.99L:
+- Super CAT A / CAT A: 12.00%
+- CAT B: 12.75%
+- CAT C: 13.75%
+- CAT D / E & Others: 15.75%
+
+Loan Amount 15L - 30L:
+- Super CAT A / CAT A: 11.75%
+- CAT B: 12.25%
+- CAT C: 13.25%
+- CAT D / E & Others: 15.75%
+
+
+INCOME Rs. 2L+
+
+Loan Amount 50K - 4.99L:
+- Super CAT A / CAT A: 12.00%
+- CAT B: 13.00%
+- CAT C: 14.00%
+- CAT D / E & Others: 15.25%
+
+Loan Amount 5L - 9.99L:
+- Super CAT A / CAT A: 12.00%
+- CAT B: 12.50%
+- CAT C: 13.50%
+- CAT D / E & Others: 15.25%
+
+Loan Amount 10L - 14.99L:
+- Super CAT A / CAT A: 11.75%
+- CAT B: 12.25%
+- CAT C: 13.25%
+- CAT D / E & Others: 15.00%
+
+Loan Amount 15L - 30L:
+- Super CAT A / CAT A: 11.50%
+- CAT B: 12.00%
+- CAT C: 13.00%
+- CAT D / E & Others: 14.75%
+
+================================================================================
+11. PROCESSING FEE
+================================================================================
+
+Loan Amount Rs. 1L to < Rs. 5L:
+- Processing Fee: 2.00%
+
+Loan Amount Rs. 5L to < Rs. 10L:
+- Processing Fee: 1.50%
+
+Loan Amount Rs. 10L and above:
+- Processing Fee: 1.25%
+
+================================================================================
+12. BALANCE TRANSFER
+================================================================================
+
+- Only active Personal Loans are eligible for BT.
+- Disbursal value must be more than Rs. 1 Lakh.
+- Minimum 6 or 12 EMIs must be paid depending on company category.
+- Loan must be from an approved financier.
+
+BT Documents:
+- Statement of Account
+- Repayment Schedule
+- Repayment Bank Statement
+
+================================================================================
+13. GOVERNMENT EMPLOYEES
+================================================================================
+
+Government Teachers:
+- Minimum Salary: Rs. 75,000 per month
+
+Grade C & D Employees:
+- Not allowed
+
+Grade 4 Employees:
+- Not allowed
+
+Government Employees:
+- Salary Slip mandatory
+
+================================================================================
+14. BANKING / KYC / VKYC REQUIREMENTS
+================================================================================
+
+Salary Account:
+- Must be linked with login mobile number.
+
+Net Banking:
+- Must be activated in salary account.
+
+Bank Statement:
+- 6 months Salary Account Bank Statement
+- Can be provided through:
+  * Account Aggregator
+  * Net Banking
+  * e-PDF upload
+
+eKYC:
+- DigiLocker should contain Aadhaar and PAN details.
+
+Mandate Registration:
+- Net Banking and/or Debit Card must be active.
+
+VKYC:
+- Customer must enable:
+  * Microphone
+  * Camera
+  * Location
+
+Compulsory VKYC Documents:
+- PAN
+- Aadhaar
+- Current Address Proof
+
+Accepted Address Proof:
+- Passport
+- Driving Licence
+- Electricity Bill
+- Water Bill
+- Mobile Postpaid Bill
+- Municipal / Property Tax Receipt
+- Rent Agreement with Utility Bill
+
+================================================================================
+15. DOCUMENT REQUIREMENTS
+================================================================================
+
+KYC:
+- Aadhaar
+- PAN
+
+Banking:
+- 6 months Salary Account Bank Statement
+
+Address:
+- Current Address Proof
+
+Rental Income:
+- Registered Rent Agreement
+- Rent credits in Bank Statement
+
+Consultancy Income:
+- 26AS or Form 16(A), not more than 15 months old
+
+Government Employees:
+- Salary Slip mandatory
+
+================================================================================
+16. PART PAYMENT / FORECLOSURE
+================================================================================
+
+Supplemental policy states:
+- Part Payment allowed after 6 EMIs
+- Foreclosure allowed after 6 EMIs
+
+Exact charges / limits:
+- Not specified in supplied policy material.
+
+================================================================================
+END OF L&T FINANCE PERSONAL LOAN MASTER POLICY
+================================================================================

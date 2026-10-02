@@ -1,0 +1,538 @@
+================================================================================
+TATA CAPITAL PERSONAL LOAN - MASTER POLICY
+================================================================================
+
+BANK: Tata Capital Limited
+PRODUCT: Personal Loan
+PRIMARY PROFILE: Salaried
+
+================================================================================
+1. NORMAL SALARIED PERSONAL LOAN
+================================================================================
+
+Target Customer:
+- Salaried profiles
+
+Age:
+- Minimum: 21 years
+- Maximum: 58 years
+- At last EMI, retirement age may be considered where applicable, subject to
+  maximum age 65 years under the normal salaried policy
+
+Residence Stability:
+- Minimum 6 months in current residence
+
+Employment Stability:
+- Current employment: Minimum 12 months
+- Total employment stability: 24 months
+- If applicant age is >=26 years and current employment stability of 1 year is
+  satisfied, 2-year stability proof may not be required
+- Total job stability proof may be waived where customer has an eligible
+  individual tradeline > Rs.1 Lakh opened more than 2 years ago, subject to policy
+
+Minimum Net Salary:
+- Tata Group Employee (TGE): Rs.15,000
+- Super CAT A / CAT A: Rs.20,000
+- CAT B / Government: Rs.25,000
+- Unlisted Company: Rs.27,000 under the later updated policy
+
+Minimum Loan Amount:
+- Rs.75,000 under Normal Salaried policy
+
+Maximum Loan Amount:
+- Up to Rs.35 Lakhs for applicable categories
+- CAT C / lower applicable category cap may be Rs.25 Lakhs as per normal policy table
+- For Loan Amount > Rs.25 Lakhs:
+  - Credit Life Insurance mandatory
+  - No deviation on FOIR / multiplier
+  - Minimum monthly salary: Rs.1.50 Lakhs
+
+CIBIL:
+- Normal salaried base policy: 725+
+- Updated policy separately allows CIBIL 0 / -1 under applicable programs
+- Do not apply CIBIL 0 / -1 to programs that explicitly exclude it
+
+Tenure:
+- Up to 72 months for eligible salary/category profiles
+- CAT C normal salaried: Maximum 60 months
+- Salary > Rs.30,000 required where 72-month rule applies
+
+================================================================================
+2. FOIR
+================================================================================
+
+Salary <= Rs.25,000:
+- Maximum FOIR: 50%
+- Maximum Unsecured FOIR: 40%
+
+Salary > Rs.25,000 to Rs.50,000:
+- Maximum FOIR: 60%
+- Maximum Unsecured FOIR: 50%
+
+Salary > Rs.50,000 to Rs.75,000:
+- Maximum FOIR: 65%
+- Maximum Unsecured FOIR: 55%
+
+Salary > Rs.75,000:
+- Maximum FOIR: 75%
+- Maximum Unsecured FOIR: 65%
+
+================================================================================
+3. ABB
+================================================================================
+
+ABB rule applies to:
+- CAT C
+- Unapproved company category
+
+ABB Requirement:
+- ABB = 1 time proposed EMI
+- Alternate banking in individual capacity may be included in ABB calculation
+
+================================================================================
+4. BONUS / ADDITIONAL INCOME
+================================================================================
+
+Salary Bonus:
+- 70% of average of last 2 gross bonuses may be considered
+- Bonus must be regular
+- Annual or half-yearly bonus allowed
+- Salary slips for bonus months required
+- Bonus considered should not exceed 15% of NMI
+
+Rental Income:
+- Rental credit must reflect continuously for at least 6 months
+- 60% of 6-month average monthly rental receipt may be considered
+- Rental income should not exceed 20% of average net salary
+- Rental Agreement required
+
+================================================================================
+5. CREDIT CARD / EXISTING LOAN RULES
+================================================================================
+
+Credit Card Outstanding:
+- Cumulative CC outstanding should not exceed 6 times monthly salary at login
+- CIBIL CC outstanding may be mitigated where valid proof establishes that
+  actual outstanding is below 6 times monthly NTH
+
+Active Tata Capital Personal Loans:
+- Not more than 2 active PLs at underwriting
+- 3rd loan to be treated as Top-Up where applicable
+
+Recent Funding:
+- No Tata Capital loan in last 3 months, excluding Credit Card
+- For applicable internal pre-approved cases, recent-loan checks apply as per policy
+
+CIBIL Velocity:
+- More than 6 PL enquiries in last 30 days not accepted under later update
+- Earlier one-pager states not more than 7 PL enquiries in last 30 days
+- Use the latest active rule
+- If more than 3 PL enquiries are present, recent bank statement may be required
+  before disbursement as per policy
+
+================================================================================
+6. BALANCE TRANSFER
+================================================================================
+
+Maximum BT:
+- Up to 6 BTs including Credit Card BT under normal salaried policy
+
+Credit Card BT:
+- Maximum 5 Credit Card BTs under detailed BT policy
+- No late fee should be reported in Credit Card statement
+
+Internal BT:
+- Not considered under the detailed normal BT rule
+
+BT Documents:
+- Loan Account Statement
+OR
+- Loan Repayment Schedule + latest 3-month bank statement from which the loan
+  has been repaid
+
+OD / PL BT:
+- OD to PL BT is allowed under the updated policy where applicable
+
+================================================================================
+7. LOW INCOME PROGRAM
+================================================================================
+
+Super CAT A / CAT A:
+- Minimum NMI: Rs.15,000
+
+CAT B / CAT C:
+- Minimum NMI: Rs.20,000
+
+Low-Income Band:
+- Super CAT A / CAT A: Rs.15,000 to Rs.20,000
+- CAT B / CAT C: Rs.20,000 to Rs.25,000
+
+Loan Amount:
+- Minimum: Rs.75,000
+- Maximum: Rs.3 Lakhs
+- For specified lower-income sub-band, maximum loan cap restricted to Rs.2 Lakhs
+
+FOIR:
+- Maximum FOIR: 50%
+- Maximum Unsecured FOIR: 40%
+
+Stability:
+- Current Residence: 12 months
+- Current Employment: 12 months
+- Total Employment: 24 months
+
+Not Allowed:
+- Non-supervisory profiles
+- Rented bachelor accommodation with permanent-address restriction as per policy
+
+================================================================================
+8. GOVERNMENT EMPLOYEE POLICY
+================================================================================
+
+Eligible:
+- Central / State Government Departments / Organisations / Ministries
+- Apex / Independent Offices
+- Judiciary
+- Local Civic Bodies
+- Defence
+- Paramilitary
+
+Government Companies / PSUs:
+- To be evaluated under normal Personal Loan program
+
+Minimum Net Salary:
+- Rs.20,000
+
+Maximum Tenure:
+- 72 months
+
+Minimum Loan Amount:
+- Rs.75,000
+
+Residence Stability:
+- Minimum 6 months
+
+Current Employment Stability:
+- Minimum 12 months
+
+Defence:
+- Service Certificate signed by Commanding Officer / Adjutant required
+- With valid Service Certificate, residence FI and employment validation may
+  be waived as stated in policy
+
+Maximum Loan:
+- Junior Commissioned Officer: Rs.10 Lakhs
+- Non-Commissioned Officer: Rs.7.5 Lakhs
+
+================================================================================
+9. UNAPPROVED COMPANY EMPLOYEE PROGRAM
+================================================================================
+
+Minimum Loan Amount:
+- Rs.1 Lakh
+
+Maximum Loan Amount:
+- Rs.10 Lakhs
+
+Age:
+- Minimum: 25 years
+- Maximum: 58 years at loan maturity
+
+Maximum Tenure:
+- 60 months
+
+Minimum Income:
+- Loan < Rs.2 Lakhs: Rs.25,000
+- Loan > Rs.2 Lakhs: Rs.30,000
+
+Residence Stability:
+- Rented: Minimum 1 year
+- Self-Owned: May be <1 year if ownership proof is documented
+
+Employment:
+- Current Employment Stability: Minimum 1 year
+- Total Employment Stability: 3 years
+
+Verification:
+- Residence FI mandatory
+- Permanent Address FI mandatory for rented accommodation except qualifying
+  existing Tata Capital customer with clean track as specified
+
+Not Allowed:
+- CIBIL -1
+- Rented Bachelor Accommodation
+- Gold Loan / CD loan history where excluded by policy
+- Real Estate
+- EdTech
+- Diamond Traders
+
+================================================================================
+10. PROPRIETORSHIP / PARTNERSHIP EMPLOYER PROGRAM
+================================================================================
+
+This program is for salaried employees working with Proprietorship /
+Partnership employers.
+
+Loan Amount:
+- Minimum: Rs.1 Lakh
+- Maximum: Rs.7.5 Lakhs under the later Dec-2024 update
+
+Income:
+- Net Salary Rs.25,000: Maximum funding Rs.2 Lakhs
+- Net Salary Rs.30,000+: Funding up to Rs.7.5 Lakhs
+
+Age:
+- Minimum: 25 years
+- Maximum: 58 years
+
+Tenure:
+- 12 to 48 months
+
+CIBIL:
+- Minimum: 700+
+- CIBIL -1: Not allowed
+
+FOIR:
+- Maximum: 50%
+
+Employment:
+- Minimum 1 year stability in same company
+- Total employment / city stability requirements apply as per detailed policy
+
+Banking / Income Verification:
+- Salary credit through RTGS / NEFT
+- Banking / Perfios required
+- Form 16 required where applicable
+- If Form 16 unavailable, Profile RCU may be required as stated in later update
+
+Residence:
+- For rented residence, Permanent FI mandatory
+- Rented Bachelor Accommodation: Not allowed
+
+ABB:
+- Not applicable under the later Dec-2024 update
+
+BT:
+- Maximum 3 BTs
+- Includes maximum 1 Credit Card BT
+
+Not Allowed:
+- CIBIL -1
+- CCOD
+- Rented Bachelor
+- Negative Profiles
+
+Pricing:
+- ROI: 21% to 25%
+- PF: 2%
+- Insurance: Mandatory
+
+================================================================================
+11. CURRENT RAAC PRICING - PL TERM LOAN
+================================================================================
+
+SOURCE: New Rate Matrix dated 15-Apr-2025
+SOURCING: DSA / Aggregator / Connector
+
+Base pricing is determined by NTH and company category.
+CIBIL adjustment is applied separately.
+
+Columns:
+- TGE
+- Super CAT A
+- CAT A / Government
+- CAT B
+- CAT C
+- Unlisted
+
+NTH < Rs.25K:
+- TGE: 14.90%
+- Super CAT A: 16.15%
+- CAT A / Govt: 16.40%
+- CAT B: NA
+- CAT C: NA
+- Unlisted: NA
+
+NTH >= Rs.25K to < Rs.30K:
+- TGE: 14.15%
+- Super CAT A: 15.65%
+- CAT A / Govt: 15.90%
+- CAT B: 16.15%
+- CAT C: 16.40%
+- Unlisted: 16.65%
+
+NTH >= Rs.30K to < Rs.50K:
+- TGE: 13.40%
+- Super CAT A: 14.40%
+- CAT A / Govt: 14.65%
+- CAT B: 14.90%
+- CAT C: 15.15%
+- Unlisted: 15.40%
+
+NTH >= Rs.50K to < Rs.75K:
+- TGE: 12.65%
+- Super CAT A: 14.15%
+- CAT A / Govt: 14.40%
+- CAT B: 14.65%
+- CAT C: 14.90%
+- Unlisted: 15.15%
+
+NTH >= Rs.75K to < Rs.125K:
+- TGE: 12.15%
+- Super CAT A: 13.65%
+- CAT A / Govt: 13.90%
+- CAT B: 14.15%
+- CAT C: 14.40%
+- Unlisted: 14.65%
+
+NTH >= Rs.125K to < Rs.175K:
+- TGE: 11.90%
+- Super CAT A: 13.40%
+- CAT A / Govt: 13.65%
+- CAT B: 13.90%
+- CAT C: 14.15%
+- Unlisted: 14.15%
+
+NTH >= Rs.175K:
+- TGE: 11.65%
+- Super CAT A: 11.90%
+- CAT A / Govt: 12.15%
+- CAT B: 12.40%
+- CAT C: 12.65%
+- Unlisted: 12.90%
+
+================================================================================
+12. CIBIL ADJUSTMENT OVER TERM-LOAN RAAC
+================================================================================
+
+For NTH bands below Rs.75K:
+- CIBIL >=775: -0.25%
+- CIBIL >=725 to <775: +0.00%
+- CIBIL >=700 to <725: +0.25%
+- CIBIL <700 including 0 / -1: +1.00%
+
+For higher NTH bands shown in the rate matrix:
+- CIBIL >=775: 0.00% where specified
+- CIBIL >=725 to <775: 0.00%
+- CIBIL >=700 to <725: +0.25%
+- CIBIL <700 including 0 / -1: +1.00%
+
+Always use the exact adjustment row corresponding to the selected NTH row.
+
+================================================================================
+13. PL TERM LOAN PROCESSING FEE
+================================================================================
+
+NTH < Rs.25K:
+- TGE / Super A / CAT A / Govt group: 2.75%
+- CAT B / CAT C: NA
+- Unlisted: NA
+
+NTH >= Rs.25K to < Rs.30K:
+- TGE / Super A / CAT A / Govt: 2.00%
+- CAT B / CAT C: 2.50%
+- Unlisted: 2.75%
+
+NTH >= Rs.30K to < Rs.50K:
+- TGE / Super A / CAT A / Govt: 1.50%
+- CAT B / CAT C: 2.00%
+- Unlisted: 2.25%
+
+NTH >= Rs.50K to < Rs.75K:
+- TGE / Super A / CAT A / Govt: 1.25%
+- CAT B / CAT C: 1.75%
+- Unlisted: 2.00%
+
+NTH >= Rs.75K to < Rs.125K:
+- TGE / Super A / CAT A / Govt: 1.00%
+- CAT B / CAT C: 1.50%
+- Unlisted: 1.75%
+
+NTH >= Rs.125K to < Rs.175K:
+- TGE / Super A / CAT A / Govt: 0.75%
+- CAT B / CAT C: 1.25%
+- Unlisted: 1.50%
+
+NTH >= Rs.175K:
+- TGE / Super A / CAT A / Govt: 0.50%
+- CAT B / CAT C: 1.00%
+- Unlisted: 1.25%
+
+================================================================================
+14. HYBRID TERM LOAN RAAC PRICING
+================================================================================
+
+NTH < Rs.100K:
+- TGE: 16.15%
+- Super CAT A: 16.15%
+- CAT A / Govt: 16.40%
+- CAT B: 16.65%
+- CAT C: 16.90%
+- Unlisted: 17.15%
+
+NTH >= Rs.100K to < Rs.150K:
+- TGE: 15.40%
+- Super CAT A: 15.90%
+- CAT A / Govt: 16.15%
+- CAT B: 16.40%
+- CAT C: 16.65%
+- Unlisted: 16.90%
+
+NTH >= Rs.150K:
+- TGE: 14.65%
+- Super CAT A: 14.90%
+- CAT A / Govt: 15.15%
+- CAT B: 15.40%
+- CAT C: 15.65%
+- Unlisted: 16.65%
+
+CIBIL Adjustment:
+- CIBIL >=775: -0.25% for lower applicable bands; 0.00% where matrix specifies
+- CIBIL >=725 to <775: 0.00%
+- CIBIL >=700 to <725: +0.25%
+- CIBIL <700 including 0 / -1: +1.00%
+
+================================================================================
+15. HYBRID TERM LOAN PROCESSING FEE
+================================================================================
+
+NTH < Rs.100K:
+- TGE / Super A / CAT A / Govt: 1.50%
+- CAT B / CAT C: 1.75%
+- Unlisted: 2.00%
+
+NTH >= Rs.100K to < Rs.150K:
+- TGE / Super A / CAT A / Govt: 1.25%
+- CAT B / CAT C: 1.50%
+- Unlisted: 1.75%
+
+NTH >= Rs.150K:
+- TGE / Super A / CAT A / Govt: 0.75%
+- CAT B / CAT C: 1.25%
+- Unlisted: 1.50%
+
+================================================================================
+16. ADDRESS / BASIC DOCUMENT RULES
+================================================================================
+
+Accepted address proof under updated policy includes:
+- Aadhaar Acknowledgement
+- Gas Bill
+- Bank Statement
+- Postpaid Bill
+- Rental Agreement
+- Other valid KYC address proof
+
+Super CAT A / CAT A:
+- HR Letter accepted where applicable
+
+Proprietorship / Partnership Program:
+- KYC
+- Address Proof
+- 3 months Salary Slips
+- Banking / Perfios
+- Form 16 or applicable RCU validation
+
+================================================================================
+END OF TATA CAPITAL PERSONAL LOAN MASTER POLICY
+================================================================================

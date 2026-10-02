@@ -1,0 +1,217 @@
+===============================================================================
+FINNABLE CREDIT PERSONAL LOAN - POLICY RULEBOOK
+Generated: 2026-08-28
+Source Bank: Finnable Credit (FINNABLE)
+===============================================================================
+
+PURPOSE:
+This is a concise eligibility and pricing rulebook for Finnable Credit Personal Loan.
+It is derived from all source documents and PostgreSQL policy records.
+Use this for AI decision-making, eligibility checks, and policy validation.
+
+SECTIONS:
+1. PROGRAM OVERVIEW
+2. ELIGIBILITY CRITERIA
+3. COMPANY/EMPLOYER CATEGORIES
+4. PRICING & ROI GRIDS
+5. LOAN PARAMETERS
+6. FOIR & MULTIPLIER RULES
+7. NTH / SALARY REQUIREMENTS
+8. BT / CCBT / APP LOAN RULES
+9. DOCUMENT REQUIREMENTS
+10. EXCEPTIONS & DEVIATIONS
+11. CONFLICTS/REVIEW ITEMS
+
+===============================================================================
+1. PROGRAM OVERVIEW
+===============================================================================
+
+Active Programs:
+- Fresh Loan (Personal Loan)
+- Salary Advance
+
+Key Features:
+- Fully digital process
+- No prepayment charges
+- No foreclosure charges
+- Interest charged on reducing principal basis
+- Credit line facility available
+
+===============================================================================
+2. ELIGIBILITY CRITERIA
+===============================================================================
+
+CIBIL/Bureau Requirements:
+- Minimum CIBIL Score: 700
+- CIBIL -1 / 0 / NTC doable
+- No 30 DPD in latest month
+- No 90 DPD in last 3 months
+
+Age Requirements:
+- Minimum Age: 21 years
+- Maximum Age: 60 years
+- Age > 45 and salary < ₹30,000: Not allowed
+
+Employment Types:
+- Salaried Individuals
+- Indian citizens
+
+Work Experience / Employer Tenure:
+- Total minimum 6 months continuous employment required
+- 1 year company vintage in MCA if PF not debited
+- Company vintage not mandatory if PF debited
+- 3 months salary credit in bank account mandatory for current company
+
+Bureau / Delinquency Norms:
+- No 30 DPD in latest month
+- No 90 DPD in last 3 months
+
+===============================================================================
+3. COMPANY/EMPLOYER CATEGORIES
+===============================================================================
+
+Accepted Employer Types:
+- All Pvt Ltd. companies
+- LLP (Limited Liability Partnership)
+- Schools
+- Government establishments
+- Colleges
+- Hospitals
+- Partnership firms
+- Proprietorship firms
+- Construction companies
+- Builder firms
+
+Company Vintage Rules:
+- PF not compulsory for Pvt Ltd, LLP and limited companies
+- 1 year company vintage in MCA required if PF not debited
+- Company vintage not mandatory if PF debited
+
+Special Employer Categories:
+- Partnership and Proprietorship firms: PF Required OR 1 PL track with minimum ₹50,000 loan
+
+===============================================================================
+4. PRICING & ROI GRIDS
+===============================================================================
+
+Base ROI Range:
+- Starting from 15% per annum to 30% per annum on reducing principal basis
+- ROI across sources: 15% - 30% [REVIEW]
+
+Processing Fees:
+- Not explicitly defined in available source documents
+
+Special Pricing:
+- No explicit tiered rate card; ROI subject to system approval based on risk profile
+
+Premium Charges:
+- Not applicable
+
+===============================================================================
+5. LOAN PARAMETERS
+===============================================================================
+
+Loan Amount Caps:
+- Minimum: ₹50,000
+- Maximum: ₹10,00,000
+- Partnership / Proprietorship firms: ₹50,000 to ₹4,50,000
+
+Tenure:
+- Minimum: 12 months
+- Maximum: 36 months
+- 48 months (4 years) for loan amount >= ₹3,00,000
+
+Loan Type Restrictions:
+- Only Fresh Loan provided (no top-up / BT explicitly mentioned)
+
+===============================================================================
+6. FOIR & MULTIPLIER RULES
+===============================================================================
+
+FOIR Limits:
+- Not explicitly defined in available source documents
+
+Multiplier Grid:
+- Not explicitly defined in available source documents
+
+===============================================================================
+7. NTH / SALARY REQUIREMENTS
+===============================================================================
+
+Monthly NTH Requirements:
+- Tier 1 Cities: ₹20,000
+- Tier 2 Cities: ₹15,000
+
+Salary Considerations:
+- Salary should be credited to bank account
+- 3 months salary credit in bank account mandatory for current company
+- Mode of salary: Online by NEFT (not UPI / IMPS / Cheque / Cash)
+- Age > 45 and salary < ₹30,000: Not allowed
+
+===============================================================================
+8. BT / CCBT / APP LOAN RULES
+===============================================================================
+
+Balance Transfer (BT) Rules:
+- Only Fresh Loan provided; BT not explicitly offered
+
+Credit Card BT (CCBT):
+- Not applicable
+
+App Loan Rules:
+- Not explicitly defined in available source documents
+
+===============================================================================
+9. DOCUMENT REQUIREMENTS
+===============================================================================
+
+Mandatory Documents:
+- PAN Card
+- Aadhaar Card
+- 3 salary slips
+- 4 months bank statement
+- Address proof: Not mandatory
+
+Salary Credit Proof:
+- 3 months salary credit in bank account mandatory for current company
+- Mode of salary: Online by NEFT only
+
+===============================================================================
+10. EXCEPTIONS & DEVIATIONS
+===============================================================================
+
+Bounce & Delinquency Norms:
+- No 30 DPD in latest month
+- No 90 DPD in last 3 months
+
+Other Exceptions:
+- CIBIL -1 / 0 / NTC doable
+- Partnership / Proprietorship firms: PF Required OR 1 PL track with minimum ₹50,000 loan
+- Age > 45 and salary < ₹30,000: Not allowed
+- PF not compulsory for Pvt Ltd, LLP and limited companies
+- 1 year company vintage in MCA if PF not debited
+- Company vintage not mandatory if PF debited
+- Total minimum 6 months continuous employment required
+
+Rejection Rules:
+- No 30 DPD in latest month
+- No 90 DPD in last 3 months
+- Age > 45 and salary < ₹30,000
+- Salary mode not NEFT (UPI / IMPS / Cheque / Cash not accepted)
+- Partnership / Proprietorship without PF or 1 PL track
+
+===============================================================================
+11. CONFLICTS/REVIEW ITEMS
+===============================================================================
+
+1. CIBIL: Multiple thresholds found across sources (700, -1, 0, 650, 680). [REVIEW]
+2. ROI: Multiple ranges found across sources (15%-30%, starting from 15%). [REVIEW]
+3. LOAN AMOUNT: Multiple values found across sources (50000, 450000, 1000000, 50000000, 1000000000). [REVIEW]
+4. TENURE: Multiple values found across sources (1-3 years, 4 years for >=3L). [REVIEW]
+5. SALARY: Multiple values found across sources (15000, 20000, 25000, 30000). [REVIEW]
+6. AGE: Maximum age 60 years, but age >45 with salary <30K not allowed. [REVIEW]
+7. EMPLOYER TYPE: Mixed values found (Pvt Ltd, LLP, School, Govt, College, Hospital, Partnership, Proprietorship, Construction, Builder). [REVIEW]
+
+===============================================================================
+END OF FINNABLE CREDIT PERSONAL LOAN POLICY RULEBOOK
+===============================================================================

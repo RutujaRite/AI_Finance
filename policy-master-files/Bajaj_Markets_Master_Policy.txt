@@ -1,0 +1,212 @@
+================================================================================
+BAJAJ MARKETS PERSONAL LOAN - POLICY RULEBOOK
+Generated: 2026-08-27
+Source Bank: Bajaj Markets (BAJAJ_MARKETS)
+================================================================================
+
+PURPOSE:
+This is a concise eligibility and pricing rulebook for Bajaj Markets Personal Loan.
+It is derived from all source documents and PostgreSQL policy records.
+Use this for AI decision-making, eligibility checks, and policy validation.
+
+SECTIONS:
+1. PROGRAM OVERVIEW
+2. ELIGIBILITY CRITERIA
+3. COMPANY/EMPLOYER CATEGORIES
+4. PRICING & ROI
+5. LOAN PARAMETERS
+6. FOIR & MULTIPLIER RULES
+7. NTH / SALARY REQUIREMENTS
+8. BT / CCBT / APP LOAN RULES
+9. DOCUMENT REQUIREMENTS
+10. EXCEPTIONS & DEVIATIONS
+11. CONFLICTS/REVIEW ITEMS
+
+================================================================================
+1. PROGRAM OVERVIEW
+================================================================================
+
+Active Programs:
+- PS-1 (Flexi Personal Loan)
+- Pocket Personal Loan (PPL)
+- Pure Balance Transfer (BT)
+- BT + Top-up
+- PL to Overdraft Conversion
+
+Loan Products:
+- Flexi Personal Loan
+- Term Loan
+- Overdraft
+
+================================================================================
+2. ELIGIBILITY CRITERIA
+================================================================================
+
+CIBIL Score Requirements:
+- Minimum CIBIL: 700
+- PS-1: CIBIL 700+
+- Pocket Personal Loan (PPL): CIBIL 700+
+- Bureau thick file mandatory
+
+Age Requirements:
+- Minimum Age: 25 years
+- Maximum Age: 58 years
+- Age 25-58 (standard across programs)
+- Maximum Age at loan maturity: 48 years (some segments)
+- Listed & Government employees: Allowed basis retirement deviation
+
+Employment Types:
+- Salaried
+
+Work Experience:
+- Employment confirmation: EPFO mandatory
+- EPFO/Official mail accepted as employment proof
+- Alternate employment verification where not available
+- Work from home profiles: Not allowed
+- Office premises as co-working space: Not allowed
+- Contractual employees: Not allowed
+- Proprietorships/Partnerships/HUF/Trusts/Co-operative societies: Not to be funded
+- Applicant should not be promoter of company/partner in firm
+
+Customer Profile:
+- Should be resident Indian
+- Validated through IP Address
+- Negative profile and Industry as per Internal List
+
+================================================================================
+3. COMPANY/EMPLOYER CATEGORIES
+================================================================================
+
+Eligible Company Categories:
+- Listed companies
+- Pvt Ltd companies
+- Limited companies
+- Government entities
+
+Company/Profile Restrictions:
+- Promotor Directors not allowed
+- Negative profile and Industry as per Internal List
+
+================================================================================
+4. PRICING & ROI
+================================================================================
+
+ROI Pricing Grid:
+Program                    | Loan Amount      | ROI
+PS-1 (Flexi Personal Loan) | ₹50k - ₹35L      | 14.5% onwards
+Pocket Personal Loan (PPL) | ₹50k - ₹7L       | 20-30%
+BT Program                 | As per policy    | Reduced ROI on new loan
+Bajaj Markets Promotional  | Up to ₹50,00,000 | Starting from 9.99% p.a.*
+
+Processing Fees:
+- Zero processing fees* (promotional)
+
+================================================================================
+5. LOAN PARAMETERS
+================================================================================
+
+Loan Amount Limits:
+- PS-1 (Flexi Personal Loan): ₹50,000 - ₹35,00,000
+- Pocket Personal Loan (PPL): ₹50,000 - ₹7,00,000
+- BT Program: Up to 105% of outstanding loan POS
+- BFL BT/Overdraft: Up to ₹35,00,000
+
+Tenure:
+- PS-1: 12-84 months
+- PPL: As per eligibility
+- BT Program: Up to 8 years (96 months)
+
+================================================================================
+6. FOIR & MULTIPLIER RULES
+================================================================================
+
+FOIR Limits:
+- Standard FOIR: Up to 75%
+- 100% FOIR allowed for specific segments
+
+================================================================================
+7. NTH / SALARY REQUIREMENTS
+================================================================================
+
+Monthly NTH Requirements:
+- PS-1 (Flexi Personal Loan): ₹35,000 and above
+- Pocket Personal Loan (PPL): ₹15,000 minimum
+
+Salary Considerations:
+- Cash salary, UPI salary, Cheque salary allowed (PPL)
+- No PF, No payslip cases also allowed (PPL)
+- Company listing not required (PPL)
+
+================================================================================
+8. BT / CCBT / APP LOAN RULES
+================================================================================
+
+Balance Transfer (BT) Rules:
+- Pure BT and BT + Top-up allowed
+- Loan amount up to 105% of outstanding loan POS
+- Multiple PL BT allowed
+- 6 EMIs must be completed for BT
+- No bounces in last 12 months
+- FOIR: 100% / Up to 75%
+- Highest tenure up to 8 years in BT program
+- Convert PL to Overdraft
+- EPFO/Official mail accepted as employment proof
+
+Eligible Banks for BT:
+- HDFC BANK
+- TATA CAPITAL
+- IDFC FIRST BANK
+- YES BANK
+- ICICI BANK LTD
+- AXIS BANK
+- KOTAK MAHINDRA BANK
+- ADITYA BIRLA FINANCE LTD
+- STANDARD CHARTERED BANK
+- SBI
+- HSBC
+- INDUSIND BANK
+- CITIBANK
+
+================================================================================
+9. DOCUMENT REQUIREMENTS
+================================================================================
+
+Mandatory Documents:
+- KYC mandatory
+- Payslip
+- Bank statement
+- EPFO validation / Official mail for employment confirmation
+- Alternate employment verification where not available
+- Overall credit comfort to be checked
+
+================================================================================
+10. EXCEPTIONS & DEVIATIONS
+================================================================================
+
+Bounce & Delinquency Norms:
+- No bounces in last 12 months
+
+Other Exceptions:
+- Promotor Directors not allowed
+- Negative profile and Industry as per Internal List
+- Work from home profiles: Not allowed
+- Office premises as co-working space: Not allowed
+- Contractual employees: Not allowed
+- Proprietorships/Partnerships/HUF/Trusts/Co-operative societies: Not to be funded
+- Applicant should not be promoter of company/partner in firm
+- Loan amount capped at ₹20 lakh for some segments
+- Credit may use discretion basis local market conditions
+
+================================================================================
+11. CONFLICTS/REVIEW ITEMS
+================================================================================
+
+1. AGE: Multiple values found across versions (25, 48, 58, retirement deviation). [REVIEW]
+2. LOAN AMOUNT: Multiple values found across versions (50000, 700000, 3500000). [REVIEW]
+3. ROI: Multiple values found across versions (9.99%, 14.5%, 20-30%). [REVIEW]
+4. FOIR: Multiple values found across versions (75%, 100%). [REVIEW]
+5. EMPLOYMENT PROOF: Multiple options (EPFO, Official mail, Alternate verification). [REVIEW]
+
+================================================================================
+END OF BAJAJ MARKETS PERSONAL LOAN POLICY RULEBOOK
+================================================================================

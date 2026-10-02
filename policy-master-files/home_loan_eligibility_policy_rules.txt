@@ -1,0 +1,363 @@
+HOME LOAN ELIGIBILITY POLICY RULES
+=================================
+Source: User-provided bank/home-loan marketing images and "HL Rate Chart 2025.xlsx".
+Purpose: Eligibility/underwriting reference only.
+Excluded: Branch/location information, contact details, marketing statements, DSA information, processing workflow claims, and unrelated service information.
+
+IMPORTANT:
+- The rules below are transcribed/normalized from the supplied sources.
+- Where a source gives a maximum, minimum, FOIR, LTV, tenure, profile, property, or program condition, it is retained.
+- Final approval remains subject to the lender's credit appraisal and applicable policy.
+
+1. PIRAMAL FINANCE – HOME LOAN / HL & LAP
+------------------------------------------------
+Product:
+- Home Loan (HL).
+
+Loan Amount / Funding:
+- Funding/loan starts from ₹25 lakh.
+- Funding limit shown for eligible profiles: up to ₹20 crore in listed metro markets and up to ₹10 crore in other/non-metro markets.
+- Geographic limits are excluded from this file; only the general funding limits are retained.
+
+Eligible Borrower Profiles:
+- Salaried profiles.
+- Self-employed profiles.
+- Advocate profiles.
+- Police department profiles.
+- Media industry profiles.
+- Cinema director and actor profiles.
+- Banking surrogate profiles.
+- Salary profile program.
+- Structured income program.
+- GST and banking assessment program.
+- Pure rental program.
+- Gross profit program.
+- Salary + self-employed combination.
+
+Income Assessment / Eligibility Programs:
+- Banking Surrogate Program.
+- Structured Income Program.
+- GST & Banking Assessment.
+- Pure Rental Program.
+- Gross Profit Program.
+- Salary Profile Program.
+- Salary + Self-Employed Combination.
+- LIP Program.
+- RTR Program.
+- Low LTV Program.
+- LRD Program.
+- AIP up to ₹50 lakh.
+
+Profile Restriction:
+- Current political leader profiles are avoided.
+
+Collateral / Property:
+- Residential and commercial properties.
+- Schools and colleges.
+- Factory and industrial properties.
+- Lodges and resorts.
+- Marriage halls.
+- Vacant land.
+- Commercial purchase properties.
+
+Other Eligibility Rule:
+- Loan approval is subject to credit appraisal and lender policy.
+
+
+2. JANA SMALL FINANCE BANK – SELF-EMPLOYED LAP / OD
+------------------------------------------------
+Product:
+- Self-employed LAP and OD / MSE funding.
+
+Loan Amount:
+- ₹50 lakh to ₹25 crore.
+
+Interest / LTV:
+- ROI shown starting from 10.75% fixed.
+- LTV up to 85%.
+
+Eligible Profiles / Programs:
+- Self-employed / MSE profiles.
+- Banking Surrogate Program.
+- Professional Program.
+- RTR Program.
+
+Banking Surrogate Program:
+- Eligibility up to ₹5 crore.
+- Multiple bank accounts considered.
+- CA and SA accounts accepted.
+- Up to ₹3 crore: 1.25x ABB to EMI.
+- Up to ₹5 crore: 1.5x ABB to EMI.
+- ABB means Average of 365 days / latest 12 months EOD balance of CA/SA accounts.
+
+RTR Program:
+- 12-month track: 1.25x of existing EMI.
+- 18-month track: 1.5x of existing EMI.
+- 24-month track: 1.75x of existing EMI.
+
+Professional Program:
+- Eligibility based on cash profit multiplier.
+- Doctors (MD/MS/MBBS): 4x.
+- Homeopathy/Ayurveda/MDS/Dentist: 2.5x.
+- CA and Architect: 3x.
+- Cash profit = Net Profit after Tax + Depreciation.
+
+Eligible Property Types:
+- Residential.
+- Commercial.
+- Industrial.
+- School/College.
+- PG/Multi-unit.
+- Warehouse.
+- Hospital.
+- Cinema/Theatre.
+- Other property types as accepted under the program.
+
+Note:
+- The supplied image is primarily for self-employed LAP/OD/MSE funding, not a standard salaried home-loan policy.
+
+
+3. IDFC FIRST BANK – HOME LOAN
+------------------------------------------------
+Product:
+- Home Loan.
+
+Loan Amount:
+- Funding from ₹10 lakh to ₹10 crore.
+
+Eligible Borrower Programs:
+- Salaried Program.
+- Self-Employed Program.
+- Banking Surrogate Program.
+- Gross Turnover Program.
+- Gross Receipts Program.
+- High Equity Program.
+- NRI Home Loan.
+- Balance Transfer + Top Up.
+
+Salaried Profile:
+- FOIR up to 80%.
+- Maximum tenure: 30 years.
+- Other CTC components considered.
+
+Self-Employed Profile:
+- FOIR up to 150%.
+- Maximum tenure: 25 years.
+- Loan up to ₹10 crore.
+- Business Banking programs available.
+
+Program Limits:
+- Banking Surrogate Program: up to ₹5 crore.
+- Gross Turnover Program: up to ₹5 crore.
+- Gross Receipts Program: up to ₹3 crore.
+- High Equity Program: up to ₹1 crore.
+
+NRI / Special Profile:
+- NRI and Merchant Navy profiles accepted as stated in the supplied material.
+
+Eligible Property / Loan Purposes:
+- Ready-to-move property.
+- Under-construction property.
+- Resale property.
+- Plot + construction.
+- Self-construction.
+- Balance transfer + top-up.
+
+
+4. BAJAJ HOUSING FINANCE – HOME LOAN
+------------------------------------------------
+Product:
+- Home Loan.
+
+Interest Rate:
+- Starting from 7.25%, depending on profile, CIBIL, and loan amount.
+
+Eligible Profiles:
+- Salaried.
+- Self-employed / SENP.
+- Doctors and CA profiles are specifically referenced.
+
+Loan / Funding Rules:
+- LTV up to 90% of cost sheet for salaried profiles.
+- 100% FOIR for SENP cases.
+- 1.5x multiplier for Doctors & CA profiles.
+- Pro-rata funding available for builder transactions – SENP.
+- Surrogate programs available.
+- SENP resale funding supported.
+- Loan tenure up to 32 years.
+
+Property / Transaction Rules:
+- Builder schemes supported.
+- Deferred OCR scheme supported.
+- Disbursement possible on 3% OCR payment for SENP, as stated in the supplied image.
+
+Other Profile Rules:
+- Salaried and self-employed profiles supported.
+- The supplied material specifically states minimal login fee of ₹1,499 for salaried and ₹2,999 for self-employed; this is a charge, not an eligibility rule, and is included only for source completeness.
+
+
+5. BAJAJ FINSERV – HOME LOAN / AFFORDABLE HOME LOAN
+------------------------------------------------
+Products:
+- Home Loan.
+- Affordable Home Loan.
+- Micro LAP.
+
+Home Loan Limit:
+- Up to ₹50 lakh.
+
+Micro LAP:
+- Up to ₹1 crore.
+
+Eligible Profiles:
+- Salaried.
+- Self-employed.
+- Business assessment.
+- Banking program.
+- Rental income cases.
+- Cash salary profile.
+
+Home Loan Eligibility / Property Rules:
+- Seller balance transfer without additional collateral.
+- 5-foot passage property accepted.
+- Self-construction without plan approval stated as supported.
+- Plot + construction loan supported.
+- Market value funding for resale.
+- No ITR & GST required* as stated in the supplied material.
+- No plan approval required* as stated in the supplied material.
+- Banking profile cases welcome.
+- Cash salary accepted*.
+
+Micro LAP / Property Rules:
+- Industrial LAP.
+- Commercial LAP.
+- Residential LAP.
+- Multi-tenant property.
+- Hospital property.
+- Educational institution property.
+- Marriage hall property.
+- Warehouse funding.
+- Commercial property purchase.
+- Industrial property purchase.
+- OD / Drop Line OD available.
+
+Eligible Property Types:
+- RCC roof property.
+- Tiled house.
+- Commercial property.
+- Industrial property.
+- Hospital property.
+- Educational institution.
+- Residential property.
+- Balance transfer + top-up cases.
+
+
+6. HOME LOAN INTEREST-RATE REFERENCE – 2025
+------------------------------------------------
+These rates are included only as lender product/rate reference. They are NOT eligibility rules.
+
+HDFC Bank:
+- Up to ₹30 lakh: 7.90%.
+- Above ₹30 lakh to ₹75 lakh: 7.90%.
+- Above ₹75 lakh: 7.60%.
+
+Axis Bank:
+- Up to ₹30 lakh: 8.35%–11.90%.
+- Above ₹30 lakh to ₹75 lakh: 8.35%–11.90%.
+- Above ₹75 lakh: 8.35%–9.35%.
+
+State Bank of India:
+- Up to ₹30 lakh: 7.50%–8.70%.
+- Above ₹30 lakh to ₹75 lakh: 7.50%–8.70%.
+- Above ₹75 lakh: 7.50%–8.70%.
+
+Federal Bank:
+- Up to ₹30 lakh: 9.15%.
+- Above ₹30 lakh to ₹75 lakh: 9.15%.
+- Above ₹75 lakh: 9.15%.
+
+ICICI Bank:
+- Up to ₹30 lakh: 8.75%–9.40%.
+- Above ₹30 lakh to ₹75 lakh: 8.75%–9.55%.
+- Above ₹75 lakh: 8.75%–9.65%.
+
+HSBC Bank:
+- Up to ₹30 lakh: 8.00%.
+- Above ₹30 lakh to ₹75 lakh: 7.85%.
+- Above ₹75 lakh: 7.70%.
+
+Kotak Mahindra Bank:
+- Up to ₹30 lakh: 7.99%.
+- Above ₹30 lakh to ₹75 lakh: 7.99%.
+- Above ₹75 lakh: 7.99%.
+
+IDFC FIRST Bank:
+- Up to ₹30 lakh: 8.85%.
+- Above ₹30 lakh to ₹75 lakh: 8.85%.
+- Above ₹75 lakh: 8.85%.
+
+IDBI Bank:
+- Up to ₹30 lakh: 7.75%.
+- Above ₹30 lakh to ₹75 lakh: 7.75%.
+- Above ₹75 lakh: 7.75%.
+
+Punjab National Bank:
+- Up to ₹30 lakh: 7.50%–9.35%.
+- Above ₹30 lakh to ₹75 lakh: 7.45%–9.25%.
+- Above ₹75 lakh: 7.45%–9.25%.
+
+Bajaj Housing Finance:
+- Up to ₹30 lakh: 7.49%–17.00%.
+- Above ₹30 lakh to ₹75 lakh: 7.49%–17.00%.
+- Above ₹75 lakh: 7.49%–17.00%.
+
+RBL Bank:
+- Up to ₹30 lakh: 9.75%–12.45%.
+- Above ₹30 lakh to ₹75 lakh: 9.65%–12.35%.
+- Above ₹75 lakh: 9.50%–12.20%.
+
+PNB Housing Finance:
+- Up to ₹30 lakh: 8.25%–11.50%.
+- Above ₹30 lakh to ₹75 lakh: 8.25%–11.50%.
+- Above ₹75 lakh: 8.25%–12.35%.
+
+Sammaan Capital:
+- Up to ₹30 lakh: 8.75%–15%.
+- Above ₹30 lakh to ₹75 lakh: 8.75%–15%.
+- Above ₹75 lakh: 8.75%–15%.
+
+L&T Finance:
+- Up to ₹30 lakh: 8.65%.
+- Above ₹30 lakh to ₹75 lakh: 8.65%.
+- Above ₹75 lakh: 8.65%.
+
+Tata Capital Housing Finance:
+- Up to ₹30 lakh: 7.99%.
+- Above ₹30 lakh to ₹75 lakh: 7.99%.
+- Above ₹75 lakh: 7.99%.
+
+
+7. ELIGIBILITY CHECKING FIELDS
+------------------------------------------------
+For an automated home-loan eligibility check, compare the applicant against the applicable lender policy using:
+
+- Bank / lender.
+- Loan product.
+- Requested loan amount.
+- Applicant profile: salaried / self-employed / professional / business / NRI where supported.
+- Monthly income or applicable income measure.
+- Existing EMI obligations.
+- FOIR, where specified by lender.
+- CIBIL / credit profile, where specified.
+- Loan tenure.
+- LTV, where specified.
+- Property type.
+- Property purpose: purchase / construction / resale / balance transfer / top-up.
+- Income assessment program, such as banking surrogate, RTR, gross turnover, gross receipts, rental income, structured income, or professional multiplier.
+- Profession, where a lender program has profession-specific multipliers.
+- Required bank-account/ABB criteria, where applicable.
+
+FINAL RULE:
+- Do not mark a borrower eligible solely because one condition matches.
+- A lender should be treated as potentially eligible only when the applicant satisfies all applicable conditions available in that lender's supplied policy data.
+- If a required policy condition is not available in this file, do not invent it. Mark the criterion as "Policy data not provided".
