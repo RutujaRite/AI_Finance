@@ -128,6 +128,12 @@ export default function Topbar({
       href: "/admin/models",
       iconClass: "bi bi-cpu",
     },
+    {
+      id: "agent-studio",
+      label: "AI Agent Studio",
+      href: "/agent-studio",
+      iconClass: "bi bi-robot",
+    },
   ]
 
   const userNavItems: Array<{
@@ -151,6 +157,12 @@ export default function Topbar({
       section: "emi",
       href: "/home?section=emi",
       iconClass: "bi bi-calculator",
+    },
+    {
+      id: "agent-studio",
+      label: "AI Agent Studio",
+      href: "/agent-studio",
+      iconClass: "bi bi-robot",
     },
     {
       id: "profile",
