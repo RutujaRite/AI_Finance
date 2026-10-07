@@ -1,5 +1,5 @@
 /**
- * Universal Agent Tools Registry
+ * Agent Tools Registry
  * Central access point and dispatcher for all AI tools with typed contracts and provenance.
  */
 

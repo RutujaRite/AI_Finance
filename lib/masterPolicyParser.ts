@@ -890,17 +890,7 @@ export function getAllBankRulesForCategory(
       } else if (overallTier === "Self-Employed") {
         cat = "Self-Employed";
       } else {
-        if (bankKey === "bandhan") cat = "Category C";
-        else if (bankKey === "hdfc") cat = "CAT D";
-        else if (bankKey === "icici") cat = "Open Market";
-        else if (bankKey === "idfc") cat = "CAT D";
-        else if (bankKey === "kotak") cat = "CAT C";
-        else if (bankKey === "poonawalla") cat = "CAT C";
-        else if (bankKey === "sbm") cat = "Non-Listed Company";
-        else if (bankKey === "smfg") cat = "LLP";
-        else if (bankKey === "tatacapital") cat = "Unapproved Company";
-        else if (bankKey === "utkarsh") cat = "CAT C";
-        else cat = "Open Market / Standard Corporate";
+        cat = null;
       }
     }
 

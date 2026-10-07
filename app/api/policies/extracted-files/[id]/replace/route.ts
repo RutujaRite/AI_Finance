@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
 import fs from "fs/promises";
 import path from "path";
+import { verifyToken, isAdminUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +11,19 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const token = req.cookies.get("token")?.value;
+  const payload: any = token ? verifyToken(token) : null;
+  if (!payload) {
+    return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
+  }
+
+  if (!isAdminUser(payload)) {
+    return NextResponse.json(
+      { success: false, error: "Forbidden", message: "Admin privileges required" },
+      { status: 403 }
+    );
+  }
+
   try {
     const { id } = await params;
     const fileId = parseInt(id, 10);

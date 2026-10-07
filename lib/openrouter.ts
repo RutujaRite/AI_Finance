@@ -39,7 +39,9 @@ export function normalizeModelSlug(rawModel?: string): string {
     trimmed === "liquid/lfm-2.5-embedding-350m:free" ||
     trimmed === "Ling 3.0 Flash Fin" ||
     trimmed === "openrouter/free" ||
-    trimmed === "deepseek/deepseek-flash-latest"
+    trimmed === "deepseek/deepseek-flash-latest" ||
+    trimmed === "deepseek/deepseek-v4-flash-latest" ||
+    trimmed.includes("deepseek-v4")
   ) {
     return "openrouter/auto";
   }
@@ -68,6 +70,8 @@ export async function openRouterChat(
       model: targetModel,
       messages,
       temperature: 0.1,
+      max_tokens: 500,
+      reasoning: { max_tokens: 0 },
     };
     if (tools && tools.length > 0) {
       payload.tools = tools;
@@ -120,6 +124,141 @@ export async function simpleOpenRouterChat(
 ): Promise<string> {
   const response = await openRouterChat(messages, undefined, model);
   return response?.choices?.[0]?.message?.content || "";
+}
+
+/**
+ * Executes a streaming chat completion request against OpenRouter.
+ * Parses SSE chunks incrementally and invokes onToken(delta) in real-time.
+ */
+export async function openRouterChatStream(
+  messages: OpenRouterMessage[],
+  onToken: (token: string) => void,
+  options?: {
+    model?: string;
+    tools?: OpenRouterTool[];
+    signal?: AbortSignal;
+    temperature?: number;
+    max_tokens?: number;
+    reasoningMaxTokens?: number;
+  }
+): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY || OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENROUTER_API_KEY is not configured.");
+  }
+
+  const effectiveModel = normalizeModelSlug(
+    options?.model || process.env.OPENROUTER_MODEL || OPENROUTER_MODEL
+  );
+
+  const executeStream = async (targetModel: string): Promise<string> => {
+    const payload: any = {
+      model: targetModel,
+      messages,
+      temperature: options?.temperature ?? 0.1,
+      max_tokens: options?.max_tokens ?? 500,
+      stream: true,
+      reasoning: { max_tokens: options?.reasoningMaxTokens ?? 0 },
+    };
+    if (options?.tools && options.tools.length > 0) {
+      payload.tools = options.tools;
+      payload.tool_choice = "auto";
+    }
+
+    const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+      method: "POST",
+      signal: options?.signal,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001",
+        "X-Title": "CreditWise AI",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      throw new Error(`OpenRouter HTTP ${res.status}: ${errBody}`);
+    }
+
+    if (!res.body) {
+      throw new Error("OpenRouter returned empty response body for streaming.");
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulatedText = "";
+    let lineBuffer = "";
+
+    try {
+      while (true) {
+        if (options?.signal?.aborted) {
+          try { await reader.cancel(); } catch {}
+          break;
+        }
+
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        lineBuffer += decoder.decode(value, { stream: true });
+        const lines = lineBuffer.split("\n");
+        lineBuffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const dataStr = trimmed.slice(5).trim();
+          if (!dataStr || dataStr === "[DONE]") continue;
+
+          try {
+            const parsed = JSON.parse(dataStr);
+            const deltaContent = parsed.choices?.[0]?.delta?.content;
+            if (deltaContent) {
+              accumulatedText += deltaContent;
+              try {
+                onToken(deltaContent);
+              } catch (cbErr) {
+                console.warn("[OpenRouterStream] onToken callback warning:", cbErr);
+              }
+            }
+          } catch (jsonErr) {
+            // Ignore incomplete line parse
+          }
+        }
+      }
+    } finally {
+      try { reader.releaseLock(); } catch {}
+    }
+
+    return accumulatedText;
+  };
+
+  try {
+    return await executeStream(effectiveModel);
+  } catch (err: any) {
+    if (options?.signal?.aborted) {
+      return "";
+    }
+    const errMsg = String(err?.message || "");
+    if (
+      effectiveModel !== "openrouter/free" &&
+      (errMsg.includes("429") ||
+        errMsg.includes("RateLimit") ||
+        errMsg.includes("rate-limited") ||
+        errMsg.includes("not a valid model") ||
+        errMsg.includes("404") ||
+        errMsg.includes("400"))
+    ) {
+      console.warn(`[OpenRouterStream] Primary model ${effectiveModel} failed, retrying with openrouter/free...`);
+      try {
+        return await executeStream("openrouter/free");
+      } catch (retryErr) {
+        console.error("[OpenRouterStream] Fallback retry failed:", retryErr);
+      }
+    }
+    throw err;
+  }
 }
 
 export function isOpenRouterConfigured(): boolean {

@@ -221,6 +221,14 @@ export default function AdminPage() {
             </button>
             <button
               type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => router.push("/admin/models")}
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", fontWeight: 600, background: "#7c3aed", borderColor: "#7c3aed" }}
+            >
+              <i className="bi bi-cpu" /> AI Models
+            </button>
+            <button
+              type="button"
               className="btn btn-secondary btn-sm"
               onClick={() => {
                 loadFiles()

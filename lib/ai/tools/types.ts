@@ -1,5 +1,5 @@
 /**
- * Universal AI Agent Tool Abstraction Types
+ * AI Agent Tool Abstraction Types
  * Defines standardized tool interfaces, typed inputs/outputs, error envelopes, and provenance tracing.
  */
 

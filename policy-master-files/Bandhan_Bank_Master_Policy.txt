@@ -102,11 +102,11 @@ Co-Applicant Rules:
 ================================================================================
 
 ROI Pricing Grid (Effective 1st May 2024):
-Loan Amount       | CAT A/B/Govt | CAT C | CAT D
-Up to ₹10L         | 15.99%       | -     | -
-₹10L - ₹15L        | 10.99%       | -     | -
-₹15L - ₹20L        | 10.50%       | -     | -
-₹20L - ₹25L        | 10.25%       | -     | -
+Loan Amount       | CAT A/B/Govt | CAT C | CAT D
+Up to ₹10L         | 15.99%       | -     | -
+₹10L - ₹15L        | 10.99%       | -     | -
+₹15L - ₹20L        | 10.50%       | -     | -
+₹20L - ₹25L        | 10.25%       | -     | -
 
 Special Rates (Salaried):
 - CAT A/B/Govt, LA 25L, CIBIL >750: 10.25%
@@ -156,11 +156,11 @@ Tenure:
 ================================================================================
 
 FOIR Limits:
-Monthly Net Income   | FOIR
-<= ₹30,000            | 50%
+Monthly Net Income   | FOIR
+<= ₹30,000            | 50%
 >= ₹30,001 to ₹50,000 | 60%
 >= ₹50,001 to ₹75,000 | 65%
->= ₹75,000            | 70%
+>= ₹75,000            | 70%
 
 Special FOIR:
 - SEP MBBS and above: 100%
@@ -243,4 +243,4 @@ Other Exceptions:
 
 ================================================================================
 END OF BANDHAN BANK PERSONAL LOAN POLICY RULEBOOK
-================================================================================
+================================================================================ make it clean structured format  prior to embedding 

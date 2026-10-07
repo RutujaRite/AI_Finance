@@ -71,8 +71,19 @@ export function formatFieldValue(field: string, value: any): string {
 export function generateResumeBridge(
   suspendedTask?: TaskStackItem,
   expectedField?: string,
-  questionTopic?: string
+  questionTopic?: string,
+  isExplicitResume?: boolean
 ): string {
+  const targetField = expectedField || suspendedTask?.expectedField;
+  if (!targetField) {
+    return "\n\nWe can continue your loan eligibility check whenever you're ready. Would you like to proceed?";
+  }
+
+  if (isExplicitResume) {
+    const label = getHumanFieldLabel(targetField);
+    return `\n\nTo continue with your personal loan assessment: could you please provide **${label}**?`;
+  }
+
   // If the interruption is a general conceptual question (FOIR, CIBIL, EMI concept, etc.)
   // Behavioral Rule 1: Do NOT ask for salary/loan amount immediately after answering a conceptual question.
   // Smoothly append: "We can continue your loan eligibility check whenever you're ready. Would you like to proceed?"
@@ -87,8 +98,7 @@ export function generateResumeBridge(
     questionTopic === "EMI" ||
     /foir|concept|general|educational|financial_concept/i.test(questionTopic);
 
-  const targetField = expectedField || suspendedTask?.expectedField;
-  if (isConceptualTopic || !targetField) {
+  if (isConceptualTopic) {
     return "\n\nWe can continue your loan eligibility check whenever you're ready. Would you like to proceed?";
   }
 
@@ -211,7 +221,7 @@ export function planResponse(params: {
   // 5. RESUME explicitly requested
   if (action === "RESUME") {
     const activeTask = suspendedTask || (session.taskStack && session.taskStack.length > 0 ? session.taskStack[session.taskStack.length - 1] : undefined);
-    const resumeBridge = generateResumeBridge(activeTask, nextMissingField || session.expectedField, nluResult.questionTopic);
+    const resumeBridge = generateResumeBridge(activeTask, nextMissingField || session.expectedField, nluResult.questionTopic, true);
     const combined = `Welcome back!${resumeBridge}`;
     return {
       strategy: "ANSWER_AND_RESUME",

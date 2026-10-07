@@ -1,6 +1,7 @@
 import {
   parseFinancialAmount,
   extractCompanyCandidateFromText,
+  extractCleanCompanyName,
   isPureGreeting,
   hasGreetingPrefix,
   stripGreetingPrefix,
@@ -8,16 +9,40 @@ import {
   isInvalidCompanyName,
   isLocationInput,
   extractTargetCompanyFromMessage,
+  isMultiBankEligibilityQuery,
+  isGeneralAssistanceQuery,
 } from "@/lib/dynamicEligibilityEngine";
 
 const getApiKey = () => process.env.OPENROUTER_API_KEY || "";
-const getModel = () => (process.env.OPENROUTER_MODEL || "openrouter/auto").replace(/^["']|["']$/g, "").trim();
+const getModel = () => (process.env.OPENROUTER_MODEL || "openrouter/free").replace(/^["']|["']$/g, "").trim();
 const LLM_TIMEOUT_MS = 12000;
 
 export type UserIntentType =
+  | "GREETING"
+  | "GENERAL_CONVERSATION"
+  | "GENERAL_FINANCIAL_QUESTION"
+  | "LOAN_PRODUCT_QUESTION"
   | "LOAN_ELIGIBILITY"
+  | "BANK_POLICY_QUERY"
+  | "POLICY_COMPARISON"
+  | "COMPANY_SEARCH"
+  | "COMPANY_FOLLOW_UP"
+  | "BANK_MANAGER_SEARCH"
+  | "BRANCH_SELECTION"
+  | "EMI_CALCULATION"
+  | "DOCUMENT_CHECKLIST"
+  | "APPLICATION_PROCESS"
+  | "OFFERS_AND_RATES"
+  | "TEMPORARY_INTERRUPT"
+  | "TOPIC_SWITCH"
+  | "RESUME_TASK"
+  | "CONVERSATION_CONTROL"
+  | "OUT_OF_DOMAIN"
+  // Legacy backward-compatibility aliases
+  | "MULTI_BANK_ELIGIBILITY_CHECK"
   | "CALCULATION"
   | "GENERAL_INFORMATION"
+  | "BANK_COMPARISON"
   | "CHANGING_DETAILS"
   | "GREETINGS"
   | "ANOTHER_TOPIC";
@@ -39,9 +64,105 @@ export type MainUserGoal =
   | "EMI_CALCULATION"
   | "COMPANY_SEARCH"
   | "BANK_POLICY"
+  | "BANK_COMPARISON"
   | "BANK_MANAGER_SEARCH"
   | "GENERAL_ASSISTANCE"
   | "UNKNOWN";
+
+export function isQuestionMessage(text: string): boolean {
+  if (!text) return false;
+  const raw = text.trim();
+  const lower = raw.toLowerCase().replace(/[?.,!]+$/, "");
+  if (/\?$/.test(raw)) return true;
+  if (/^(?:is|are|can|could|would|should|will|do|did|does|why|how|what|when|where|who|which)\b/i.test(lower)) return true;
+  if (/^(?:tell\s+me|show\s+me|explain|compare|check\s+if)\b/i.test(lower)) return true;
+  return false;
+}
+
+export function isBankComparisonQuery(
+  message: string,
+  recentHistory?: Array<{ role: string; content: string }>
+): { isComparison: boolean; banks: string[] } {
+  if (!message) return { isComparison: false, banks: [] };
+  const lower = message.toLowerCase().trim();
+
+  // Multi-bank eligibility or queries across all/partner lenders must NEVER be intercepted as a pairwise comparison
+  if (
+    isMultiBankEligibilityQuery(message) ||
+    /\b(?:across\s+(?:all\s+|partner\s+)?banks|partner\s+banks?|all\s+partner\s+banks?|all\s+banks?|across\s+banks?)\b/i.test(lower) ||
+    /\bwhich\s+bank\s+(?:has|offers|provides|accepts|requires|gives|features)\s+(?:the\s+)?(?:lowest|minimum|best|highest)\b/i.test(lower) ||
+    /\b(?:lowest|minimum|highest|best)\s+(?:cibil|credit\s*score|salary|income|interest|roi|tenure|amount)\b/i.test(lower)
+  ) {
+    return { isComparison: false, banks: [] };
+  }
+
+  const comparisonKeywords = /\b(?:compare|comparison|versus|vs\.?|difference\s+between|how\s+do\s+they\s+compare|which\s+(?:one|bank)\s+is\s+better|which\s+is\s+better|are\s+both\s+(?:the\s+)?same|are\s+both\s+requirements\s+(?:the\s+)?same|is\s+(?:it|there)\s+any\s+difference|same\s+requirements?|differ\b|difference\b)\b/i;
+  const hasComp = comparisonKeywords.test(lower) ||
+    (/\b(?:both|two|2)\s+(?:banks?|lenders?|policies|requirements?|criteria)\b/i.test(lower) && /\b(?:same|different|difference|compare)\b/i.test(lower)) ||
+    /^(?:are\s+both\s+(?:the\s+)?same\??|are\s+both\s+requirements\s+(?:the\s+)?same\??)$/i.test(lower);
+
+  if (!hasComp) {
+    return { isComparison: false, banks: [] };
+  }
+
+  const banksFound: string[] = [];
+  const bankPatterns: Array<{ name: string; regex: RegExp }> = [
+    { name: "Axis Finance", regex: /\b(?:axis\s*finance|afl)\b/i },
+    { name: "Axis Bank", regex: /\b(?:axis\s*bank|\baxis\b(?!.*finance))\b/i },
+    { name: "HDFC Bank", regex: /\bhdfc\b/i },
+    { name: "ICICI Bank", regex: /\bicici\b/i },
+    { name: "Kotak Mahindra Bank", regex: /\bkotak\b/i },
+    { name: "Tata Capital", regex: /\btata\s*capital\b/i },
+    { name: "Bajaj Finserv", regex: /\bbajaj\s*finserv\b/i },
+    { name: "Bajaj Markets", regex: /\bbajaj\s*markets\b/i },
+    { name: "IDFC FIRST Bank", regex: /\bidfc\b/i },
+    { name: "IndusInd Bank", regex: /\bindusind\b/i },
+    { name: "Bandhan Bank", regex: /\bbandhan\b/i },
+    { name: "Yes Bank", regex: /\byes\s*bank\b/i },
+    { name: "Piramal Finance", regex: /\bpiramal\b/i },
+    { name: "Poonawalla Fincorp", regex: /\bpoonawalla\b/i },
+    { name: "SMFG India Credit", regex: /\bsmfg\b/i },
+    { name: "Finnable Credit", regex: /\bfinnable\b/i },
+    { name: "Fibe (EarlySalary)", regex: /\bfibe\b/i },
+    { name: "State Bank of India", regex: /\bsbi\b/i },
+  ];
+
+  for (const bp of bankPatterns) {
+    if (bp.regex.test(lower)) {
+      if (!banksFound.includes(bp.name)) {
+        banksFound.push(bp.name);
+      }
+    }
+  }
+
+  // Look back in dialogue history ONLY if user explicitly refers to prior entities (both, these two, them, between them)
+  // and fewer than 2 banks explicitly mentioned in current message
+  const hasAnaphoricRef = /\b(?:both|these\s+two|the\s+two|between\s+them|either\s+of\s+them|them|they)\b/i.test(lower);
+  if (banksFound.length < 2 && hasAnaphoricRef && recentHistory && recentHistory.length > 0) {
+    const reversed = [...recentHistory].reverse();
+    for (const msg of reversed) {
+      const msgContent = msg.content || "";
+      for (const bp of bankPatterns) {
+        if (bp.regex.test(msgContent)) {
+          if (!banksFound.includes(bp.name)) {
+            banksFound.push(bp.name);
+            if (banksFound.length >= 2) break;
+          }
+        }
+      }
+      if (banksFound.length >= 2) break;
+    }
+  }
+
+  if (banksFound.length < 2) {
+    return { isComparison: false, banks: banksFound };
+  }
+
+  return {
+    isComparison: true,
+    banks: banksFound,
+  };
+}
 
 export interface ConfidenceScores {
   intentConfidence: number;   // 0.0 to 1.0 (Signal only, never bypasses validation)
@@ -165,6 +286,35 @@ export async function analyzeConversationSemanticIntent(
     };
   }
 
+  // Fast deterministic intercept for general assistance / capabilities queries (e.g. "how can u help me", "hoe can u help me", "what can you do")
+  if (isGeneralAssistanceQuery(messageText)) {
+    return {
+      messageType: "QUESTION",
+      primaryIntent: "GENERAL_ASSISTANCE",
+      secondaryIntents: [],
+      conversationAction: context?.isFlowActive ? "TEMPORARY_INTERRUPT" : "NONE",
+      mainUserGoal: "GENERAL_ASSISTANCE",
+      confidence: { intentConfidence: 1.0, entityConfidence: 1.0, stateConfidence: 1.0 },
+      entities: {},
+      corrections: [],
+    };
+  }
+
+  // Fast deterministic intercept for bank policy comparison queries (e.g. "are both requirements the same?", "compare both banks policy")
+  const compCheck = isBankComparisonQuery(messageText, context?.recentMessages);
+  if (compCheck.isComparison) {
+    return {
+      messageType: "QUESTION",
+      primaryIntent: "BANK_COMPARISON",
+      secondaryIntents: compCheck.banks,
+      conversationAction: context?.isFlowActive ? "TEMPORARY_INTERRUPT" : "NONE",
+      mainUserGoal: "BANK_POLICY",
+      confidence: { intentConfidence: 0.98, entityConfidence: 1.0, stateConfidence: 1.0 },
+      entities: { targetBank: compCheck.banks.join(" vs ") },
+      corrections: [],
+    };
+  }
+
   const systemInstruction =
     `You are the Conversational Intelligence & Semantic NLU Engine for CreditWise AI, a banking and loan intelligence platform.\n` +
     `Analyze the user's message semantically within the context of recent dialogue turns and current flow state.\n` +
@@ -172,7 +322,7 @@ export async function analyzeConversationSemanticIntent(
     `CORE RULES:\n` +
     `1. Message categories are NOT mutually exclusive. A single turn carries:\n` +
     `   - messageType: "QUESTION" | "ANSWER" | "COMMAND" | "STATEMENT" | "MIXED"\n` +
-    `   - primaryIntent: e.g. "LOAN_ELIGIBILITY", "EMI_CALCULATION", "BANK_DOCUMENT_REQUIREMENTS", "BANK_POLICY", "BANK_MANAGER_SEARCH", "COMPANY_SEARCH", "CONCEPTUAL_FINANCIAL_QUESTION", "GENERAL_ASSISTANCE", "CONVERSATION_CONTROL", "OUT_OF_DOMAIN"\n` +
+    `   - primaryIntent: e.g. "LOAN_ELIGIBILITY", "EMI_CALCULATION", "BANK_DOCUMENT_REQUIREMENTS", "BANK_POLICY", "BANK_COMPARISON", "BANK_MANAGER_SEARCH", "COMPANY_SEARCH", "CONCEPTUAL_FINANCIAL_QUESTION", "GENERAL_ASSISTANCE", "CONVERSATION_CONTROL", "OUT_OF_DOMAIN"\n` +
     `   - secondaryIntents: array of secondary intents if any (e.g. ["FOIR_EXPLANATION"])\n` +
     `   - conversationAction: "CONTINUE" | "TEMPORARY_INTERRUPT" | "TOPIC_SWITCH" | "CORRECTION" | "RESUME" | "RESET" | "NEW_TASK" | "NONE"\n` +
     `   - mainUserGoal: "PERSONAL_LOAN" | "EMI_CALCULATION" | "COMPANY_SEARCH" | "BANK_POLICY" | "BANK_MANAGER_SEARCH" | "GENERAL_ASSISTANCE" | "UNKNOWN"\n\n` +
@@ -255,7 +405,13 @@ export async function analyzeConversationSemanticIntent(
   const apiKey = getApiKey();
   if (apiKey) {
     const rawEnv = getModel();
-    const modelsToTry = [primaryModel, rawEnv, "openrouter/auto", "openrouter/free"].filter(Boolean) as string[];
+    const modelsToTry = [
+      primaryModel && primaryModel !== "openrouter/auto" ? primaryModel : undefined,
+      rawEnv && rawEnv !== "openrouter/auto" ? rawEnv : undefined,
+      "openrouter/free",
+      "inclusionai/ling-3.0-flash-sante:free",
+      "google/gemma-4-26b-a4b-it:free",
+    ].filter(Boolean) as string[];
     const uniqueModels = Array.from(new Set(modelsToTry));
 
     for (const model of uniqueModels) {
@@ -269,7 +425,7 @@ export async function analyzeConversationSemanticIntent(
           headers: {
             Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost:3001",
+            "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
             "X-Title": "CreditWise AI",
           },
           body: JSON.stringify({
@@ -284,7 +440,12 @@ export async function analyzeConversationSemanticIntent(
 
         if (res.ok) {
           const json = await res.json();
-          const content = json.choices?.[0]?.message?.content;
+          const choice = json.choices?.[0]?.message;
+          let content = choice?.content || choice?.text || "";
+          if (!content && choice?.reasoning && typeof choice.reasoning === "string") {
+            const jm = choice.reasoning.match(/\{[\s\S]*\}/);
+            if (jm) content = jm[0];
+          }
           if (content) {
             let parsed: any = null;
             try {
@@ -316,11 +477,11 @@ export async function analyzeConversationSemanticIntent(
               }
               if (normalizedEntities.cibil !== undefined && normalizedEntities.cibil !== null && typeof normalizedEntities.cibil === "string") {
                 const s = String(normalizedEntities.cibil).trim();
-                if (/not\s*provided|unknown|not\s*sure|don'?t\s*know|na|n\/a/i.test(s)) {
-                  normalizedEntities.cibil = "Not provided";
+                if (/not\s*provided|unknown|not\s*sure|don'?t\s*know|na|n\/a|no\s*cibil|zero\s*credit/i.test(s)) {
+                  normalizedEntities.cibil = 700;
                 } else {
                   const pCib = parseInt(s, 10);
-                  normalizedEntities.cibil = !isNaN(pCib) ? pCib : "Not provided";
+                  normalizedEntities.cibil = !isNaN(pCib) && pCib >= 300 && pCib <= 900 ? pCib : 700;
                 }
               }
               if (typeof normalizedEntities.cibil === "number") {
@@ -448,14 +609,21 @@ export async function classifyIntentWithLLM(
  */
 function normalizeIntentName(raw: string): UserIntentType {
   const norm = String(raw || "").trim().toUpperCase();
+  if (norm === "MULTI_BANK_ELIGIBILITY_CHECK" || norm === "MULTI_BANK_ELIGIBILITY") {
+    return "MULTI_BANK_ELIGIBILITY_CHECK";
+  }
   if (norm === "LOAN_ELIGIBILITY" || norm === "PERSONAL_LOAN_REQUEST" || norm === "PROVIDE_INFORMATION") {
     return "LOAN_ELIGIBILITY";
   }
   if (norm === "CALCULATION" || norm === "EMI_CALCULATION") {
     return "CALCULATION";
   }
+  if (norm === "BANK_COMPARISON" || norm === "COMPARE_BANKS") {
+    return "BANK_COMPARISON";
+  }
   if (
     norm === "GENERAL_INFORMATION" ||
+    norm === "GENERAL_ASSISTANCE" ||
     norm === "POLICY_INQUIRY" ||
     norm === "BANK_POLICY" ||
     norm === "BANK_MANAGER_SEARCH" ||
@@ -523,10 +691,10 @@ export function extractEntitiesFromText(
     if (s >= 300 && s <= 900) {
       extracted.cibil = s;
     }
-  } else if ((context?.expectedField === "cibil" || context?.expectedField === "cibilScore") && /unknown|not\s*sure|don'?t\s*know|never\s*checked|no\s*idea/i.test(norm)) {
-    extracted.cibil = "Not provided";
+  } else if ((context?.expectedField === "cibil" || context?.expectedField === "cibilScore") && /unknown|not\s*sure|don'?t\s*know|never\s*checked|no\s*idea|no\s*cibil|zero\s*credit|employee.*no\s*cibil/i.test(norm)) {
+    extracted.cibil = 700;
   } else if ((context?.expectedField === "cibil" || context?.expectedField === "cibilScore") && /\b(?:0|zero)\b/i.test(norm)) {
-    extracted.cibil = 0;
+    extracted.cibil = 700;
   }
 
   // 2. Monthly Income
@@ -620,17 +788,17 @@ export function extractEntitiesFromText(
   } else if (/(?:student|in\s*college|studying)\b/i.test(norm)) {
     extracted.employmentType = "Student";
     extracted.monthlyIncome = 0;
-  } else if (/(?:self[\s-]*employed|freelanc|business|proprietor|doctor|trader)\b/i.test(norm)) {
+  } else if (/(?:self[\s-]*employed|freelanc|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|doctor|trader)\b/i.test(norm)) {
     extracted.employmentType = "Self-Employed";
   }
 
-  // 8. Company Name (strictly avoid assigning search intents, employment status, locations, or zero answers as company)
-  if (!isCompanyInfoOrSearchIntent(text) && !isInvalidCompanyName(text) && !isLocationInput(text)) {
+  // 8. Company Name (strictly avoid assigning search intents, general assistance, employment status, locations, or zero answers as company)
+  if (!isGeneralAssistanceQuery(text) && !isCompanyInfoOrSearchIntent(text) && !isInvalidCompanyName(text) && !isLocationInput(text)) {
     const compCandidate = extractCompanyCandidateFromText(text, context?.expectedField);
     if (compCandidate && !isCompanyInfoOrSearchIntent(compCandidate) && !isInvalidCompanyName(compCandidate) && !isLocationInput(compCandidate)) {
       extracted.companyName = compCandidate;
     } else if (context?.expectedField === "company" || context?.expectedField === "companyName") {
-      const clean = text.replace(/^(?:i\s+)?(?:work\s+at|works\s+at|working\s+at|employed\s+at|company\s+is|employer\s+is|at)\s+/i, "").trim();
+      const clean = extractCleanCompanyName(text) || text.replace(/^(?:i\s+)?(?:work\s+at|works\s+at|working\s+at|employed\s+at|company\s+is|employer\s+is|at)\s+/i, "").trim();
       if (clean.length >= 2 && !isInvalidCompanyName(clean) && !isLocationInput(clean) && !isCompanyInfoOrSearchIntent(clean)) {
         extracted.companyName = clean;
       }
@@ -642,7 +810,7 @@ export function extractEntitiesFromText(
   const bankMatch = text.match(
     /\b(hdfc|icici|axis|sbi|kotak|bajaj|idfc|indusind|bandhan|yes\s*bank|piramal|poonawalla|sbm|smfg|utkarsh|fibe|finnable|l&t|cholamandalam|aditya\s*birla|tata\s*capital)\b/i
   ) || (!isTataCompany ? text.match(/\b(tata)\b/i) : null);
-  if (bankMatch) {
+  if (bankMatch && !isMultiBankEligibilityQuery(text)) {
     extracted.targetBank = bankMatch[1];
   }
 
@@ -737,11 +905,10 @@ export function fallbackMultidimensionalNluParser(
       };
     }
   }
-  if (isCompanyInfoOrSearchIntent(text) || /(?:forget\s*(?:the\s*)?loan|leave\s*loan|switch\s*to|show\s*(?:me\s*)?(?:the\s*)?company|show\s*tcs|company\s*details)/i.test(norm)) {
-    const knownCompany = norm.match(/\b(tcs|infosys|wipro|accenture|cognizant|hcl|ibm|capgemini|google|microsoft|amazon|reliance)\b/i)?.[1]?.toUpperCase();
+  if (isCompanyInfoOrSearchIntent(text) || /(?:forget\s*(?:the\s*)?loan|leave\s*loan|switch\s*to|show\s*(?:me\s*)?(?:the\s*)?company|company\s*details)/i.test(norm)) {
     const candidate = extractTargetCompanyFromMessage(text) || extractCompanyCandidateFromText(text);
     const cleanedCandidate = candidate ? candidate.replace(/^(?:show|details\s+for|info\s+on)\s+/i, "").replace(/\s+details\.?$/i, "").trim() : undefined;
-    const compMatch = knownCompany || (cleanedCandidate && !isCompanyInfoOrSearchIntent(cleanedCandidate) && !isInvalidCompanyName(cleanedCandidate) ? cleanedCandidate : undefined);
+    const compMatch = cleanedCandidate && !isCompanyInfoOrSearchIntent(cleanedCandidate) && !isInvalidCompanyName(cleanedCandidate) ? cleanedCandidate : undefined;
     const isExplicitAbandon = /(?:forget\s*(?:the\s*)?loan|leave\s*loan|cancel\s*loan|stop\s*loan|abandon)/i.test(norm);
     return {
       messageType: "COMMAND",
@@ -764,6 +931,20 @@ export function fallbackMultidimensionalNluParser(
       conversationAction: "NONE",
       mainUserGoal: (context?.mainUserGoal as MainUserGoal) || "UNKNOWN",
       confidence: { intentConfidence: 0.98, entityConfidence: 1.0, stateConfidence: 1.0 },
+      entities: {},
+      corrections: [],
+    };
+  }
+
+  // 4b. General Assistance / Capabilities Query (e.g., "how can u help me", "hoe can u help me", "what can you do", "help me")
+  if (isGeneralAssistanceQuery(text)) {
+    return {
+      messageType: "QUESTION",
+      primaryIntent: "GENERAL_ASSISTANCE",
+      secondaryIntents: [],
+      conversationAction: context?.isFlowActive ? "TEMPORARY_INTERRUPT" : "NONE",
+      mainUserGoal: "GENERAL_ASSISTANCE",
+      confidence: { intentConfidence: 0.99, entityConfidence: 1.0, stateConfidence: 1.0 },
       entities: {},
       corrections: [],
     };
@@ -908,10 +1089,34 @@ export function fallbackMultidimensionalNluParser(
     }
   }
 
+  // 6b. Natural Multi-Bank Loan Eligibility Intent (CRITICAL RULE Section 2)
+  // When user asks: "Check my loan eligibility across partner banks", "Which banks can I get a loan from?",
+  // "Am I eligible for a personal loan?", "Check eligibility for all banks", "Compare my eligibility",
+  // "Find the best bank for me", "Which partner banks am I eligible for?", "Check all lenders",
+  // DO NOT interpret as a single bank policy lookup!
+  if (isMultiBankEligibilityQuery(text)) {
+    const extracted = extractEntitiesFromText(text, context);
+    extracted.targetBank = undefined;
+    const isQuestion = /\?$/.test(text.trim()) || /^(?:which|can|am|what|where|how)\b/i.test(effectiveNorm);
+    return {
+      messageType: isQuestion ? "QUESTION" : "COMMAND",
+      primaryIntent: "MULTI_BANK_ELIGIBILITY_CHECK",
+      secondaryIntents: ["MULTI_BANK_ELIGIBILITY_CHECK"],
+      conversationAction: context?.isFlowActive ? "CONTINUE" : "NEW_TASK",
+      mainUserGoal: "PERSONAL_LOAN",
+      confidence: { intentConfidence: 0.99, entityConfidence: 0.95, stateConfidence: 0.98 },
+      entities: extracted,
+      corrections: [],
+      targetBank: undefined,
+      questionTopic: "MULTI_BANK_ELIGIBILITY",
+    };
+  }
+
   // 6c. Dedicated Bank Policy / Guidelines Detection
   const isNaturalLoanQuestion = /^(?:can\s*i\s*get\s*a\s*loan|can\s*i\s*get\s*personal\s*loan|am\s*i\s*eligible\s*for\s*(?:a\s*)?loan)/i.test(effectiveNorm);
 
   const isBankPolicyPhrase =
+    !isMultiBankEligibilityQuery(effectiveNorm) &&
     /(?:policy|policies|guidelines?|rules?|criteria|cutoff|cut-off|\bfoir\b|requirement|requirements|\bdocs?\b|\bdocuments?\b|tenure|roi|interest\s*rate|eligibility\s*criteria|what.*loan\s*amount|how\s*much.*loan|loan\s*amount.*approve|max(?:imum)?\s*(?:loan|foir|tenure|amount)|min(?:imum)?\s*(?:salary|cibil|income|amount|age)|\bcibil\b|require(?:\s+\w+)?\s*(?:salary|income)|how\s*much.*lend|minimum\s*income)\b/i.test(effectiveNorm) &&
     /(?:hdfc|icici|axis|sbi|kotak|bajaj|tata\s*capital|\btata\b(?!.*consultancy)|idfc|indusind|bandhan|yes\s*bank|\byes\b|piramal|poonawalla|poonawala|chola|smfg|finnable|fibe|sbm|utkarsh|aditya|abfl|birla|citibank|citi|baroda|bob|pnb|canara|union|rbl|hsbc|standard\s*chartered|scb|partner\s*banks?)/i.test(effectiveNorm) &&
     !isNaturalLoanQuestion;
@@ -961,7 +1166,7 @@ export function fallbackMultidimensionalNluParser(
     /\?$/.test(text.trim()) ||
     /(?:documents\s*required|eligibility\s*criteria\s*for|what\s*documents|what\s*is\s*foir|explain\s*foir|policies|policy)/i.test(effectiveNorm);
 
-  if (isQuestionSyntax && !isNaturalLoanQuestion) {
+  if (isQuestionSyntax && !isNaturalLoanQuestion && !isMultiBankEligibilityQuery(effectiveNorm)) {
     let qIntent = "GENERAL_ASSISTANCE";
     let qTopic: string | undefined = undefined;
     let targetBank: string | undefined = undefined;

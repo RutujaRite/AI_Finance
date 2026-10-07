@@ -149,7 +149,13 @@ export async function searchIncraax(
           signal: AbortSignal.timeout(15000), // Increased from 8000ms to 15000ms
         });
 
-        if (!res.ok) continue;
+        if (!res.ok) {
+          if (url.searchParams.has("deep")) {
+            url.searchParams.delete("deep");
+            continue;
+          }
+          continue;
+        }
 
         const data: any = await res.json();
         const rawResults = Array.isArray(data?.results) ? data.results : [];
@@ -539,6 +545,61 @@ export function validateEntityConsistency(
   return intel;
 }
 
+/**
+ * Evaluates live internet search snippets to identify the highest-quality company introduction paragraph.
+ * Prioritizes rich corporate profiles, industry descriptions, and business activities while penalizing
+ * intraday stock market chatter, ticker movements, or cookie notices.
+ */
+function extractBestCompanyIntroSnippet(results: IncraaxResult[], companyName: string): string | null {
+  const normName = companyName.toLowerCase();
+  let bestScore = -1;
+  let bestSnippet: string | null = null;
+
+  for (const r of results) {
+    const text = (r.snippet || "").trim();
+    if (text.length < 35) continue;
+    if (/cookies|javascript|privacy policy|terms of|coinbase|broker-dealer|cryptocurren|advertis|affiliate/i.test(text)) continue;
+
+    let score = 0;
+    const lower = text.toLowerCase();
+
+    // High score for descriptive corporate overview phrases
+    if (/\b(?:is\s+(?:an?|the|one\s+of|India's|a\s+leading|a\s+global|a\s+major)\b|specializes\s+in|engaged\s+in|founded\s+in|headquartered\s+in|operates\s+(?:as|in)|provider\s+of|multinational|conglomerate|subsidiary\s+of)\b/i.test(lower)) {
+      score += 40;
+    }
+    if (/\b(?:software|consulting|technology|manufacturing|financial\s+services|banking|healthcare|engineering|telecom|retail|energy|automotive|logistics|solutions|enterprises?)\b/i.test(lower)) {
+      score += 20;
+    }
+    if (lower.includes(normName)) {
+      score += 25;
+    }
+
+    // Penalize pure stock ticker chatter / intraday movements
+    if (/\b(?:share\s+price|opens?\s+strong|stock\s+price|closing\s+bell|opening\s+bell|target\s+price|buy\s+or\s+sell|52-week|intraday)\b/i.test(lower)) {
+      score -= 30;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestSnippet = text;
+    }
+  }
+
+  // Fallback to any informative snippet if scoring didn't find a high-confidence match
+  if (!bestSnippet) {
+    bestSnippet = results
+      .map((r) => r.snippet)
+      .find(
+        (s) =>
+          s &&
+          s.length > 50 &&
+          !/cookies|javascript|privacy policy|terms of|coinbase|broker-dealer|cryptocurren|advertis|affiliate/i.test(s)
+      ) || null;
+  }
+
+  return bestSnippet;
+}
+
 /* =========================================================================
  * CORE LIVE CORPORATE INTELLIGENCE PIPELINE
  * ========================================================================= */
@@ -568,16 +629,18 @@ export async function fetchLiveCompanyIntelligence(
   const directoryMetricsQuery = `${searchBase} turnover revenue capital site:zaubacorp.com OR site:tofler.in OR site:instafinancials.com`;
   const primaryQuery = `${searchBase} results profit revenue`;
   const workforceQuery = `${cleanName} employees headcount workforce`;
+  const profileOverviewQuery = `${cleanName} company overview profile about`;
 
   // Batch 1: Direct targeted queries
   const resDir1 = await searchIncraax(directoryFinancialQuery, { maxResults: 10, categories: "general" });
   const res1 = await searchIncraax(primaryQuery, { maxResults: 10, categories: "news" });
+  const resProfile = await searchIncraax(profileOverviewQuery, { maxResults: 10, categories: "news" });
 
   // Batch 2: Secondary / workforce queries
   const resDir2 = await searchIncraax(directoryMetricsQuery, { maxResults: 10, categories: "general" });
   const resWorkforce = await searchIncraax(workforceQuery, { maxResults: 10, categories: "news" });
 
-  let rawResults = [...resDir1, ...res1, ...resDir2, ...resWorkforce];
+  let rawResults = [...resDir1, ...res1, ...resProfile, ...resDir2, ...resWorkforce];
 
   if (rawResults.length === 0) {
     try {
@@ -883,23 +946,27 @@ export async function fetchLiveCompanyIntelligence(
 
   let overviewText: string | null = null;
   if (hasEntityEvidence) {
-    const informativeSnippet = relevantResults
-      .map((r) => r.snippet)
-      .find(
-        (s) =>
-          s.length > 50 &&
-          !/cookies|javascript|privacy policy|terms of|coinbase|broker-dealer|cryptocurren|advertis|affiliate/i.test(s)
-      );
+    const informativeSnippet = extractBestCompanyIntroSnippet(relevantResults, cleanName);
 
     if (informativeSnippet) {
       let cleanSnippet = informativeSnippet
         .replace(/^(?:\d{1,2}\s+[a-zA-Z]+\s+\d{4}|\d{4}|[a-zA-Z]+\s+\d{1,2},?\s+\d{4})\s*[-—–:.]*\s*/, "")
         .replace(/^[.\s—–-]+/, "")
+        .replace(/\s*(?:\.{2,3}\s*)?(?:View\s+more|Read\s+more|Read\s+full\s+article|Click\s+here).*$/i, ".")
         .replace(/\s*\.\.\.\s*$/, ".")
         .replace(/\s+/g, " ")
         .trim();
       if (!cleanSnippet.endsWith(".")) cleanSnippet += ".";
-      overviewText = `${cleanName} is an active corporate enterprise${industryField.value ? ` operating in the ${industryField.value} sector` : ""}. ${cleanSnippet}`;
+
+      if (cleanSnippet.toLowerCase().includes(cleanName.toLowerCase())) {
+        overviewText = cleanSnippet;
+      } else if (/^(?:founded\s+in|headquartered\s+in|incorporated\s+in|operates\s+as|specializes\s+in)/i.test(cleanSnippet)) {
+        overviewText = `${cleanName}, ${cleanSnippet.charAt(0).toLowerCase() + cleanSnippet.slice(1)}`;
+      } else {
+        overviewText = `${cleanName} is an active corporate enterprise${industryField.value ? ` operating in the ${industryField.value} sector` : ""}. ${cleanSnippet}`;
+      }
+    } else {
+      overviewText = `${cleanName} is an active corporate enterprise${industryField.value ? ` operating in the ${industryField.value} sector` : ""} in India, verified through corporate records and live internet search intelligence.`;
     }
   }
 

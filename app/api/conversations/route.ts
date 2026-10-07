@@ -117,6 +117,15 @@ export async function POST(req: NextRequest) {
       convRow = res.rows[0];
     }
 
+    // Clean any prior state for this conversation to prevent cross-session value bleed
+    try {
+      const { clearEligibilityState } = await import("@/lib/dynamicEligibilityEngine");
+      await clearEligibilityState(String(convRow.id));
+      await client.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [convRow.id]);
+    } catch (cleanErr) {
+      console.warn("Could not clear prior state for conversation:", cleanErr);
+    }
+
     const conversationObj = {
       id: String(convRow.id),
       title: convRow.title || "New Chat",

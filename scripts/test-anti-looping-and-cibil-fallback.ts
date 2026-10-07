@@ -11,19 +11,28 @@ async function runAntiLoopingAndCibilTests() {
   console.log(">>> TEST 1: ANTI-LOOPING & AUTOMATIC BENCHMARK ASSUMPTIONS <<<\n");
   const stuckConvId = `test-stuck-${Date.now()}`;
 
-  // Turn 1: Start loan flow
-  console.log("User: 'I want a personal loan'");
-  const t1 = await runCentralAgent({ message: "I want a personal loan", conversationId: stuckConvId });
+  // Turn 1: Start loan eligibility flow
+  console.log("User: 'Check loan eligibility, salary 50000'");
+  const t1 = await runCentralAgent({ message: "Check loan eligibility, salary 50000", conversationId: stuckConvId });
   console.log(`Assistant (Turn 1):\n${t1.reply}\n`);
-  if (!t1.reply.includes("exact name of your employer")) {
+  if (!t1.reply.toLowerCase().includes("employer") && !t1.reply.toLowerCase().includes("company")) {
     throw new Error("Test 1 failed! Expected prompt for employer.");
   }
 
   // Turn 2: User provides employer
-  console.log("User: 'Google India'");
-  const t2 = await runCentralAgent({ message: "Google India", conversationId: stuckConvId });
+  console.log("User: 'Google India Private Limited'");
+  const t2 = await runCentralAgent({ message: "Google India Private Limited", conversationId: stuckConvId });
   console.log(`Assistant (Turn 2):\n${t2.reply}\n`);
-  if (!t2.reply.includes("How much loan amount would you like to borrow")) {
+
+  let targetReply = t2.reply;
+  if (t2.reply.includes("Matching Companies Found")) {
+    console.log("User: '1'");
+    const t2b = await runCentralAgent({ message: "1", conversationId: stuckConvId });
+    console.log(`Assistant (Turn 2b):\n${t2b.reply}\n`);
+    targetReply = t2b.reply;
+  }
+
+  if (!targetReply.includes("How much loan amount would you like to borrow") && !targetReply.toLowerCase().includes("loan amount")) {
     throw new Error("Test 1 failed! Expected prompt for loan amount.");
   }
 

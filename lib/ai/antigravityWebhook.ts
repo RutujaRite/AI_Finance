@@ -1,4 +1,4 @@
-import { evaluateApplicantAgainstAllBanks, BankEvaluationResult, isInvalidCompanyName, isLocationInput } from "@/lib/dynamicEligibilityEngine";
+import { evaluateApplicantAgainstAllBanks, BankEvaluationResult, isInvalidCompanyName, isLocationInput, detectFieldPromptedInAssistantMessage } from "@/lib/dynamicEligibilityEngine";
 import pool from "@/lib/db";
 
 export interface SessionVariables {
@@ -161,11 +161,10 @@ export function normalizeTenureMonths(input: any): number | undefined {
     if (!isNaN(val) && val > 0) return val;
   }
 
-  // Only consider pure standalone digits if common tenure years (1-7) or common tenure months (12, 24, 36, 48, 60, 72, 84)
+  // Only consider pure standalone digits if common tenure years (1-7) in explicit tenure context OR if common tenure months (12, 24, 36, 48, 60, 72, 84)
   const isAmountContext = /\b(?:lakhs?|lacs?|lac|crores?|cr|thousand|k|rs\.?|inr|₹)\b/i.test(str);
   if (!isAmountContext && /^\s*([0-9]{1,3})\s*$/.test(str)) {
     const val = parseInt(str.trim(), 10);
-    if (val >= 1 && val <= 7) return val * 12;
     if ([12, 24, 36, 48, 60, 72, 84, 96, 120].includes(val)) return val;
   }
 
@@ -207,6 +206,7 @@ export function normalizeCibilScore(input: any): number | "NOT_SURE" | undefined
     str === "0" ||
     str === "none" ||
     str === "nil" ||
+    /\b(?:employee|applicant|person|someone)?\s*(?:has|have|with)?\s*no\s*cibil\b/i.test(str) ||
     /\b(?:don'?t\s*have\s*(?:any\s*)?(?:cibil|credit)|no\s*(?:cibil|credit)|zero\s*(?:cibil|credit)|without\s*(?:a\s*)?(?:cibil|credit)|never\s*had\s*(?:a\s*)?(?:cibil|credit)|new\s*to\s*credit|credit\s*history)\b/i.test(str) ||
     /\bcibil\s*(?:is|score)?\s*(?:0|zero|none|nil|blank|nha)\b/i.test(str)
   ) {
@@ -274,8 +274,11 @@ export function normalizeAge(input: any): number | undefined {
 export function normalizeEmployer(input: any): string | undefined {
   if (!input || typeof input !== "string") return undefined;
   let str = input.trim();
-  // Strip conversational prefix e.g. "I work at Infosys", "My company is TCS"
-  str = str.replace(/^(?:i\s*work\s*(?:at|in|for)|my\s*company\s*(?:is|name\s*is)?|employed\s*(?:at|by|with)|company:?|employer:?)\s*/i, "").trim();
+  // Strip conversational prefix e.g. "I work at Infosys", "My working company is TCS"
+  str = str.replace(
+    /^(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*)|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for))|(?:(?:my\s+)?(?:company|employer)\s+is)|(?:(?:i\s*am|i'?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by))|(?:employer\s*[:=-]|company\s*[:=-]|at\s+|in\s+))\s*/i,
+    ""
+  ).trim();
   // Stop at connective words like "and", "need", "for", "with"
   str = str.replace(/\s+\b(?:and|need|want|looking|for|with|having|earning|salary)\b.*$/i, "").trim();
   // Strip trailing period or quotes
@@ -300,6 +303,24 @@ export function extractEntitiesFromRawText(text: string, lastPromptedSlot?: stri
   if (!text || typeof text !== "string") return entities;
 
   const cleanTrimmed = text.trim();
+
+  // Dedicated check for Zero EMI declarations
+  if (
+    /^(?:0\s*(?:rs|inr|₹)?|rs\.?\s*0|zero|none|nil|nothing|nope|na|n\/a|no)\b/i.test(cleanTrimmed) ||
+    /(?:no|zero|nil|0)\s*(?:existing\s*)?(?:monthly\s*)?(?:loan\s*)?emi/i.test(cleanTrimmed) ||
+    /(?:no|zero|nil|0)\s*(?:existing\s*|ongoing\s*|current\s*)?loans?/i.test(cleanTrimmed) ||
+    /(?:don['’]?t\s*have|have\s*no)\s*(?:any\s*)?(?:existing\s*)?emi/i.test(cleanTrimmed) ||
+    /\b(?:zero\s*debt|sab\s*clear|no\s*debt|no\s*emis?)\b/i.test(cleanTrimmed)
+  ) {
+    if (
+      lastPromptedSlot === "existingEmi" ||
+      /(?:emi|loan|debt)/i.test(cleanTrimmed) ||
+      (/^(?:0|zero|none|nil|no|nothing|nope)$/i.test(cleanTrimmed) && (!lastPromptedSlot || lastPromptedSlot === "existingEmi"))
+    ) {
+      entities.existingEmi = 0;
+      return entities;
+    }
+  }
 
   // --------------------------------------------------------------------------
   // RULE 1: EXTRACT NUMERIC INTENTS
@@ -381,11 +402,18 @@ export function extractEntitiesFromRawText(text: string, lastPromptedSlot?: stri
   if (loanMatch && !isQueryAboutLoanAmount) {
     const amt = normalizeLoanAmount(loanMatch[1]);
     if (amt && amt >= 10000) entities.requestedAmount = amt;
-  } else if (!isQueryAboutLoanAmount && lastPromptedSlot !== "monthlyIncome" && lastPromptedSlot !== "existingEmi") {
-    // If not explicitly "loan of X", extract loan amount if not already consumed by salary or EMI and not answering salary/EMI
+  } else if (!isQueryAboutLoanAmount && lastPromptedSlot === "requestedAmount") {
     const amount = normalizeLoanAmount(text);
-    if (amount && (!entities.monthlyIncome || amount !== entities.monthlyIncome) && (!entities.existingEmi || amount !== entities.existingEmi)) {
+    if (amount && amount >= 10000 && (!entities.monthlyIncome || amount !== entities.monthlyIncome) && (!entities.existingEmi || amount !== entities.existingEmi)) {
       entities.requestedAmount = amount;
+    }
+  } else if (!isQueryAboutLoanAmount && /(?:borrow|for\s*loan|need\s*loan|want\s*loan|require|personal\s*loan|loan\s*of)/i.test(text)) {
+    const isSalary = /\b(?:salary|income|earn|nth|take\s*home|per\s*month|pm|\/mo)\b/i.test(text);
+    if (!isSalary) {
+      const amount = normalizeLoanAmount(text);
+      if (amount && amount >= 10000 && (!entities.monthlyIncome || amount !== entities.monthlyIncome) && (!entities.existingEmi || amount !== entities.existingEmi)) {
+        entities.requestedAmount = amount;
+      }
     }
   }
 
@@ -404,7 +432,7 @@ export function extractEntitiesFromRawText(text: string, lastPromptedSlot?: stri
   }
 
   // 7. Employer
-  const empMatch = text.match(/(?:work\s*(?:at|in|for)|company\s*(?:is)?)\s+([A-Za-z0-9&'.-]+(?:\s+[A-Za-z0-9&'.-]+)*)/i);
+  const empMatch = text.match(/(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*)|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for))|(?:(?:my\s+)?(?:company|employer)\s+is)|(?:(?:i\s*am|i'?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)))\s+([A-Za-z0-9&'.-]+(?:\s+[A-Za-z0-9&'.-]+)*)/i);
   if (empMatch) {
     const emp = normalizeEmployer(empMatch[1]);
     if (emp && !isInvalidCompanyName(emp)) entities.employer = emp;
@@ -445,9 +473,52 @@ export function extractParametersFromConversationHistory(
   const result: Partial<SessionVariables> = {};
   if (!conversationHistory || conversationHistory.length === 0) return result;
 
+  let lastAssistantMsg: string | undefined = undefined;
   for (const turn of conversationHistory) {
-    if (turn.role === "user" && turn.content) {
+    if (turn.role === "assistant" || turn.role === "ai") {
+      lastAssistantMsg = turn.content;
+      continue;
+    }
+    if ((turn.role === "user" || turn.role === "human") && turn.content) {
       const text = turn.content;
+      const promptedField = lastAssistantMsg ? detectFieldPromptedInAssistantMessage(lastAssistantMsg) : undefined;
+
+      // Handle user's direct answer to assistant's prompted question
+      if (promptedField === "existingEmi" && result.existingEmi === undefined) {
+        if (/^(?:0\s*(?:rs|inr|₹)?|rs\.?\s*0|zero|none|nil|no|nothing|nope|clear|sab\s*clear|0\s*emi|no\s*emi)$/i.test(text.trim())) {
+          result.existingEmi = 0;
+        } else {
+          const emi = normalizeLoanAmount(text);
+          if (emi !== undefined && emi >= 0) {
+            result.existingEmi = emi;
+          }
+        }
+      } else if (promptedField === "monthlyIncome" && result.monthlyIncome === undefined) {
+        const sal = normalizeLoanAmount(text);
+        if (sal && sal >= 5000) {
+          result.monthlyIncome = sal;
+        }
+      } else if (promptedField === "requestedAmount" && result.requestedAmount === undefined) {
+        const amt = normalizeLoanAmount(text);
+        if (amt && amt >= 10000) {
+          result.requestedAmount = amt;
+        }
+      } else if (promptedField === "tenureMonths" && result.tenureMonths === undefined) {
+        const tenure = normalizeTenureMonths(text);
+        if (tenure && tenure > 0) {
+          result.tenureMonths = tenure;
+        }
+      } else if (promptedField === "cibilScore" && result.cibilScore === undefined) {
+        const cibil = normalizeCibilScore(text);
+        if (cibil !== undefined) {
+          result.cibilScore = cibil;
+        }
+      } else if (promptedField === "age" && result.age === undefined) {
+        const age = normalizeAge(text);
+        if (age && age >= 18 && age <= 90) {
+          result.age = age;
+        }
+      }
 
       // Extract Monthly Income FIRST
       if (result.monthlyIncome === undefined) {
@@ -488,7 +559,11 @@ export function extractParametersFromConversationHistory(
       }
 
       // Extract Tenure
-      if (result.tenureMonths === undefined) {
+      if (
+        result.tenureMonths === undefined &&
+        promptedField !== "companySelection" &&
+        !/^\s*(?:option\s+|opt\s+|#|no\.?\s*)?[1-9]\d{0,1}\s*$/i.test(text.trim())
+      ) {
         const tenure = normalizeTenureMonths(text);
         if (tenure && tenure > 0) {
           result.tenureMonths = tenure;
@@ -524,13 +599,22 @@ export function extractParametersFromConversationHistory(
 
       // Extract Existing EMI
       if (result.existingEmi === undefined) {
-        if (/\b(?:existing\s*emi|ongoing\s*(?:loan|emi)|car\s*emi|home\s*loan\s*emi|personal\s*loan\s*emi|current\s*emi|paying\s*emi)\b/i.test(text)) {
-          const emi = normalizeLoanAmount(text);
-          if (emi !== undefined && emi >= 0) {
-            result.existingEmi = emi;
+        if (
+          /\b(?:existing\s*emi|ongoing\s*(?:loan|emi)|car\s*emi|home\s*loan\s*emi|personal\s*loan\s*emi|current\s*emi|paying\s*emi)\b/i.test(text) ||
+          /(?:no|zero|nil|0)\s*(?:existing\s*)?(?:monthly\s*)?(?:loan\s*)?emi/i.test(text)
+        ) {
+          if (/(?:no|zero|nil|0)\s*(?:existing\s*)?(?:monthly\s*)?(?:loan\s*)?emi/i.test(text)) {
+            result.existingEmi = 0;
+          } else {
+            const emi = normalizeLoanAmount(text);
+            if (emi !== undefined && emi >= 0) {
+              result.existingEmi = emi;
+            }
           }
         }
       }
+
+      lastAssistantMsg = undefined;
     }
   }
 
@@ -892,35 +976,80 @@ export async function processAntigravityWebhook(
         console.warn("[antigravityWebhook] Failed to fetch live company intelligence:", err);
       }
     } else {
-      // Re-prompt matching options form if user reply was unrecognized
-      const form = renderMatchingOptionsForm(
-        currentSession.employerConfirmationQuery || "your company",
-        currentSession.employerConfirmationOptions
-      );
-      const candidatesPayload = currentSession.employerConfirmationOptions.map((opt, idx) => ({
-        id: String(idx + 1),
-        name: opt.name,
-        categoryLabel: opt.categoryLabel,
-        source: "database",
-      }));
-      return {
-        isComplete: false,
-        nextSlotRequired: "company",
-        prompt: form,
-        sessionVariables: currentSession,
-        missingSlots: ["company", "existingEmi", "tenureMonths", "cibilScore", "age"],
-        matchingOptionsForm: form,
-        awaitingEmployerConfirmation: true,
-        employerConfirmationQuery: currentSession.employerConfirmationQuery,
-        employerConfirmationOptions: currentSession.employerConfirmationOptions,
-        companyData: {
-          company_flow: "COMPANY_SELECTION",
-          needs_disambiguation: true,
-          searchQuery: currentSession.employerConfirmationQuery || "your company",
-          candidates: candidatesPayload,
-          candidateOptions: candidatesPayload,
-        },
-      };
+      const userText = String(payload.userMessage || "").trim();
+      const hasFinancialOrProfileKeywords =
+        /\b(?:salary|income|take\s*home|in\s*hand|net\s*pay|cibil|tenure|age|emi|years?\s*old|lakhs?|lacs?|thousand|crores?)\b/i.test(userText) ||
+        /^(?:rs\.?|inr|₹)?\s*[0-9]+(?:\.[0-9]+)?\s*(?:k|lakhs?|lacs?|lac|l|crores?|cr|thousand|hazar)?$/i.test(userText);
+
+      const hasOtherSlots =
+        rawEntities.monthlyIncome !== undefined ||
+        incomingEntities.monthlyIncome !== undefined ||
+        rawEntities.requestedAmount !== undefined ||
+        incomingEntities.requestedAmount !== undefined ||
+        rawEntities.cibilScore !== undefined ||
+        incomingEntities.cibilScore !== undefined ||
+        rawEntities.tenureMonths !== undefined ||
+        incomingEntities.tenureMonths !== undefined ||
+        rawEntities.existingEmi !== undefined ||
+        incomingEntities.existingEmi !== undefined ||
+        rawEntities.age !== undefined ||
+        incomingEntities.age !== undefined ||
+        hasFinancialOrProfileKeywords;
+
+      if (hasOtherSlots) {
+        // If the user skipped selecting an exact corporate entity and provided other details (like salary),
+        // accept the tentative employer query or top match so the intake doesn't get blocked.
+        const defaultName =
+          currentSession.employerConfirmationOptions[0]?.name ||
+          currentSession.employerConfirmationQuery ||
+          "Unlisted Company";
+        currentSession.employer = defaultName;
+        currentSession.Employer_Name = defaultName;
+        currentSession.awaitingEmployerConfirmation = false;
+        currentSession.employerConfirmationQuery = undefined;
+        currentSession.employerConfirmationOptions = undefined;
+
+        if (!currentSession.monthlyIncome && !incomingEntities.monthlyIncome) {
+          const salMatch = userText.match(/(?:salary|net\s*salary|income|in-hand|take\s*home|earning|earn)\s*(?:is|changed\s*to|of|around|approx|about)?\s*(?:rs\.?|inr|₹)?\s*([0-9]+(?:\.[0-9]+)?\s*(?:lakhs?|lacs?|lac|crores?|cr|k)|[0-9,]{4,12})/i);
+          if (salMatch) {
+            const sal = normalizeLoanAmount(salMatch[1]);
+            if (sal && sal >= 5000 && sal <= 50000000) {
+              currentSession.monthlyIncome = sal;
+              incomingEntities.monthlyIncome = sal;
+            }
+          }
+        }
+      } else {
+        // Re-prompt matching options form if user reply was unrecognized
+        const form = renderMatchingOptionsForm(
+          currentSession.employerConfirmationQuery || "your company",
+          currentSession.employerConfirmationOptions
+        );
+        const candidatesPayload = currentSession.employerConfirmationOptions.map((opt, idx) => ({
+          id: String(idx + 1),
+          name: opt.name,
+          categoryLabel: opt.categoryLabel,
+          source: "database",
+        }));
+        return {
+          isComplete: false,
+          nextSlotRequired: "company",
+          prompt: form,
+          sessionVariables: currentSession,
+          missingSlots: ["company", "existingEmi", "tenureMonths", "cibilScore", "age"],
+          matchingOptionsForm: form,
+          awaitingEmployerConfirmation: true,
+          employerConfirmationQuery: currentSession.employerConfirmationQuery,
+          employerConfirmationOptions: currentSession.employerConfirmationOptions,
+          companyData: {
+            company_flow: "COMPANY_SELECTION",
+            needs_disambiguation: true,
+            searchQuery: currentSession.employerConfirmationQuery || "your company",
+            candidates: candidatesPayload,
+            candidateOptions: candidatesPayload,
+          },
+        };
+      }
     }
   }
 
@@ -993,11 +1122,15 @@ export async function processAntigravityWebhook(
   // save it and move to "existing EMIs". Trigger and display the Match List.
   // =========================================================================
   const userText = String(payload.userMessage || "").trim();
-  const explicitCompanyRegex = /^(?:(?:i\s+(?:work|working|am\s+working)\s+(?:at|in|for)|(?:my\s+)?(?:employer|company)\s+is|(?:work|working|employed)\s+(?:at|in|by|for)|employer\s*[:=-]|company\s*[:=-])|(?:change|update|correct)\s+(?:my\s+)?(?:company|employer))\b/i;
+  const explicitCompanyRegex = /^(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*)|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for))|(?:(?:my\s+)?(?:company|employer)\s+is)|(?:(?:i\s*am|i'?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by))|(?:(?:change|update|correct)\s+(?:my\s+)?(?:company|employer|comapny))|(?:employer\s*[:=-]|company\s*[:=-]))\b/i;
   const isExplicitCompanyTurn = explicitCompanyRegex.test(userText);
+  const hasFinancialOrProfileKeywords =
+    /\b(?:salary|income|take\s*home|in\s*hand|net\s*pay|cibil|tenure|age|emi|years?\s*old|lakhs?|lacs?|thousand|crores?)\b/i.test(userText) ||
+    /^(?:rs\.?|inr|₹)?\s*[0-9]+(?:\.[0-9]+)?\s*(?:k|lakhs?|lacs?|lac|l|crores?|cr|thousand|hazar)?$/i.test(userText);
   const isReplyingToEmployerSlot =
     currentSession.lastPromptedSlot === "employer" &&
     !isInvalidCompanyName(userText) &&
+    !hasFinancialOrProfileKeywords &&
     !/^\s*(?:0|none|nil|no|yes|hi|hello|hey|ok|okay)\s*$/i.test(userText) &&
     !/^\s*[0-9,.\s₹rs]+\s*$/i.test(userText);
 
@@ -1137,49 +1270,27 @@ export async function processAntigravityWebhook(
 
   // Fallback triggers if:
   // 1. User gave an evasive/vague/default request (e.g. "I don't know", "skip this", "just tell me my loan eligibility"), OR
-  // 2. The same slot was prompted and user gave no new info, OR
-  // 3. The slot was already prompted more than once.
   const shouldTriggerFallback =
     (missingSlots.length > 0 && hasExplicitDefaultRequest) ||
-    (missingSlots.length > 0 && isVagueOrEvasive) ||
-    (Boolean(lastSlot && missingSlots.includes(lastSlot)) && !providedNewInfoThisTurn && currentSlotPromptCount >= 1) ||
-    (Boolean(lastSlot && missingSlots.includes(lastSlot)) && currentSlotPromptCount >= 2);
+    (missingSlots.length > 0 && isVagueOrEvasive);
 
   const hasRequiredFinancialData = Boolean(
     currentSession.monthlyIncome && currentSession.monthlyIncome > 0 &&
     currentSession.requestedAmount && currentSession.requestedAmount > 0
   );
 
-  // If financial inputs are provided and user refused or requested defaults for non-financial slots:
-  if (shouldTriggerFallback && hasRequiredFinancialData && !isEmployerPlaceholder) {
-    if (missingSlots.includes("tenureMonths") || !currentSession.tenureMonths) {
-      currentSession.tenureMonths = 60; // 5 years
-      assumptionsUsed.push("Default Repayment Tenure: 5 years (60 months)");
-      const idx = missingSlots.indexOf("tenureMonths");
-      if (idx !== -1) missingSlots.splice(idx, 1);
-    }
-    if (missingSlots.includes("cibilScore") || (currentSession.cibilScore === undefined && currentSession.cibilWasAssumed !== true)) {
-      currentSession.cibilScore = 700;
-      currentSession.cibilWasAssumed = true;
-      assumptionsUsed.push("CIBIL Score: 700 (Unprovided / NHA / zero credit history baseline)");
-      const idx = missingSlots.indexOf("cibilScore");
-      if (idx !== -1) missingSlots.splice(idx, 1);
-    }
-    if (missingSlots.includes("age") || !currentSession.age) {
-      currentSession.age = 30;
-      assumptionsUsed.push("Applicant Age: 30 years (Standard benchmark)");
-      const idx = missingSlots.indexOf("age");
-      if (idx !== -1) missingSlots.splice(idx, 1);
-    }
-    if (missingSlots.includes("existingEmi") || currentSession.existingEmi === undefined) {
-      currentSession.existingEmi = 0;
-      assumptionsUsed.push("Existing Monthly EMI Obligations: ₹0 (No active debt liabilities declared)");
-      const idx = missingSlots.indexOf("existingEmi");
-      if (idx !== -1) missingSlots.splice(idx, 1);
-    }
-
-    currentSession.foir = 50;
-    assumptionsUsed.push("Default FOIR (Fixed Obligation to Income Ratio): 50%");
+  // User Rule: NEVER consider own values or default values.
+  // ONLY when user says not sure about cibil or employee has no cibil, in that case consider 700.
+  if (
+    missingSlots.includes("cibilScore") &&
+    (currentSession.lastPromptedSlot === "cibilScore" || /cibil|credit/i.test(userText)) &&
+    (shouldTriggerFallback || isUncertainOrVague(userText) || /not\s*sure|no\s*cibil|zero\s*credit/i.test(userText))
+  ) {
+    currentSession.cibilScore = 700;
+    currentSession.cibilWasAssumed = true;
+    assumptionsUsed.push("CIBIL Score: 700 (Unprovided / NHA / zero credit history baseline)");
+    const idx = missingSlots.indexOf("cibilScore");
+    if (idx !== -1) missingSlots.splice(idx, 1);
     currentSession.assumptionsUsed = assumptionsUsed;
   }
 
@@ -1300,16 +1411,35 @@ export async function processAntigravityWebhook(
   const reviewResults = formattedResults.filter((b) => b.status === "NEEDS_REVIEW");
   const totalEligible = eligibleResults.length;
 
+  // Sort eligible banks with the best offer / lowest ROI / lowest EMI on top
+  eligibleResults.sort((a, b) => {
+    if (a.roi !== b.roi) return a.roi - b.roi;
+    if (a.estimatedEmi !== b.estimatedEmi) return a.estimatedEmi - b.estimatedEmi;
+    return (b.maxLoanEligible || 0) - (a.maxLoanEligible || 0);
+  });
+
   // Build markdown table as specified in AGENTS.md:
   // | Bank | Status | CIBIL | Tenure | Est. EMI |
   let markdownTable = `| Bank | Status | CIBIL | Tenure | Est. EMI |\n`;
   markdownTable += `|---|---|---|---|---|\n`;
 
-  // Display eligible banks first, followed by review banks if any
-  const displayBanks = eligibleResults.length > 0 ? eligibleResults : reviewResults;
-  for (const b of displayBanks) {
-    const emiDisplay = b.estimatedEmi > 0 ? `₹${b.estimatedEmi.toLocaleString("en-IN")}` : "Varies by CAT";
-    markdownTable += `| **${b.bankName}** | \`${b.status}\` | ${b.cibil} | ${b.tenure} | **${emiDisplay}** |\n`;
+  // Display eligible banks first, followed by review banks if any; if none qualify, display evaluated partner banks
+  const displayBanks =
+    eligibleResults.length > 0
+      ? eligibleResults
+      : reviewResults.length > 0
+      ? reviewResults
+      : formattedResults;
+
+  for (let idx = 0; idx < displayBanks.length; idx++) {
+    const b = displayBanks[idx];
+    const isTopRecommended = idx === 0 && b.status === "ELIGIBLE";
+    const emiDisplay =
+      b.status === "ELIGIBLE"
+        ? (b.estimatedEmi > 0 ? `₹${b.estimatedEmi.toLocaleString("en-IN")}` : "Varies by CAT")
+        : (b.failureReasons && b.failureReasons.length > 0 ? b.failureReasons[0].replace(/^-\s*/, "").replace(/^\*\*[^*]+\*\*:\s*/, "") : "Below Policy Cutoff");
+    const bankDisplay = isTopRecommended ? `**${b.bankName}** 🌟 *(Highly Recommended)*` : `**${b.bankName}**`;
+    markdownTable += `| ${bankDisplay} | \`${b.status}\` | ${b.cibil} | ${b.tenure} | **${emiDisplay}** |\n`;
   }
 
   const summary = `Evaluated applicant profile against 23 bank policy datasets. ${totalEligible} bank(s) qualify for immediate funding.`;
@@ -1436,9 +1566,7 @@ export async function processAntigravityWebhook(
   } else {
     reportTitle =
       `### ❌ Loan Eligibility Assessment Result\n\n` +
-      `Based on your profile at **${currentSession.employer || "Standard Corporate"}**, none of our partner banks qualify for funding at this time.\n\n` +
-      `**Reason:** ${primaryFailureReason}\n\n` +
-      `Would you like to check eligibility using another company?\n\n`;
+      `Based on your profile at **${currentSession.employer || "Standard Corporate"}**, none of our partner banks qualify for funding at this time.\n\n`;
   }
 
   const fullReport =

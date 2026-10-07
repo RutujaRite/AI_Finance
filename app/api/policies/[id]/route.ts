@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteBankMasterPolicy, updateBankMasterPolicy } from "@/lib/masterPolicies";
+import { verifyToken, isAdminUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,6 +10,19 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const token = req.cookies.get("token")?.value;
+  const payload: any = token ? verifyToken(token) : null;
+  if (!payload) {
+    return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
+  }
+
+  if (!isAdminUser(payload)) {
+    return NextResponse.json(
+      { success: false, error: "Forbidden", message: "Admin privileges required" },
+      { status: 403 }
+    );
+  }
+
   try {
     const { id } = await params;
     const ruleId = parseInt(id, 10);
@@ -80,6 +94,19 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const token = req.cookies.get("token")?.value;
+  const payload: any = token ? verifyToken(token) : null;
+  if (!payload) {
+    return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
+  }
+
+  if (!isAdminUser(payload)) {
+    return NextResponse.json(
+      { success: false, error: "Forbidden", message: "Admin privileges required" },
+      { status: 403 }
+    );
+  }
+
   try {
     const { id } = await params;
     const ruleId = parseInt(id, 10);

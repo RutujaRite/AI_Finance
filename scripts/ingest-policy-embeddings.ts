@@ -17,6 +17,7 @@ import * as dotenv from "dotenv";
 // Load environment variables (.env.local with fallback to .env)
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+import { chunkPolicyWithMetadata } from "../lib/policyChunker";
 
 const pool = new Pool({
   user: process.env.DB_USER || "postgres",
@@ -398,8 +399,13 @@ async function main() {
       console.log(`File:        ${policy.file_name}`);
       console.log(`Characters:  ${textLen}`);
 
-      // Chunk the policy text
-      const chunks = chunkPolicyText(policy.extracted_text, 1100, 180);
+      // Chunk the policy text using header-aware, metadata-enriched chunking
+      const bankDerivedName = policy.file_name.replace(/_Master_Policy\.txt$/i, "").replace(/_/g, " ");
+      const chunks = chunkPolicyWithMetadata(policy.extracted_text, {
+        bankName: bankDerivedName,
+        targetCharSize: 1800,
+        overlapCharSize: 200,
+      });
       const chunkLens = chunks.map((c) => c.charCount);
       const minLen = Math.min(...chunkLens);
       const maxLen = Math.max(...chunkLens);
@@ -481,6 +487,7 @@ errors: 0
           const chunk = chunks[cIdx];
           const vector = allVectors[cIdx];
           const metadata = {
+            ...chunk.metadata,
             embedding_model: embeddingModel,
             dimensions,
             source_type: "bank_policy_files",

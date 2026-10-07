@@ -38,10 +38,23 @@ export default function BankManagerFilesPage() {
 
   async function checkAuth() {
     try {
-      const res = await fetch("/api/auth/verify")
+      const res = await fetch("/api/auth/verify", { credentials: "include" })
       if (res.ok) {
         const data = await res.json()
-        if (data.success) setUser(data.user)
+        if (data.success) {
+          const isAdminUser =
+            String(data.user?.role || "").trim().toLowerCase() === "admin" ||
+            data.user?.is_admin === true ||
+            String(data.user?.email || "").toLowerCase() === "admin@gmail.com" ||
+            String(data.user?.email || "").toLowerCase() === "akshadasagar31@gmail.com" ||
+            String(data.user?.email || "").toLowerCase().startsWith("admin")
+
+          if (!isAdminUser) {
+            router.replace("/home?section=assistant")
+            return
+          }
+          setUser(data.user)
+        }
       } else {
         router.replace("/login")
       }

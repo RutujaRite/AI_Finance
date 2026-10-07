@@ -290,12 +290,12 @@ export async function getEligibilityState(conversationId: string): Promise<Sessi
   if (inMemorySessionStates.has(conversationId)) {
     return applySessionDefaults(inMemorySessionStates.get(conversationId)!);
   }
-  const numId = Number(conversationId);
-  if (pool && Number.isFinite(numId)) {
+  const cleanId = String(conversationId).trim();
+  if (pool && cleanId) {
     try {
       const res = await pool.query(
         `SELECT state FROM assistant_conversation_states WHERE conversation_id = $1 AND expires_at > NOW()`,
-        [numId]
+        [cleanId]
       );
       if (res.rowCount && res.rows[0].state) {
         const loaded = applySessionDefaults(res.rows[0].state);
@@ -314,14 +314,14 @@ export async function saveEligibilityState(conversationId: string, state: Sessio
     return;
   }
   inMemorySessionStates.set(conversationId, state);
-  const numId = Number(conversationId);
-  if (pool && Number.isFinite(numId)) {
+  const cleanId = String(conversationId).trim();
+  if (pool && cleanId) {
     try {
       await pool.query(
         `INSERT INTO assistant_conversation_states (conversation_id, state, expires_at)
          VALUES ($1, $2, NOW() + INTERVAL '45 minutes')
          ON CONFLICT (conversation_id) DO UPDATE SET state = $2, expires_at = NOW() + INTERVAL '45 minutes'`,
-        [numId, state]
+        [cleanId, state]
       );
     } catch (e: any) {
       console.error("[saveEligibilityState] Error persisting DB state:", e?.message || e);
@@ -334,10 +334,10 @@ export async function clearEligibilityState(conversationId: string): Promise<voi
     return;
   }
   inMemorySessionStates.delete(conversationId);
-  const numId = Number(conversationId);
-  if (pool && Number.isFinite(numId)) {
+  const cleanId = String(conversationId).trim();
+  if (pool && cleanId) {
     try {
-      await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numId]);
+      await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [cleanId]);
     } catch (e: any) {
       console.error("[clearEligibilityState] Error deleting DB state:", e?.message || e);
     }
@@ -408,8 +408,22 @@ export function detectLoanIntent(
   let loanType = "Personal Loan";
   if (/home\s*loan/i.test(norm)) loanType = "Home Loan";
   else if (/business\s*loan/i.test(norm)) loanType = "Business Loan";
-  else if (/car\s*loan|auto\s*loan/i.test(norm)) loanType = "Auto Loan";
-  else if (/education\s*loan/i.test(norm)) loanType = "Education Loan";
+  else if (/car\s*loan|auto\s*loan|vehicle\s*loan/i.test(norm)) loanType = "Auto Loan";
+  else if (/education(?:al)?\s*loan|student\s*loan/i.test(norm)) loanType = "Education Loan";
+  else if (/credit\s*card/i.test(norm)) loanType = "Credit Card";
+
+  // Different loan types without explicit personal loan borrowing intent are NOT personal loan intent
+  if (loanType !== "Personal Loan" && !/personal\s*loan/i.test(norm)) {
+    return { isLoanIntent: false, loanType };
+  }
+
+  // If user asks about process, steps, or how to apply without providing profile details
+  if (
+    /(?:process|steps?|procedure|how\s+to\s+apply|tell\s+me\s+(?:the\s+)?process|don'?t\s+know\s+(?:the\s+)?process)/i.test(norm) &&
+    !/(?:my\s*salary|my\s*cibil|i\s*work\s*at|earning\s*\d+|take\s*home)/i.test(norm)
+  ) {
+    return { isLoanIntent: false, loanType };
+  }
 
   // Bank policy inquiries asking for specific institution guidelines/rules/criteria/cutoffs (partner or non-partner/unsupported)
   const isBankPolicy =
@@ -420,28 +434,32 @@ export function detectLoanIntent(
   const isPersonalEligibilityInquiry =
     /(?:am\s*i\s*(?:eligible|qualif\w*)|check\s*(?:my|our)\s*eligib\w*|for\s*me|my\s*eligib\w*|can\s*i\s*(?:get|apply|qualify)|i\s*(?:need|want)\s*a\s*loan)/i.test(norm);
 
-  if (isBankPolicy && !isPersonalEligibilityInquiry) {
+  const isDocumentAsk =
+    /\b(?:doc|document|documents|paperwork|kyc|checklist)\b/i.test(norm) &&
+    !/(?:i\s*want\s*to\s*apply|my\s*salary\s*is|my\s*cibil\s*is|apply\s+now|start\s+application)/i.test(norm);
+
+  if ((isBankPolicy || isDocumentAsk) && !isPersonalEligibilityInquiry) {
     return { isLoanIntent: false, loanType };
   }
 
   // Check natural user phrases expressing loan intent or inquiring about eligibility across banks
   const isNaturalLoanPhrase =
-    /(?:i\s*(?:need|want|require|wish|am\s*looking\s*for)\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?loan)/i.test(norm) ||
-    /(?:apply\s*(?:for)?\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?loan)/i.test(norm) ||
-    /(?:can\s*i\s*(?:get|have|avail|take|apply\s*for)\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?loan)/i.test(norm) ||
-    /(?:can\s*i\s*get\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?loan)/i.test(norm) ||
-    /(?:(?:what|which)\s*banks?\s*(?:am\s*i|can\s*i|could\s*i|would\s*i|should\s*i)\s*(?:be\s*)?(?:eligible|qualif\w*|get|apply))/i.test(norm) ||
-    /(?:(?:which|what)\s*banks?\s*(?:can\s*i|could\s*i|will|would|do\s*i)\s*(?:get|take|avail|receive|apply\s*for)\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?loan)/i.test(norm) ||
-    /(?:(?:which|what)\s*banks?\s*(?:is|are|would\s*be)\s*(?:best|good|ideal|suitable|better|recommended)\s*for\s*(?:my\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?loan)/i.test(norm) ||
-    /(?:(?:am\s*i|is\s*it\s*possible\s*for\s*me\s*to\s*be|could\s*i\s*be)\s*eligible\s*(?:for\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?loan)?)/i.test(norm) ||
-    /(?:(?:which|what)\s*banks?\s*will\s*(?:give|provide|grant|approve|sanction)\s*(?:me\s*)?(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?loan)/i.test(norm) ||
-    /(?:(?:where|how)\s*can\s*i\s*(?:get|apply\s*for|avail|take)\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?loan)/i.test(norm) ||
-    /(?:(?:my\s*loan\s*options|options\s*for\s*(?:my\s*)?loan|what\s*are\s*my\s*loan\s*options))/i.test(norm) ||
-    /(?:(?:do\s*i\s*qualify\s*for\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?loan))/i.test(norm) ||
-    /(?:(?:need|want|require)\s*(?:rs\.?|₹)?\s*[\d,]+(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr)?\s*(?:loan|for\s*\d+\s*(?:years?|yrs?|months?)))/i.test(norm) ||
+    /(?:i\s*(?:need|want|require|wish|am\s*looking\s*for)\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?(?:loan|lone))/i.test(norm) ||
+    /(?:apply\s*(?:for)?\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?(?:loan|lone))/i.test(norm) ||
+    /(?:can\s*i\s*(?:get|have|avail|take|apply\s*for)\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?(?:loan|lone))/i.test(norm) ||
+    /(?:can\s*i\s*get\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?(?:loan|lone))/i.test(norm) ||
+    /(?:(?:what|which)\s*banks?\s*(?:am\s*i|can\s*i|could\s*i|would\s*i|should\s*i)\s*(?:be\s*)?(?:el[i|e]?g[i|e]b\w*|qualif\w*|get|apply))/i.test(norm) ||
+    /(?:(?:which|what)\s*banks?\s*(?:can\s*i|could\s*i|will|would|do\s*i)\s*(?:get|take|avail|receive|apply\s*for)\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?(?:loan|lone))/i.test(norm) ||
+    /(?:(?:which|what)\s*banks?\s*(?:is|are|would\s*be)\s*(?:best|good|ideal|suitable|better|recommended)\s*for\s*(?:my\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?(?:loan|lone))/i.test(norm) ||
+    /(?:(?:am\s*i|is\s*it\s*possible\s*for\s*me\s*to\s*be|could\s*i\s*be)\s*el[i|e]?g[i|e]b\w*\s*(?:for\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?(?:loan|lone))?)/i.test(norm) ||
+    /(?:(?:which|what)\s*banks?\s*will\s*(?:give|provide|grant|approve|sanction)\s*(?:me\s*)?(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?(?:loan|lone))/i.test(norm) ||
+    /(?:(?:where|how)\s*can\s*i\s*(?:get|apply\s*for|avail|take)\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?(?:loan|lone))/i.test(norm) ||
+    /(?:(?:my\s*(?:loan|lone)\s*options|options\s*for\s*(?:my\s*)?(?:loan|lone)|what\s*are\s*my\s*(?:loan|lone)\s*options))/i.test(norm) ||
+    /(?:(?:do\s*i\s*qualify\s*for\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?(?:loan|lone)))/i.test(norm) ||
+    /(?:(?:need|want|require)\s*(?:rs\.?|₹)?\s*[\d,]+(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr)?\s*(?:loan|lone|for\s*\d+\s*(?:years?|yrs?|months?)))/i.test(norm) ||
     /(?:(?:need|want|require)\s*(?:rs\.?|₹)?\s*[\d,]+(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr)\b)/i.test(norm) ||
-    /(?:(?:check|evaluate|calculate|test|find\s*out)\s*(?:my\s*)?(?:personal\s*)?(?:loan\s*)?eligib\w*)/i.test(norm) ||
-    /^(?:i\s*need\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?loan|i\s*want\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?loan|can\s*i\s*get\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?loan|loan\s*chahiye|need\s*loan|get\s*me\s*a\s*loan|looking\s*for\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?loan)\b/i.test(norm);
+    /(?:(?:check|cheak|evaluate|calculate|test|find\s*out)\s*(?:my\s*)?(?:personal\s*)?(?:loan\s*|lone\s*)?el[i|e]?g[i|e]b\w*)/i.test(norm) ||
+    /^(?:i\s*need\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?(?:loan|lone)|i\s*want\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?(?:loan|lone)|can\s*i\s*get\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?(?:loan|lone)|(?:loan|lone)\s*chahiye|need\s*(?:loan|lone)|get\s*me\s*a\s*(?:loan|lone)|looking\s*for\s*(?:a\s*)?(?:personal\s*|home\s*|car\s*|auto\s*|business\s*|education\s*)?(?:loan|lone))\b/i.test(norm);
 
   // Check if user is sharing multiple applicant profile parameters (e.g. salary + cibil / amount / emi / tenure / company)
   const hasMultipleApplicantProfileFields =
@@ -1547,9 +1565,18 @@ export function resolveBankName(
   for (const p of KNOWN_BANK_PATTERNS) {
     if (p.regex.test(clean) || p.regex.test(lower)) {
       if (eligibleBanks && eligibleBanks.length > 0) {
-        const normTarget = p.canonicalName.toLowerCase().replace(/bank|finance|limited|ltd/gi, "").trim();
+        // Priority 1: Exact canonical match in eligibleBanks
+        const exactMatch = eligibleBanks.find((eb) => eb.toLowerCase() === p.canonicalName.toLowerCase());
+        if (exactMatch) {
+          return { bankName: exactMatch, isCorrection };
+        }
+        // Priority 2: Distinctive token match that NEVER conflates "Bank" with "Finance"
+        const isTargetFinance = /finance/i.test(p.canonicalName);
+        const normTarget = p.canonicalName.toLowerCase().replace(/bank|limited|ltd/gi, "").trim();
         const matched = eligibleBanks.find((eb) => {
-          const ebNorm = eb.toLowerCase().replace(/bank|finance|limited|ltd/gi, "").trim();
+          const isEbFinance = /finance/i.test(eb);
+          if (isTargetFinance !== isEbFinance) return false;
+          const ebNorm = eb.toLowerCase().replace(/bank|limited|ltd/gi, "").trim();
           return ebNorm.includes(normTarget) || normTarget.includes(ebNorm);
         });
         if (matched) {
@@ -2122,7 +2149,7 @@ export function extractBankBranchLocationParams(
   // Remove bank name to extract branch & location
   let remaining = raw;
   // If the text explicitly mentions an employer / company (e.g. "I work at Infosys"), strip it so it is never treated as a location
-  const hasExplicitEmployerPhrase = /(?:work\s+(?:at|in)|working\s+(?:at|in)|employed\s+(?:at|by|in)|(?:my\s+)?(?:company|employer)\s*(?:is|:)|employer|company)\b/i.test(raw);
+  const hasExplicitEmployerPhrase = /(?:work\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for)|(?:my\s+)?(?:working\s+|current\s+|present\s+)?(?:company|employer|comapny|cmpny)\s*(?:is|:)|employer|company|comapny)\b/i.test(raw);
   const compCandidate = hasExplicitEmployerPhrase ? extractCompanyCandidateFromText(raw) : undefined;
   if (compCandidate) {
     const escComp = compCandidate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -2270,14 +2297,19 @@ export function extractBankBranchLocationParams(
 
       if (foundLoc) {
         result.area = foundLoc.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-      } else if (expectedField === "branchSelection") {
+      } else if (
+        expectedField === "branchSelection" &&
+        !/continue|resume|eligib|loan\s*check|loan\s*eligibility/i.test(remText) &&
+        !/\?|^(?:what|how|why|when|is|can|does|tell|explain)\b/i.test(remText) &&
+        !/policy|rule|criteria|cutoff|guideline|foir|interest|rate|tenure|exp(?:eri[ae]nce)?|require\w*|salary|income|cibil|age\b|doc\w*/i.test(remText)
+      ) {
         // Only in explicit branch selection step where user is picking from available branches
         result.branch = remWords.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
         result.branchName = result.branch;
       } else if ((expectedField === "cityOrPincode" || expectedField === "city") && !result.city && !currentCity) {
         // User is answering city/pincode prompt with a location name (e.g. unknown city or invalid location)
         result.city = remWords.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-      } else if (result.city || currentCity) {
+      } else if ((result.city || currentCity) && !/continue|resume|eligib|loan\s*check|loan\s*eligibility/i.test(remText)) {
         // City is already known, so any sub-location entered is an area candidate, NOT a branch!
         result.area = remWords.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
       } else if (isKnownLocality(remText) || expectedField === "location" || expectedField === "area" || expectedField === "preferredBranch") {
@@ -2302,6 +2334,9 @@ export function extractBankBranchLocationParams(
       KNOWN_MAJOR_CITIES.includes(bLower) ||
       LOCATION_STOPWORDS.has(bLower) ||
       /^(?:yes|no|ok|okay|confirm|cancel)$/i.test(bLower) ||
+      /continue|resume|eligib|loan\s*check|loan\s*eligibility/i.test(bLower) ||
+      /policy|rule|criteria|cutoff|guideline|foir|interest|rate|tenure|exp(?:eri[ae]nce)?|require\w*|salary|income|cibil|age\b|doc\w*/i.test(bLower) ||
+      /\b(?:what|how|why|when|is|can|does|tell|explain|show)\b/i.test(bLower) ||
       /^\d+$/.test(bLower)
     ) {
       delete result.branch;
@@ -2758,7 +2793,7 @@ export function isInvalidCompanyName(text: string): boolean {
   const raw = text.trim();
   if (isKnownBankName(raw)) return true;
   if (isLocationInput(raw)) return true;
-  if (isPureGreeting(raw) || isGreetingOrPleasantry(raw)) return true;
+  if (isPureGreeting(raw) || isGreetingOrPleasantry(raw) || isGeneralAssistanceQuery(raw)) return true;
   const clean = raw.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
   if (clean.length < 2) return true;
   if (/^\d+$/.test(clean)) return true;
@@ -2769,19 +2804,30 @@ export function isInvalidCompanyName(text: string): boolean {
 
   // Placeholder defaults and loan request phrases must never enter company search or be stored as employer
   if (
-    /^(?:a\s+home|home|open\s*market|unknown|not\s*(?:provided|specified|applicable|available|sure)|unlisted|standard\s*(?:corporate|salaried)|none|nil|na|n\/a|nothing|test)$/i.test(clean) ||
-    /^(?:i\s*(?:need|want)\s*(?:a\s*)?loan|apply\s*for\s*(?:a\s*)?loan|check\s*eligibility|personal\s*loan|home\s*loan|loan)$/i.test(clean) ||
-    /^(?:(?:a\s+)?(?:personal|home|car|gold|education|business)?\s*loan(?:\s*for\s*(?:a\s*)?home)?|loan\s*for\s*(?:a\s*)?home)$/i.test(clean) ||
-    /^(?:for\s+(?:a\s+)?home)$/i.test(clean)
+    /^(?:a\s+home|home|open\s*market|unknown|not\s*(?:provided|specified|applicable|available|sure)|unlisted|standard\s*(?:corporate|salaried)|none|nil|na|n\/a|nothing|test|another|different|new|another\s+company|different\s+company|new\s+company|the\s+eligibility\s+using\s+another)$/i.test(clean) ||
+    /^(?:the\s+)?eligibility(?:\s+using\s+another(?:\s+company)?)?$/i.test(clean) ||
+    /^(?:i\s*(?:need|want)\s*(?:a\s*)?loan|apply\s*for\s*(?:a\s*)?loan|check\s*(?:my|our|the\s*)?eligibility|personal\s*loan|home\s*loan|loan)$/i.test(clean) ||
+    /^(?:(?:a\s+)?(?:personal|home|car|gold|education|educational|business)?\s*loan(?:\s*for\s*(?:a\s*)?home)?|loan\s*for\s*(?:a\s*)?home)$/i.test(clean) ||
+    /^(?:for\s+(?:a\s+)?home)$/i.test(clean) ||
+    /\b(?:education(?:al)?\s*loan|home\s*loan|car\s*loan|auto\s*loan|vehicle\s*loan|business\s*loan|credit\s*card)\b/i.test(clean) ||
+    /\b(?:process|procedure|steps?\s+to\s+apply|don'?t\s*know\s*(?:the\s*)?process|tell\s+me\s*(?:the\s*)?process|application\s*process)\b/i.test(clean) ||
+    /^(?:i\s*don'?t\s*know|don'?t\s*know|tell\s*me|explain|process|procedure|steps?)\b/i.test(clean)
   ) {
     return true;
   }
   if (isLocationInput(clean)) return true;
 
-  // Bank policy queries must never enter company search
+  // Bank policy and bank availability queries must never enter company search
   if (
     /(?:policy|policies|guideline|guidelines|rules?|criteria|cutoff|cut-off)\b/i.test(clean) &&
     /(?:bank|hdfc|icici|axis|sbi|kotak|bajaj|tata|idfc|indusind|bandhan|yes|piramal|poonawalla|poonawala|chola|smfg|finnable|fibe)/i.test(clean)
+  ) {
+    return true;
+  }
+  if (
+    /\b(?:available\s*banks?|partner\s*banks?|which\s*banks?|what\s*banks?|list\s*(?:of\s*)?banks?|bank\s*policies|policy\s*available|bank\s*policy)\b/i.test(clean) ||
+    /^(?:tell\s+me\s+)?available\s+banks\b/i.test(clean) ||
+    /\b(?:cibil\s*requirement|salary\s*requirement|minimum\s*salary|documents?\s*required)\b/i.test(clean)
   ) {
     return true;
   }
@@ -2800,12 +2846,23 @@ export function isInvalidCompanyName(text: string): boolean {
     return true;
   }
 
-  // Questions, conversational phrases, confirmations, small talk
+  // Questions, conversational phrases, confirmations, small talk, general help
   if (
     /\?$/.test(raw) ||
-    /^(?:why|how|what|when|where|who|which|explain|is|can|will|do|did|does|should|would|could|are|am|tell|give|show|calculate|compute|check|find)\b/i.test(clean) ||
+    /^(?:why|how|what|when|where|who|which|explain|is|can|will|do|did|does|should|would|could|are|am|tell|give|show|calculate|compute|check|find|hoe|hw|hwo|help)\b/i.test(clean) ||
+    /^(?:why|how|what|when|where|who|which|explain|is|can|will|do|did|does|should|would|could|are|am)\b/i.test(raw) ||
+    /\b(?:help(?:\s+me)?|how\s+(?:can|do)\s+(?:you|u)|what\s+(?:can|do)\s+(?:you|u)|who\s+are\s+you)\b/i.test(clean) ||
+    isGeneralAssistanceQuery(raw) ||
     /^(?:ok|okay|sure|yes|yep|yeah|proceed|continue|go\s*ahead|fine|understood|got\s*it|thanks|thank\s*you|hello|helo|hi|hey|good\s*(?:morning|afternoon|evening|day)|bye|cancel|reset)\b/i.test(clean) ||
     /\b(?:emi|interest\s*rate|loan\s*emi|repayment|tenure)\b/i.test(clean)
+  ) {
+    return true;
+  }
+
+  // Comparison statements & questions (e.g. "both requirements the same", "are both same", "what is difference")
+  if (
+    /\b(?:both|same|difference|compare|comparison|versus|vs|similar|differ|equal)\b/i.test(clean) ||
+    /\b(?:requirements?|criteria|cutoff|cutoffs|rules?|guidelines?)\b/i.test(clean)
   ) {
     return true;
   }
@@ -2827,6 +2884,23 @@ export function isInvalidCompanyName(text: string): boolean {
     return true;
   }
 
+  // Sentences containing conversational assertions or multiple clauses (e.g. "I changed my job...", "I work at...", "my job is...")
+  if (
+    /(?:(?:i\s+)?(?:changed|switched|left|updated)\s+(?:my\s+)?(?:job|company|employer)|(?:i\s+)?(?:work|working|employed)\s+(?:at|in|with|for))\b/i.test(clean) &&
+    clean.split(/\s+/).length > 4
+  ) {
+    return true;
+  }
+
+  // Generic pronouns, determiners, and self-referential words must never be treated as company names
+  if (
+    /^(?:my|our|your|the|this|that|an?|his|her|their|its)$/i.test(clean) ||
+    /^(?:my|our|your|the|this|that|an?|current|new|previous)\s+(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer[s]?|workplace|organization[s]?|org|job)$/i.test(clean) ||
+    /^(?:where\s+i\s+work|the\s+company\s+where\s+i\s+work|the\s+place\s+where\s+i\s+work|company\s+where\s+i\s+work|where\s+we\s+work|about\s+my|about\s+the|about\s+our|tell\s+me\s+about\s+my|tell\s+me\s+about\s+the|tell\s+me\s+about)$/i.test(clean)
+  ) {
+    return true;
+  }
+
   // Company disavowals ("this is not my company", "not my company", "wrong company", "that is not my employer", etc.)
   if (
     /\b(?:this\s+is\s+not|that'?s\s+not\s+(?:where\s+i\s+work|my\s+company|my\s+employer)|not\s+my\s+(?:company|employer)|wrong\s+(?:company|employer)|i\s+don'?t\s+work\s+(?:at|in|there)|remove\s+(?:my\s+)?company|change\s+(?:my\s+)?company|different\s+company)\b/i.test(
@@ -2836,9 +2910,12 @@ export function isInvalidCompanyName(text: string): boolean {
     return true;
   }
 
-  // Meta inquiries or requests for company information / category check ("i want my company information", "check my company", etc.)
+  // Meta inquiries or requests for company information / category check ("i want my company information", "check my company", "tell me about my company", etc.)
   if (
-    /\b(?:company\s+(?:info|information|details|category|tier)|(?:i\s+want|tell\s+me|show\s+me|what\s+is)\s+(?:my\s+)?company(?:\s+info|\s+information)?|check\s+my\s+company)\b/i.test(
+    /\b(?:company\s+(?:info|information|details|category|tier)|(?:i\s+want|tell\s+me|show\s+me|what\s+is|give\s+me)\s+(?:my\s+)?company(?:\s+info|\s+information|\s+details)?|check\s+my\s+company)\b/i.test(
+      clean
+    ) ||
+    /^(?:tell\s+me\s+about\s+)?(?:my|our|your|the)\s+comp(?:any|anies|ny|nay|o|a|ies)?(?:\s+(?:details|info|information|category|tier|status|profile))?(?:\s+(?:please|let\s+me\s+know))?$/i.test(
       clean
     )
   ) {
@@ -3021,7 +3098,24 @@ export function extractCompoundLoanCompanyIntent(text: string): { isCompound: bo
  */
 export function extractCleanCompanyName(input: string): string {
   if (!input) return "";
-  let str = input.trim();
+  const rawInput = input.trim();
+
+  // If the raw input is a question (ends with ? or starts with question words)
+  // or a comparison expression, and does NOT contain explicit corporate keywords, it is NEVER a company name!
+  const hasCorporateKeyword = /\b(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|pvt\.?|private|limited|ltd\.?|technologies|solutions|services|enterprises|industries|llp|holdings|corp|corporation)\b/i.test(rawInput);
+  const isQuestionOrComparison =
+    /\?$/.test(rawInput) ||
+    /^(?:is|are|can|could|would|should|will|do|did|does|why|how|what|when|where|who|which)\b/i.test(rawInput) ||
+    /\b(?:both|same|difference|compare|comparison|versus|vs|similar|differ|equal)\b/i.test(rawInput);
+
+  if (isQuestionOrComparison && !hasCorporateKeyword) {
+    return "";
+  }
+
+  let str = rawInput;
+
+  // Strip trailing conversational requests like "let me know", "please let me know"
+  str = str.replace(/(?:\s*[,.;!?]|\s+)?(?:please\s+)?let\s+me\s+know.*$/i, "").trim();
 
   // 1. Remove leading conversational, action, and matching list prefixes
   str = str.replace(
@@ -3040,7 +3134,7 @@ export function extractCleanCompanyName(input: string): string {
 
   // 1b. Remove employment prefix if present (never strip 'for' if followed by 'a home' or loan phrase)
   str = str.replace(
-    /^(?:(?:i\s*am|i['"]?m|i)\s+(?:working\s+)?(?:at|in|with|for)|(?:i\s+)?(?:work|works|working|employed)\s+(?:at|in|with|for|by)|(?:my\s+)?(?:employer|company)\s+is|employer\s*[:=-]|company\s*[:=-])\s+/i,
+    /^(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+)|(?:(?:i\s+)?(?:currently\s+|presently\s+)?(?:work|works|working|employed)\s+(?:at|in|with|for|by)\s+)|(?:(?:my\s+)?(?:employer|company)\s+is\s+)|(?:employer\s*[:=-]|company\s*[:=-]))\s*/i,
     ""
   );
   if (!/^(?:at|in|with|for)\s+(?:a\s+)?(?:home|house|flat|property|plot|car|bike|personal|wedding|medical|travel|business|loan)\b/i.test(str)) {
@@ -3057,7 +3151,8 @@ export function extractCleanCompanyName(input: string): string {
     ""
   );
 
-  // 3. Remove leading 'company' / 'employer' if still at start
+  // 3. Remove leading 'company' / 'employer' or 'working company is' remnants if still at start
+  str = str.replace(/^(?:the\s+)?(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer)\s*(?:is|are|called|named)?\s*)/i, "");
   str = str.replace(/^(?:the\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer)\s+/i, "");
 
   // 3b. Strip trailing inquiry clauses e.g. ". Give me information about that company"
@@ -3073,8 +3168,9 @@ export function extractCleanCompanyName(input: string): string {
   // 5. Clean punctuation
   str = str.replace(/^[?.,!:\s]+|[?.,!:\s]+$/g, "").trim();
 
-  // If the result is placeholder defaults, loan requests, invalid, or location, return empty
+  // If the result is placeholder defaults, generic pronouns, loan requests, invalid, or location, return empty
   if (
+    /^(?:my|our|your|the|this|that|an?|his|her|their|its|where\s+i\s+work|about\s+my|about\s+the|about\s+our)$/i.test(str) ||
     /^(?:a\s+home|home|open\s*market|unknown|not\s*(?:provided|specified|applicable|available|sure)|unlisted|standard\s*(?:corporate|salaried)|none|nil|na|n\/a|search|serach|company|compny|comapny|compies|employer|details|info|information|check|find|lookup|status|category|tier|rating|matching|list|matching\s+companies|matching\s+compies)$/i.test(str) ||
     isInvalidCompanyName(str) ||
     isLocationInput(str)
@@ -3094,6 +3190,7 @@ export function isCompanyInfoOrSearchIntent(text: string): boolean {
   if (!text) return false;
   const norm = text.toLowerCase().replace(/[.!?]+$/, "").replace(/\s+/g, " ").trim();
   if (isPureGreeting(norm) || isFinancialOrProfileInput(norm)) return false;
+  if (isKnownBankName(norm) || Boolean(resolveBankName(norm))) return false;
 
   // 1. Generic company search commands or typos (e.g. "company search", "company serach", "search company", "matching compies list", "matching companies list not displaying")
   if (
@@ -3106,9 +3203,14 @@ export function isCompanyInfoOrSearchIntent(text: string): boolean {
     return true;
   }
 
-  // Employment statements like "I work at TCS" without an inquiry are intake inputs, not search requests
+  // Employment statements like "I work at TCS", "my working company is tech mahindra", "i am working in company TCS" without an inquiry are intake inputs, not search requests
   const hasInfoQuery = /(?:give(?:\s+me)?|show(?:\s+me)?|tell(?:\s+me)?|what\s+is|check|find|search|serach|details|info|information|rating|tier|category|listing|profile|about\s+(?:that|the|my|this)?\s*(?:company|employer))/i.test(norm);
-  if (!hasInfoQuery && /^(?:(?:i\s*am|i'?m|i)\s+(?:working\s+)?(?:at|in|with|for)|(?:my\s+)?(?:employer|company)\s+is|(?:work|working|employed)\s+(?:at|in|by|with|for))\s+[a-zA-Z0-9]/i.test(norm)) {
+  if (
+    !hasInfoQuery &&
+    /^(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)?|(?:(?:my|our|the)\s+)?(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])|(?:work|working|employed)\s+(?:at|in|by|with|for))\s*[a-zA-Z0-9]/i.test(
+      norm
+    )
+  ) {
     return false;
   }
 
@@ -3121,7 +3223,7 @@ export function isCompanyInfoOrSearchIntent(text: string): boolean {
 
   if (/^(?:what\s+is|who\s+is|tell\s+me\s+about)\s+(?:the\s+)?(?:company\s+)?([a-zA-Z0-9\s&'.-]+)$/i.test(norm)) {
     const cand = norm.replace(/^(?:what\s+is|who\s+is|tell\s+me\s+about)\s+(?:the\s+)?(?:company\s+)?/i, "").replace(/[?.,!]+$/, "").trim();
-    const isFinancialSideQ = /(?:cibil|credit\s*score|emi|foir|tenure|salary|income|apr|roi|interest(?:\s*rate)?|rate|reducing|balance|flat|fixed|collateral|foreclosure|prepayment|processing\s*fee|amortization|moratorium|part[\s-]*payment)\b/i.test(cand);
+    const isFinancialSideQ = /(?:issue|problem|error|cibil|credit\s*score|emi|foir|tenure|salary|income|apr|roi|interest(?:\s*rate)?|rate|reducing|balance|flat|fixed|collateral|foreclosure|prepayment|processing\s*fee|amortization|moratorium|part[\s-]*payment)\b/i.test(cand);
     if (!isFinancialSideQ && cand.length >= 2 && !isInvalidCompanyName(cand)) {
       return true;
     }
@@ -3136,6 +3238,7 @@ export function isCompanyInfoOrSearchIntent(text: string): boolean {
   // Dynamically detect any potential company name followed by company/employer keywords
   // without hardcoding specific company names
   if (
+    !/^(?:my|our|i|i['"]?m|i\s*am|we|working|current|present|employed)\b/i.test(norm) &&
     /\b[a-zA-Z0-9][a-zA-Z0-9\s&'.-]{1,40}?\s+(?:comp(?:any|anies|ny|nay|o|a)?|comapn(?:y|ies)?|cmpny|employer[s]?)\b/i.test(norm)
   ) {
     return true;
@@ -3186,10 +3289,11 @@ export function extractTargetCompanyFromMessage(text: string): string | undefine
 
   // 2. Employment phrase combined with company information inquiry (e.g. "I am working at TCS. Give me information about that company")
   const empWithInquiry = raw.match(
-    /^(?:i\s+(?:work|working|am\s+working)\s+(?:at|in)|(?:my\s+)?(?:employer|company)\s+is|(?:work|working|employed)\s+(?:at|in|by))\s+([A-Za-z0-9\s&'-]+?)(?=\s*[.,;!?|\n]|\s+(?:and|with|but|salary|cibil|age|loan|emi|tenure|earning)\b|$)/i
+    /^(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*)|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for))|(?:(?:my\s+)?(?:company|employer)\s+is)|(?:(?:i\s*am|i'?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)))\s+([A-Za-z0-9\s&'-]+?)(?=\s*[.,;!?|\n]|\s+(?:and|with|but|salary|cibil|age|loan|emi|tenure|earning)\b|$)/i
   );
   if (empWithInquiry) {
-    const cand = empWithInquiry[1].trim().replace(/[.,;!?]+$/, "").trim();
+    let cand = empWithInquiry[1].trim().replace(/[.,;!?]+$/, "").trim();
+    cand = extractCleanCompanyName(cand) || cand;
     if (cand.length >= 2 && !isInvalidCompanyName(cand) && !isFinancialOrProfileInput(cand) && !isLocationInput(cand) && !isKnownBankName(cand)) {
       if (/(?:information|info|details|rating|tier|category|profile|tell\s+me|show\s+me|give\s+me|check)/i.test(raw)) {
         return cand;
@@ -3210,7 +3314,7 @@ export function extractTargetCompanyFromMessage(text: string): string | undefine
  * Extracts a candidate company/employer name from text.
  * Handles:
  * 1. Key-value indicators: "Company: Infosys", "Employer: Capgemini", "Org: TCS"
- * 2. Employment phrases: "work at Google", "working in Microsoft", "employed by Wipro", "my company is Accenture"
+ * 2. Employment phrases: "work at Google", "working in Microsoft", "employed by Wipro", "my company is Accenture", "my working company is Tech Mahindra"
  * 3. Structured/delimited profile submissions: "Capgemini, Age 28, Salary ₹1.5 lakh..." or "TCS | 30 yrs | ..."
  * Strictly rejects financial numbers, ages, CIBIL scores, tenures, EMIs, and non-company status answers.
  */
@@ -3220,21 +3324,36 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
   if (isKnownBankName(raw)) return undefined;
   if (isPureGreeting(raw) || isGreetingOrPleasantry(raw)) return undefined;
 
-  // 0. Explicit company search query (e.g. "check mthree", "search TCS", "I want loan but first check mthree")
-  const explicitTarget = extractTargetCompanyFromMessage(raw);
-  if (explicitTarget) {
-    return explicitTarget;
-  }
-
-  // 1. Explicit key-value labels or employment phrases (e.g. "I work at Infosys, but what is CIBIL?")
+  // 1. Explicit key-value labels or employment phrases anywhere in text (e.g. "I work at Infosys", "I changed my job. I work at Infosys now", "my working company is tech mhindra")
   const explicitMatch = raw.match(
-    /(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for)|(?:my\s+)?(?:company|employer)\s+is|(?:i\s*am|i'?m|i)\s+(?:working\s+)?(?:at|in|with|for))\s+)([A-Za-z0-9\s&'-]+?)(?=\s*[.,;!?|\n]|\s+(?:and|but|salary|cibil|age|loan|emi|tenure|earning)|$)/i
+    /(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*)|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for))|(?:(?:my\s+)?(?:company|employer)\s+is)|(?:(?:i\s*am|i'?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by))|(?:(?:switch(?:ed)?|moved?|joined)\s+(?:to\s+)?))\s+([A-Za-z0-9\s&'-]+?)(?=\s*[.,;!?|\n]|\s+(?:and|but|now|currently|recently|salary|cibil|age|loan|emi|tenure|earning)|$)/i
   );
   if (explicitMatch) {
-    const candidate = explicitMatch[1].trim().replace(/[.,;!?]+$/, "").trim();
+    let candidate = explicitMatch[1].trim().replace(/[.,;!?]+$/, "").trim();
+    candidate = extractCleanCompanyName(candidate) || candidate;
     if (candidate.length >= 2 && !isInvalidCompanyName(candidate) && !isFinancialOrProfileInput(candidate) && !isLocationInput(candidate)) {
       return candidate;
     }
+  }
+
+  // 1b. Direct clean extraction if raw string was a conversational employment sentence
+  const directClean = extractCleanCompanyName(raw);
+  if (
+    directClean &&
+    directClean.length >= 2 &&
+    directClean.toLowerCase() !== raw.toLowerCase() &&
+    !isInvalidCompanyName(directClean) &&
+    !isFinancialOrProfileInput(directClean) &&
+    !isLocationInput(directClean) &&
+    !isKnownBankName(directClean)
+  ) {
+    return directClean;
+  }
+
+  // 2. Explicit company search query (e.g. "check mthree", "search TCS", "I want loan but first check mthree")
+  const explicitTarget = extractTargetCompanyFromMessage(raw);
+  if (explicitTarget) {
+    return explicitTarget;
   }
 
   // 2. Delimited segments (comma, semicolon, pipe, newline)
@@ -3250,6 +3369,8 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
         !isFinancialOrProfileInput(cleanSeg) &&
         !isLocationInput(cleanSeg) &&
         !/^(?:i\s+need|i\s+want|can\s+i|please|hello|hi|hey|personal\s+loan|loan)\b/i.test(cleanSeg) &&
+        !/^(?:i\s*don'?t\s*know|don'?t\s*know|tell\s*me|explain|process|procedure|steps?)\b/i.test(cleanSeg) &&
+        !/\b(?:education(?:al)?\s*loan|student\s*loan|home\s*loan|car\s*loan|business\s*loan|credit\s*card)\b/i.test(cleanSeg) &&
         !/^(?:age|salary|income|cibil|credit\s*score|loan|amount|tenure|months|years|emi)\s*[:=-]?\s*.*$/i.test(cleanSeg)
       ) {
         return cleanSeg;
@@ -3269,7 +3390,13 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
     !isLocationInput(raw) &&
     !/^(?:i\s+need|i\s+want|can\s+i|personal\s+loan|home\s*loan|loan|a\s+home)\b/i.test(raw)
   ) {
+    // If the input is a generic company search inquiry without a specific company name, do not treat it as a candidate company
+    if (isCompanyInfoOrSearchIntent(raw) && !extractTargetCompanyFromMessage(raw)) {
+      return undefined;
+    }
+
     let clean = raw
+      .replace(/(?:\s*[,.;!?]|\s+)?(?:please\s+)?let\s+me\s+know.*$/i, "")
       .replace(/^(?:(?:i\s*am|i'?m|i)\s+(?:working\s+)?(?:at|in|with|for)|(?:i\s+)?(?:work|works|working|employed)\s+(?:at|in|with|for|by)|(?:my\s+)?(?:employer|company)\s+is|employer\s*[:=-]|company\s*[:=-])\s+/i, "")
       .replace(/^(?:check(?:\s+for)?|search(?:\s+for)?|show(?:\s+me)?|view|find|verify|look\s*up|tell\s+me\s+about|info\s+on|about)\s+/i, "")
       .replace(/\s+(?:tier|rating|category|status|listing|details|info|information)$/i, "")
@@ -3297,7 +3424,7 @@ function mapAnswerToTargetField(
   llmExtracted?: any
 ): void {
   // A. Monthly Income / Salary
-  if (field === "monthlyIncome") {
+  if (field === "monthlyIncome" || field === "salary") {
     if (typeof llmExtracted?.monthlyIncome === "number") {
       applicant.monthlyIncome = llmExtracted.monthlyIncome;
       return;
@@ -3312,20 +3439,20 @@ function mapAnswerToTargetField(
       text.match(/(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|peti|hazar)?/i);
     if (salMatch) {
       const parsed = parseFinancialAmount(salMatch[1] + (salMatch[2] || ""));
-      if (parsed !== null && parsed >= 0) {
+      if (parsed !== null && (parsed >= 5000 || parsed === 0)) {
         applicant.monthlyIncome = parsed;
         return;
       }
     }
     const amt = parseFinancialAmount(text);
-    if (amt !== null && amt >= 0 && amt <= 50000000) {
+    if (amt !== null && (amt >= 5000 || amt === 0) && amt <= 50000000) {
       applicant.monthlyIncome = amt;
       return;
     }
   }
 
   // B. Loan Amount Needed
-  if (field === "loanAmount") {
+  if (field === "loanAmount" || field === "requestedAmount") {
     const hasBorrowMarker = /\b(?:loan\s*(?:amount|of|need|require|want)?|need|want|borrow|require)\b/i.test(text);
     if (typeof llmExtracted?.loanAmount === "number" && llmExtracted.loanAmount >= 10000) {
       if (applicant.monthlyIncome && llmExtracted.loanAmount === applicant.monthlyIncome && !hasBorrowMarker) {
@@ -3362,7 +3489,7 @@ function mapAnswerToTargetField(
   }
 
   // C. Tenure Months
-  if (field === "tenureMonths") {
+  if (field === "tenureMonths" || field === "tenure") {
     if (typeof llmExtracted?.tenureMonths === "number" && llmExtracted.tenureMonths > 0) {
       const t = llmExtracted.tenureMonths;
       applicant.tenureMonths = t <= 7 ? t * 12 : t;
@@ -3398,13 +3525,14 @@ function mapAnswerToTargetField(
   }
 
   // D. CIBIL Score
-  if (field === "cibil") {
-    if (typeof llmExtracted?.cibil === "number") {
+  if (field === "cibil" || field === "cibilScore") {
+    if (typeof llmExtracted?.cibil === "number" && llmExtracted.cibil >= 300 && llmExtracted.cibil <= 900) {
       applicant.cibil = llmExtracted.cibil;
       return;
     }
-    if (typeof llmExtracted?.cibil === "string" && /not\s*provided|unknown|not\s*sure|don'?t\s*know|na|n\/a/i.test(llmExtracted.cibil)) {
-      applicant.cibil = "Not provided";
+    if (typeof llmExtracted?.cibil === "string" && /not\s*provided|unknown|not\s*sure|don'?t\s*know|na|n\/a|no\s*cibil/i.test(llmExtracted.cibil)) {
+      applicant.cibil = 700;
+      (applicant as any).cibilWasAssumed = true;
       return;
     }
     const cibilMatch = text.match(/\b([3-9]\d{2})\b/);
@@ -3416,20 +3544,24 @@ function mapAnswerToTargetField(
       }
     }
     if (
-      /\b(?:unknown|not\s*sure|don'?t\s*know|never\s*checked|na|n\/a|no\s*idea)\b/i.test(lower) ||
-      /(?:don['’]?t\s*have|never\s*had|never\s*checked|unknown|no\s*idea)\s*(?:a\s*)?(?:cibil|credit\s*score|score)/i.test(lower)
+      /\b(?:unknown|not\s*sure|don'?t\s*know|never\s*checked|na|n\/a|no\s*idea|no\s*cibil|zero\s*credit|no\s*credit|credit\s*history|first\s*time|new\s*to\s*credit|zero\s*cibil)\b/i.test(lower) ||
+      /(?:don['’]?t\s*have|never\s*had|never\s*checked|unknown|no\s*idea|has\s*no|have\s*no)\s*(?:a\s*)?(?:cibil|credit\s*score|score|credit)/i.test(lower) ||
+      /(?:no|zero|without)\s*(?:cibil|credit)/i.test(lower) ||
+      /\b(?:employee|applicant|person|someone)?\s*(?:has|have|with)?\s*no\s*cibil\b/i.test(lower)
     ) {
-      applicant.cibil = "Not provided";
+      applicant.cibil = 700;
+      (applicant as any).cibilWasAssumed = true;
       return;
     }
-    if (/\b(?:zero|0)\b/i.test(lower)) {
-      applicant.cibil = 0;
+    if (/^\s*(?:zero|0)\s*$/i.test(lower) || /\bcibil\s*(?:is|score)?\s*(?:0|zero)\b/i.test(lower)) {
+      applicant.cibil = 700;
+      (applicant as any).cibilWasAssumed = true;
       return;
     }
   }
 
   // E. Existing EMI Obligations
-  if (field === "existingEmi") {
+  if (field === "existingEmi" || field === "emi") {
     if (typeof llmExtracted?.existingEmi === "number") {
       applicant.existingEmi = llmExtracted.existingEmi;
       return;
@@ -3499,7 +3631,7 @@ function mapAnswerToTargetField(
     // 3. Check if self-employed / freelancer / business
     if (
       llmExtracted?.employmentType === "Self-Employed" ||
-      /^(?:i\s+am\s+|i\s*m\s+)?(?:self[\s-]*employed|business|proprietor|partner|freelancer?|doctor|trader|consultant)\b/i.test(lower)
+      /^(?:i\s+am\s+|i\s*m\s+)?(?:self[\s-]*employed|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelancer?|doctor|trader|consultant)\b/i.test(lower)
     ) {
       applicant.employmentType = "Self-Employed";
       applicant.companyName = "Self-Employed";
@@ -3575,11 +3707,11 @@ export function messageMentionsField(field: string, text: string): boolean {
       );
 
     case "employmentType":
-      return /(?:salaried|self[\s-]*employed|business|proprietor|partner|freelanc|doctor|trader|govt|government|private|pvt\s*ltd|mnc|corporate|job|employee)/i.test(lower);
+      return /(?:salaried|self[\s-]*employed|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelanc|doctor|trader|govt|government|private|pvt\s*ltd|mnc|corporate|job|employee)/i.test(lower);
 
     case "companyName":
       return (
-        /(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for)|(?:i\s*am|i'?m|i)\s+(?:working\s+)?(?:at|in|with|for)|my\s+company\s+is|employer\s+is|company|firm|employer)\b/i.test(lower) ||
+        /(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for)|(?:i\s*am|i'?m|i)\s+(?:working\s+)?(?:at|in|with|for)|(?:my\s+)?(?:working\s+|current\s+|present\s+)?(?:company|employer|comapny|cmpny)\s*(?:is|:)|employer\s+is|company|comapny|firm|employer)\b/i.test(lower) ||
         Boolean(extractCompanyCandidateFromText(text))
       );
 
@@ -3651,10 +3783,11 @@ export function extractSecondaryParameters(
     applicant.cibil === undefined &&
     messageMentionsField("cibil", text)
   ) {
-    if (typeof llmExtracted?.cibil === "number" && ((llmExtracted.cibil >= 300 && llmExtracted.cibil <= 900) || llmExtracted.cibil === 0)) {
+    if (typeof llmExtracted?.cibil === "number" && llmExtracted.cibil >= 300 && llmExtracted.cibil <= 900) {
       applicant.cibil = llmExtracted.cibil;
-    } else if (typeof llmExtracted?.cibil === "string" && /not\s*provided|unknown|not\s*sure|don'?t\s*know/i.test(llmExtracted.cibil)) {
-      applicant.cibil = "Not provided";
+    } else if (typeof llmExtracted?.cibil === "string" && /not\s*provided|unknown|not\s*sure|don'?t\s*know|no\s*cibil/i.test(llmExtracted.cibil)) {
+      applicant.cibil = 700;
+      (applicant as any).cibilWasAssumed = true;
     } else {
       const cibilMatch =
         text.match(/(?:cibil|credit\s*score|score)(?::|\s*is|\s*=)?\s*(?:of)?\s*(\d{3})\b/i) ||
@@ -3665,12 +3798,15 @@ export function extractSecondaryParameters(
           applicant.cibil = val;
         }
       } else if (
-        /(?:don['’]?t\s*have|never\s*had|never\s*checked|unknown|no\s*idea)\s*(?:a\s*)?(?:cibil|credit\s*score|score|credit\s*history)/i.test(lower) ||
-        /(?:cibil|credit\s*score|score)\s*(?:is\s*)?(?:unknown|not\s*sure|don'?t\s*know|never\s*checked|not\s*generated)/i.test(lower)
+        /(?:don['’]?t\s*have|never\s*had|never\s*checked|unknown|no\s*idea|has\s*no|have\s*no)\s*(?:a\s*)?(?:cibil|credit\s*score|score|credit\s*history)/i.test(lower) ||
+        /(?:cibil|credit\s*score|score)\s*(?:is\s*)?(?:unknown|not\s*sure|don'?t\s*know|never\s*checked|not\s*generated)/i.test(lower) ||
+        /\b(?:employee|applicant|person|someone)?\s*(?:has|have|with)?\s*no\s*cibil\b/i.test(lower)
       ) {
-        applicant.cibil = "Not provided";
+        applicant.cibil = 700;
+        (applicant as any).cibilWasAssumed = true;
       } else if (/\b(?:zero|0)\s*(?:cibil|credit)/i.test(lower)) {
-        applicant.cibil = 0;
+        applicant.cibil = 700;
+        (applicant as any).cibilWasAssumed = true;
       }
     }
   }
@@ -3757,7 +3893,7 @@ export function extractSecondaryParameters(
       if (applicant.monthlyIncome === undefined) applicant.monthlyIncome = 0;
     } else if (/salaried|govt|government|private|pvt\s*ltd|mnc|corporate|job|employee/i.test(lower)) {
       applicant.employmentType = "Salaried";
-    } else if (/self\s*employed|business|proprietor|partner|freelanc|doctor|trader/i.test(lower)) {
+    } else if (/self\s*employed|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelanc|doctor|trader/i.test(lower)) {
       applicant.employmentType = "Self-Employed";
     }
   }
@@ -3928,7 +4064,7 @@ export function extractApplicantDetails(
       applicant.age = llmExtracted.age;
     }
     const hasExplicitCompanyInText =
-      /(?:(?:change|update|correct)\s+(?:my\s+)?(?:company|employer)|(?:work\s+at|works\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is)|(?:company|employer)\s*[:=-])/i.test(text);
+      /(?:(?:change|update|correct)\s+(?:my\s+)?(?:company|employer)|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for)|(?:my\s+)?(?:working\s+|current\s+|present\s+)?(?:company|employer|comapny|cmpny)\s*(?:is|:)|employer\s+is)|(?:company|employer|comapny)\s*[:=-])/i.test(text);
 
     if (
       llmExtracted.companyName &&
@@ -3974,6 +4110,74 @@ export function isConfirmationMessage(text: string): boolean {
 }
 
 /**
+ * Detects the specific field or parameter prompted in an assistant turn.
+ */
+export function detectFieldPromptedInAssistantMessage(assistantText: string): string | undefined {
+  if (!assistantText) return undefined;
+
+  const matchFieldInText = (text: string): string | undefined => {
+    const lower = text.toLowerCase();
+    if (
+      /matching\s*companies|select\s*your\s*(?:exact\s*)?employer|replying\s*with\s*the\s*number|click\s*any\s*company|disambiguation-candidate/i.test(lower)
+    ) {
+      return "companySelection";
+    }
+    if (/cibil\s*score|credit\s*score/i.test(lower)) {
+      return "cibilScore";
+    }
+    if (/current\s*age|how\s*old\s*are\s*you|what\s*is\s*your\s*(?:current\s*)?age/i.test(lower)) {
+      return "age";
+    }
+    if (
+      /loan\s*amount\s*(?:are\s*you\s*looking\s*for|do\s*you\s*(?:require|need)|borrow)/i.test(lower) ||
+      /how\s*much\s*loan/i.test(lower) ||
+      /desired\s*loan\s*amount/i.test(lower)
+    ) {
+      return "loanAmount";
+    }
+    if (/repayment\s*tenure|how\s*many\s*(?:years|months)/i.test(lower) || /tenure\s*(?:do\s*you\s*prefer|period)/i.test(lower)) {
+      return "tenureMonths";
+    }
+    if (
+      /existing\s*(?:monthly\s*)?(?:loan\s*)?emi|existing\s*emi/i.test(lower) ||
+      /reply\s*['"]?0['"]?\s*if\s*none/i.test(lower) ||
+      /monthly\s*loan\s*emi/i.test(lower)
+    ) {
+      return "existingEmi";
+    }
+    if (
+      /monthly\s*(?:take[\s-]*home\s*)?salary|net\s*(?:monthly\s*)?salary|monthly\s*income/i.test(lower) ||
+      /what\s*is\s*your\s*monthly/i.test(lower) ||
+      /take-home\s*salary/i.test(lower)
+    ) {
+      return "monthlyIncome";
+    }
+    if (/employer|company|organization|firm/i.test(lower) && /(?:name|where\s*do\s*you\s*work)/i.test(lower)) {
+      return "company";
+    }
+    return undefined;
+  };
+
+  // 1. Isolate the trailing question paragraph (assistant messages start with an acknowledgment prefix)
+  const paragraphs = assistantText.trim().split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  if (paragraphs.length > 1) {
+    const lastParaField = matchFieldInText(paragraphs[paragraphs.length - 1]);
+    if (lastParaField) return lastParaField;
+    const remainingField = matchFieldInText(paragraphs.slice(1).join("\n\n"));
+    if (remainingField) return remainingField;
+  } else {
+    // Single paragraph - strip acknowledgment prefix if present
+    const stripped = assistantText.replace(/^(?:Got it!?\s*)?(?:Noted (?:your\s*)?[^.?!]+[.?!]\s*)+/i, "");
+    if (stripped !== assistantText) {
+      const strippedField = matchFieldInText(stripped);
+      if (strippedField) return strippedField;
+    }
+  }
+
+  return matchFieldInText(assistantText);
+}
+
+/**
  * Analyzes the full multi-turn conversation history across all turns and the current user message,
  * extracting and merging all known applicant details, respecting chronological corrections,
  * handling employment status and credit history, and guaranteeing no already-provided information is lost or re-asked.
@@ -3985,34 +4189,68 @@ export function consolidateApplicantProfileFromHistory(
   currentExtracted?: any
 ): ApplicantProfile {
   let applicant: ApplicantProfile = {
-    loanType: "Personal Loan",
-    ...(existingApplicant || {}),
+    loanType: existingApplicant?.loanType || "Personal Loan",
+    companyName: existingApplicant?.companyName,
+    companyCategory: existingApplicant?.companyCategory,
+    employmentType: existingApplicant?.employmentType,
+    employmentStatus: existingApplicant?.employmentStatus,
+    pincode: existingApplicant?.pincode,
+    location: existingApplicant?.location,
   };
 
-  // Collect user messages in chronological order
-  const userMessages: string[] = [];
+  interface TurnInfo {
+    userMsg: string;
+    precedingAssistantMsg?: string;
+    isLatest: boolean;
+  }
+  const turns: TurnInfo[] = [];
+
   if (conversationHistory && conversationHistory.length > 0) {
-    for (const turn of conversationHistory) {
-      if ((turn.role === "user" || turn.role === "human") && turn.content && turn.content.trim()) {
-        userMessages.push(turn.content.trim());
+    let lastAssistantContent: string | undefined = undefined;
+    for (const item of conversationHistory) {
+      if (item.role === "assistant" || item.role === "ai") {
+        lastAssistantContent = item.content;
+      } else if ((item.role === "user" || item.role === "human") && item.content && item.content.trim()) {
+        turns.push({
+          userMsg: item.content.trim(),
+          precedingAssistantMsg: lastAssistantContent,
+          isLatest: false,
+        });
+        lastAssistantContent = undefined;
       }
     }
   }
 
   const trimmedCurrent = String(currentMessage || "").trim();
   if (trimmedCurrent) {
-    const lastUserMsg = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
-    if (lastUserMsg !== trimmedCurrent) {
-      userMessages.push(trimmedCurrent);
+    const lastTurn = turns.length > 0 ? turns[turns.length - 1] : null;
+    if (!lastTurn || lastTurn.userMsg !== trimmedCurrent) {
+      let lastAssistant: string | undefined = undefined;
+      if (conversationHistory && conversationHistory.length > 0) {
+        for (let j = conversationHistory.length - 1; j >= 0; j--) {
+          if (conversationHistory[j].role === "assistant" || conversationHistory[j].role === "ai") {
+            lastAssistant = conversationHistory[j].content;
+            break;
+          }
+        }
+      }
+      turns.push({
+        userMsg: trimmedCurrent,
+        precedingAssistantMsg: lastAssistant,
+        isLatest: true,
+      });
+    } else if (lastTurn) {
+      lastTurn.isLatest = true;
     }
   }
 
   let lastAnsweredField: string | undefined = undefined;
 
-  // Iterate chronologically through user messages
-  for (let i = 0; i < userMessages.length; i++) {
-    const msg = userMessages[i];
-    const isLatest = i === userMessages.length - 1;
+  // Iterate chronologically through user messages with assistant prompt awareness
+  for (let i = 0; i < turns.length; i++) {
+    const turn = turns[i];
+    const msg = turn.userMsg;
+    const isLatest = turn.isLatest;
     const extractedForTurn = isLatest ? currentExtracted : undefined;
     const lower = msg.toLowerCase().trim();
 
@@ -4031,7 +4269,7 @@ export function consolidateApplicantProfileFromHistory(
       applicant.employmentType = "Student";
       applicant.monthlyIncome = 0;
       applicant.companyName = undefined;
-    } else if (/\b(?:self[\s-]*employed|business|proprietor|partner|freelancer?|doctor|trader|consultant)\b/i.test(lower) || extractedForTurn?.employmentStatus === "self-employed" || extractedForTurn?.employmentType === "Self-Employed") {
+    } else if (/\b(?:self[\s-]*employed|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelancer?|doctor|trader|consultant)\b/i.test(lower) || extractedForTurn?.employmentStatus === "self-employed" || extractedForTurn?.employmentType === "Self-Employed") {
       applicant.employmentStatus = "self-employed";
       applicant.employmentType = "Self-Employed";
       applicant.companyName = "Self-Employed";
@@ -4075,8 +4313,21 @@ export function consolidateApplicantProfileFromHistory(
     const prevAge = applicant.age;
     const prevComp = applicant.companyName;
 
+    const promptedField = turn.precedingAssistantMsg ? detectFieldPromptedInAssistantMessage(turn.precedingAssistantMsg) : undefined;
+    const isOptionSelectionTurn =
+      promptedField === "companySelection" ||
+      (/^\s*(?:option\s+|opt\s+|#|no\.?\s*)?[1-9]\d{0,1}\s*$/i.test(msg) &&
+        turn.precedingAssistantMsg &&
+        /(?:select\s*your\s*(?:exact\s*)?employer|matching\s*companies|disambiguation-candidate)/i.test(turn.precedingAssistantMsg));
+
+    if (isOptionSelectionTurn) {
+      continue;
+    }
+
     const missingForTurn = getRequiredPolicyFields(applicant);
-    applicant = extractApplicantDetails(msg, applicant, missingForTurn, extractedForTurn, lastAnsweredField);
+    const effectiveMissing = promptedField ? [promptedField, ...missingForTurn.filter(f => f !== promptedField)] : missingForTurn;
+
+    applicant = extractApplicantDetails(msg, applicant, effectiveMissing, extractedForTurn, lastAnsweredField);
 
     if (applicant.monthlyIncome !== prevIncome && applicant.monthlyIncome !== undefined) lastAnsweredField = "monthlyIncome";
     else if (applicant.loanAmount !== prevLoan && applicant.loanAmount !== undefined) lastAnsweredField = "loanAmount";
@@ -4085,6 +4336,28 @@ export function consolidateApplicantProfileFromHistory(
     else if (applicant.existingEmi !== prevEmi && applicant.existingEmi !== undefined) lastAnsweredField = "existingEmi";
     else if (applicant.age !== prevAge && applicant.age !== undefined) lastAnsweredField = "age";
     else if (applicant.companyName !== prevComp && applicant.companyName !== undefined) lastAnsweredField = "companyName";
+  }
+
+  // 4. Backfill non-conflicting profile fields from existingApplicant if not mentioned in recent dialogue
+  if (existingApplicant) {
+    if (applicant.monthlyIncome === undefined && existingApplicant.monthlyIncome !== undefined) {
+      applicant.monthlyIncome = existingApplicant.monthlyIncome;
+    }
+    if (applicant.existingEmi === undefined && existingApplicant.existingEmi !== undefined) {
+      applicant.existingEmi = existingApplicant.existingEmi;
+    }
+    if (applicant.loanAmount === undefined && existingApplicant.loanAmount !== undefined) {
+      applicant.loanAmount = existingApplicant.loanAmount;
+    }
+    if (applicant.tenureMonths === undefined && existingApplicant.tenureMonths !== undefined) {
+      applicant.tenureMonths = existingApplicant.tenureMonths;
+    }
+    if (applicant.cibil === undefined && existingApplicant.cibil !== undefined) {
+      applicant.cibil = existingApplicant.cibil;
+    }
+    if (applicant.age === undefined && existingApplicant.age !== undefined) {
+      applicant.age = existingApplicant.age;
+    }
   }
 
   return applicant;
@@ -4511,7 +4784,9 @@ export async function evaluateApplicantAgainstAllBanks(
   recommendationReason: string;
 }> {
   const monthlySalary = typeof applicant.monthlyIncome === "number" ? applicant.monthlyIncome : (applicant.monthlyIncome && !isNaN(Number(applicant.monthlyIncome)) ? Number(applicant.monthlyIncome) : 0);
-  const cibil = typeof applicant.cibil === "number" ? applicant.cibil : (applicant.cibil && !isNaN(Number(applicant.cibil)) ? Number(applicant.cibil) : 0);
+  const cibil = typeof applicant.cibil === "number" && applicant.cibil >= 300
+    ? applicant.cibil
+    : ((applicant as any).cibilWasAssumed || applicant.cibil === "Not provided" ? 700 : (applicant.cibil && !isNaN(Number(applicant.cibil)) && Number(applicant.cibil) >= 300 ? Number(applicant.cibil) : 700));
   const age = typeof applicant.age === "number" ? applicant.age : (applicant.age && !isNaN(Number(applicant.age)) ? Number(applicant.age) : 0);
   const loanAmount = typeof applicant.loanAmount === "number" ? applicant.loanAmount : (applicant.loanAmount && !isNaN(Number(applicant.loanAmount)) ? Number(applicant.loanAmount) : 0);
   const tenureMonths = typeof applicant.tenureMonths === "number" ? applicant.tenureMonths : (applicant.tenureMonths && !isNaN(Number(applicant.tenureMonths)) ? Number(applicant.tenureMonths) : 0);
@@ -4923,6 +5198,294 @@ export function deduplicateRejectionReasons(
 }
 
 /**
+ * General Assistance & Capabilities Query Detection
+ * Detects questions asking how the bot can help, what services it offers, or capabilities.
+ * Never misclassifies as an employer or bank lookup.
+ */
+export function isGeneralAssistanceQuery(text: string): boolean {
+  if (!text) return false;
+  const clean = text.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+
+  // 1. Direct role inquiries (e.g. "what is your role", "what is ur role", "whats your role", "your role", "what is your job/purpose")
+  if (
+    /^(?:(?:what\s+is|whats|what\s+are)\s+(?:your|ur|the)\s+(?:role|roles|job|jobs|purpose|work|function|duty|duties|task|tasks)|what\s+role\s+do\s+(?:you|u)\s+play|(?:tell\s+me\s+)?(?:about\s+)?(?:your|ur)\s+(?:role|roles|purpose|job)|(?:your|ur)\s+role|role\s+of\s+(?:this\s+)?(?:bot|ai|assistant|platform))\b/i.test(clean) ||
+    /\b(?:what\s+is\s+(?:your|ur)\s+role|what\s+are\s+(?:your|ur)\s+roles|whats\s+(?:your|ur)\s+role|what\s+is\s+the\s+role\s+of)\b/i.test(clean) ||
+    /^(?:what\s+(?:is|s)\s+(?:your|ur)\s+role|what\s+are\s+(?:your|ur)\s+roles|your\s+role|ur\s+role)$/i.test(clean)
+  ) {
+    return true;
+  }
+
+  // 2. Identity, capability, and general help inquiries
+  if (
+    /^(?:who\s+(?:are|r)\s+(?:you|u)|who\s+are\s+ya|what\s+(?:are|r)\s+(?:you|u)|tell\s+me\s+about\s+(?:yourself|urself)|introduce\s+(?:yourself|urself)|what\s+is\s+(?:creditwise|this(?:\s+app|\s+platform|\s+website)?)|what\s+(?:can|could)\s+(?:you|u)\s+do|what\s+do\s+(?:you|u)\s+do|what\s+are\s+(?:your|ur)\s+capabilities|what\s+can\s+i\s+do\s+here)\b/i.test(clean) ||
+    /^(?:(?:how|hoe|hw)\s+(?:can|could|do)\s+(?:you|u)\s+(?:help|assist)(?:\s+me)?|how\s+can\s+this\s+help|help(?:\s+me)?|can\s+(?:you|u)\s+help(?:\s+me)?|can\s+(?:you|u)\s+assist(?:\s+me)?|what\s+services?(?:\s+do\s+you\s+provide|\s+do\s+you\s+offer)?|how\s+does\s+this\s+work|how\s+do\s+you\s+work|how\s+to\s+use\s+(?:this|creditwise)|how\s+do\s+i\s+use\s+(?:this|creditwise))$/i.test(clean) ||
+    /^(?:(?:how|hoe|hw)\s+(?:can|could)\s+(?:you|u)\s+help(?:\s+me)?\b)/i.test(clean) ||
+    /^(?:what\s+can\s+(?:you|u)\s+do\b)/i.test(clean) ||
+    /^(?:what\s+can\s+(?:you|u)\s+(?:help|assist)(?:\s+me)?\s+with\b)/i.test(clean) ||
+    /^(?:help|help\s+me|assist\s+me|guide\s+me)$/i.test(clean)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Formats a rich, warm, helpful response detailing CreditWise AI capabilities.
+ */
+export function formatGeneralAssistanceResponse(inEligibilityFlow?: boolean): string {
+  let response =
+    `Hello! My role is to assist you 😊! I am **CreditWise AI**, your intelligent personal loan and financial advisory assistant.\n\n` +
+    `I understand your financial requirements, loan scenarios, and questions with high accuracy—even with shorthand, typos, or informal phrasing—and I'm here to provide smart, reliable guidance across India's top lenders:\n\n` +
+    `* 🏦 **Multi-Bank Loan Eligibility**: Check your approval odds and potential offers across **23+ partner banks & NBFCs** (HDFC, ICICI, Axis, Kotak, IDFC FIRST, Bajaj Finserv, Tata Capital, and more) using official lending policies.\n` +
+    `* 📋 **Master Bank Policies**: Retrieve exact policy criteria—minimum net take-home salary, CIBIL cutoffs, employer category rankings (Super CAT A to CAT C), FOIR caps, and required documents.\n` +
+    `* 🧮 **EMI & Repayment Calculations**: Compute accurate monthly EMIs, total interest breakdowns, and optimal tenures for any loan amount.\n` +
+    `* 📍 **Bank Branch Managers & Liaisons**: Connect with official branch heads, ASMs, and retail loan managers in your city for priority processing.\n\n` +
+    `--- \n` +
+    `💡 *How can I assist you today? Feel free to ask a loan question, check your eligibility across partner banks, or explore any lender's policy! 😊*`;
+
+  if (inEligibilityFlow) {
+    response += `\n\n*(Whenever you are ready to continue your active loan check, simply share your details!)*`;
+  }
+  return response;
+}
+
+/**
+ * Detects questions asking how the assistant is doing (e.g. "how are you", "how are u", "how r u", "how are you doing").
+ */
+export function isHowAreYouQuery(text: string): boolean {
+  if (!text) return false;
+  const clean = text.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+  return (
+    /^(?:how\s+(?:are|r)\s+(?:you|u)(?:\s+doing)?|how\s*(?:s|\s+s|\s+is)\s+it\s+going|how\s+(?:are\s+things|are\s+you\s+holding\s+up)|how\s+do\s+you\s+do|what\s+about\s+you|and\s+you)$/i.test(clean) ||
+    /\bhow\s*(?:'?s|\s+is)\s+it\s+going\b/i.test(text)
+  );
+}
+
+/**
+ * Formats a warm, smart, natural response when asked "how are you".
+ */
+export function formatHowAreYouResponse(inEligibilityFlow?: boolean): string {
+  let reply =
+    `I'm doing great, thank you for asking 😊! I am **CreditWise AI**, your intelligent personal loan and financial advisory assistant.\n\n` +
+    `How are you doing today? How can I assist you with your loans, bank policies, or EMI calculations? 😊`;
+
+  if (inEligibilityFlow) {
+    reply += `\n\n*(We can also continue your loan eligibility check whenever you're ready!)*`;
+  }
+  return reply;
+}
+
+/**
+ * Natural Multi-Bank Loan Intent Detection (Section 2 & Section 3)
+ * Detects cross-bank eligibility intent without misclassifying as single-bank policy lookup.
+ */
+export function isMultiBankEligibilityQuery(message: string): boolean {
+  if (!message || typeof message !== "string") return false;
+  const norm = message.toLowerCase().trim().replace(/[?.,!]/g, " ");
+
+  // Document queries must NEVER be classified as loan eligibility check
+  if (/\b(?:doc|docs|document|documents|paperwork|kyc|checklist)\b/i.test(norm)) {
+    return false;
+  }
+
+  // 1. Direct user phrases specified in Section 2
+  if (
+    /check\s*(?:my\s*)?(?:loan\s*)?eligibility\s*across\s*(?:partner\s*)?(?:banks?|lenders?)/i.test(norm) ||
+    /which\s*(?:partner\s*)?(?:banks?|lenders?)\s*(?:can\s*i|am\s*i\s*eligible|can\s*give\s*me)/i.test(norm) ||
+    /am\s*i\s*eligible\s*for\s*(?:a\s*)?(?:personal\s*)?loan/i.test(norm) ||
+    /check\s*eligibility\s*for\s*all\s*(?:partner\s*)?(?:banks?|lenders?)/i.test(norm) ||
+    /compare\s*(?:my\s*)?eligibility/i.test(norm) ||
+    /find\s*(?:the\s*)?best\s*bank\s*(?:for\s*me)?/i.test(norm) ||
+    /which\s*partner\s*banks?\s*am\s*i\s*eligible\s*for/i.test(norm) ||
+    /check\s*all\s*(?:partner\s*)?(?:banks?|lenders?)/i.test(norm)
+  ) {
+    return true;
+  }
+
+  // 2. Multi-lender scope combined with loan eligibility intent
+  const hasMultiLenderScope =
+    /\b(?:across\s+(?:all\s+)?(?:partner\s+)?(?:banks?|lenders?)|for\s+all\s+(?:partner\s+)?(?:banks?|lenders?)|all\s+banks?|all\s+lenders?|partner\s+banks?|partner\s+lenders?|multiple\s+banks?|various\s+banks?|every\s+bank)\b/i.test(norm);
+  const hasLoanOrEligibilityAction =
+    /\b(?:eligib\w*|qualif\w*|get\s*a\s*loan|can\s*i\s*get|apply|compare|best\s*bank|where\s*can\s*i|options?|find\s+lenders?|check)\b/i.test(norm);
+
+  if (hasMultiLenderScope && hasLoanOrEligibilityAction) {
+    const specificBankMatch = norm.match(/\b(hdfc|icici|axis\s*bank|axis\s*finance|sbi|kotak|bajaj\s*finserv|bajaj\s*markets?|tata\s*capital|idfc|indusind|bandhan|yes\s*bank|piramal|poonawalla|chola|smfg|finnable|fibe|sbm|utkarsh)\b/i);
+    if (!specificBankMatch) {
+      return true;
+    }
+  }
+
+  // 3. Question phrasing without naming a specific bank
+  if (/\bwhich\s+banks?\s+(?:can\s+i|could\s+i|am\s+i)\s+(?:get|receive|avail|qualify|apply)/i.test(norm)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Builds the intake prompt when critical applicant information is missing for a multi-bank eligibility check.
+ * Strictly adheres to Step 2: "If critical information is missing, ask only for the necessary information."
+ */
+export function buildMultiBankIntakePrompt(applicant: Partial<ApplicantProfile>): string {
+  const missing: string[] = [];
+  const salaryVal = Number(applicant.monthlyIncome) || 0;
+  const cibilVal = Number(applicant.cibil) || 0;
+  const ageVal = Number(applicant.age) || 0;
+
+  if (salaryVal <= 0) missing.push("Net Monthly Salary (e.g., ₹75,000)");
+  if (cibilVal < 300) missing.push("Approximate CIBIL Score (e.g., 750, or type 'not sure')");
+  if (!applicant.employmentType) missing.push("Employment Type (e.g., Salaried)");
+  if (ageVal < 18) missing.push("Age");
+  if (applicant.existingEmi === undefined || applicant.existingEmi === null) missing.push("Existing Monthly EMI (or enter 0 if none)");
+
+  const collected: string[] = [];
+  if (applicant.companyName) collected.push(`employer as **${applicant.companyName}**`);
+  if (salaryVal > 0) collected.push(`monthly salary (**₹${salaryVal.toLocaleString("en-IN")}**)`);
+  if (cibilVal >= 300) collected.push(`CIBIL score (**${cibilVal}**)`);
+  if (applicant.employmentType) collected.push(`employment type (**${applicant.employmentType}**)`);
+  if (ageVal >= 18) collected.push(`age (**${ageVal} years**)`);
+  if (applicant.existingEmi !== undefined && applicant.existingEmi !== null) {
+    collected.push(`existing EMI (**₹${Number(applicant.existingEmi).toLocaleString("en-IN")}**)`);
+  }
+
+  // 1. Initial intake prompt when nothing has been shared yet
+  if (collected.length === 0) {
+    return (
+      `To check your eligibility across our **23+ partner lenders**, I need your **monthly salary**, **CIBIL score**, **employment type**, **age**, and **existing monthly EMI** (enter 0 if none).\n\n` +
+      `💡 *If you share your **employer/company name** as well, I will verify company-category rules (Super CAT A / CAT A / CAT B) to unlock the highest loan amounts and preferential interest rates!*`
+    );
+  }
+
+  // 2. Progressive intake acknowledging what has been collected
+  const collectedStr = `I have recorded your ${collected.join(" and ")}.`;
+  const missingItems = missing.map((m) => `• **${m}**`).join("\n");
+
+  const companyNote = applicant.companyName
+    ? ""
+    : `\n\n*(Sharing your **employer/company name** is also recommended to apply preferential corporate category terms.)*`;
+
+  return (
+    `Got it! ${collectedStr}\n\n` +
+    `To evaluate your loan eligibility across all partner banks, please share the remaining details:\n` +
+    `${missingItems}` +
+    companyNote
+  ).trim();
+}
+
+/**
+ * Formats a comprehensive multi-bank comparison report strictly adhering to
+ * Section 9 and Section 10 of the CreditWise Multi-Bank Loan Eligibility Agent guidelines:
+ * 1. Table: | Lender | Result | Key Reason |
+ * 2. Categorized sections:
+ *    - ### ✅ Potentially Eligible
+ *    - ### 🟡 Requires Review
+ *    - ### ❌ Not Eligible
+ *    - ### ℹ️ More Information Required (if any)
+ * 3. Section 19 safety note:
+ *    > Final approval is subject to the lender's verification, credit assessment, and applicable internal processes.
+ */
+export function formatMultiBankEligibilityReport(
+  applicant: ApplicantProfile,
+  evaluationOutput: {
+    companyMatch: CompanyCategoryMatch;
+    evaluations?: BankEvaluationResult[];
+    eligibleBanks: BankEvaluationResult[];
+    reviewBanks?: BankEvaluationResult[];
+    ineligibleBanks: BankEvaluationResult[];
+    recommendedBank: BankEvaluationResult | null;
+    recommendationReason: string;
+  }
+): string {
+  const { eligibleBanks = [], reviewBanks = [], ineligibleBanks = [] } = evaluationOutput;
+  const lines: string[] = [];
+
+  lines.push(`## 🏦 Loan Eligibility Across Partner Banks\n`);
+  lines.push(`Based on the stored lender policy and the information you provided:\n`);
+
+  // Comparison Table: | Lender | Result | Key Reason |
+  lines.push(`| Lender | Result | Key Reason |`);
+  lines.push(`| :--- | :--- | :--- |`);
+
+  // To present a clean, high-impact table, sort with Eligible first, then Review, then Not Eligible
+  const allOrdered = [...eligibleBanks, ...reviewBanks, ...ineligibleBanks];
+
+  for (const b of allOrdered) {
+    let resultLabel = "Eligible";
+    let keyReason = "Meets stored salary and CIBIL criteria";
+
+    if (b.status === "ELIGIBLE") {
+      resultLabel = "Eligible";
+      const foirStr = b.calculatedFoir != null ? `FOIR ~${b.calculatedFoir}%` : "FOIR within limit";
+      keyReason = `Meets stored salary and CIBIL (${b.policyCibil || applicant.cibil || "700+"}) criteria; ${foirStr}`;
+    } else if (b.status === "NEEDS_REVIEW" || b.reviewRequired) {
+      resultLabel = "Review";
+      keyReason = b.reviewReason || "Meets basic criteria; additional underwriting review applies";
+    } else {
+      resultLabel = "Not Eligible";
+      if (b.failureReasons && b.failureReasons.length > 0) {
+        keyReason = b.failureReasons[0].replace(/^-\s*/, "").replace(/^\*\*[^*]+\*\*:\s*/, "");
+      } else {
+        keyReason = "Policy criteria not met";
+      }
+    }
+
+    lines.push(`| **${b.bankName}** | ${resultLabel} | ${keyReason} |`);
+  }
+  lines.push("");
+
+  // Detailed Section: ### ✅ Potentially Eligible
+  if (eligibleBanks.length > 0) {
+    lines.push(`### ✅ Potentially Eligible\n`);
+    for (const b of eligibleBanks) {
+      lines.push(`**${b.bankName} — Potentially Eligible**\n`);
+      if (applicant.cibil) {
+        lines.push(`• **CIBIL**: ${applicant.cibil} — meets the retrieved minimum requirement (${b.policyCibil || "700+"}).`);
+      }
+      if (applicant.monthlyIncome) {
+        lines.push(`• **Monthly Salary**: ₹${Number(applicant.monthlyIncome).toLocaleString("en-IN")} — meets the applicable salary requirement.`);
+      }
+      if (b.calculatedFoir != null) {
+        lines.push(`• **FOIR**: ~${b.calculatedFoir}% — within the applicable policy limit (cap: ${b.foirPercent}%).`);
+      }
+      if (b.tenureMonths && b.monthlyEmi) {
+        lines.push(`• **Repayment Tenure & Est. EMI**: ${b.tenureMonths} months — Est. EMI ₹${b.monthlyEmi.toLocaleString("en-IN")}/month at ${b.roi}% p.a.`);
+      }
+      lines.push(`• **Result**: Potentially eligible based on the stored policy.\n`);
+    }
+  }
+
+  // Detailed Section: ### 🟡 Requires Review
+  if (reviewBanks.length > 0) {
+    lines.push(`### 🟡 Requires Review\n`);
+    for (const b of reviewBanks) {
+      lines.push(`**${b.bankName} — Requires Review**\n`);
+      lines.push(`• **Policy Review Condition**: ${b.reviewReason || "Meets basic criteria; employer vintage or program-specific underwriting approval required."}`);
+      lines.push(`• **Result**: Requires credit review. Final approval is subject to lender assessment.\n`);
+    }
+  }
+
+  // Detailed Section: ### ❌ Not Eligible
+  if (ineligibleBanks.length > 0) {
+    lines.push(`### ❌ Not Eligible\n`);
+    for (const b of ineligibleBanks) {
+      lines.push(`**${b.bankName} — Not Eligible**\n`);
+      const reason = (b.failureReasons && b.failureReasons.length > 0)
+        ? b.failureReasons.map((r) => r.replace(/^-\s*/, "").replace(/^\*\*[^*]+\*\*:\s*/, "")).join("; ")
+        : "Failed mandatory policy condition";
+      lines.push(`• **Reason**: ${reason}`);
+      lines.push(`• **Result**: Not eligible based on stored policy.\n`);
+    }
+  }
+
+  // Safety / Accuracy Language (Section 19)
+  lines.push(`> ⚠️ **Important Note**: Based on the stored lender policy and the information you provided. Final approval is subject to the lender's verification, credit assessment, and applicable internal processes.`);
+
+  return lines.join("\n");
+}
+
+/**
  * Formats the final eligibility assessment report into a clean, concise, user-facing Markdown document.
  * Strictly SHOWS ONLY ELIGIBLE BANKS with a 1–2 sentence reason based on key factors:
  * CIBIL, loan amount, tenure, salary when relevant, and FOIR.
@@ -4942,7 +5505,15 @@ export function formatDynamicEligibilityReport(
   }
 ): string {
   const { eligibleBanks, recommendedBank, reviewBanks = [] } = evaluationOutput;
-  const approvedOrReviewBanks = [...eligibleBanks, ...reviewBanks];
+  // Sort approved banks with recommendedBank at the top, then by lowest ROI, lowest EMI, and highest loan limit
+  const sortedEligible = [...eligibleBanks].sort((a, b) => {
+    if (recommendedBank && a.bankName.toLowerCase() === recommendedBank.bankName.toLowerCase()) return -1;
+    if (recommendedBank && b.bankName.toLowerCase() === recommendedBank.bankName.toLowerCase()) return 1;
+    if (a.roi !== b.roi) return a.roi - b.roi;
+    if (a.monthlyEmi !== b.monthlyEmi) return a.monthlyEmi - b.monthlyEmi;
+    return b.maxLoanEligible - a.maxLoanEligible;
+  });
+  const approvedOrReviewBanks = [...sortedEligible, ...reviewBanks];
   const lines: string[] = [];
 
   // Do not generate a bank table when required data is missing!
@@ -5000,10 +5571,12 @@ export function formatDynamicEligibilityReport(
     lines.push(`| Bank | Status | CIBIL | Tenure | Est. EMI |`);
     lines.push(`| :--- | :--- | :--- | :--- | :--- |`);
 
-    approvedOrReviewBanks.forEach((b) => {
+    approvedOrReviewBanks.forEach((b, idx) => {
+      const isTop = idx === 0 && b.status === "ELIGIBLE";
       const statusIcon = b.status === "ELIGIBLE" ? "✅ ELIGIBLE" : "⚠️ NEEDS_REVIEW";
+      const bankLabel = isTop ? `**${b.bankName}** 🌟 *(Highly Recommended)*` : `**${b.bankName}**`;
       lines.push(
-        `| **${b.bankName}** | ${statusIcon} | ${b.policyCibil || "-"} | ${b.policyTenure || "-"} | ₹${b.monthlyEmi.toLocaleString("en-IN")} |`
+        `| ${bankLabel} | ${statusIcon} | ${b.policyCibil || "-"} | ${b.policyTenure || "-"} | ₹${b.monthlyEmi.toLocaleString("en-IN")} |`
       );
     });
     lines.push("");
@@ -5287,7 +5860,7 @@ export function extractProfileUpdates(
   if (isTargeted("employmentType", ["employmentType", "employment", "jobType"])) {
     if (llmExtracted?.employmentType) {
       const normEmp = String(llmExtracted.employmentType).toLowerCase();
-      if (/self|business|proprietor|partner|freelanc|doctor|trader/i.test(normEmp)) {
+      if (/self|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelanc|doctor|trader/i.test(normEmp)) {
         updates.employmentType = "Self-Employed";
       } else if (/salaried|job|pvt|corp|employee/i.test(normEmp)) {
         updates.employmentType = "Salaried";
@@ -5298,13 +5871,13 @@ export function extractProfileUpdates(
     } else {
       const empMatch =
         text.match(
-          /(?:change|update|make|set)?\s*(?:my\s*)?(?:employment\s*type|employment)(?:\s*(?:is|to|=|:))\s*(salaried|self[\s-]*employed|business|proprietor|freelancer)/i
+          /(?:change|update|make|set)?\s*(?:my\s*)?(?:employment\s*type|employment)(?:\s*(?:is|to|=|:))\s*(salaried|self[\s-]*employed|business(?!\s*loans?)|proprietor|freelancer)/i
         ) ||
-        text.match(/\b(?:self[\s-]*employed|business|proprietor|partner|freelanc|doctor|trader)\b/i) ||
+        text.match(/\b(?:self[\s-]*employed|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelancer?|doctor|trader)\b/i) ||
         text.match(/\b(?:salaried|job|employee|corporate|pvt\s*ltd|mnc)\b/i);
       if (empMatch) {
         const matchStr = empMatch[1] || empMatch[0];
-        if (/self|business|proprietor|partner|freelanc|doctor|trader/i.test(matchStr)) {
+        if (/self|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelanc|doctor|trader/i.test(matchStr)) {
           updates.employmentType = "Self-Employed";
         } else {
           updates.employmentType = "Salaried";
@@ -5423,10 +5996,16 @@ export async function applyProfileUpdateAndRecalculate(
 
     await saveEligibilityState(conversationId, {
       applicant,
-      expectedField: "chosenBank",
+      expectedField: "selectedBank",
+      selectedBank: "",
+      chosenBank: "",
       updatedAt: Date.now(),
-      in_eligibility_flow: true,
+      in_eligibility_flow: false,
+      hasCompletedEvaluation: true,
+      evaluationCompleted: true,
       eligible_banks: (evalResult.eligibleBanks || []).map((b) => b.bankName),
+      topBank: evalResult.recommendedBank?.bankName || (evalResult.eligibleBanks?.[0]?.bankName) || "",
+      postEligibilityStage: "ELIGIBILITY_CONFIRMED",
       ineligibleBanks: (evalResult.ineligibleBanks || []).map((b) => ({
         bankName: b.bankName,
         failureReasons: b.failureReasons,
@@ -5965,6 +6544,30 @@ export function runInvariantSanityChecks(
   plannedReply: string,
   userMessage: string
 ): { isValid: boolean; correctedReply?: string; correctedSession?: SessionState } {
+  // If NOT in active slot-filling eligibility flow, NEVER overwrite planned replies!
+  if (
+    !session.in_eligibility_flow ||
+    isGeneralAssistanceQuery(userMessage) ||
+    session.activeFlow === "MULTI_BANK_ELIGIBILITY_CHECK" ||
+    session.activeFlow === "BANK_POLICY" ||
+    session.activeFlow === "COMPANY_SEARCH" ||
+    session.activeFlow === "BANK_MANAGER" ||
+    session.activeFlow === "LOAN_ASSISTANCE" ||
+    plannedReply.includes("Loan Eligibility Across Partner Banks") ||
+    plannedReply.includes("across our partner lenders") ||
+    plannedReply.includes("Loan Processing via CreditWise") ||
+    plannedReply.includes("Loan Facilitation") ||
+    plannedReply.includes("### 🏦") ||
+    plannedReply.includes("### 📋") ||
+    plannedReply.includes("### 💬") ||
+    plannedReply.includes("### 💡") ||
+    plannedReply.includes("### 🛡️") ||
+    plannedReply.includes("### 🧮") ||
+    plannedReply.includes("| Bank |")
+  ) {
+    return { isValid: true };
+  }
+
   const applicant = session.applicant || {};
   let correctedReply = plannedReply;
   let hasModifications = false;
@@ -5991,24 +6594,33 @@ export function runInvariantSanityChecks(
   }
 
   // Invariant 2: Repetitive Prompt Guard
-  // Never repeat the exact same prompt robotically if user typed a question or non-empty message
+  // Never repeat the exact same prompt robotically if user typed an answer during active slot-filling
   if (
+    session.in_eligibility_flow &&
+    session.expectedField &&
     session.lastAssistantQuestion &&
     plannedReply.trim() === session.lastAssistantQuestion.trim() &&
-    userMessage.trim().length > 0
+    plannedReply.length < 200 &&
+    !plannedReply.includes("###") &&
+    !plannedReply.includes("|") &&
+    userMessage.trim().length > 0 &&
+    !/\?$/.test(userMessage.trim()) &&
+    !/^(?:what|which|how|who|where|why|can|could|is\s*it|does|tell\s*me|explain)\b/i.test(userMessage.trim())
   ) {
-    const fieldName = session.expectedField || "information";
+    const fieldName = session.expectedField;
     const friendlyMap: Record<string, string> = {
-      monthlyIncome: "your approximate take-home salary each month (for example: ₹50,000)",
+      monthlyIncome: "your approximate net monthly take-home salary (for example: ₹50,000)",
       loanAmount: "the loan amount you wish to borrow (for example: ₹5 Lakhs)",
       tenureMonths: "your preferred loan tenure in years or months (for example: 3 years)",
       cibil: "your approximate CIBIL credit score (e.g. 750, or 'not sure')",
       cibilScore: "your approximate CIBIL credit score (e.g. 750, or 'not sure')",
-      company: "the exact name of your current employer / company",
-      companyName: "the exact name of your current employer / company",
+      existingEmi: "your total existing monthly loan EMIs (or 0 if none)",
+      age: "your current age in years",
+      company: "the name of your current employer or company (e.g. TCS, Infosys, Wipro)",
+      companyName: "the name of your current employer or company (e.g. TCS, Infosys, Wipro)",
     };
     const askDesc = friendlyMap[fieldName] || `your ${fieldName}`;
-    correctedReply = `I want to make sure I understand you correctly! To check your loan options across all our partner banks, could you please share ${askDesc}?`;
+    correctedReply = `To help check your loan eligibility accurately, could you please share ${askDesc}?`;
     hasModifications = true;
   }
 
@@ -6021,15 +6633,41 @@ export function runInvariantSanityChecks(
   }
 
   // Invariant 4: Mandatory Company Verification Guard
-  // In loan eligibility flow, never permit placeholder defaults ("a home", "Unknown", "Open Market") or bypass company verification
+  // In loan eligibility flow, never permit placeholder defaults ("a home", "Unknown", "Open Market") in state.
+  // Only prompt for company if the assistant is genuinely executing an active eligibility intake turn for company name.
+  const isAwaitingCompanySelection = Boolean(
+    session.companyFlow?.stage === "COMPANY_SELECTION" ||
+    session.companyFlow?.stage === "COMPANY_CONFIRMATION" ||
+    session.awaitingEmployerConfirmation ||
+    session.expectedField === "companySelection" ||
+    session.expectedField === "companyChoice" ||
+    plannedReply.includes("disambiguation-candidates") ||
+    plannedReply.includes("Matching Companies Found") ||
+    plannedReply.includes("select your exact employer")
+  );
   const rawComp = session.company || applicant.companyName;
   const isCompPlaceholder = !rawComp || /^(?:a\s+home|home|open\s*market|unknown|not\s*(?:provided|specified|applicable|available|sure)|unlisted|standard\s*(?:corporate|salaried)|none|nil|na|n\/a)$/i.test(String(rawComp).trim()) || isInvalidCompanyName(String(rawComp)) || isLocationInput(String(rawComp));
-  if (session.in_eligibility_flow && isCompPlaceholder) {
+  if (session.in_eligibility_flow && isCompPlaceholder && !isAwaitingCompanySelection) {
     updatedSession.company = undefined;
     updatedSession.selectedCompanyName = undefined;
     if (updatedSession.applicant) updatedSession.applicant.companyName = undefined;
-    updatedSession.expectedField = "company";
-    if (!correctedReply.includes("what is the exact name of your current employer / company?")) {
+
+    // Only set expectedField to company if active step was already company or unassigned
+    if (!session.expectedField || session.expectedField === "company" || session.expectedField === "companyName") {
+      updatedSession.expectedField = "company";
+    }
+
+    // NEVER overwrite an already constructed meaningful reply (e.g. policy answer, educational answer, FAQ, loan intro, or manager search)
+    const isAnsweringOtherQuery =
+      plannedReply.length > 80 ||
+      plannedReply.includes("###") ||
+      plannedReply.includes("|") ||
+      isCompanySearch ||
+      /\?$/.test(userMessage.trim()) ||
+      /^(?:what|which|how|who|where|why|can\s*(?:you|i)|could|is\s*it|is\s*there|does|tell\s*me|explain)\b/i.test(userMessage.trim()) ||
+      detectAndAnswerSideQuestion(userMessage).isQuestion;
+
+    if (!isAnsweringOtherQuery && (session.currentStep === "COLLECTING_COMPANY" || session.expectedField === "company") && !correctedReply.includes("employer / company?")) {
       correctedReply = "To provide accurate partner bank rates and category limits, what is the exact name of your current employer / company?";
       hasModifications = true;
     }

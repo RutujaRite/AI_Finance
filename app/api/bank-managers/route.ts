@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchBankManager } from "@/lib/bankSearch";
 import pool from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken, isAdminUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +28,13 @@ export async function POST(req: NextRequest) {
   const payload: any = token ? verifyToken(token) : null;
   if (!payload) {
     return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
+  }
+
+  if (!isAdminUser(payload)) {
+    return NextResponse.json(
+      { success: false, error: "Forbidden", message: "Admin privileges required" },
+      { status: 403 }
+    );
   }
 
   try {

@@ -8,7 +8,9 @@ import { searchCompany, CompanySearchResult, findCompanySuggestions, CompanyCand
 import { AgentTool, ToolResult } from './types';
 
 export interface CompanySearchInput {
-  companyName: string;
+  companyName?: string;
+  company_name?: string;
+  query?: string;
   limit?: number;
 }
 
@@ -25,7 +27,7 @@ export class CompanySearchTool implements AgentTool<CompanySearchInput, CompanyS
 
   async execute(input: CompanySearchInput, context?: Record<string, any>): Promise<ToolResult<CompanySearchOutput>> {
     const startTime = new Date().toISOString();
-    const query = String(input.companyName || '').trim();
+    const query = String(input.companyName || input.company_name || input.query || '').trim();
 
     if (!query) {
       return {

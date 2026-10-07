@@ -111,8 +111,12 @@ export interface CompanyCandidate {
 
 /** Normalizes a user-entered employer without changing its stored legal name. */
 export function normalizeCompanySearchInput(value: string): string {
-  return String(value || "")
-    .replace(/^(?:i\s+(?:work|working|am\s+working)\s+(?:at|in)|(?:my\s+)?(?:employer|company)\s+is|(?:work|working|employed)\s+(?:at|in|by)|employer\s*[:=-]|company\s*[:=-]|at|in)\s+/i, "")
+  let str = String(value || "").trim();
+  str = str.replace(
+    /^(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*)|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for))|(?:(?:my\s+)?(?:company|employer)\s+is)|(?:(?:i\s*am|i'?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by))|(?:employer\s*[:=-]|company\s*[:=-]|at\s+|in\s+))\s*/i,
+    ""
+  );
+  return str
     .replace(/\b(?:private\s+limited|pvt\.?\s*limited|pvt\.?|limited|ltd\.?)\b/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -168,6 +172,16 @@ export function isInvalidCompanySearchQuery(text: string): boolean {
   }
   if (isLocationInput(clean)) return true;
 
+  // Generic pronouns, determiners, and self-referential words must never enter company search:
+  if (
+    /^(?:my|our|your|the|this|that|an?|his|her|their|its)$/i.test(clean) ||
+    /^(?:my|our|your|the|this|that|an?|current|new|previous)\s+(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer[s]?|workplace|organization[s]?|org|job)$/i.test(clean) ||
+    /^(?:where\s+i\s+work|the\s+company\s+where\s+i\s+work|the\s+place\s+where\s+i\s+work|company\s+where\s+i\s+work|where\s+we\s+work|about\s+my|about\s+the|about\s+our|tell\s+me\s+about\s+my|tell\s+me\s+about\s+the|tell\s+me\s+about)$/i.test(clean) ||
+    /^(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer[s]?|workplace|organization[s]?|org)$/i.test(clean)
+  ) {
+    return true;
+  }
+
   // Standalone conversational noise / commands / loan intents:
   if (
     /^(?:help|start|menu|info|information|options|loan|loans|apply|check|calculate|calculator|emi|test|demo|guide|about|details|query|contact|support|service|services|rate|rates|interest|feature|features|foir|score|scores|cibil|credit|bureau|yes|no|none|nil|na|n\/a|okay|ok|sure|cancel|reset|restart|exit|stop)$/i.test(clean)
@@ -182,10 +196,19 @@ export function isInvalidCompanySearchQuery(text: string): boolean {
     return true;
   }
 
+  // Bank policy and bank availability queries must never enter company search:
+  if (
+    /\b(?:available\s*banks?|partner\s*banks?|which\s*banks?|what\s*banks?|list\s*(?:of\s*)?banks?|bank\s*policies|policy\s*available|bank\s*policy)\b/i.test(clean) ||
+    /^(?:tell\s+me\s+)?available\s+banks\b/i.test(clean) ||
+    /\b(?:cibil\s*requirement|salary\s*requirement|minimum\s*salary|documents?\s*required)\b/i.test(clean)
+  ) {
+    return true;
+  }
+
   // Conversational questions or acknowledgements:
   if (
     /\?$/.test(raw) ||
-    /^(?:why|how|what|when|where|who|which|explain|is|can|will|do|did|does|should|would|could|are|am)\b/i.test(clean) ||
+    /^(?:why|how|what|when|where|who|which|explain|is|can|will|do|did|does|should|would|could|are|am|tell|show|list|give)\b/i.test(clean) ||
     /^(?:ok|okay|sure|yes|yep|yeah|proceed|continue|go\s*ahead|fine|understood|got\s*it|thanks|thank\s*you|bye|cancel|reset)\b/i.test(clean)
   ) {
     return true;
@@ -221,13 +244,13 @@ export async function searchCompany(companyName: string, limit?: number): Promis
     /^(i want personal loan|i want loan|i need personal loan|i need loan|want personal loan|want loan|need loan|personal loan|loan eligibility|check eligibility|check loan eligibility|apply loan|apply for loan|salaried|self-employed|self employed|hello|hi|hey|reset|restart|cancel|help)$/i.test(normInput) ||
     /^(i want|i need|want|need|looking for|apply for)\s*(a|personal)?\s*loan$/i.test(normInput)
   ) {
-    return { found: false, primaryName: companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], candidates: [], candidateOptions: [], needsDisambiguation: false };
+    return { found: false, primaryName: normalizeCompanySearchInput(companyName) || companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], candidates: [], candidateOptions: [], needsDisambiguation: false };
   }
 
   try {
     let cleaned = extractCleanCompanyName(companyName) || normalizeCompanySearchInput(companyName) || companyName.trim();
     if (!cleaned || cleaned.length < 2 || isInvalidCompanySearchQuery(cleaned)) {
-      return { found: false, primaryName: companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], candidates: [], candidateOptions: [], needsDisambiguation: false };
+      return { found: false, primaryName: cleaned || companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], candidates: [], candidateOptions: [], needsDisambiguation: false };
     }
     const rawCleaned = cleaned;
     cleaned = normalizeCompanySearchInput(cleaned) || cleaned;
@@ -370,7 +393,7 @@ export async function searchCompany(companyName: string, limit?: number): Promis
       }
 
       // No PostgreSQL record and no verified live evidence -> found: false
-      return { found: false, primaryName: companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], liveInformation: null, candidates: [], candidateOptions: [], needsDisambiguation: false };
+      return { found: false, primaryName: cleaned || companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], liveInformation: null, candidates: [], candidateOptions: [], needsDisambiguation: false };
     }
 
     // -----------------------------------------------------------------------
@@ -648,14 +671,30 @@ export function formatCompanyResponse(compRes: CompanySearchResult): string {
     /\b(?:llp|limited\s+liability\s+partnership)\b/i.test(compRes.primaryName)
   );
 
+  const live = compRes.liveInformation;
+  const b = live?.basicInfo || compRes.basicInfo;
+  const industry = live?.industry || b?.industry;
+
+  // Company introduction paragraph from internet search
+  const introParagraph =
+    live?.overview ||
+    (compRes.overview && !compRes.overview.includes("is verified in partner bank corporate records") ? compRes.overview : null) ||
+    `${compRes.primaryName} is an active corporate enterprise${industry ? ` operating in the ${industry} sector` : ""} in India, verified through corporate records and live internet search intelligence.`;
+
   // 1. Company Overview
   lines.push(`### 🏢 Company Overview: **${compRes.primaryName}**`);
   lines.push("");
-  lines.push(compRes.overview || `${compRes.primaryName} is verified in partner bank corporate records.`);
+  const overviewTop =
+    compRes.overview && compRes.overview !== introParagraph
+      ? compRes.overview
+      : `${compRes.primaryName} is verified in partner bank corporate records across leading financial institutions.`;
+  lines.push(overviewTop);
   lines.push("");
 
   // 2. Live Company Information
   lines.push(`### Live Company Information`);
+  lines.push("");
+  lines.push(introParagraph);
   lines.push("");
 
   const formatValue = (val: any) => {
@@ -670,8 +709,6 @@ export function formatCompanyResponse(compRes: CompanySearchResult): string {
     return String(val).trim();
   };
 
-  const live = compRes.liveInformation;
-  const b = live?.basicInfo || compRes.basicInfo;
   const rowsBasic: [string, string][] = [
     ["Industry", formatValue(live?.industry || b?.industry)],
     ["Country", formatValue(b?.country || "India")],

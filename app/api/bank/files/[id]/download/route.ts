@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken, isAdminUser } from "@/lib/auth";
 import path from "path";
 import { readFile } from "fs/promises";
 import { existsSync } from "fs";
@@ -22,6 +22,13 @@ export async function GET(req: NextRequest) {
   const payload: any = token ? verifyToken(token) : null;
   if (!payload) {
     return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
+  }
+
+  if (!isAdminUser(payload)) {
+    return NextResponse.json(
+      { success: false, error: "Forbidden", message: "Admin privileges required" },
+      { status: 403 }
+    );
   }
 
   try {

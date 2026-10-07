@@ -193,7 +193,15 @@ export async function getConversationContext(
   }
 ): Promise<ConversationContext> {
   const cleanId = String(conversationId || "").trim();
-  let state = await getEligibilityState(cleanId);
+  const shouldFetchHistory =
+    !(options?.conversationHistory && Array.isArray(options.conversationHistory)) &&
+    Boolean(cleanId && cleanId !== "0" && !isNaN(Number(cleanId)));
+
+  const [stateResult, historyResult] = await Promise.all([
+    getEligibilityState(cleanId),
+    shouldFetchHistory ? getConversationHistoryMessages(cleanId) : Promise.resolve([]),
+  ]);
+  let state = stateResult;
   const isNew = !state;
 
   if (!state) {
@@ -233,8 +241,8 @@ export async function getConversationContext(
   let recentMessages: Array<{ role: string; content: string }> = [];
   if (options?.conversationHistory && Array.isArray(options.conversationHistory)) {
     recentMessages = options.conversationHistory;
-  } else if (cleanId && cleanId !== "0" && !isNaN(Number(cleanId))) {
-    recentMessages = await getConversationHistoryMessages(cleanId);
+  } else {
+    recentMessages = historyResult;
   }
 
   // Build context object

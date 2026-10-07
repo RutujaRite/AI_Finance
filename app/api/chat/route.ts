@@ -16,6 +16,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { runCentralAgent } from "@/lib/ai/agent";
+import { getActiveLlmModelName } from "@/lib/ai/modelRouter";
+import { getCreditWiseSystemPrompt } from "@/lib/ai/prompts";
 import pool from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
 
@@ -103,15 +105,18 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
 
-    const message = String(body?.message || "").trim();
+    const rawMessage = String(body?.message || "").trim();
+    // Truncate incoming user messages to a maximum of 2,000 characters (~500 tokens)
+    const message = rawMessage.slice(0, 2000);
 
     const clientConvId =
       String(body?.conversation_id || "").trim();
 
+    const activeLlm = await getActiveLlmModelName();
     const requestedModel =
       body?.model
         ? String(body.model).trim()
-        : undefined;
+        : activeLlm;
     const selectionType = body?.company_selection?.type;
     const companySelectionAction =
       body?.company_selection && typeof body.company_selection === "object" &&
@@ -170,8 +175,8 @@ export async function POST(req: NextRequest) {
       // Exclude the message we just inserted so conversationHistory represents PRIOR turns
       const allRows = historyRes.rows;
       const priorRows = allRows.slice(0, -1);
-      // Bound conversationHistory to the most recent 10 turns to avoid context overflow while keeping relevant multi-turn context
-      const recentRows = priorRows.slice(-10);
+      // Bound conversationHistory to the last 6 messages (3 turns) to minimize context and latency
+      const recentRows = priorRows.slice(-6);
       conversationHistory = recentRows.map((r: any) => ({
         role: r.role === "assistant" || r.role === "ai" ? "assistant" : "user",
         content: r.content,
@@ -196,20 +201,136 @@ export async function POST(req: NextRequest) {
       day: 'numeric'
     });
 
-    // 2. SYSTEM PROMPT REFACTOR: Clean dynamic context and behavior instructions
-    const systemPrompt = `You are CreditWise AI, a helpful, expert financial assistant specializing in personal loan eligibility, EMI calculations, bank loan policies, and branch manager contacts.
-
-### DYNAMIC CONTEXT:
-- Current Local Time: ${currentTime}
-
-### BEHAVIOR RULES:
-- TIME AWARENESS: Always use the provided Current Local Time. If the user gives a greeting that contradicts the current time (e.g., saying "Good morning" at 10:45 PM), politely acknowledge the current time in a warm, conversational tone (e.g., "Good evening! It's late night, but I'm here to help you with your loan queries!").
-- NATURAL & ADAPTIVE: Do not act like a rigid step-by-step form or force single-question loops. Converse naturally like ChatGPT while gathering missing information efficiently.
-- ACCURACY: Follow the provided Bank Data, Loan Policy, and Manager Contact records strictly for calculations and recommendations.`;
+    // 2. SYSTEM PROMPT: Dynamic context, policy RAG rule, and important conversation rules
+    const systemPrompt = getCreditWiseSystemPrompt(currentTime);
 
     /* ---------------------------------------------------------------------- */
-    /* Central AI Agent                                                       */
+    /* Central AI Agent & Server-Sent Events Streaming                        */
     /* ---------------------------------------------------------------------- */
+
+    const shouldStream = body?.stream === true;
+
+    if (shouldStream) {
+      console.log(`[STREAM] Request received: convId=${conversationIdStr} message="${message.slice(0, 50)}"`);
+      const encoder = new TextEncoder();
+      const customStream = new TransformStream();
+      const writer = customStream.writable.getWriter();
+
+      let writeQueue = Promise.resolve();
+      const sendEvent = (data: any) => {
+        writeQueue = writeQueue.then(async () => {
+          try {
+            await writer.write(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          } catch (wErr) {
+            // Client disconnected or write closed
+          }
+        });
+        return writeQueue;
+      };
+
+      (async () => {
+        let tokenCount = 0;
+        let isFirstToken = true;
+        try {
+          await sendEvent({ type: "init", conversation_id: conversationIdStr });
+
+          const agentResult = await runCentralAgent({
+            message,
+            conversationId: conversationIdStr,
+            conversationHistory,
+            model: requestedModel,
+            companySelectionAction,
+            currentTime,
+            systemPrompt,
+            signal: req.signal,
+            onToken: (token: string) => {
+              if (token) {
+                if (isFirstToken) {
+                  console.log(`[STREAM] LLM stream started (first token received)`);
+                  isFirstToken = false;
+                }
+                tokenCount++;
+                if (tokenCount === 1 || tokenCount % 25 === 0) {
+                  console.log(`[STREAM] Chunk received (count: ${tokenCount})`);
+                }
+                sendEvent({ type: "token", text: token });
+              }
+            },
+          });
+
+          console.log(`[STREAM] Stream completed: totalTokens=${tokenCount}`);
+
+          let effectiveTitle = message.slice(0, 40) || "Loan Assistant";
+          try {
+            await pool.query(
+              `INSERT INTO assistant_messages (conversation_id, role, content)
+               VALUES ($1, 'assistant', $2)`,
+              [convId, agentResult.reply || ""]
+            );
+            const titleRes = await pool.query(
+              `UPDATE assistant_conversations
+               SET updated_at = NOW(),
+                   title = CASE WHEN title IS NULL OR title = 'Loan Assistant' OR title = 'New Conversation' OR title = 'New Chat'
+                                THEN $1 ELSE title END
+               WHERE id = $2
+               RETURNING title`,
+              [effectiveTitle, convId]
+            );
+            if (titleRes.rows.length > 0 && titleRes.rows[0].title) {
+              effectiveTitle = titleRes.rows[0].title;
+            }
+            console.log(`[STREAM] Final response persisted`);
+          } catch (saveErr) {
+            console.error("Error persisting assistant response to DB:", saveErr);
+          }
+
+          const aiMessage: any = {
+            id: uid(),
+            role: "ai",
+            content: agentResult.reply,
+            timestamp: nowISO(),
+          };
+
+          if (agentResult.companyData) {
+            aiMessage.company_data = agentResult.companyData;
+          }
+          if (agentResult.companyQuery) {
+            aiMessage.company_query = agentResult.companyQuery;
+          }
+          if (agentResult.bankData) {
+            aiMessage.bank_data = agentResult.bankData;
+          }
+
+          await sendEvent({
+            type: "done",
+            success: true,
+            conversation_id: conversationIdStr,
+            title: effectiveTitle,
+            ai_message: aiMessage,
+          });
+        } catch (streamErr: any) {
+          console.error("Central Chat stream error:", streamErr);
+          await sendEvent({
+            type: "error",
+            error: streamErr?.message || "Streaming failed",
+          });
+        } finally {
+          try {
+            await writeQueue;
+            await writer.close();
+          } catch {}
+        }
+      })();
+
+      return new Response(customStream.readable, {
+        headers: {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          "Connection": "keep-alive",
+          "X-Accel-Buffering": "no",
+        },
+      });
+    }
 
     const agentResult = await runCentralAgent({
       message,

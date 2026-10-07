@@ -43,6 +43,19 @@ export default function HomePage() {
   const initializedRef = useRef(false)
   const messagesByConvRef = useRef<Record<string, any[]>>({})
   const activeConvIdRef = useRef<string | null>(null)
+  const isStreamingRef = useRef(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  function stopGeneration() {
+    if (abortControllerRef.current) {
+      try {
+        abortControllerRef.current.abort()
+      } catch {}
+      abortControllerRef.current = null
+    }
+    isStreamingRef.current = false
+    setLoading(false)
+  }
 
   const STORAGE_KEY = "emi_chat_state_v2"
 
@@ -88,14 +101,18 @@ export default function HomePage() {
       const params = new URLSearchParams(window.location.search)
       const sec = params.get("section") as DashboardSection | null
       if (sec && ["home", "assistant", "emi", "policies"].includes(sec)) {
-        setActiveSection(sec)
+        if (!isAdmin && (sec === "home" || sec === "policies")) {
+          setActiveSection("assistant")
+        } else {
+          setActiveSection(sec)
+        }
       } else {
-        setActiveSection("home")
+        setActiveSection(isAdmin ? "home" : "assistant")
       }
     }
     window.addEventListener("popstate", handlePopState)
     return () => window.removeEventListener("popstate", handlePopState)
-  }, [])
+  }, [isAdmin])
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -127,6 +144,9 @@ export default function HomePage() {
   }, [activeSection])
 
   function handleSectionChange(section: DashboardSection) {
+    if (!isAdmin && (section === "home" || section === "policies")) {
+      section = "assistant"
+    }
     setActiveSection(section)
     if (typeof window !== "undefined") {
       const url = section === "home" ? "/home" : `/home?section=${section}`
@@ -148,6 +168,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!initializedRef.current) return
     if (!user) return
+    if (isStreamingRef.current) return
     const activeId = activeConvIdRef.current || activeConversationId
     if (activeId && messagesByConvRef.current[activeId] === undefined) {
       let cancelled = false
@@ -194,7 +215,19 @@ export default function HomePage() {
       router.replace("/login")
     } else {
       const data = await res.json()
-      if (data.success) setUser(data.user)
+      if (data.success) {
+        setUser(data.user)
+        const isUserAdmin =
+          String(data.user?.role || "").trim().toLowerCase() === "admin" ||
+          data.user?.is_admin === true ||
+          String(data.user?.email || "").toLowerCase() === "admin@gmail.com" ||
+          String(data.user?.email || "").toLowerCase() === "akshadasagar31@gmail.com" ||
+          String(data.user?.email || "").toLowerCase().startsWith("admin")
+
+        if (!isUserAdmin) {
+          setActiveSection((prev) => (prev === "emi" ? "emi" : "assistant"))
+        }
+      }
     }
   }
 
@@ -222,9 +255,9 @@ export default function HomePage() {
       const activeId = parsed.activeConversationId || null
       setActiveConversationId(activeId)
       activeConvIdRef.current = activeId
-      const activeMsgs = activeId && messagesByConvRef.current[activeId]
+      const activeMsgs = activeId && Array.isArray(messagesByConvRef.current[activeId])
         ? messagesByConvRef.current[activeId]
-        : (Array.isArray(parsed.messages) ? parsed.messages : [])
+        : []
       setMessages(activeMsgs)
       if (parsed.selectedModel) setSelectedModel(parsed.selectedModel)
       if (parsed.messageActions) setMessageActions(parsed.messageActions)
@@ -290,6 +323,12 @@ export default function HomePage() {
 
     const resolvedText = text.trim()
 
+    if (abortControllerRef.current) {
+      try { abortControllerRef.current.abort() } catch {}
+    }
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
     const currentConvId = activeConvIdRef.current || activeConversationId
     if (currentConvId && messagesByConvRef.current[currentConvId] === undefined) {
       messagesByConvRef.current[currentConvId] = messages
@@ -304,12 +343,20 @@ export default function HomePage() {
     setMessages((prev) => [...prev, userMessage])
     setInput("")
     setLoading(true)
+    isStreamingRef.current = true
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
+        signal: controller.signal,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: resolvedText, conversation_id: currentConvId, model: selectedModel, company_selection: companySelection }),
+        body: JSON.stringify({
+          message: resolvedText,
+          conversation_id: currentConvId,
+          model: selectedModel,
+          company_selection: companySelection,
+          stream: true,
+        }),
         credentials: "include",
       })
       if (!res.ok) {
@@ -324,6 +371,195 @@ export default function HomePage() {
         } catch {}
         throw new Error(errMsg)
       }
+
+      const isSseStream = res.headers.get("content-type")?.includes("text/event-stream")
+
+      if (isSseStream && res.body) {
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ""
+        const streamingMsgId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+        let placeholderCreated = false
+        let accumulatedText = ""
+        let completedAiMessage: any = null
+        let streamConvId = currentConvId
+
+        try {
+          while (true) {
+            if (controller.signal.aborted) {
+              try { await reader.cancel() } catch {}
+              break
+            }
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            const blocks = buffer.split("\n\n")
+            buffer = blocks.pop() || ""
+
+            for (const block of blocks) {
+              const trimmed = block.trim()
+              if (!trimmed.startsWith("data:")) continue
+              const jsonStr = trimmed.slice(5).trim()
+              if (!jsonStr) continue
+              try {
+                const event = JSON.parse(jsonStr)
+                if (event.type === "init") {
+                  if (event.conversation_id) {
+                    streamConvId = String(event.conversation_id)
+                    activeConvIdRef.current = streamConvId
+                    messagesByConvRef.current[streamConvId] = [...messages, userMessage]
+                  }
+                } else if (event.type === "token") {
+                  const tokenText = event.text || ""
+                  if (!tokenText) continue
+                  accumulatedText += tokenText
+                  if (!placeholderCreated) {
+                    placeholderCreated = true
+                    setLoading(false)
+                    setMessages((prev) => [
+                      ...prev,
+                      {
+                        id: streamingMsgId,
+                        role: "ai" as const,
+                        content: accumulatedText,
+                        timestamp: new Date().toISOString(),
+                      },
+                    ])
+                  } else {
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === streamingMsgId ? { ...m, content: accumulatedText } : m
+                      )
+                    )
+                  }
+                } else if (event.type === "done") {
+                  isStreamingRef.current = false
+                  setLoading(false)
+                  const effectiveId = event.conversation_id || streamConvId || currentConvId
+                  if (effectiveId) {
+                    activeConvIdRef.current = String(effectiveId)
+                    setActiveConversationId(String(effectiveId))
+                  }
+                  const convTitle = event.title || "Loan Assistant"
+                  setConversations((prev) => {
+                    const targetId = effectiveId || "default"
+                    const idx = prev.findIndex((c) => String(c.id) === targetId)
+                    if (idx >= 0) {
+                      const updated = [...prev]
+                      updated[idx] = { ...updated[idx], title: convTitle }
+                      return updated
+                    }
+                    return [
+                      {
+                        id: targetId,
+                        title: convTitle,
+                        pinned: false,
+                        createdAt: new Date().toISOString(),
+                      },
+                      ...prev,
+                    ]
+                  })
+
+                  completedAiMessage = {
+                    ...(event.ai_message || {}),
+                    id: streamingMsgId,
+                    role: "ai" as const,
+                    content: accumulatedText || event.ai_message?.content || "",
+                    timestamp: event.ai_message?.timestamp || new Date().toISOString(),
+                  }
+
+                  if (!placeholderCreated) {
+                    setMessages((prev) => [...prev, completedAiMessage])
+                  } else {
+                    setMessages((prev) =>
+                      prev.map((m) => (m.id === streamingMsgId ? completedAiMessage : m))
+                    )
+                  }
+
+                  if (effectiveId) {
+                    messagesByConvRef.current[effectiveId] = [
+                      ...messages,
+                      userMessage,
+                      completedAiMessage,
+                    ]
+                  }
+                } else if (event.type === "error") {
+                  isStreamingRef.current = false
+                  setLoading(false)
+                  const interruptedContent =
+                    (accumulatedText ? `${accumulatedText}\n\n` : "") +
+                    "⚠️ Response interrupted. Please try again."
+                  if (placeholderCreated) {
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === streamingMsgId ? { ...m, content: interruptedContent } : m
+                      )
+                    )
+                  } else {
+                    setMessages((prev) => [
+                      ...prev,
+                      {
+                        id: streamingMsgId,
+                        role: "ai" as const,
+                        content: interruptedContent,
+                        timestamp: new Date().toISOString(),
+                      },
+                    ])
+                  }
+                  return
+                }
+              } catch (pErr) {
+                console.warn("SSE event parsing warning:", pErr)
+              }
+            }
+          }
+        } catch (streamErr: any) {
+          if (controller.signal.aborted || streamErr?.name === "AbortError") {
+            isStreamingRef.current = false
+            setLoading(false)
+            if (accumulatedText && !placeholderCreated) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: streamingMsgId,
+                  role: "ai" as const,
+                  content: accumulatedText,
+                  timestamp: new Date().toISOString(),
+                },
+              ])
+            }
+            return
+          }
+          console.error("Stream reading interrupted:", streamErr)
+          isStreamingRef.current = false
+          setLoading(false)
+          const interruptedContent =
+            (accumulatedText ? `${accumulatedText}\n\n` : "") +
+            "⚠️ Response interrupted. Please try again."
+          if (placeholderCreated) {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === streamingMsgId ? { ...m, content: interruptedContent } : m
+              )
+            )
+          } else {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: streamingMsgId,
+                role: "ai" as const,
+                content: interruptedContent,
+                timestamp: new Date().toISOString(),
+              },
+            ])
+          }
+        } finally {
+          isStreamingRef.current = false
+          abortControllerRef.current = null
+        }
+        return
+      }
+
       const data = await res.json().catch(() => null)
       if (!data) {
         throw new Error("Invalid response received from server")
@@ -358,19 +594,62 @@ export default function HomePage() {
         })
 
         if (data.ai_message) {
-          setMessages((prev) => [...prev, data.ai_message])
-        }
-        if (effectiveConvId) {
-          messagesByConvRef.current[effectiveConvId] = [
-            ...messages,
-            userMessage,
-            ...(data.ai_message ? [data.ai_message] : []),
-          ]
+          const fullContent = data.ai_message.content || ""
+          const targetMsgId = data.ai_message.id
+
+          if (!fullContent || fullContent.length < 30) {
+            setMessages((prev) => [...prev, data.ai_message])
+            if (effectiveConvId) {
+              messagesByConvRef.current[effectiveConvId] = [
+                ...messages,
+                userMessage,
+                data.ai_message,
+              ]
+            }
+          } else {
+            const placeholderMsg = { ...data.ai_message, content: "" }
+            setMessages((prev) => [...prev, placeholderMsg])
+            setLoading(false)
+
+            const tokens = fullContent.split(/(\s+)/)
+            let curr = ""
+            let i = 0
+
+            const timer = setInterval(() => {
+              const take = Math.min(4, tokens.length - i)
+              for (let k = 0; k < take; k++) {
+                curr += tokens[i + k] || ""
+              }
+              i += take
+
+              setMessages((prev) =>
+                prev.map((m) => (m.id === targetMsgId ? { ...m, content: curr } : m))
+              )
+
+              if (i >= tokens.length) {
+                clearInterval(timer)
+                setMessages((prev) =>
+                  prev.map((m) => (m.id === targetMsgId ? { ...m, content: fullContent } : m))
+                )
+                if (effectiveConvId) {
+                  messagesByConvRef.current[effectiveConvId] = [
+                    ...messages,
+                    userMessage,
+                    data.ai_message,
+                  ]
+                }
+              }
+            }, 18)
+          }
         }
       } else {
         throw new Error(data.error || "Failed to send message")
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (controller.signal.aborted || error?.name === "AbortError") {
+        setLoading(false)
+        return
+      }
       console.error("Send message error:", error)
       const errorMessage = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
@@ -414,6 +693,7 @@ export default function HomePage() {
 
     activeConvIdRef.current = conversationId
     setActiveConversationId(conversationId)
+    setMessages(messagesByConvRef.current[conversationId] || [])
     setActionMenuConvId(null)
     setEditingConvId(null)
 
@@ -422,17 +702,15 @@ export default function HomePage() {
     }
 
     const msgs = await loadConversationMessages(conversationId)
-    setMessages(msgs)
+    if ((activeConvIdRef.current || activeConversationId) === conversationId) {
+      setMessages(msgs)
+    }
   }
 
   async function newConversation() {
     const currentId = activeConvIdRef.current || activeConversationId
     if (currentId && messages.length > 0) {
       messagesByConvRef.current[currentId] = messages
-    }
-
-    if (currentId && messages.length === 0) {
-      return
     }
 
     try {
@@ -725,7 +1003,11 @@ export default function HomePage() {
     let isSuccess = true
 
     if (card) {
-      isSuccess = !card.classList.contains("eligibility-card-warning") && !card.classList.contains("eligibility-card-error")
+      isSuccess =
+        !card.classList.contains("eligibility-card-warning") &&
+        !card.classList.contains("eligibility-card-error") &&
+        !card.classList.contains("eligibility-dashboard-ineligible") &&
+        !card.classList.contains("eligibility-card-ineligible")
       const bodyEl = card.querySelector(".eligibility-card-body") as HTMLElement | null
       if (bodyEl && bodyEl.innerHTML.trim().length > 20) {
         renderedReportHtml = bodyEl.innerHTML
@@ -733,6 +1015,13 @@ export default function HomePage() {
         const clone = card.cloneNode(true) as HTMLElement
         const dlBtn = clone.querySelector(".btn-download-report")
         if (dlBtn) dlBtn.remove()
+        const csvBtn = clone.querySelector(".btn-download-csv")
+        if (csvBtn) csvBtn.remove()
+        const actionsGroup = clone.querySelector(".eligibility-actions-group")
+        if (actionsGroup) actionsGroup.remove()
+        clone
+          .querySelectorAll(".btn-select-bank, .btn-table-select-bank, .eligibility-recalculate-card")
+          .forEach((el) => el.remove())
         renderedReportHtml = clone.innerHTML
       }
     }
@@ -807,6 +1096,9 @@ export default function HomePage() {
           #creditwise-pdf-root .applicant-summary-card,
           #creditwise-pdf-root .top-recommended-bank-card,
           #creditwise-pdf-root .eligible-banks-table-card,
+          #creditwise-pdf-root .policy-constraints-card,
+          #creditwise-pdf-root .ineligible-banks-table-card,
+          #creditwise-pdf-root .eligibility-guidance-card,
           #creditwise-pdf-root .eligibility-next-step-card {
             border: 1px solid #cbd5e1 !important;
             border-radius: 8px !important;
@@ -817,33 +1109,75 @@ export default function HomePage() {
           #creditwise-pdf-root .applicant-summary-header,
           #creditwise-pdf-root .top-bank-header,
           #creditwise-pdf-root .table-card-header,
+          #creditwise-pdf-root .constraints-header,
+          #creditwise-pdf-root .guidance-header,
           #creditwise-pdf-root .next-step-title {
             font-size: 12px !important;
             font-weight: 700 !important;
             color: #0f172a !important;
             margin-bottom: 8px !important;
           }
-          #creditwise-pdf-root .applicant-summary-grid {
-            display: flex !important;
-            gap: 16px !important;
+          #creditwise-pdf-root .applicant-summary-tiles-grid {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 7px !important;
+            margin-top: 6px !important;
           }
-          #creditwise-pdf-root .applicant-summary-col {
-            flex: 1 !important;
+          #creditwise-pdf-root .applicant-summary-tile {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            background: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 6px !important;
+            padding: 6px 9px !important;
+          }
+          #creditwise-pdf-root .applicant-summary-tile.ineligible-tile {
+            background: #fff5f5 !important;
+            border-color: #fecaca !important;
+          }
+          #creditwise-pdf-root .tile-icon-box {
+            font-size: 13px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 24px !important;
+            height: 24px !important;
+            background: #ffffff !important;
+            border-radius: 5px !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+          #creditwise-pdf-root .tile-content {
             display: flex !important;
             flex-direction: column !important;
-            gap: 5px !important;
+            min-width: 0 !important;
           }
-          #creditwise-pdf-root .applicant-summary-col.right-col {
-            border-left: 1px solid #e2e8f0 !important;
-            padding-left: 14px !important;
+          #creditwise-pdf-root .summary-tile-label {
+            font-size: 9px !important;
+            color: #64748b !important;
+            text-transform: uppercase !important;
+            font-weight: 600 !important;
           }
-          #creditwise-pdf-root .applicant-summary-item {
-            display: flex !important;
-            justify-content: space-between !important;
+          #creditwise-pdf-root .summary-tile-val {
             font-size: 11px !important;
+            color: #0f172a !important;
+            font-weight: 700 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
           }
-          #creditwise-pdf-root .applicant-summary-label { color: #64748b !important; }
-          #creditwise-pdf-root .applicant-summary-val { color: #0f172a !important; font-weight: 700 !important; }
+          #creditwise-pdf-root .top-recommended-bank-card.highlight-section {
+            border: 1.5px solid #86efac !important;
+            background: #fcfdfc !important;
+          }
+          #creditwise-pdf-root .highlight-star-badge {
+            background: #15803d !important;
+            color: #ffffff !important;
+            font-size: 9px !important;
+            font-weight: 700 !important;
+            padding: 2px 7px !important;
+            border-radius: 4px !important;
+          }
           #creditwise-pdf-root .top-recommended-split {
             display: flex !important;
             gap: 16px !important;
@@ -857,6 +1191,37 @@ export default function HomePage() {
           #creditwise-pdf-root .top-bank-emi { font-size: 11px !important; color: #475569 !important; }
           #creditwise-pdf-root .top-bank-emi strong { color: #0f172a !important; font-weight: 700 !important; }
           #creditwise-pdf-root .top-bank-why-item { font-size: 10.5px !important; color: #334155 !important; margin-bottom: 3px !important; }
+          #creditwise-pdf-root .policy-constraints-card {
+            background: #fef2f2 !important;
+            border: 1px solid #fecaca !important;
+          }
+          #creditwise-pdf-root .constraints-header { color: #991b1b !important; }
+          #creditwise-pdf-root .constraint-item {
+            display: flex !important;
+            gap: 8px !important;
+            margin-bottom: 6px !important;
+            background: #ffffff !important;
+            border: 1px solid #fee2e2 !important;
+            border-radius: 6px !important;
+            padding: 6px 10px !important;
+          }
+          #creditwise-pdf-root .constraint-title { font-weight: 700 !important; font-size: 11px !important; color: #991b1b !important; }
+          #creditwise-pdf-root .constraint-desc { font-size: 10.5px !important; color: #475569 !important; }
+          #creditwise-pdf-root .ineligible-banks-table-card { background: #ffffff !important; border: 1px solid #e2e8f0 !important; }
+          #creditwise-pdf-root .status-pill-ineligible { background: #fee2e2 !important; color: #991b1b !important; padding: 1px 5px !important; border-radius: 3px !important; font-size: 9.5px !important; font-weight: 600 !important; }
+          #creditwise-pdf-root .eligibility-guidance-card { background: #f0f9ff !important; border: 1px solid #bae6fd !important; }
+          #creditwise-pdf-root .guidance-header { color: #0369a1 !important; }
+          #creditwise-pdf-root .guidance-item {
+            display: flex !important;
+            gap: 8px !important;
+            margin-bottom: 6px !important;
+            background: #ffffff !important;
+            border: 1px solid #e0f2fe !important;
+            border-radius: 6px !important;
+            padding: 6px 10px !important;
+          }
+          #creditwise-pdf-root .guidance-title { font-weight: 700 !important; font-size: 11px !important; color: #0369a1 !important; }
+          #creditwise-pdf-root .guidance-desc { font-size: 10.5px !important; color: #475569 !important; }
           #creditwise-pdf-root .eligibility-table { width: 100% !important; border-collapse: collapse !important; font-size: 10.5px !important; margin: 0 !important; }
           #creditwise-pdf-root .eligibility-table th { background: #f0fdfa !important; color: #0f766e !important; padding: 5px 7px !important; border: 1px solid #cbd5e1 !important; font-size: 10px !important; }
           #creditwise-pdf-root .eligibility-table td { padding: 5px 7px !important; border: 1px solid #e2e8f0 !important; color: #334155 !important; }
@@ -1036,22 +1401,150 @@ export default function HomePage() {
     }, 400)
   }
 
+  function handleDownloadCsv(buttonEl?: HTMLElement | null, messageId?: string | null) {
+    let targetMsg = messageId ? messages.find((m) => m.id === messageId) : null
+    if (!targetMsg) {
+      targetMsg = [...messages].reverse().find((m) => detectEligibilityResult(m.content))
+    }
+    if (!targetMsg || !targetMsg.content) {
+      alert("No eligibility sheet found to download.")
+      return
+    }
+
+    const content = targetMsg.content
+    const applicant = extractApplicantSummaryData(content, messages)
+
+    const tableRows: Array<{ bank: string; status: string; cibil: string; tenure: string; emi: string }> = []
+    const ineligibleRows: Array<{ lender: string; result: string; reason: string }> = []
+
+    const lines = content.split(/\r?\n/)
+    let inEligibleTable = false
+    let inComparisonTable = false
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim()
+      if (line.includes("| Bank | Status | CIBIL | Tenure | Est. EMI |")) {
+        inEligibleTable = true
+        inComparisonTable = false
+        continue
+      }
+      if (
+        line.includes("| Lender | Result | Key Reason |") ||
+        line.includes("| Bank | Result | Key Reason |") ||
+        line.includes("| Bank | Status | Reason |")
+      ) {
+        inComparisonTable = true
+        inEligibleTable = false
+        continue
+      }
+
+      if (inEligibleTable) {
+        if (line.startsWith("| :---") || line.startsWith("|:---") || line.includes("---")) continue
+        if (line.startsWith("|") && line.endsWith("|")) {
+          const parts = line.slice(1, -1).split("|").map((p: string) => p.trim())
+          if (parts.length >= 5) {
+            tableRows.push({
+              bank: parts[0].replace(/\*\*/g, "").trim(),
+              status: parts[1].replace(/[`✅✓]/g, "").trim(),
+              cibil: parts[2].replace(/\*\*/g, "").trim(),
+              tenure: parts[3].replace(/\*\*/g, "").trim(),
+              emi: parts[4].replace(/[*`]/g, "").trim(),
+            })
+          }
+        } else if (line.length > 0) {
+          inEligibleTable = false
+        }
+      } else if (inComparisonTable) {
+        if (line.startsWith("| :---") || line.startsWith("|:---") || line.includes("---")) continue
+        if (line.startsWith("|") && line.endsWith("|")) {
+          const parts = line.slice(1, -1).split("|").map((p: string) => p.trim())
+          if (parts.length >= 3) {
+            ineligibleRows.push({
+              lender: parts[0].replace(/\*\*/g, "").trim(),
+              result: parts[1].replace(/[`❌⚠️]/g, "").trim(),
+              reason: parts[2].replace(/\*\*/g, "").trim(),
+            })
+          }
+        } else if (line.length > 0) {
+          inComparisonTable = false
+        }
+      }
+    }
+
+    const escapeCsv = (val: string) => `"${String(val || "").replace(/"/g, '""')}"`
+    const todayStr = new Date().toLocaleDateString("en-IN")
+    const refId = "CW-SHEET-" + Math.floor(100000 + Math.random() * 900000)
+
+    const csvLines: string[] = []
+    csvLines.push(`Personal Loan Eligibility Assessment Sheet`)
+    csvLines.push(`Reference ID,${escapeCsv(refId)},Date,${escapeCsv(todayStr)}`)
+    csvLines.push(``)
+    csvLines.push(`Applicant Profile Summary`)
+    csvLines.push(`Parameter,Value`)
+    csvLines.push(`Employer,${escapeCsv(applicant.employer)}`)
+    csvLines.push(`Monthly Salary,${escapeCsv(applicant.salary)}`)
+    csvLines.push(`CIBIL Credit Score,${escapeCsv(applicant.cibil)}`)
+    csvLines.push(`Requested Loan Amount,${escapeCsv(applicant.loanAmount)}`)
+    csvLines.push(`Repayment Tenure,${escapeCsv(applicant.tenure)}`)
+    csvLines.push(`Existing Monthly EMIs,${escapeCsv(applicant.existingEmi)}`)
+    csvLines.push(`Applicant Age,${escapeCsv(applicant.age)}`)
+    csvLines.push(``)
+
+    if (tableRows.length > 0) {
+      csvLines.push(`Eligible Partner Banks`)
+      csvLines.push(`#,Bank Name,Status,Required CIBIL,Tenure,Estimated Monthly EMI`)
+      tableRows.forEach((r, idx) => {
+        csvLines.push(`${idx + 1},${escapeCsv(r.bank)},${escapeCsv(r.status)},${escapeCsv(r.cibil)},${escapeCsv(r.tenure)},${escapeCsv(r.emi)}`)
+      })
+    } else if (ineligibleRows.length > 0) {
+      csvLines.push(`Evaluated Partner Lenders (Eligibility Not Met)`)
+      csvLines.push(`#,Lender,Status,Policy Assessment Reason`)
+      ineligibleRows.forEach((r, idx) => {
+        csvLines.push(`${idx + 1},${escapeCsv(r.lender)},${escapeCsv(r.result)},${escapeCsv(r.reason)}`)
+      })
+    } else {
+      csvLines.push(`Partner Bank Status`)
+      csvLines.push(`Result,"No partner banks currently match the strict underwriting criteria for this profile."`)
+    }
+
+    const csvContent = "\uFEFF" + csvLines.join("\r\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `Loan_Eligibility_Sheet_${refId}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   function detectEligibilityResult(content: string) {
     if (!content || typeof content !== "string") return null
 
     // Check if message is a structured eligibility evaluation report
-    const hasTable = content.includes("| Bank | Status | CIBIL | Tenure | Est. EMI |")
-    const hasApplicantSummary = content.includes("Applicant Summary")
+    const hasTable =
+      content.includes("| Bank | Status | CIBIL | Tenure | Est. EMI |") ||
+      content.includes("| Bank | Result | Key Reason |") ||
+      content.includes("| Lender | Result | Key Reason |")
+    const hasApplicantSummary =
+      content.includes("Applicant Summary") ||
+      content.includes("Applicant Input Summary") ||
+      content.includes("Applicant Profile") ||
+      content.includes("Section 2: Input Summary")
     const isEligibilityAssessment =
-      (hasTable && hasApplicantSummary) ||
-      ((content.includes("Personal Loan Eligibility Assessment") ||
-        content.includes("Personal Loan Eligibility Result:") ||
-        content.includes("Assessment Outcome: No Partner Banks Currently Eligible")) &&
-       (hasApplicantSummary || hasTable))
+      (hasTable && (hasApplicantSummary || content.includes("Partner Bank Policy Evaluation Results") || content.includes("Loan Eligibility Assessment Result") || content.includes("Loan Eligibility Across Partner Banks"))) ||
+      content.includes("Loan Eligibility Assessment Result") ||
+      content.includes("Loan Eligibility Across Partner Banks") ||
+      content.includes("Personal Loan Eligibility Assessment") ||
+      content.includes("Personal Loan Eligibility Result:") ||
+      content.includes("Personal Loan Eligibility Evaluation Complete") ||
+      content.includes("Assessment Outcome: No Partner Banks Currently Eligible") ||
+      (content.includes("Section 3: Eligibility & FOIR/EMI Calculation") && (hasTable || hasApplicantSummary))
 
     // Also detect natural conversational ineligibility messages or early definitive policy rejections
     const isConversationalIneligibility =
-      /(?:currently\s+not\s+eligible|not\s+eligible\s+for\s+(?:a\s+)?(?:personal\s+)?loan|policies\s+(?:do\s+not|may\s+not)\s+support|do\s+not\s+meet\s+(?:the\s+)?(?:eligibility|criteria)|ineligible\s+for\s+personal\s+loans?|statutory\s+age\s+criteria)/i.test(content) &&
+      /(?:currently\s+not\s+eligible|not\s+eligible\s+for\s+(?:a\s+)?(?:personal\s+)?loan|policies\s+(?:do\s+not|may\s+not)\s+support|do\s+not\s+meet\s+(?:the\s+)?(?:eligibility|criteria)|ineligible\s+for\s+personal\s+loans?|statutory\s+age\s+criteria|none\s+of\s+our\s+partner\s+banks\s+qualify)/i.test(content) &&
       !/(?:\?|please\s+provide|what\s+is\s+your|could\s+you\s+share)/i.test(content)
 
     if (!isEligibilityAssessment && !isConversationalIneligibility) return null
@@ -1063,13 +1556,15 @@ export default function HomePage() {
       content.includes("Policy Criteria Not Met") ||
       content.includes("❌ NOT ELIGIBLE") ||
       content.includes("❌ Not Eligible") ||
+      content.includes("❌ Loan Eligibility Assessment Result") ||
+      content.includes("none of our partner banks qualify") ||
       content.includes("Key Policy Constraints Identified") ||
       content.includes("Assessment Outcome: No Partner Banks Currently Eligible") ||
       content.includes("Input Required / Conditionally Eligible") ||
-      /\b(?:not\s+eligible|currently\s+not\s+eligible|ineligible|0\s+partner\s+banks?)\b/i.test(content)
+      /\b(?:not\s+eligible|currently\s+not\s+eligible|ineligible|0\s+partner\s+banks?|0\s+bank\(s\)\s+qualify)\b/i.test(content)
 
     const hasEligibleTableRows =
-      hasTable && /\|\s*\*\*[^*]+\*\*\s*\|\s*✅\s*Eligible/i.test(content)
+      hasTable && /\|\s*\*\*[^*]+\*\*\s*\|\s*`?(?:✅\s*)?(?:ELIGIBLE|Eligible)`?/i.test(content)
 
     // isSuccess is strictly true ONLY when qualifying partner banks are present and no ineligibility flags exist
     const isSuccess = hasEligibleTableRows && !isWarningOrError
@@ -1216,69 +1711,279 @@ export default function HomePage() {
     return html
   }
 
-  function renderEligibilityDashboard(content: string, messageId: string): string | null {
+  function extractApplicantSummaryData(content: string, allMessages?: any[]) {
+    const extractField = (...patterns: RegExp[]) => {
+      for (const pattern of patterns) {
+        const match = content.match(pattern)
+        if (match && match[1]) {
+          let val = match[1]
+            .replace(/\*\*/g, "")
+            .replace(/\*\(.*?\)\*/g, "")
+            .replace(/\(.*?\)/g, "")
+            .replace(/\s*\/ month/i, "")
+            .trim()
+          if (val && val !== "-" && !/^not\s+(?:provided|specified|available)$/i.test(val)) {
+            return val
+          }
+        }
+      }
+      return ""
+    }
+
+    let employer = extractField(
+      /\|\s*(?:\*\*)?Employer(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?Employer(?:\s*\/\s*Company)?(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?Company(?:\s*Name)?(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i,
+      /profile at \*\*([^*]+)\*\*/i
+    )
+    let salary = extractField(
+      /\|\s*(?:\*\*)?(?:Net\s+Take-Home\s*(?:\(NTH\))?\s*)?Salary(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i,
+      /\|\s*(?:\*\*)?Monthly Take-Home Salary(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?(?:Net\s+Take-Home\s*(?:\(NTH\))?\s*)?Salary(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?Monthly(?:\s*Take-Home)?\s*Salary(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?Monthly Income(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i
+    )
+    let cibil = extractField(
+      /\|\s*(?:\*\*)?CIBIL(?:\s*Credit)?\s*Score(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?CIBIL(?:\s*Credit)?\s*Score(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?Credit Score(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i
+    )
+    let loanAmount = extractField(
+      /\|\s*(?:\*\*)?Requested Loan Amount(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i,
+      /\|\s*(?:\*\*)?Loan Amount(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?Requested Loan Amount(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?Loan Amount(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i
+    )
+    let tenure = extractField(
+      /\|\s*(?:\*\*)?Repayment Tenure(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i,
+      /\|\s*(?:\*\*)?Tenure(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?Repayment Tenure(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?Tenure(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i
+    )
+    let existingEmi = extractField(
+      /\|\s*(?:\*\*)?(?:Actual\s+)?Existing\s+(?:Monthly\s+)?EMIs?(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i,
+      /\|\s*(?:\*\*)?Existing Monthly EMIs(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?(?:Actual\s+)?Existing\s+(?:Monthly\s+)?EMIs?(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?Existing EMIs?(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i
+    )
+    let age = extractField(
+      /\|\s*(?:\*\*)?Applicant Age(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i,
+      /\|\s*(?:\*\*)?Age(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?Applicant Age(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i,
+      /(?:-\s*|\*\s*)?(?:\*\*)?Age(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i
+    )
+
+    // Fallback: If any field is missing, search backwards through all messages
+    const msgs = allMessages || messages
+    if (Array.isArray(msgs) && msgs.length > 0) {
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        const m = msgs[i]
+        if (!m || !m.content) continue
+        const txt = m.content
+        if (!employer) {
+          const empM =
+            txt.match(/\|\s*(?:\*\*)?Employer(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i) ||
+            txt.match(/(?:-\s*|\*\s*)?(?:\*\*)?Employer(?:\*\*)?:\s*(?:\*\*)?([^*\r\n|]+)/i)
+          if (empM && empM[1] && !/^not\s+provided/i.test(empM[1])) employer = empM[1].replace(/\*\*/g, "").trim()
+        }
+        if (!salary) {
+          const salM =
+            txt.match(/\|\s*(?:\*\*)?Monthly Take-Home Salary(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i) ||
+            txt.match(/(?:salary|take-home|income)\s*(?:is|of)?\s*(?:₹|Rs\.?)?\s*([\d,]+)/i)
+          if (salM && salM[1] && !/^not\s+provided/i.test(salM[1])) {
+            const val = salM[1].replace(/\*\*/g, "").trim()
+            salary = val.startsWith("₹") ? val : `₹${val}`
+          }
+        }
+        if (!cibil) {
+          const cibM =
+            txt.match(/\|\s*(?:\*\*)?CIBIL(?:\s*Credit)?\s*Score(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i) ||
+            txt.match(/\b(?:cibil|credit score)\s*(?:is|of)?\s*([3-9]\d{2})\b/i)
+          if (cibM && cibM[1] && !/^not\s+provided/i.test(cibM[1])) cibil = cibM[1].replace(/\*\*/g, "").trim()
+        }
+        if (!loanAmount) {
+          const loanM =
+            txt.match(/\|\s*(?:\*\*)?Requested Loan Amount(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i) ||
+            txt.match(/\b(?:loan|amount)\s*(?:of|is)?\s*(?:₹|Rs\.?)?\s*([\d,]+(?:\s*(?:lakh|lac|k))?)/i)
+          if (loanM && loanM[1] && !/^not\s+provided/i.test(loanM[1])) {
+            const val = loanM[1].replace(/\*\*/g, "").trim()
+            loanAmount = val.startsWith("₹") ? val : `₹${val}`
+          }
+        }
+        if (!tenure) {
+          const tenM =
+            txt.match(/\|\s*(?:\*\*)?Repayment Tenure(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i) ||
+            txt.match(/\b(\d+\s*(?:months|years|year|mo))\b/i)
+          if (tenM && tenM[1] && !/^not\s+provided/i.test(tenM[1])) tenure = tenM[1].replace(/\*\*/g, "").trim()
+        }
+        if (!existingEmi) {
+          const emiM =
+            txt.match(/\|\s*(?:\*\*)?Existing Monthly EMIs(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i) ||
+            txt.match(/\b(?:existing\s+)?emi\s*(?:is|of)?\s*(?:₹|Rs\.?)?\s*([\d,]+)/i)
+          if (emiM && emiM[1] && !/^not\s+provided/i.test(emiM[1])) {
+            const val = emiM[1].replace(/\*\*/g, "").trim()
+            existingEmi = val.startsWith("₹") ? val : `₹${val}`
+          }
+        }
+        if (!age) {
+          const ageM =
+            txt.match(/\|\s*(?:\*\*)?Applicant Age(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i) ||
+            txt.match(/\b(?:age|years\s*old)\s*(?:is|of)?\s*(\d{2})\b/i)
+          if (ageM && ageM[1] && !/^not\s+provided/i.test(ageM[1])) {
+            const val = ageM[1].replace(/\*\*/g, "").trim()
+            age = val.includes("year") ? val : `${val} years`
+          }
+        }
+      }
+    }
+
+    return { employer, salary, cibil, loanAmount, tenure, existingEmi, age }
+  }
+
+  function renderApplicantSummaryCardHtml(applicantData: any, isIneligible: boolean = false): string {
+    const { employer, salary, cibil, loanAmount, tenure, existingEmi, age } = applicantData
+    const isDarkIneligible = isIneligible ? "ineligible-summary" : ""
+
+    return `
+      <div class="applicant-summary-card ${isDarkIneligible}">
+        <div class="applicant-summary-header">
+          <div class="applicant-summary-header-left">
+            <i class="bi bi-person-vcard-fill"></i>
+            <span>Applicant Profile & Financial Summary</span>
+          </div>
+          <span class="applicant-summary-badge">
+            <i class="bi bi-shield-lock-fill"></i> Verified Applicant Profile
+          </span>
+        </div>
+        <div class="applicant-summary-grid">
+          <div class="applicant-summary-tile">
+            <div class="summary-tile-icon icon-employer">
+              <i class="bi bi-building"></i>
+            </div>
+            <div class="summary-tile-content">
+              <span class="summary-tile-label">Employer / Company</span>
+              <span class="summary-tile-val" title="${escapeHtml(employer || "Not provided")}">${escapeHtml(employer || "Not provided")}</span>
+            </div>
+          </div>
+          <div class="applicant-summary-tile">
+            <div class="summary-tile-icon icon-salary">
+              <i class="bi bi-cash-stack"></i>
+            </div>
+            <div class="summary-tile-content">
+              <span class="summary-tile-label">Monthly Take-Home</span>
+              <span class="summary-tile-val" title="${escapeHtml(salary || "Not provided")}">${escapeHtml(salary || "Not provided")}</span>
+            </div>
+          </div>
+          <div class="applicant-summary-tile">
+            <div class="summary-tile-icon icon-cibil">
+              <i class="bi bi-speedometer2"></i>
+            </div>
+            <div class="summary-tile-content">
+              <span class="summary-tile-label">CIBIL Credit Score</span>
+              <span class="summary-tile-val" title="${escapeHtml(cibil || "Not provided")}">${escapeHtml(cibil || "Not provided")}</span>
+            </div>
+          </div>
+          <div class="applicant-summary-tile">
+            <div class="summary-tile-icon icon-loan">
+              <i class="bi bi-wallet2"></i>
+            </div>
+            <div class="summary-tile-content">
+              <span class="summary-tile-label">Requested Loan</span>
+              <span class="summary-tile-val" title="${escapeHtml(loanAmount || "Not provided")}">${escapeHtml(loanAmount || "Not provided")}</span>
+            </div>
+          </div>
+          <div class="applicant-summary-tile">
+            <div class="summary-tile-icon icon-tenure">
+              <i class="bi bi-calendar3"></i>
+            </div>
+            <div class="summary-tile-content">
+              <span class="summary-tile-label">Repayment Tenure</span>
+              <span class="summary-tile-val" title="${escapeHtml(tenure || "Not provided")}">${escapeHtml(tenure || "Not provided")}</span>
+            </div>
+          </div>
+          <div class="applicant-summary-tile">
+            <div class="summary-tile-icon icon-emi">
+              <i class="bi bi-credit-card-2-front"></i>
+            </div>
+            <div class="summary-tile-content">
+              <span class="summary-tile-label">Existing EMIs</span>
+              <span class="summary-tile-val" title="${escapeHtml(existingEmi || "₹0 / None")}">${escapeHtml(existingEmi || "₹0 / None")}</span>
+            </div>
+          </div>
+          <div class="applicant-summary-tile">
+            <div class="summary-tile-icon icon-age">
+              <i class="bi bi-person-badge"></i>
+            </div>
+            <div class="summary-tile-content">
+              <span class="summary-tile-label">Applicant Age</span>
+              <span class="summary-tile-val" title="${escapeHtml(age || "Not provided")}">${escapeHtml(age || "Not provided")}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+  }
+
+  function renderEligibilityDashboard(content: string, messageId: string, isSuccessHint?: boolean): string | null {
     try {
-      if (!content || !content.includes("Applicant Summary")) {
+      if (!content || typeof content !== "string") {
         return null
       }
 
-      // 1. Parse Applicant Summary items
-      const extractField = (pattern: RegExp) => {
-        const match = content.match(pattern)
-        return match ? match[1].trim() : ""
+      const isEligibilityDoc =
+        content.includes("Applicant Summary") ||
+        content.includes("Applicant Input Summary") ||
+        content.includes("Applicant Profile") ||
+        content.includes("Section 2: Input Summary") ||
+        content.includes("| Bank | Status | CIBIL | Tenure | Est. EMI |") ||
+        content.includes("| Bank | Result | Key Reason |") ||
+        content.includes("| Lender | Result | Key Reason |") ||
+        content.includes("Personal Loan Eligibility") ||
+        content.includes("Loan Eligibility Assessment Result") ||
+        content.includes("Loan Eligibility Across Partner Banks") ||
+        content.includes("Assessment Outcome") ||
+        /(?:not\s+eligible|qualifying\s+partner\s+banks?|eligible\s+partner\s+banks?)/i.test(content)
+
+      if (!isEligibilityDoc) {
+        return null
       }
 
-      const employer = extractField(/\|\s*(?:\*\*)?Employer(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i)
-      const salary = extractField(/\|\s*(?:\*\*)?Monthly Take-Home Salary(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i)
-      const cibil = extractField(/\|\s*(?:\*\*)?CIBIL Credit Score(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i)
-      const loanAmount = extractField(/\|\s*(?:\*\*)?Requested Loan Amount(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i)
-      const tenure = extractField(/\|\s*(?:\*\*)?Repayment Tenure(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i)
-      const existingEmi = extractField(/\|\s*(?:\*\*)?Existing Monthly EMIs(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i)
-      const age = extractField(/\|\s*(?:\*\*)?Applicant Age(?:\*\*)?\s*\|\s*(?:\*\*)?([^*|\r\n]+?)(?:\*\*)?\s*\|/i)
+      // 1. Extract ALL collected user information
+      const applicantData = extractApplicantSummaryData(content, messages)
+      const hasAnyProfileField = Boolean(
+        applicantData.salary ||
+        applicantData.cibil ||
+        applicantData.employer ||
+        applicantData.loanAmount ||
+        applicantData.tenure ||
+        applicantData.existingEmi ||
+        applicantData.age
+      )
 
-      // 2. Parse Top Recommended Bank
-      let topBankName = ""
-      const recMatch = content.match(/###\s*🏆\s*(?:Top Recommended Bank|Eligible Partner Bank):\s*\*\*([^*]+)\*\*/i)
-      if (recMatch) {
-        topBankName = recMatch[1].trim()
-      } else {
-        const nameMatch = content.match(/-\s*\*\*Bank Name\*\*:\s*\*\*([^*]+)\*\*/i)
-        if (nameMatch) topBankName = nameMatch[1].trim()
+      if (!hasAnyProfileField && !content.includes("| Bank | Status | CIBIL | Tenure | Est. EMI |") && !content.includes("| Lender | Result | Key Reason |")) {
+        return null
       }
 
-      let topBankEmi = ""
-      const emiMatch =
-        content.match(/Estimated Monthly EMI(?:\*\*)?:\s*(?:\*\*)?(₹[\d,]+)/i) ||
-        content.match(/with an estimated monthly EMI of\s*(?:\*\*)?(₹[\d,]+)/i)
-      if (emiMatch) {
-        topBankEmi = emiMatch[1].trim()
-      }
-
-      // Compact bank badge text generator (e.g., "BAJAJ MARKETS", "ICICI BANK", "HDFC BANK")
-      const getBadgeText = (name: string) => {
-        if (!name) return "PARTNER<br>BANK"
-        const clean = name.replace(/\([^)]*\)/g, "").trim()
-        const upper = clean.toUpperCase()
-        const words = upper.split(/\s+/).filter(Boolean)
-        if (words.length <= 1) return words[0] || "BANK"
-        if (words.length === 2) return `${words[0]}<br>${words[1]}`
-        return `${words[0]}<br>${words[1]}`
-      }
-
-      // 3. Parse Eligible Partner Banks Table
+      // 2. Parse Partner Banks Table
       const tableRows: Array<{
         bank: string
         status: string
         cibil: string
         tenure: string
         emi: string
+        isEligible: boolean
+        isReview: boolean
       }> = []
 
       const lines = content.split(/\r?\n/)
       let inTable = false
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim()
-        if (line.includes("| Bank | Status | CIBIL | Tenure | Est. EMI |")) {
+        if (
+          line.includes("| Bank | Status | CIBIL | Tenure | Est. EMI |") ||
+          line.includes("| Bank | Result | Key Reason |") ||
+          line.includes("| Lender | Result | Key Reason |")
+        ) {
           inTable = true
           continue
         }
@@ -1288,18 +1993,25 @@ export default function HomePage() {
           }
           if (line.startsWith("|") && line.endsWith("|")) {
             const rawParts = line.slice(1, -1).split("|").map((p) => p.trim())
-            if (rawParts.length >= 5) {
-              const bank = rawParts[0].replace(/\*\*/g, "").trim()
-              const status = rawParts[1].replace(/[✅✓\s*]/g, "").trim() || "Eligible"
-              const cibilVal = rawParts[2].replace(/\*\*/g, "").trim()
-              const tenureVal = rawParts[3].replace(/\*\*/g, "").trim()
-              const emiVal = rawParts[4].replace(/\*\*/g, "").trim()
+            if (rawParts.length >= 3) {
+              const bank = rawParts[0].replace(/\*\*/g, "").replace(/🌟.*$/, "").trim()
+              const statusRaw = rawParts[1].replace(/\*\*/g, "").trim()
+              const isRowEligible =
+                /ELIGIBLE|APPROVED|POTENTIALLY ELIGIBLE/i.test(statusRaw) &&
+                !/NOT_ELIGIBLE|INELIGIBLE|REJECT/i.test(statusRaw)
+              const isReview = /NEEDS_REVIEW|REVIEW|UNDERWRITING/i.test(statusRaw)
+              const status = isRowEligible ? "Eligible" : isReview ? "Underwriting Review" : "Not Eligible"
+              const cibilVal = (rawParts[2] || "-").replace(/\*\*/g, "").trim()
+              const tenureVal = (rawParts[3] || "-").replace(/\*\*/g, "").trim()
+              const emiVal = (rawParts[4] || "-").replace(/\*\*/g, "").trim()
               tableRows.push({
                 bank,
                 status,
                 cibil: cibilVal,
                 tenure: tenureVal,
                 emi: emiVal,
+                isEligible: isRowEligible,
+                isReview,
               })
             }
           } else if (line.length > 0) {
@@ -1308,179 +2020,391 @@ export default function HomePage() {
         }
       }
 
-      if (tableRows.length === 0) {
-        return null // Fallback to standard rendering if table rows could not be parsed
-      }
+      const eligibleRows = tableRows.filter((r) => r.isEligible || r.isReview)
+      const ineligibleRows = tableRows.filter((r) => !r.isEligible && !r.isReview)
 
-      if (!topBankName && tableRows.length > 0) {
-        topBankName = tableRows[0].bank
-      }
-      if (!topBankEmi && tableRows.length > 0) {
-        topBankEmi = tableRows[0].emi
-      }
-
-      // 4. Parse Next Step
-      let nextStepText = `Reply with your chosen bank (for example, "${topBankName || "Bajaj Markets"}") and city to view verified branch manager contacts!`
-      const nextStepMatch = content.match(/Next Step\*\*:\s*([^\n\r]+)/i)
-      if (nextStepMatch) {
-        nextStepText = nextStepMatch[1].replace(/\*\*/g, "").trim()
-      }
+      // Overall Eligibility:
+      // Eligible for at least 1 bank -> GREEN CARD
+      // 0 eligible banks -> RED CARD
+      const isEligible = eligibleRows.length > 0 && isSuccessHint !== false
 
       const msgId = escapeHtml(String(messageId || ""))
-      const bankCount = tableRows.length
-      const badgeText = getBadgeText(topBankName)
+
+      const getBadgeText = (name: string) => {
+        if (!name) return "PARTNER<br>BANK"
+        const clean = name.replace(/\([^)]*\)/g, "").replace(/\b(?:bank|finance|capital|ltd|limited)\b/gi, "").trim()
+        const words = clean.split(/\s+/).filter(Boolean)
+        if (words.length === 0) return "PARTNER<br>BANK"
+        if (words.length === 1) return words[0].toUpperCase()
+        return `${words[0].toUpperCase()}<br>${words[1].toUpperCase()}`
+      }
+
+      // =========================================================================
+      // CASE 1: USER IS ELIGIBLE FOR AT LEAST A SINGLE BANK (GREEN CARD)
+      // =========================================================================
+      if (isEligible) {
+        let topBankName = ""
+        const recMatch =
+          content.match(/###\s*🏆\s*(?:Top Recommended Bank|Eligible Partner Bank):\s*\*\*([^*]+)\*\*/i) ||
+          content.match(/-\s*\*\*Bank Name\*\*:\s*\*\*([^*]+)\*\*/i) ||
+          content.match(/\*\*([^*]+)\*\*\s*🌟\s*\*(?:Highly Recommended|Top Match)\*/i)
+        if (recMatch) {
+          topBankName = recMatch[1].trim()
+        } else if (eligibleRows.length > 0) {
+          topBankName = eligibleRows[0].bank
+        }
+
+        let topBankEmi = ""
+        const emiMatch =
+          content.match(/Estimated Monthly EMI(?:\*\*)?:\s*(?:\*\*)?(₹[\d,]+)/i) ||
+          content.match(/with an estimated monthly EMI of\s*(?:\*\*)?(₹[\d,]+)/i)
+        if (emiMatch) {
+          topBankEmi = emiMatch[1].trim()
+        } else if (eligibleRows.length > 0 && eligibleRows[0].emi && eligibleRows[0].emi !== "-") {
+          topBankEmi = eligibleRows[0].emi
+        }
+
+        const topRow = eligibleRows.find((r) => r.bank.toLowerCase() === topBankName.toLowerCase()) || eligibleRows[0]
+        const topBankTenure = topRow?.tenure && topRow.tenure !== "-" ? topRow.tenure : applicantData.tenure
+        const badgeText = getBadgeText(topBankName)
+        const bankCount = eligibleRows.length
+
+        let nextStepText = `Reply with your preferred bank (e.g. "${topBankName || "HDFC Bank"}") and city to view verified official branch manager contacts!`
+        const nextStepMatch = content.match(/Next Step\*\*:\s*([^\n\r]+)/i)
+        if (nextStepMatch) {
+          nextStepText = nextStepMatch[1].replace(/\*\*/g, "").trim()
+        }
+
+        return `
+          <div class="eligibility-dashboard eligibility-card eligibility-card-success" data-message-id="${msgId}">
+            <!-- 1. Header Confirmation Banner (Green) -->
+            <div class="eligibility-dashboard-banner eligibility-card-banner">
+              <div class="eligibility-dashboard-banner-left eligibility-card-banner-left">
+                <div class="eligibility-dashboard-banner-icon">
+                  <i class="bi bi-shield-check"></i>
+                </div>
+                <div>
+                  <div class="eligibility-dashboard-banner-title">
+                    Eligibility Confirmed — ${bankCount} Partner Bank${bankCount === 1 ? "" : "s"} Found
+                  </div>
+                  <div class="eligibility-dashboard-banner-sub">
+                    Based on your profile, we've found ${bankCount} partner bank${bankCount === 1 ? "" : "s"} meeting all personal loan criteria.
+                  </div>
+                </div>
+              </div>
+              <div class="eligibility-actions-group">
+                <button type="button" class="btn-download-report" data-message-id="${msgId}" title="Download Official Eligibility PDF Report">
+                  <i class="bi bi-file-earmark-pdf-fill"></i> Download Report
+                </button>
+                <button type="button" class="btn-download-csv" data-message-id="${msgId}" title="Download Eligibility Sheet as CSV">
+                  <i class="bi bi-file-earmark-spreadsheet-fill"></i> Download Sheet
+                </button>
+              </div>
+            </div>
+
+            <!-- 2. Applicant Profile Summary (Contains ALL collected user's information) -->
+            ${renderApplicantSummaryCardHtml(applicantData, false)}
+
+            <!-- 3. Top Recommended Bank (Highlight Section) -->
+            ${topBankName ? `
+            <div class="top-recommended-bank-card highlight-section">
+              <div class="highlight-badge-bar">
+                <div class="highlight-star-badge">
+                  <i class="bi bi-stars"></i>
+                  <span>TOP RECOMMENDED PARTNER BANK</span>
+                </div>
+                <span class="badge-best-match"><i class="bi bi-award-fill"></i> #1 Best Match for Your Profile</span>
+              </div>
+              <div class="top-recommended-split">
+                <div class="top-recommended-left">
+                  <div class="top-bank-box">
+                    <div class="top-bank-badge">
+                      ${badgeText}
+                    </div>
+                    <div class="top-bank-details">
+                      <div class="top-bank-title-row">
+                        <span class="top-bank-name">${escapeHtml(topBankName)}</span>
+                        <span class="top-bank-status-pill"><i class="bi bi-patch-check-fill"></i> Pre-Qualified Match</span>
+                      </div>
+                      <div class="top-bank-emi-card">
+                        <span class="top-bank-emi-label">Estimated Monthly EMI</span>
+                        <span class="top-bank-emi-amount">${escapeHtml(topBankEmi || "Competitive ROI")} <span class="emi-freq">/ month</span></span>
+                        ${topBankTenure ? `<span class="top-bank-emi-sub"><i class="bi bi-clock-history"></i> Tenure: ${escapeHtml(topBankTenure)}</span>` : ""}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="top-recommended-right">
+                  <div class="top-bank-why-title"><i class="bi bi-stars"></i> Why is this your top recommendation?</div>
+                  <div class="top-bank-why-list">
+                    <div class="top-bank-why-item">
+                      <i class="bi bi-check2-circle"></i>
+                      <span>Meets 100% of policy criteria based on your profile</span>
+                    </div>
+                    <div class="top-bank-why-item">
+                      <i class="bi bi-check2-circle"></i>
+                      <span>Optimal debt-to-income (FOIR) & CIBIL alignment</span>
+                    </div>
+                    <div class="top-bank-why-item">
+                      <i class="bi bi-check2-circle"></i>
+                      <span>Fastest branch verification & direct manager connect</span>
+                    </div>
+                  </div>
+                  <div class="top-bank-cta-row">
+                    <button type="button" class="btn-select-bank" data-bank-name="${escapeHtml(topBankName)}">
+                      Proceed with ${escapeHtml(topBankName)} <i class="bi bi-arrow-right"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>` : ""}
+
+            <!-- 4. Eligible Partner Banks Table Card -->
+            <div class="eligible-banks-table-card">
+              <div class="table-card-header">
+                <i class="bi bi-bank2"></i>
+                <span>Eligible Partner Banks (${eligibleRows.length})</span>
+              </div>
+              <div class="table-responsive-wrapper">
+                <table class="eligibility-table">
+                  <thead>
+                    <tr>
+                      <th class="col-index">#</th>
+                      <th class="col-bank">Bank</th>
+                      <th class="col-status">Status</th>
+                      <th class="col-cibil">Min. CIBIL</th>
+                      <th class="col-tenure">Tenure</th>
+                      <th class="col-emi">Est. EMI</th>
+                      <th class="col-action">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${eligibleRows.map((r, i) => `
+                      <tr>
+                        <td class="col-index">${i + 1}</td>
+                        <td class="col-bank">${escapeHtml(r.bank)}</td>
+                        <td class="col-status">
+                          <span class="${r.isReview ? "status-pill-review" : "status-pill-eligible"}">
+                            <i class="bi ${r.isReview ? "bi-exclamation-circle-fill" : "bi-check-circle-fill"}"></i>
+                            ${escapeHtml(r.status)}
+                          </span>
+                        </td>
+                        <td class="col-cibil">${escapeHtml(r.cibil)}</td>
+                        <td class="col-tenure">${escapeHtml(r.tenure)}</td>
+                        <td class="col-emi">${escapeHtml(r.emi)}</td>
+                        <td class="col-action">
+                          <button type="button" class="btn-table-select-bank" data-bank-name="${escapeHtml(r.bank)}">Select</button>
+                        </td>
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 5. Next Step Card -->
+            <div class="eligibility-next-step-card">
+              <div class="next-step-icon">
+                <i class="bi bi-chat-dots-fill"></i>
+              </div>
+              <div class="next-step-body">
+                <div class="next-step-title">Next Step</div>
+                <div class="next-step-desc">${escapeHtml(nextStepText)}</div>
+              </div>
+            </div>
+          </div>
+        `
+      }
+
+      // =========================================================================
+      // CASE 2: USER IS NOT ELIGIBLE (RED CARD)
+      // =========================================================================
+      const policyConstraints: string[] = []
+      let inConstraintsBlock = false
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (/Key Policy (?:Criteria|Constraints)|Policy Criteria Not Met|Rejection Reasons/i.test(trimmed)) {
+          inConstraintsBlock = true
+          continue
+        }
+        if (inConstraintsBlock) {
+          if (/^#{1,4}\s+|^\s*---\s*$/i.test(trimmed) && !/Key Policy|Criteria Not Met/i.test(trimmed)) {
+            inConstraintsBlock = false
+            continue
+          }
+          if (/^[\*\-]\s+\*\*([^*]+)\*\*:\s*(.+)/i.test(trimmed)) {
+            const m = trimmed.match(/^[\*\-]\s+\*\*([^*]+)\*\*:\s*(.+)/i)
+            if (m) policyConstraints.push(`<strong>${escapeHtml(m[1])}</strong>: ${escapeHtml(m[2])}`)
+          } else if (/^[\*\-]\s+(.+)/i.test(trimmed)) {
+            const m = trimmed.match(/^[\*\-]\s+(.+)/i)
+            if (m) policyConstraints.push(escapeHtml(m[1].replace(/\*\*/g, "")))
+          }
+        }
+      }
+
+      if (policyConstraints.length === 0) {
+        const numSal = Number((applicantData.salary || "").replace(/[^\d]/g, "")) || 0
+        const numCibil = Number((applicantData.cibil || "").replace(/[^\d]/g, "")) || 0
+        const numEmi = Number((applicantData.existingEmi || "").replace(/[^\d]/g, "")) || 0
+        if (numCibil > 0 && numCibil < 700) {
+          policyConstraints.push(`<strong>Credit Score (CIBIL)</strong>: Current score (${numCibil}) is below the partner bank minimum cutoff of 700+.`)
+        }
+        if (numSal > 0 && numSal < 25000) {
+          policyConstraints.push(`<strong>Minimum Income Threshold</strong>: Monthly net salary (₹${numSal.toLocaleString("en-IN")}) is below the required partner minimum of ₹25,000.`)
+        }
+        if (numSal > 0 && numEmi > 0 && (numEmi / numSal) > 0.4) {
+          policyConstraints.push(`<strong>FOIR Ratio Exceeded</strong>: Existing debt obligations (₹${numEmi.toLocaleString("en-IN")}) exceed the allowable 40–50% Fixed Obligation to Income Ratio.`)
+        }
+        if (policyConstraints.length === 0) {
+          policyConstraints.push(`<strong>Underwriting Policies</strong>: The current combination of requested loan amount, tenure, and financial parameters did not meet partner lender underwriting rules.`)
+        }
+      }
+
+      const guidanceSteps: string[] = []
+      let inGuidanceBlock = false
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (/How You Can Become Eligible|Actionable Guidance|Recommendations|Steps to Qualify/i.test(trimmed)) {
+          inGuidanceBlock = true
+          continue
+        }
+        if (inGuidanceBlock) {
+          if (/^#{1,4}\s+|^\s*---\s*$/i.test(trimmed)) {
+            inGuidanceBlock = false
+            continue
+          }
+          if (/^[\*\-]\s+\*\*([^*]+)\*\*:\s*(.+)/i.test(trimmed)) {
+            const m = trimmed.match(/^[\*\-]\s+\*\*([^*]+)\*\*:\s*(.+)/i)
+            if (m) guidanceSteps.push(`<strong>${escapeHtml(m[1])}</strong>: ${escapeHtml(m[2])}`)
+          } else if (/^[\*\-]\s+(.+)/i.test(trimmed)) {
+            const m = trimmed.match(/^[\*\-]\s+(.+)/i)
+            if (m) guidanceSteps.push(escapeHtml(m[1].replace(/\*\*/g, "")))
+          }
+        }
+      }
+
+      if (guidanceSteps.length === 0) {
+        guidanceSteps.push(`<strong>Extend Repayment Tenure</strong>: Opting for 48–60 months lowers your monthly EMI and brings debt within acceptable bank FOIR limits.`)
+        guidanceSteps.push(`<strong>Apply with a Salaried Co-Applicant</strong>: Adding an earning spouse or family member pools income and qualifies for higher eligibility.`)
+        guidanceSteps.push(`<strong>Lower Requested Loan Amount</strong>: Applying for a lower loan amount significantly increases approval probability.`)
+        guidanceSteps.push(`<strong>Reduce Existing Debt</strong>: Clearing short-term credit cards or personal loans reduces existing monthly commitments.`)
+      }
 
       return `
-        <div class="eligibility-dashboard eligibility-card eligibility-card-success" data-message-id="${msgId}">
-          <!-- 1. Header Confirmation Banner -->
-          <div class="eligibility-dashboard-banner eligibility-card-banner">
+        <div class="eligibility-dashboard eligibility-dashboard-ineligible eligibility-card eligibility-card-ineligible eligibility-card-warning" data-message-id="${msgId}">
+          <!-- 1. Red Header Banner -->
+          <div class="eligibility-dashboard-banner ineligible-banner eligibility-card-banner">
             <div class="eligibility-dashboard-banner-left eligibility-card-banner-left">
-              <div class="eligibility-dashboard-banner-icon">
-                <i class="bi bi-check-circle-fill"></i>
+              <div class="eligibility-dashboard-banner-icon ineligible-icon">
+                <i class="bi bi-x-octagon-fill"></i>
               </div>
               <div>
-                <div class="eligibility-dashboard-banner-title">
-                  Eligibility Confirmed — ${bankCount} Partner Bank${bankCount === 1 ? "" : "s"} Found
+                <div class="eligibility-dashboard-banner-title ineligible-title">
+                  Eligibility Assessment — Policy Criteria Not Met
                 </div>
-                <div class="eligibility-dashboard-banner-sub">
-                  Based on your profile, we've found ${bankCount} partner bank${bankCount === 1 ? "" : "s"} that meet your eligibility criteria for a personal loan.
+                <div class="eligibility-dashboard-banner-sub ineligible-sub">
+                  Based on partner bank policies and your current financial profile, 0 partner banks currently approve this loan request.
                 </div>
               </div>
             </div>
-            <button type="button" class="btn-download-report" data-message-id="${msgId}" title="Download Official Eligibility PDF Report">
-              <i class="bi bi-download"></i> Download Report
-            </button>
-          </div>
-
-          <!-- 2. Applicant Summary Card -->
-          <div class="applicant-summary-card">
-            <div class="applicant-summary-header">
-              <i class="bi bi-person-fill"></i>
-              <span>Applicant Summary</span>
-            </div>
-            <div class="applicant-summary-grid">
-              <div class="applicant-summary-col">
-                ${employer ? `
-                <div class="applicant-summary-item">
-                  <span class="applicant-summary-label">Employer</span>
-                  <span class="applicant-summary-val">${escapeHtml(employer)}</span>
-                </div>` : ""}
-                <div class="applicant-summary-item">
-                  <span class="applicant-summary-label">Monthly Take-Home Salary</span>
-                  <span class="applicant-summary-val">${escapeHtml(salary || "-")}</span>
-                </div>
-                <div class="applicant-summary-item">
-                  <span class="applicant-summary-label">CIBIL Credit Score</span>
-                  <span class="applicant-summary-val">${escapeHtml(cibil || "-")}</span>
-                </div>
-                <div class="applicant-summary-item">
-                  <span class="applicant-summary-label">Requested Loan Amount</span>
-                  <span class="applicant-summary-val">${escapeHtml(loanAmount || "-")}</span>
-                </div>
-              </div>
-              <div class="applicant-summary-col right-col">
-                <div class="applicant-summary-item">
-                  <span class="applicant-summary-label">Repayment Tenure</span>
-                  <span class="applicant-summary-val">${escapeHtml(tenure || "-")}</span>
-                </div>
-                <div class="applicant-summary-item">
-                  <span class="applicant-summary-label">Existing Monthly EMIs</span>
-                  <span class="applicant-summary-val">${escapeHtml(existingEmi || "-")}</span>
-                </div>
-                <div class="applicant-summary-item">
-                  <span class="applicant-summary-label">Applicant Age</span>
-                  <span class="applicant-summary-val">${escapeHtml(age || "-")}</span>
-                </div>
-              </div>
+            <div class="eligibility-actions-group">
+              <button type="button" class="btn-download-report btn-report-ineligible" data-message-id="${msgId}" title="Download Official Eligibility PDF Report">
+                <i class="bi bi-file-earmark-pdf-fill"></i> Download Report
+              </button>
+              <button type="button" class="btn-download-csv btn-csv-ineligible" data-message-id="${msgId}" title="Download Eligibility Sheet as CSV">
+                <i class="bi bi-file-earmark-spreadsheet-fill"></i> Download Sheet
+              </button>
             </div>
           </div>
 
-          <!-- 3. Top Recommended Bank Card -->
-          ${topBankName ? `
-          <div class="top-recommended-bank-card">
-            <div class="top-recommended-split">
-              <div class="top-recommended-left">
-                <div class="top-bank-header">
-                  <i class="bi bi-trophy-fill"></i>
-                  <span>Top Recommended Bank</span>
-                </div>
-                <div class="top-bank-box">
-                  <div class="top-bank-badge">
-                    ${badgeText}
-                  </div>
-                  <div class="top-bank-details">
-                    <div class="top-bank-title-row">
-                      <span class="top-bank-name">${escapeHtml(topBankName)}</span>
-                      <span class="badge-best-match">#1 Best Match</span>
-                    </div>
-                    <div class="top-bank-emi">
-                      Estimated Monthly EMI: <strong>${escapeHtml(topBankEmi)}</strong> / month
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="top-recommended-right">
-                <div class="top-bank-why-title">Why this bank?</div>
-                <div class="top-bank-why-list">
-                  <div class="top-bank-why-item">
-                    <i class="bi bi-check2"></i>
-                    <span>Best match based on your profile</span>
-                  </div>
-                  <div class="top-bank-why-item">
-                    <i class="bi bi-check2"></i>
-                    <span>Meets all policy criteria</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>` : ""}
+          <!-- 2. Applicant Profile Summary (Contains ALL collected user's information) -->
+          ${renderApplicantSummaryCardHtml(applicantData, true)}
 
-          <!-- 4. Eligible Partner Banks (X) Table Card -->
-          <div class="eligible-banks-table-card">
-            <div class="table-card-header">
+          <!-- 3. Key Policy Constraints Identified -->
+          <div class="policy-constraints-card">
+            <div class="constraints-card-header">
+              <i class="bi bi-shield-slash-fill"></i>
+              <span>Key Policy Constraints Identified</span>
+            </div>
+            <div class="constraints-list">
+              ${policyConstraints.map((c) => `
+                <div class="constraint-item">
+                  <i class="bi bi-exclamation-circle-fill"></i>
+                  <div>${c}</div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+
+          <!-- 4. Bank-wise Breakdown (if evaluated banks were listed) -->
+          ${ineligibleRows.length > 0 ? `
+          <div class="ineligible-banks-table-card">
+            <div class="table-card-header ineligible-table-header">
               <i class="bi bi-bank2"></i>
-              <span>Eligible Partner Banks (${tableRows.length})</span>
+              <span>Partner Bank Assessment Breakdown (${ineligibleRows.length} Evaluated)</span>
             </div>
             <div class="table-responsive-wrapper">
-              <table class="eligibility-table">
+              <table class="eligibility-table ineligible-table">
                 <thead>
                   <tr>
                     <th class="col-index">#</th>
                     <th class="col-bank">Bank</th>
                     <th class="col-status">Status</th>
-                    <th class="col-cibil">CIBIL</th>
-                    <th class="col-tenure">Tenure</th>
-                    <th class="col-emi">Est. EMI</th>
+                    <th class="col-cibil">Min. CIBIL</th>
+                    <th class="col-tenure">Max Tenure</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${tableRows.map((r, i) => `
+                  ${ineligibleRows.map((r, i) => `
                     <tr>
                       <td class="col-index">${i + 1}</td>
                       <td class="col-bank">${escapeHtml(r.bank)}</td>
                       <td class="col-status">
-                        <span class="status-pill-eligible">
-                          <i class="bi bi-check-circle-fill"></i> Eligible
+                        <span class="status-pill-ineligible">
+                          <i class="bi bi-x-circle-fill"></i> Not Eligible
                         </span>
                       </td>
                       <td class="col-cibil">${escapeHtml(r.cibil)}</td>
                       <td class="col-tenure">${escapeHtml(r.tenure)}</td>
-                      <td class="col-emi">${escapeHtml(r.emi)}</td>
                     </tr>
                   `).join("")}
                 </tbody>
               </table>
             </div>
+          </div>` : ""}
+
+          <!-- 5. How You Can Become Eligible / Recovery Guidance -->
+          <div class="eligibility-guidance-card">
+            <div class="guidance-card-header">
+              <i class="bi bi-lightbulb-fill"></i>
+              <span>How You Can Become Eligible</span>
+            </div>
+            <div class="guidance-list">
+              ${guidanceSteps.map((g) => `
+                <div class="guidance-item">
+                  <i class="bi bi-arrow-right-circle-fill"></i>
+                  <div>${g}</div>
+                </div>
+              `).join("")}
+            </div>
           </div>
 
-          <!-- 5. Next Step Card -->
-          <div class="eligibility-next-step-card">
-            <div class="next-step-icon">
-              <i class="bi bi-chat-dots-fill"></i>
+          <!-- 6. Recalculate CTA Section -->
+          <div class="eligibility-recalculate-card">
+            <div class="recalculate-header">
+              <i class="bi bi-arrow-repeat"></i>
+              <span>Would you like to recalculate your eligibility with different parameters?</span>
             </div>
-            <div class="next-step-body">
-              <div class="next-step-title">Next Step</div>
-              <div class="next-step-desc">${escapeHtml(nextStepText)}</div>
+            <div class="recalculate-chips">
+              <button type="button" class="btn-recalculate-chip" data-prompt="Recalculate eligibility with 60 months tenure">
+                <i class="bi bi-clock-history"></i> Try 60 Months Tenure
+              </button>
+              <button type="button" class="btn-recalculate-chip" data-prompt="Recalculate eligibility with a lower loan amount">
+                <i class="bi bi-wallet2"></i> Lower Loan Amount
+              </button>
+              <button type="button" class="btn-recalculate-chip" data-prompt="Can I apply with a salaried co-applicant?">
+                <i class="bi bi-people-fill"></i> Add Co-Applicant
+              </button>
             </div>
           </div>
         </div>
@@ -1564,60 +2488,47 @@ export default function HomePage() {
 
     if (eligibilityInfo) {
       const msgId = escapeHtml(String(message.id || ""))
-      const downloadBtnHtml = `<button type="button" class="btn-download-report" data-message-id="${msgId}" title="Download Official Eligibility PDF Report"><i class="bi bi-file-earmark-pdf-fill"></i> Download Report</button>`
+      const dashboardHtml = renderEligibilityDashboard(message.content, msgId, eligibilityInfo.isSuccess)
 
-      if (eligibilityInfo.isSuccess) {
-        const dashboardHtml = renderEligibilityDashboard(message.content, msgId)
-        if (dashboardHtml) {
-          html = dashboardHtml
-        } else {
-          // Strictly gate success banner on having qualifying partner banks
-          const hasEligibleRows =
-            message.content.includes("| Bank | Status | CIBIL | Tenure | Est. EMI |") &&
-            /\|\s*\*\*[^*]+\*\*\s*\|\s*✅\s*Eligible/i.test(message.content)
-          if (hasEligibleRows) {
-            html = `<div class="eligibility-card eligibility-card-success">
-              <div class="eligibility-card-banner">
-                <div class="eligibility-card-banner-left">
-                  <i class="bi bi-shield-check"></i>
-                  <span>Eligibility Confirmed — Qualifying Partner Banks Found</span>
-                </div>
-                ${downloadBtnHtml}
-              </div>
-              <div class="eligibility-card-body">
-                ${html}
-              </div>
-            </div>`
-          } else {
-            // NOT_ELIGIBLE must NEVER display "Eligibility Confirmed — Qualifying Partner Banks Found"
-            html = `<div class="eligibility-card eligibility-card-warning">
-              <div class="eligibility-card-banner">
-                <div class="eligibility-card-banner-left">
-                  <i class="bi bi-exclamation-triangle-fill"></i>
-                  <span>Eligibility Assessment — Policy Criteria Not Met</span>
-                </div>
-                ${downloadBtnHtml}
-              </div>
-              <div class="eligibility-card-body">
-                ${html}
-              </div>
-            </div>`
-          }
-        }
+      if (dashboardHtml) {
+        html = dashboardHtml
       } else {
-        // Warning / Error / Ineligible result: Light-Red Background Card
-        html = `<div class="eligibility-card eligibility-card-warning">
-          <div class="eligibility-card-banner">
-            <div class="eligibility-card-banner-left">
-              <i class="bi bi-exclamation-triangle-fill"></i>
-              <span>Eligibility Assessment — Policy Criteria Not Met</span>
-            </div>
-            ${downloadBtnHtml}
-          </div>
-          <div class="eligibility-card-body">
-            ${html}
-          </div>
+        const downloadBtnHtml = `<div class="eligibility-actions-group">
+          <button type="button" class="btn-download-report ${!eligibilityInfo.isSuccess ? "btn-report-ineligible" : ""}" data-message-id="${msgId}" title="Download Official Eligibility PDF Report"><i class="bi bi-file-earmark-pdf-fill"></i> Download Report</button>
+          <button type="button" class="btn-download-csv ${!eligibilityInfo.isSuccess ? "btn-csv-ineligible" : ""}" data-message-id="${msgId}" title="Download Eligibility Sheet as CSV"><i class="bi bi-file-earmark-spreadsheet-fill"></i> Download Sheet</button>
         </div>`
+
+        const cleanBodyHtml = html
+          .replace(/<h[1-3][^>]*>\s*(?:❌\s*)?(?:Loan\s+Eligibility\s+Assessment\s+Result|Eligibility\s+Assessment[^\n<]*|Personal\s+Loan\s+Eligibility\s+Evaluation\s+Complete)\s*<\/h[1-3]>/gi, "")
+          .trim()
+
+        if (eligibilityInfo.isSuccess) {
+          html = `<div class="eligibility-card eligibility-card-success">
+            <div class="eligibility-card-banner">
+              <div class="eligibility-card-banner-left">
+                <i class="bi bi-shield-check"></i>
+                <span>Eligibility Confirmed — Qualifying Partner Banks Found</span>
+              </div>
+              ${downloadBtnHtml}
+            </div>
+            <div class="eligibility-card-body">
+              ${cleanBodyHtml}
+            </div>
+          </div>`
+        } else {
+          html = `<div class="eligibility-card eligibility-card-ineligible eligibility-card-warning">
+            <div class="eligibility-card-banner ineligible-banner">
+              <div class="eligibility-card-banner-left">
+                <i class="bi bi-x-octagon-fill"></i>
+                <span>Eligibility Assessment — Policy Criteria Not Met</span>
+              </div>
+              ${downloadBtnHtml}
+            </div>
+            <div class="eligibility-card-body">
+              ${cleanBodyHtml}
+            </div>
+          </div>`
+        }
       }
     }
 
@@ -1910,7 +2821,7 @@ export default function HomePage() {
         sidebarOpen={sidebarOpen}
       />
 
-      {activeSection === "home" && (
+      {isAdmin && activeSection === "home" && (
         <div className="dashboard-home-view animate-fade-in">
           {/* CallNow Hero Banner */}
           <div className="home-hero-banner hero">
@@ -2382,6 +3293,25 @@ export default function HomePage() {
                 const messageId = downloadBtn.getAttribute("data-message-id")
                 handleDownloadPdf(downloadBtn, messageId)
               }
+              const downloadCsvBtn = target.closest(".btn-download-csv") as HTMLElement | null
+              if (downloadCsvBtn) {
+                const messageId = downloadCsvBtn.getAttribute("data-message-id")
+                handleDownloadCsv(downloadCsvBtn, messageId)
+              }
+              const bankSelectBtn = target.closest(".btn-select-bank, .btn-table-select-bank") as HTMLElement | null
+              if (bankSelectBtn) {
+                const bankName = bankSelectBtn.getAttribute("data-bank-name")
+                if (bankName) {
+                  sendMessage(`I would like to proceed with ${bankName} for my loan application. What are the next steps?`)
+                }
+              }
+              const recalcBtn = target.closest(".btn-recalculate-chip") as HTMLElement | null
+              if (recalcBtn) {
+                const prompt = recalcBtn.getAttribute("data-prompt")
+                if (prompt) {
+                  sendMessage(prompt)
+                }
+              }
             }}
           >
             <div id="chatMessagesInner">
@@ -2490,17 +3420,21 @@ export default function HomePage() {
                   }}
                 />
               </div>
-              <button className="chat-send-btn" type="submit" title="Send message" disabled={loading || !input.trim()}>
-                {loading ? (
-                  <div className="chat-typing-indicator">
-                    <div className="chat-typing-dot"></div>
-                    <div className="chat-typing-dot"></div>
-                    <div className="chat-typing-dot"></div>
-                  </div>
-                ) : (
+              {loading ? (
+                <button
+                  className="chat-send-btn stop-btn"
+                  type="button"
+                  title="Stop generating"
+                  onClick={stopGeneration}
+                  style={{ background: "var(--ink, #1e293b)", color: "#fff" }}
+                >
+                  <i className="bi bi-stop-fill" style={{ fontSize: "1.1rem" }} />
+                </button>
+              ) : (
+                <button className="chat-send-btn" type="submit" title="Send message" disabled={!input.trim()}>
                   <i className="bi bi-arrow-up" style={{ fontSize: "0.9375rem" }} />
-                )}
-              </button>
+                </button>
+              )}
             </form>
             <div className="chat-disclaimer" style={{ textAlign: "center", fontSize: "0.6875rem", color: "var(--ink-muted)", marginTop: "4px", width: "100%", display: "block" }}>
               AI can make mistakes. Please verify important loan and policy details.
@@ -2513,7 +3447,7 @@ export default function HomePage() {
         <EmiCalculator user={user} embedded={true} />
       )}
 
-      {activeSection === "policies" && (
+      {isAdmin && activeSection === "policies" && (
         <PoliciesView user={user} embedded={true} />
       )}
 

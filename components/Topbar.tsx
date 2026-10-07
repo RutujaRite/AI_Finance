@@ -67,13 +67,20 @@ export default function Topbar({
     router.replace("/login")
   }
 
-  const navItems: Array<{
+  const isAdmin =
+    String(user?.role || "").trim().toLowerCase() === "admin" ||
+    user?.is_admin === true ||
+    String(user?.email || "").toLowerCase() === "admin@gmail.com" ||
+    String(user?.email || "").toLowerCase() === "akshadasagar31@gmail.com" ||
+    String(user?.email || "").toLowerCase().startsWith("admin")
+
+  const adminNavItems: Array<{
     id: string
     label: string
     section?: DashboardSection
     href: string
     iconClass: string
-    adminOnly?: boolean
+    onClick?: (e: React.MouseEvent) => void
   }> = [
     {
       id: "home",
@@ -113,22 +120,54 @@ export default function Topbar({
       id: "admin",
       label: "Admin",
       href: "/admin",
-      adminOnly: true,
       iconClass: "bi bi-shield-lock",
+    },
+    {
+      id: "ai-models",
+      label: "AI Models",
+      href: "/admin/models",
+      iconClass: "bi bi-cpu",
     },
   ]
 
-  const isAdmin =
-    String(user?.role || "").trim().toLowerCase() === "admin" ||
-    user?.is_admin === true ||
-    String(user?.email || "").toLowerCase() === "admin@gmail.com" ||
-    String(user?.email || "").toLowerCase() === "akshadasagar31@gmail.com" ||
-    String(user?.email || "").toLowerCase().startsWith("admin")
+  const userNavItems: Array<{
+    id: string
+    label: string
+    section?: DashboardSection
+    href: string
+    iconClass: string
+    onClick?: (e: React.MouseEvent) => void
+  }> = [
+    {
+      id: "assistant",
+      label: "AI Assistant",
+      section: "assistant",
+      href: "/home?section=assistant",
+      iconClass: "bi bi-chat-dots",
+    },
+    {
+      id: "emi",
+      label: "EMI Calculator",
+      section: "emi",
+      href: "/home?section=emi",
+      iconClass: "bi bi-calculator",
+    },
+    {
+      id: "profile",
+      label: "Profile",
+      href: "/profile",
+      iconClass: "bi bi-person",
+    },
+    {
+      id: "logout",
+      label: "Logout",
+      href: "/logout",
+      iconClass: "bi bi-box-arrow-right",
+      onClick: handleLogout,
+    },
+  ]
 
-  const visibleNavItems = navItems.filter((item) => {
-    if (item.adminOnly && !isAdmin) return false
-    return true
-  })
+  const visibleNavItems = isAdmin ? adminNavItems : userNavItems
 
   const userInitial = (user?.name || user?.email || "U").charAt(0).toUpperCase()
   const displayName = user?.name || user?.email?.split("@")[0] || "Account"
@@ -150,11 +189,11 @@ export default function Topbar({
         )}
         <a
           className="brand"
-          href="/home"
+          href={isAdmin ? "/home" : "/home?section=assistant"}
           onClick={(e) => {
             if (onSectionChange) {
               e.preventDefault()
-              onSectionChange("home")
+              onSectionChange(isAdmin ? "home" : "assistant")
             }
           }}
         >
@@ -171,6 +210,20 @@ export default function Topbar({
             onSectionChange && item.section
               ? activeSection === item.section
               : pathname === item.href || (pathname === "/home" && item.section === "home" && !activeSection)
+
+          if (item.onClick) {
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className="nav-item"
+                onClick={item.onClick}
+              >
+                <i className={item.iconClass} />
+                <span>{item.label}</span>
+              </button>
+            )
+          }
 
           if (onSectionChange && item.section) {
             return (
@@ -227,6 +280,11 @@ export default function Topbar({
             {isAdmin && (
               <a href="/admin" onClick={(e) => { e.preventDefault(); router.push("/admin") }}>
                 <i className="bi bi-shield-lock" /> Admin Workspace
+              </a>
+            )}
+            {isAdmin && (
+              <a href="/admin/models" onClick={(e) => { e.preventDefault(); router.push("/admin/models") }}>
+                <i className="bi bi-cpu" /> AI Models Management
               </a>
             )}
             <button

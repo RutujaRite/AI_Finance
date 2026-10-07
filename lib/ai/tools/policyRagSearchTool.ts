@@ -6,7 +6,7 @@
 
 import {
   answerPolicyWithRag,
-  resolveDbPolicy,
+  resolvePolicyTarget,
   PolicyRagOptions,
   PolicyRagAnswer,
   PolicyRagSource,
@@ -54,7 +54,7 @@ export class PolicyRagSearchTool implements AgentTool<PolicyRagSearchInput, Poli
       let bankId = input.bankId;
 
       if (!policyFileId && input.bankName) {
-        resolvedBank = await resolveDbPolicy(input.bankName);
+        resolvedBank = await resolvePolicyTarget(input.bankName);
         if (resolvedBank) {
           policyFileId = resolvedBank.policyFileId;
           bankId = resolvedBank.bankId;
