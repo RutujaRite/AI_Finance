@@ -28,14 +28,14 @@ export default function Toast({
       ? "bg-white text-slate-800 border-emerald-200 shadow-sm"
       : type === "warning"
       ? "bg-white text-slate-800 border-amber-200 shadow-sm"
-      : "bg-white text-slate-800 border-indigo-200 shadow-sm";
+      : "bg-white text-slate-800 border-blue-200 shadow-sm";
 
   const iconClass =
     type === "success"
       ? "bi bi-check-circle-fill text-emerald-500"
       : type === "warning"
       ? "bi bi-exclamation-triangle-fill text-amber-500"
-      : "bi bi-info-circle-fill text-indigo-500";
+      : "bi bi-info-circle-fill text-blue-500";
 
   return (
     <div

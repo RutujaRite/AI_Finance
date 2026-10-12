@@ -4,6 +4,7 @@ import {
   getUserSubscription,
   upgradePlan,
   resetStore,
+  resetUsage,
 } from "@/lib/agent-studio/agentStore";
 import { PLAN_CONFIGS, PlanTier } from "@/lib/agent-studio/planLimits";
 
@@ -30,7 +31,16 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { plan, reset } = body;
+    const { plan, reset, resetUsage: shouldResetUsage } = body;
+
+    if (shouldResetUsage) {
+      const resetSub = resetUsage();
+      return NextResponse.json({
+        success: true,
+        subscription: resetSub,
+        message: "Message counter reset to 0 for demo testing",
+      });
+    }
 
     if (reset) {
       const resetSub = resetStore();

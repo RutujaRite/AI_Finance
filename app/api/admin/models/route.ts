@@ -6,6 +6,7 @@ import {
   createAiModel,
   ModelCategory,
 } from "@/lib/ai/modelRouter";
+import { testAiModelById } from "@/lib/ai/modelHealth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,10 +53,22 @@ export async function GET(req: NextRequest) {
     // Distinct providers
     const providers = Array.from(new Set(models.map((m) => m.provider))).filter(Boolean);
 
+    // Live health check on active LLM model key
+    let activeHealth: Record<string, any> = {};
+    if (active.LLM) {
+      try {
+        const h = await testAiModelById(active.LLM.id);
+        activeHealth.LLM = h;
+      } catch (err) {
+        console.warn("[MODEL_HEALTH] Could not check active LLM health:", err);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       models,
       active,
+      active_health: activeHealth,
       counts,
       providers,
     });

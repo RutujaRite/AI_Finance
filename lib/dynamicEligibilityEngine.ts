@@ -125,6 +125,9 @@ export interface SessionState {
   eligible_banks?: string[];
   hasCompletedEvaluation?: boolean;
   evaluationCompleted?: boolean;
+  lastEligibilityResult?: any;
+  lastCalculationInputs?: any;
+  lastCalculationTimestamp?: number;
   topBank?: string;
   chosenBank?: string;
   selectedBank?: string;
@@ -1063,42 +1066,7 @@ export function detectAndAnswerSideQuestion(message: string, expectedField?: str
  * (e.g. coding, homework, entertainment, general tech support).
  */
 export function isOutOfDomainRequest(text: string): { isOutOfDomain: boolean; redirectReply?: string } {
-  const norm = String(text || "").toLowerCase().trim();
-  if (!norm) return { isOutOfDomain: false };
-
-  // Guard: If message touches on loans, credit, finance, banking, emi, cibil, or salary, it is in-domain!
-  if (
-    /(?:loan|emi|cibil|credit\s*score|bank|interest|tenure|salary|income|foir|pincode|branch|manager|mortgage|prepay|foreclose|disburs|borrow|finance|tax\s*benefit|80c|24b|invest|inflation|repo\s*rate)/i.test(norm)
-  ) {
-    return { isOutOfDomain: false };
-  }
-
-  // 1. Coding / Programming requests
-  const isCoding =
-    /\b(?:write|create|debug|run|generate|give)\s+(?:me\s+)?(?:a\s+)?(?:python|java|javascript|js|typescript|ts|c\+\+|c#|ruby|rust|golang|php|html|css|sql|script|function|program|algorithm|code)\b/i.test(norm) ||
-    /\b(?:coding|write\s+(?:some\s+)?code|programming|write\s+a\s+regex|debug\s+this|compile\s+error|react\s+component|vue\s+component)\b/i.test(norm) ||
-    /^(?:print\(|console\.log|def\s+\w+\(|function\s+\w+\(|import\s+react|public\s+static\s+void)/i.test(norm);
-
-  // 2. Homework / Academic / General Science / History requests
-  const isHomeworkOrGeneralAcademic =
-    /\b(?:solve\s+my\s+homework|college\s+essay|write\s+an?\s+essay|homework\s+help|chemistry\s+equation|physics\s+numerical|who\s+won\s+world\s+war|capital\s+of\s+\w+|translate\s+to\s+french)\b/i.test(norm);
-
-  // 3. Creative writing & Entertainment
-  const isCreativeOrEntertainment =
-    /\b(?:write\s+(?:a\s+)?(?:poem|poetry|story|lyrics|song|novel)|tell\s+(?:me\s+)?(?:a\s+)?(?:funny\s+)?joke|joke\b|movie\s+recommendations?|who\s+won\s+the\s+oscar|cricket\s+score)\b/i.test(norm);
-
-  // 4. General Tech Support / Hardware / OS
-  const isGeneralTech =
-    /\b(?:how\s+to\s+install\s+(?:ubuntu|windows|linux|macos)|fix\s+my\s+wifi|jailbreak\s+iphone|root\s+android|graphics\s+card\s+driver)\b/i.test(norm);
-
-  if (isCoding || isHomeworkOrGeneralAcademic || isCreativeOrEntertainment || isGeneralTech) {
-    return {
-      isOutOfDomain: true,
-      redirectReply:
-        "I'm here to help with personal loans, bank eligibility, EMIs, bank policies, company category tiers, and branch manager details. If you have a question about any of these, I'd be happy to help!",
-    };
-  }
-
+  // Allow educational, academic, and general queries to be handled naturally by the LLM
   return { isOutOfDomain: false };
 }
 
@@ -3157,6 +3125,7 @@ export function extractCleanCompanyName(input: string): string {
 
   // 3b. Strip trailing inquiry clauses e.g. ". Give me information about that company"
   str = str.replace(/(?:\s*[.,;!?]|\s+(?:and|with|so|now))\s*(?:(?:please\s+)?(?:give|show|tell|provide|check|display|find|get)\s+.*|what\s+.*|can\s+you\s+.*)$/i, "");
+  str = str.replace(/(?:\s*[.,;!?]|\s+(?:and|with|so|now))\s*(?:loan|salary|income|cibil|age|tenure|emi|paying|earning|borrow)\b.*$/i, "");
 
   // 4. Remove trailing query phrases like 'company', 'company details', 'listing', 'category rating', 'is listed'
   str = str.replace(/\s+(?:is\s+)?(?:listed|categorized|approved)\s*(?:in\s+banks?|across\s+banks?)?$/i, "");
@@ -3224,7 +3193,8 @@ export function isCompanyInfoOrSearchIntent(text: string): boolean {
   if (/^(?:what\s+is|who\s+is|tell\s+me\s+about)\s+(?:the\s+)?(?:company\s+)?([a-zA-Z0-9\s&'.-]+)$/i.test(norm)) {
     const cand = norm.replace(/^(?:what\s+is|who\s+is|tell\s+me\s+about)\s+(?:the\s+)?(?:company\s+)?/i, "").replace(/[?.,!]+$/, "").trim();
     const isFinancialSideQ = /(?:issue|problem|error|cibil|credit\s*score|emi|foir|tenure|salary|income|apr|roi|interest(?:\s*rate)?|rate|reducing|balance|flat|fixed|collateral|foreclosure|prepayment|processing\s*fee|amortization|moratorium|part[\s-]*payment)\b/i.test(cand);
-    if (!isFinancialSideQ && cand.length >= 2 && !isInvalidCompanyName(cand)) {
+    const isEducationalOrTechQ = /\b(?:artificial\s*intelligence|machine\s*learning|ai\s*and\s*ml|\bai\b|\bml\b|java|python|javascript|typescript|inheritance|gravity|photosynthesis|quantum|recursion|dns|database\s*index|speed\s*of\s*light|relativity|inflation|compound\s*interest|credit\s*score|foir)\b/i.test(cand);
+    if (!isFinancialSideQ && !isEducationalOrTechQ && cand.length >= 2 && !isInvalidCompanyName(cand)) {
       return true;
     }
   }
@@ -3263,7 +3233,8 @@ export function isCompanyInfoOrSearchIntent(text: string): boolean {
   let isActionForTarget = false;
   if (actionWithTarget) {
     const target = actionWithTarget[1].trim();
-    if (target.length >= 2 && !isInvalidCompanyName(target) && !isFinancialOrProfileInput(target) && !isLocationInput(target) && !isKnownBankName(target)) {
+    const isEducationalTarget = /\b(?:artificial\s*intelligence|machine\s*learning|\bai\b|\bml\b|java|python|quantum|gravity|photosynthesis|compound\s*interest|credit\s*score|foir)\b/i.test(target);
+    if (target.length >= 2 && !isInvalidCompanyName(target) && !isFinancialOrProfileInput(target) && !isLocationInput(target) && !isKnownBankName(target) && !isEducationalTarget) {
       isActionForTarget = true;
     }
   }
@@ -3285,6 +3256,29 @@ export function extractTargetCompanyFromMessage(text: string): string | undefine
   const compound = extractCompoundLoanCompanyIntent(raw);
   if (compound.isCompound && compound.companyCandidate) {
     return compound.companyCandidate;
+  }
+
+  // 1b. Job change or employer switch phrase (e.g. "I changed my job to Infosys", "switch to TCS")
+  const jobChangeMatch = raw.match(
+    /(?:(?:change|changed|update|updated|switch|switched|move|moved)\s+(?:my\s+)?(?:company|employer|job)|switch(?:ed)?\s+to|moved?\s+to|joined|now\s+working\s+at|new\s+(?:company|employer|job)\s+is)\s+(?:to\s+)?([A-Za-z0-9\s&'-]+?)(?=\s*[.,;!?|\n]|$)/i
+  );
+  if (jobChangeMatch) {
+    const cand = jobChangeMatch[1].trim().replace(/[.,;!?]+$/, "").trim();
+    if (cand.length >= 2 && !isInvalidCompanyName(cand)) {
+      return cand;
+    }
+  }
+
+  // 1c. Category or check query (e.g. "Check Infosys company category", "category of TCS")
+  const categoryMatch = raw.match(
+    /(?:check(?:\s+for)?|verify|what\s+is(?:\s+the)?\s+(?:category|tier)\s+of)\s+([A-Za-z0-9\s&'-]+?)(?:\s+(?:company|employer)?\s*(?:category|tier|details)|$)/i
+  );
+  if (categoryMatch) {
+    const cand = categoryMatch[1].trim().replace(/[.,;!?]+$/, "").trim();
+    const isEducationalTarget = /\b(?:artificial\s*intelligence|machine\s*learning|\bai\b|\bml\b|java|python|quantum|gravity|photosynthesis|compound\s*interest|credit\s*score|foir)\b/i.test(cand);
+    if (cand.length >= 2 && !isInvalidCompanyName(cand) && !isFinancialOrProfileInput(cand) && !isKnownBankName(cand) && !isEducationalTarget) {
+      return cand;
+    }
   }
 
   // 2. Employment phrase combined with company information inquiry (e.g. "I am working at TCS. Give me information about that company")
@@ -3677,7 +3671,8 @@ export function messageMentionsField(field: string, text: string): boolean {
     case "cibil":
       return (
         /(?:cibil|credit\s*score|score\b|bureau)/i.test(lower) ||
-        (/\b[3-9]\d{2}\b/.test(lower) && /(?:cibil|score|credit)/i.test(lower))
+        (/\b[3-9]\d{2}\b/.test(lower) && /(?:cibil|score|credit|again|now|with|change|what\s+about|what\s+if)/i.test(lower)) ||
+        /^\s*(?:again\s+with|now\s+with|with)?\s*[3-9]\d{2}\s*[.?]?\s*$/i.test(lower)
       );
 
     case "tenureMonths":
@@ -3711,7 +3706,7 @@ export function messageMentionsField(field: string, text: string): boolean {
 
     case "companyName":
       return (
-        /(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for)|(?:i\s*am|i'?m|i)\s+(?:working\s+)?(?:at|in|with|for)|(?:my\s+)?(?:working\s+|current\s+|present\s+)?(?:company|employer|comapny|cmpny)\s*(?:is|:)|employer\s+is|company|comapny|firm|employer)\b/i.test(lower) ||
+        /(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for)|(?:i\s*am|i'?m|i)\s+(?:working\s+)?(?:at|in|with|for)|(?:my\s+)?(?:working\s+|current\s+|present\s+)?(?:company|employer|comapny|cmpny)\s*(?:is|:)|employer\s+is|company|comapny|firm|employer|changed\s+(?:my\s+)?job\s+to|switch(?:ed)?\s+to|moved\s+to|joined)\b/i.test(lower) ||
         Boolean(extractCompanyCandidateFromText(text))
       );
 
@@ -3909,7 +3904,7 @@ export function extractSecondaryParameters(
     if (llmExtracted?.companyName && !isInvalidCompanyName(llmExtracted.companyName) && !isFinancialOrProfileInput(llmExtracted.companyName)) {
       applicant.companyName = normalizeCompanyName(llmExtracted.companyName);
     } else {
-      const cand = extractCompanyCandidateFromText(text);
+      const cand = extractTargetCompanyFromMessage(text) || extractCompanyCandidateFromText(text);
       if (cand && !isInvalidCompanyName(cand) && !isFinancialOrProfileInput(cand)) {
         applicant.companyName = normalizeCompanyName(cand);
       }
@@ -5665,6 +5660,7 @@ function inferFieldFromAssistantQuestion(q?: string | null): string | null {
 export interface ProfileUpdateExtraction {
   updates: Partial<ApplicantProfile>;
   updatedFieldLabels: string[];
+  isScenario?: boolean;
 }
 
 /**
@@ -5682,6 +5678,7 @@ export function extractProfileUpdates(
   const updatedFieldLabels: string[] = [];
   const text = String(message || "").replace(/\s+/g, " ").trim();
   const lower = text.toLowerCase();
+  const isScenario = /\b(?:what\s+if|suppose|assuming|hypothetical)\b/i.test(lower);
 
   // Helper: check if a field is explicitly targeted in message or in LLM changeFields
   const isTargeted = (field: string, changeFieldAliases: string[]): boolean => {
@@ -5709,7 +5706,7 @@ export function extractProfileUpdates(
           /(?:change|update|modify|set|make|correct)?\s*(?:my\s*)?(?:company|employer|firm|workplace)(?:\s*(?:name|is|to|=|:))\s*([A-Za-z0-9\s&'.-]+?)(?=\s*[,;]|\s+(?:and|with|salary|cibil|age|loan|emi|tenure|earning)|$|[.\n])/i
         ) ||
         text.match(
-          /(?:work\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is)\s*[:]?\s*([A-Za-z0-9\s&'.-]+?)(?=\s*[,;]|\s+(?:and|with|salary|cibil|age|loan|emi|tenure|earning)|$|[.\n])/i
+          /(?:work\s+at|working\s+(?:at|in)|employed\s+(?:at|by)|my\s+company\s+is|employer\s+is|changed\s+(?:my\s+)?job\s+to|switch(?:ed)?\s+to|moved\s+to|joined)\s*[:]?\s*([A-Za-z0-9\s&'.-]+?)(?=\s*[,;]|\s+(?:and|with|salary|cibil|age|loan|emi|tenure|earning)|$|[.\n])/i
         );
       if (compMatch) {
         let c = compMatch[1].trim().replace(/^(?:to|is|at|=|:)\s+/i, "");
@@ -5764,9 +5761,11 @@ export function extractProfileUpdates(
     } else {
       const cibilMatch =
         text.match(
-          /(?:change|update|make|set)?\s*(?:my\s*)?(?:cibil|credit\s*score|score)(?:\s*(?:is|to|=|:)?\s*(?:of)?)\s*([3-9]\d{2})\b/i
+          /(?:change|update|make|set)?\s*(?:my\s*)?(?:cibil|credit\s*score|score)(?:\s*(?:is|to|=|:|were|was)?\s*(?:of)?)\s*([3-9]\d{2})\b/i
         ) ||
-        text.match(/\b([3-9]\d{2})\b\s*(?:cibil|credit\s*score)/i);
+        text.match(/\b([3-9]\d{2})\b\s*(?:cibil|credit\s*score)/i) ||
+        text.match(/(?:again\s+with|change\s+(?:it\s+)?to|now\s+calculate\s+with|calculate\s+again\s+with|now\s+with|what\s+about|what\s+if\s+(?:my\s+)?(?:cibil\s+)?(?:score\s+)?(?:were|was|is)?)\s*([3-9]\d{2})\b/i) ||
+        text.match(/^\s*(?:again\s+with|now\s+with|with)?\s*([3-9]\d{2})\s*[.?]?\s*$/i);
       if (cibilMatch) {
         const val = parseInt(cibilMatch[1], 10);
         if (val >= 300 && val <= 900) {
@@ -5913,20 +5912,22 @@ export function extractProfileUpdates(
     }
   }
 
-  return { updates, updatedFieldLabels };
+  return { updates, updatedFieldLabels, isScenario };
 }
 
 /**
  * Applies profile updates by replacing old values with new values (no old values retained),
  * re-evaluates company categories if employer changed, and recalculates eligibility against all banks
  * using strictly active Master Policy rules.
+ * Supports hypothetical scenarios without mutating saved baseline profile.
  */
 export async function applyProfileUpdateAndRecalculate(
   conversationId: string,
   userMessage: string,
   existingApplicant: ApplicantProfile = {},
   llmExtracted?: any,
-  modelOverride?: string
+  modelOverride?: string,
+  options?: { isScenario?: boolean }
 ): Promise<{
   reply: string;
   applicant: ApplicantProfile;
@@ -5934,14 +5935,16 @@ export async function applyProfileUpdateAndRecalculate(
   isComplete: boolean;
   missingFields: string[];
   updatedFields: string[];
+  isScenario?: boolean;
 }> {
+  const { updates, updatedFieldLabels, isScenario: detectedScenario } = extractProfileUpdates(userMessage, llmExtracted);
+  const isScenario = options?.isScenario ?? detectedScenario ?? false;
+
   // Start with a clean copy of the existing applicant profile
   const applicant: ApplicantProfile = {
     ...existingApplicant,
     loanType: existingApplicant.loanType || "Personal Loan",
   };
-
-  const { updates, updatedFieldLabels } = extractProfileUpdates(userMessage, llmExtracted);
 
   // STRICT REPLACEMENT: Replace old values with new values; old values are NEVER retained for calculation
   if (updates.monthlyIncome !== undefined) {
@@ -5984,21 +5987,22 @@ export async function applyProfileUpdateAndRecalculate(
 
   const missingFields = getRequiredPolicyFields(applicant, companyMatch, applicant.loanType || "Personal Loan");
 
-  const updateAck =
-    updatedFieldLabels.length > 0
-      ? `🔄 **Details Updated**: Updated your ${updatedFieldLabels.join(", ")}.`
-      : `🔄 **Details Updated**: Recorded your updated profile details.`;
+  const updateAck = isScenario
+    ? `🔮 **Hypothetical Scenario Calculation**: Evaluating your eligibility with ${updatedFieldLabels.join(", ")} *(Your saved profile baseline remains preserved)*.`
+    : (updatedFieldLabels.length > 0
+        ? `🔄 **Details Updated**: Updated your ${updatedFieldLabels.join(", ")}.`
+        : `🔄 **Details Updated**: Recorded your updated profile details.`);
 
   // If all required fields are complete, RECALCULATE IMMEDIATELY using the fresh profile!
   if (missingFields.length === 0) {
     const evalResult = await evaluateApplicantAgainstAllBanks(applicant, applicant.loanType || "Personal Loan");
     const report = formatDynamicEligibilityReport(applicant, evalResult);
 
-    await saveEligibilityState(conversationId, {
-      applicant,
-      expectedField: "selectedBank",
-      selectedBank: "",
-      chosenBank: "",
+    const calculationStateUpdate: any = {
+      lastEligibilityResult: evalResult,
+      lastCalculationInputs: { ...applicant },
+      lastCalculationTimestamp: Date.now(),
+      hypotheticalScenario: isScenario ? { inputs: { ...applicant }, evalResult } : null,
       updatedAt: Date.now(),
       in_eligibility_flow: false,
       hasCompletedEvaluation: true,
@@ -6010,15 +6014,30 @@ export async function applyProfileUpdateAndRecalculate(
         bankName: b.bankName,
         failureReasons: b.failureReasons,
       })),
+    };
+
+    // CRITICAL (TEST H & Section 6): If this is a hypothetical scenario, DO NOT overwrite the baseline applicant!
+    if (!isScenario) {
+      calculationStateUpdate.applicant = applicant;
+      calculationStateUpdate.expectedField = "selectedBank";
+      calculationStateUpdate.selectedBank = "";
+      calculationStateUpdate.chosenBank = "";
+    }
+
+    const prevState = await getEligibilityState(conversationId);
+    await saveEligibilityState(conversationId, {
+      ...(prevState || {}),
+      ...calculationStateUpdate,
     } as any);
 
     return {
       reply: `${updateAck}\n\n${report}`,
-      applicant,
+      applicant: isScenario ? existingApplicant : applicant,
       evalResult,
       isComplete: true,
       missingFields: [],
       updatedFields: updatedFieldLabels,
+      isScenario,
     };
   }
 
@@ -6031,19 +6050,24 @@ export async function applyProfileUpdateAndRecalculate(
     modelOverride
   );
 
-  await saveEligibilityState(conversationId, {
-    applicant,
-    expectedField: nextField,
-    missingFields,
-    updatedAt: Date.now(),
-  });
+  if (!isScenario) {
+    const prevState = await getEligibilityState(conversationId);
+    await saveEligibilityState(conversationId, {
+      ...(prevState || {}),
+      applicant,
+      expectedField: nextField,
+      missingFields,
+      updatedAt: Date.now(),
+    });
+  }
 
   return {
     reply: `${updateAck}\n\n${nextQuestion}`,
-    applicant,
+    applicant: isScenario ? existingApplicant : applicant,
     isComplete: false,
     missingFields,
     updatedFields: updatedFieldLabels,
+    isScenario,
   };
 }
 

@@ -805,7 +805,7 @@ export function formatCompanyCandidateList(candidates: string[], searchQuery: st
   const lines: string[] = [
     `🏢 **Matching Companies Found in Bank Records for "${searchQuery}"**:`,
     "",
-    "Please select your exact employer by **clicking an option below** or replying with the **number**:",
+    "Please select your exact employer by **clicking an option below** or replying with the **number** to check its partner-bank category:",
     "",
     `<div class="disambiguation-candidates" style="display: flex; flex-direction: column; gap: 8px; margin: 12px 0;">`
   ];

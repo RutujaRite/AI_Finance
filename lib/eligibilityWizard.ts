@@ -386,13 +386,37 @@ export async function processEligibilityFlow(
       companyData: undefined,
     };
   } else {
-    // If no partner bank is eligible, clear any stored conversation state and conclude
+    // Preserve applicant profile and calculation inputs even when ineligible so follow-up recalculations (e.g. "What if CIBIL is 780?") work seamlessly
     if (pool && isValidConvId) {
       try {
-        await pool.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [numConvId]);
-      } catch (e) {}
+        await pool.query(
+          `INSERT INTO assistant_conversation_states (conversation_id, state, expires_at)
+           VALUES ($1, $2, NOW() + INTERVAL '2 hours')
+           ON CONFLICT (conversation_id)
+           DO UPDATE SET state = $2, expires_at = NOW() + INTERVAL '2 hours'`,
+          [
+            numConvId,
+            {
+              in_eligibility_flow: false,
+              applicant: dynamicOutput.applicant,
+              lastEligibilityResult: dynamicOutput,
+              lastCalculationInputs: dynamicOutput.applicant,
+              lastCalculationTimestamp: Date.now(),
+            },
+          ]
+        );
+      } catch (e) {
+        console.warn("Could not save conversation state on ineligible evaluation:", e);
+      }
     }
-    await clearEligibilityState(conversationId);
+    await saveEligibilityState(conversationId, {
+      applicant: dynamicOutput.applicant,
+      updatedAt: Date.now(),
+      in_eligibility_flow: false,
+      lastEligibilityResult: dynamicOutput,
+      lastCalculationInputs: dynamicOutput.applicant,
+      lastCalculationTimestamp: Date.now(),
+    } as any);
 
     return {
       reply: dynamicOutput.formattedMarkdown || "",

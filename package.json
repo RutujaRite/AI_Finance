@@ -25,6 +25,7 @@
     "jose": "^6.2.12",
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.1",
+    "lucide-react": "^1.52.0",
     "mammoth": "^1.12.2",
     "next": "^15.3.4",
     "node-fetch": "^3.3.2",

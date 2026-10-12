@@ -2,200 +2,165 @@
 "use client";
 
 import React from "react";
-import { Agent, UserSubscriptionState } from "@/lib/agent-studio/types";
+import Link from "next/link";
+import {
+  LayoutDashboard,
+  Bot,
+  BookOpen,
+  PlayCircle,
+  Settings,
+  ArrowLeft,
+  X,
+} from "lucide-react";
+import { UserSubscriptionState } from "@/lib/agent-studio/types";
 
-export type StudioTab = "overview" | "setup" | "qualification" | "capabilities" | "test" | "plans";
+export type StudioTab =
+  | "overview"
+  | "assistant"
+  | "knowledge"
+  | "demo"
+  | "settings"
+  | "dashboard"
+  | "instructions"
+  | "capabilities"
+  | "conversations"
+  | "test"
+  | "plans";
 
 interface SidebarProps {
-  agents: Agent[];
-  currentAgentId: string;
-  onSelectAgent: (id: string) => void;
   activeTab: StudioTab;
   onSelectTab: (tab: StudioTab) => void;
-  onCreateNew: () => void;
-  subscription: UserSubscriptionState;
-  onUpgrade: () => void;
+  subscription?: UserSubscriptionState;
+  onUpgrade?: () => void;
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export default function Sidebar({
-  agents,
-  currentAgentId,
-  onSelectAgent,
   activeTab,
   onSelectTab,
-  onCreateNew,
-  subscription,
-  onUpgrade,
+  mobileOpen = false,
+  onCloseMobile,
 }: SidebarProps) {
-  const navItems: Array<{ id: StudioTab; label: string; icon: string }> = [
-    { id: "overview", label: "Overview", icon: "bi bi-grid" },
-    { id: "setup", label: "Setup", icon: "bi bi-sliders" },
-    { id: "qualification", label: "Qualification", icon: "bi bi-card-checklist" },
-    { id: "capabilities", label: "Capabilities", icon: "bi bi-lightning-charge" },
-    { id: "test", label: "Test", icon: "bi bi-play-circle" },
-    { id: "plans", label: "Plans", icon: "bi bi-stars" },
-  ];
+  const navItems = [
+    { id: "overview", label: "Overview", icon: LayoutDashboard },
+    { id: "assistant", label: "AI Assistant", icon: Bot },
+    { id: "knowledge", label: "", icon: BookOpen },
+    { id: "demo", label: "Agent Demo", icon: PlayCircle },
+    { id: "settings", label: "Settings", icon: Settings },
+  ] as const;
 
-  const currentUsage = subscription.messagesUsed;
-  const maxUsage = subscription.maxMessages;
-  const percentage = Math.min(100, Math.round((currentUsage / maxUsage) * 100));
-  const remaining = Math.max(0, maxUsage - currentUsage);
-  const isAtLimit = currentUsage >= maxUsage;
-  const isNearLimit = remaining === 1;
+  const isItemActive = (id: string) => {
+    if (id === "assistant") {
+      return (
+        activeTab === "assistant" ||
+        activeTab === "instructions" ||
+        activeTab === "conversations"
+      );
+    }
+    if (id === "overview") {
+      return activeTab === "overview" || activeTab === "dashboard";
+    }
+    if (id === "knowledge") {
+      return activeTab === "knowledge";
+    }
+    if (id === "demo") {
+      return activeTab === "demo" || activeTab === "test";
+    }
+    if (id === "settings") {
+      return activeTab === "settings" || activeTab === "capabilities" || activeTab === "plans";
+    }
+    return activeTab === id;
+  };
+
+  const sidebarContent = (
+    <div className="flex flex-col justify-between h-full bg-white text-[#344563]">
+      <div>
+        {/* Brand Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#DFE7F3]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#1769FF] text-white flex items-center justify-center shadow-xs shrink-0">
+              <Bot className="w-4 h-4" />
+            </div>
+            <span className="font-bold text-[#101D45] text-base tracking-tight">
+              Agent Studio
+            </span>
+          </div>
+
+          {onCloseMobile && (
+            <button
+              onClick={onCloseMobile}
+              className="lg:hidden text-[#7183A3] hover:text-[#101D45] p-1 rounded-md"
+              aria-label="Close navigation"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        {/* Navigation Items */}
+        <nav className="p-3 space-y-1 mt-2">
+          {navItems.map((item) => {
+            const active = isItemActive(item.id);
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                aria-label={item.label ? undefined : "Knowledge Base"}
+                onClick={() => {
+                  onSelectTab(item.id as StudioTab);
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition cursor-pointer text-left ${
+                  active
+                    ? "bg-[#EBF2FF] text-[#1769FF] font-semibold"
+                    : "text-[#7183A3] hover:text-[#101D45] hover:bg-[#F7F9FC]"
+                }`}
+              >
+                <Icon
+                  className={`w-4 h-4 shrink-0 ${
+                    active ? "text-[#1769FF]" : "text-[#7183A3]"
+                  }`}
+                />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Bottom Exit link */}
+      <div className="p-3 border-t border-[#DFE7F3] bg-[#F7F9FC]/70">
+        <Link
+          href="/home?section=assistant"
+          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-[#7183A3] hover:text-[#101D45] hover:bg-white transition font-medium"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Exit to AI Assistant</span>
+        </Link>
+      </div>
+    </div>
+  );
 
   return (
-    <aside className="w-64 bg-slate-50/70 border-r border-slate-200/80 flex flex-col justify-between h-[calc(100vh-65px)] sticky top-[65px] select-none">
-      <div className="p-4 space-y-6 overflow-y-auto">
-        {/* Your AI Agents header */}
-        <div>
-          <div className="flex items-center justify-between mb-2.5 px-2">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Your AI Agents
-            </span>
-            <button
-              onClick={onCreateNew}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-white hover:bg-indigo-50/60 border border-slate-200/80 hover:border-indigo-200 px-2.5 py-1 rounded-lg transition shadow-xs"
-              title="Create New Agent"
-            >
-              <i className="bi bi-plus-lg text-xs" />
-              <span>Create New</span>
-            </button>
-          </div>
+    <>
+      {/* Desktop Fixed Sidebar: 225px wide */}
+      <aside className="hidden lg:block w-[225px] h-screen sticky top-0 shrink-0 select-none z-20 border-r border-[#DFE7F3]">
+        {sidebarContent}
+      </aside>
 
-          {/* Agents List */}
-          <div className="space-y-1">
-            {agents.map((agent) => {
-              const isSelected = agent.id === currentAgentId;
-              return (
-                <button
-                  key={agent.id}
-                  onClick={() => onSelectAgent(agent.id)}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center justify-between border ${
-                    isSelected
-                      ? "bg-white text-slate-800 border-indigo-200 shadow-sm"
-                      : "text-slate-600 hover:bg-white/60 hover:text-slate-800 border-transparent"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="text-sm">🤖</span>
-                    <span className="truncate font-semibold">{agent.name}</span>
-                  </div>
-                  <div>
-                    {agent.status === "active" ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        Active
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                        Draft
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+      {/* Mobile Off-canvas Drawer */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
+            onClick={onCloseMobile}
+          />
+          <aside className="relative w-[225px] max-w-[80vw] h-full shadow-xl z-10">
+            {sidebarContent}
+          </aside>
         </div>
-
-        {/* Studio Navigation */}
-        <div>
-          <div className="px-2 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Navigation
-          </div>
-          <div className="space-y-1">
-            {navItems.map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onSelectTab(item.id)}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition flex items-center gap-2.5 ${
-                    isActive
-                      ? "bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100"
-                      : "text-slate-600 hover:bg-white hover:text-slate-900"
-                  }`}
-                >
-                  <i
-                    className={`${item.icon} text-sm ${
-                      isActive ? "text-indigo-600" : "text-slate-400"
-                    }`}
-                  />
-                  <span>{item.label}</span>
-                  {item.id === "plans" && subscription.plan === "basic" && (
-                    <span className="ml-auto text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.2 rounded font-semibold">
-                      Upgrade
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Soft Usage & Plan Card */}
-      <div className="p-4 border-t border-slate-200/70 bg-white/60">
-        <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-semibold text-slate-700 capitalize">
-              {subscription.plan === "pro"
-                ? "Pro Plan"
-                : subscription.plan === "business"
-                ? "Business Plan"
-                : "Basic Plan"}
-            </span>
-            {subscription.plan === "basic" ? (
-              <button
-                onClick={onUpgrade}
-                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 transition"
-              >
-                Upgrade
-              </button>
-            ) : (
-              <span className="text-[10px] text-emerald-600 font-medium bg-emerald-50 px-1.5 py-0.5 rounded">
-                Active
-              </span>
-            )}
-          </div>
-
-          <div className="text-[11px] text-slate-500 mb-2">
-            {currentUsage} of {maxUsage} test messages used
-          </div>
-
-          {/* Soft progress bar */}
-          <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden mb-2">
-            <div
-              className={`h-full rounded-full transition-all duration-300 ${
-                isAtLimit
-                  ? "bg-amber-400"
-                  : isNearLimit
-                  ? "bg-amber-400"
-                  : "bg-indigo-500"
-              }`}
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
-
-          {isNearLimit && !isAtLimit && (
-            <p className="text-[11px] text-amber-600 font-medium">
-              1 test message remaining.
-            </p>
-          )}
-
-          {isAtLimit && (
-            <div className="pt-1">
-              <p className="text-[11px] text-slate-500 mb-1.5">Limit reached.</p>
-              <button
-                onClick={onUpgrade}
-                className="w-full py-1 text-[11px] font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition"
-              >
-                Upgrade to Pro
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </aside>
+      )}
+    </>
   );
 }

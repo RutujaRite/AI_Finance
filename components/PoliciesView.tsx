@@ -336,7 +336,7 @@ export default function PoliciesView({
       const data = await res.json()
       if (data.success) {
         showToast(
-          `✓ Deleted master policy file (${fileName}) for ${deleteConfirmPolicy.bank_name}. Bank remains in the list.`,
+          `✓ Deleted bank policy file (${fileName}) for ${deleteConfirmPolicy.bank_name}. Bank remains in the list.`,
           "success"
         )
         setDeleteConfirmPolicy(null)
@@ -482,7 +482,7 @@ export default function PoliciesView({
           )
         )
 
-        showToast(`✓ Master policy file "${fileName}" saved successfully`, "success")
+        showToast(`✓ Bank policy file "${fileName}" saved successfully`, "success")
       } else {
         showToast(`✕ Failed to save file: ${data.error || "Unknown error"}`, "error")
       }
@@ -665,7 +665,7 @@ export default function PoliciesView({
 
           <div className="page-header-actions">
             <span className="badge bg-primary">{policies.length} Banks</span>
-            <span className="badge bg-purple">{policyFiles.length} Master Files</span>
+            <span className="badge bg-info">{policyFiles.length} Bank Policy Files</span>
           </div>
         </div>
 
@@ -676,14 +676,14 @@ export default function PoliciesView({
             className={`nav-link ${activeTab === "rules" ? "active" : ""}`}
             onClick={() => setActiveTab("rules")}
           >
-            <i className="bi bi-card-checklist" /> Bank Master Policies ({policies.length})
+            <i className="bi bi-card-checklist" /> Bank Policies ({policies.length})
           </button>
           <button
             type="button"
             className={`nav-link ${activeTab === "files" ? "active" : ""}`}
             onClick={() => setActiveTab("files")}
           >
-            <i className="bi bi-file-earmark-pdf" /> Policy Master Files ({policyFiles.length})
+            <i className="bi bi-file-earmark-pdf" /> Bank Policy Files ({policyFiles.length})
           </button>
         </div>
 
@@ -795,7 +795,7 @@ export default function PoliciesView({
                               <button
                                 type="button"
                                 className="btn btn-secondary btn-sm"
-                                title="View Master Policy Text File"
+                                title="View Bank Policy Text File"
                                 onClick={() => handleOpenViewerFile(policy)}
                               >
                                 <i className="bi bi-eye" /> View
@@ -803,7 +803,7 @@ export default function PoliciesView({
                               <button
                                 type="button"
                                 className="btn btn-secondary btn-sm"
-                                title="Edit Master Policy Text File"
+                                title="Edit Bank Policy Text File"
                                 onClick={() => handleOpenEditorFile(policy)}
                               >
                                 <i className="bi bi-pencil" /> Edit
@@ -811,7 +811,7 @@ export default function PoliciesView({
                               <button
                                 type="button"
                                 className="btn btn-outline-danger btn-sm"
-                                title="Delete Master Policy Text File"
+                                title="Delete Bank Policy Text File"
                                 onClick={() => handleOpenDelete(policy)}
                               >
                                 <i className="bi bi-trash3" /> Delete
@@ -871,7 +871,7 @@ export default function PoliciesView({
                     <tr>
                       <th style={{ width: 45 }}>#</th>
                       <th>Bank Name</th>
-                      <th>Master Policy File</th>
+                      <th>Bank Policy File</th>
                       <th style={{ width: 110 }}>Size</th>
                       <th style={{ textAlign: "right", minWidth: 260 }}>Actions</th>
                     </tr>
@@ -928,7 +928,7 @@ export default function PoliciesView({
                               <button
                                 type="button"
                                 className="btn btn-secondary btn-sm"
-                                title="View Master Document"
+                                title="View Bank Policy Document"
                                 onClick={() => handleOpenViewer(file.id, file)}
                               >
                                 <i className="bi bi-eye" /> View
@@ -936,7 +936,7 @@ export default function PoliciesView({
                               <button
                                 type="button"
                                 className="btn btn-secondary btn-sm"
-                                title="Edit Master Policy Text File"
+                                title="Edit Bank Policy Text File"
                                 onClick={() => handleOpenEditorFile(file)}
                               >
                                 <i className="bi bi-pencil" /> Edit
@@ -944,7 +944,7 @@ export default function PoliciesView({
                               <button
                                 type="button"
                                 className="btn btn-outline-danger btn-sm"
-                                title="Delete Master Policy Text File"
+                                title="Delete Bank Policy Text File"
                                 onClick={() => handleOpenDelete(file)}
                               >
                                 <i className="bi bi-trash3" /> Delete
@@ -1436,11 +1436,11 @@ export default function PoliciesView({
                 <i className="bi bi-trash3" />
               </div>
               <h3 style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.5rem" }}>
-                Delete Master Policy File?
+                Delete Bank Policy File?
               </h3>
               <p style={{ fontSize: "0.875rem", color: "var(--ink-soft)", lineHeight: 1.5, margin: "0 auto 1.5rem", maxWidth: 380 }}>
-                Are you sure you want to delete the master policy text file{" "}
-                <strong style={{ color: "var(--ink)" }}>({deleteConfirmPolicy.file_name || deleteConfirmPolicy.attachment_file_name || "master document"})</strong> for{" "}
+                Are you sure you want to delete the bank policy text file{" "}
+                <strong style={{ color: "var(--ink)" }}>({deleteConfirmPolicy.file_name || deleteConfirmPolicy.attachment_file_name || "bank document"})</strong> for{" "}
                 <strong style={{ color: "var(--ink)" }}>{deleteConfirmPolicy.bank_name || "this bank"}</strong>?
                 <br />
                 <span style={{ color: "var(--ink-muted)", fontSize: "0.8125rem", display: "inline-block", marginTop: "0.5rem" }}>
@@ -1519,7 +1519,7 @@ export default function PoliciesView({
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        title="Edit Master Policy Document"
+                        title="Edit Bank Policy Document"
                         onClick={handleEnterEdit}
                         style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
                       >
@@ -1529,7 +1529,7 @@ export default function PoliciesView({
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
-                      title="Download Master Document"
+                      title="Download Bank Policy Document"
                       onClick={() => handleDownloadText(activeViewerFile.file_name, activeViewerFile.extracted_text || "")}
                       style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
                     >
@@ -1577,7 +1577,7 @@ export default function PoliciesView({
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Search inside master policy document..."
+                    placeholder="Search inside bank policy document..."
                     value={modalSearch}
                     onChange={(e) => setModalSearch(e.target.value)}
                     style={{ flex: 1, fontSize: "0.8125rem" }}
@@ -1686,7 +1686,7 @@ export default function PoliciesView({
                       }
                     }}
                     spellCheck={false}
-                    placeholder="Enter or edit master policy document content here..."
+                    placeholder="Enter or edit bank policy document content here..."
                     style={{
                       width: "100%",
                       height: "56vh",

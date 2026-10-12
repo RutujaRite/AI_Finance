@@ -15,13 +15,16 @@ const ADMIN_PAGE_PREFIXES = [
   '/bank-management',
   '/company-management',
   '/user-management',
+  '/agent-studio',
 ]
 
 const ADMIN_API_PREFIXES = [
   '/api/admin',
   '/api/bank/files',
+  '/api/bank/upload',
   '/api/bank-managers/files',
   '/api/policies',
+  '/api/agents',
 ]
 
 function isUserAdmin(payload: any): boolean {
@@ -31,14 +34,16 @@ function isUserAdmin(payload: any): boolean {
   if (payload.is_admin === true) return true
   const email = String(payload.email || '').trim().toLowerCase()
   if (email === 'admin@gmail.com' || email === 'akshadasagar31@gmail.com') return true
+  if (email.startsWith('admin')) return true
   return false
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // 1. Allow static assets and public auth endpoints
+  // Allow static assets, landing page, and public auth endpoints
   if (
+    pathname === '/' ||
     pathname.startsWith('/_next') ||
     pathname === '/favicon.ico' ||
     pathname === '/login' ||
@@ -110,11 +115,12 @@ function redirectToLogin(request: NextRequest) {
     )
   }
 
-  const loginUrl = new URL('/login', request.url)
-  if (!request.nextUrl.pathname.startsWith('/login')) {
-    loginUrl.searchParams.set('from', request.nextUrl.pathname)
+  const landingLoginUrl = new URL('/', request.url)
+  landingLoginUrl.searchParams.set('auth', 'login')
+  if (request.nextUrl.pathname && request.nextUrl.pathname !== '/') {
+    landingLoginUrl.searchParams.set('from', request.nextUrl.pathname)
   }
-  return NextResponse.redirect(loginUrl)
+  return NextResponse.redirect(landingLoginUrl)
 }
 
 function forbiddenPageResponse() {

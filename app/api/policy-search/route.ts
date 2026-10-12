@@ -543,7 +543,7 @@ async function answerPolicyQuestion(bankInfo: any, question: string): Promise<st
       }
     }
 
-    let response = `### 🏦 ${bank.name} — Master Policy Guidelines\n\n`;
+    let response = `### 🏦 ${bank.name} — Bank Policy Guidelines\n\n`;
     response += `#### 1. Loan Products Offered\n\n`;
     response += `| Criteria | Details |\n`;
     response += `| :--- | :--- |\n`;

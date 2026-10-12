@@ -56,10 +56,10 @@ export default function BankManagerFilesPage() {
           setUser(data.user)
         }
       } else {
-        router.replace("/login")
+        router.replace("/?auth=login&from=/bank-managers")
       }
     } catch (e) {
-      router.replace("/login")
+      router.replace("/?auth=login&from=/bank-managers")
     }
   }
 
@@ -213,16 +213,16 @@ export default function BankManagerFilesPage() {
         <div className="page-header">
           <div>
             <h1 className="page-header-title">
-              <i className="bi bi-people" style={{ color: "var(--accent)", marginRight: "0.5rem" }} />
-              Bank Manager Directory &amp; Files
+              <i className="bi bi-person-badge" style={{ color: "var(--accent)", marginRight: "0.5rem" }} />
+              Location &amp; Contact Bank Manager Directory
             </h1>
             <p className="page-header-subtitle">
-              Locate verified bank managers across branches, search by city/bank, or upload manager contact spreadsheets.
+              Locate verified bank managers across branch locations, search by city/bank, or upload official manager contact spreadsheets.
             </p>
           </div>
           <div className="page-header-actions">
             <span className="badge bg-primary">{managers.length} Managers</span>
-            <span className="badge bg-purple">{files.length} Files</span>
+            <span className="badge bg-info">{files.length} Files</span>
           </div>
         </div>
 

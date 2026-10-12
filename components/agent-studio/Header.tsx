@@ -38,8 +38,8 @@ export default function Header({
           <h1 className="text-xl font-bold text-slate-800 tracking-tight">
             AI Agent Studio
           </h1>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100/60">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200/80">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
             Beta
           </span>
         </div>
@@ -59,7 +59,7 @@ export default function Header({
           {subscription.plan === "basic" && (
             <button
               onClick={onUpgrade}
-              className="ml-1 text-indigo-600 hover:text-indigo-700 font-semibold text-xs transition"
+              className="ml-1 text-blue-600 hover:text-blue-700 font-semibold text-xs transition"
             >
               Upgrade
             </button>
@@ -71,11 +71,11 @@ export default function Header({
           onClick={onTestAgent}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border transition ${
             activeTab === "test"
-              ? "bg-slate-100 text-slate-800 border-slate-300"
-              : "bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
+              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+              : "bg-blue-50 text-blue-700 hover:bg-blue-100/80 border-blue-200 shadow-2xs"
           }`}
         >
-          <i className="bi bi-play-circle text-sm text-indigo-600" />
+          <i className={`bi bi-play-circle text-sm ${activeTab === "test" ? "text-white" : "text-blue-600"}`} />
           <span>Test Agent</span>
         </button>
 
@@ -83,7 +83,7 @@ export default function Header({
         <button
           onClick={onSaveChanges}
           disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm hover:shadow disabled:opacity-60"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm hover:shadow disabled:opacity-60"
         >
           {saving ? (
             <>
@@ -99,7 +99,7 @@ export default function Header({
         </button>
 
         {/* User Avatar */}
-        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+        <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
           A
         </div>
       </div>

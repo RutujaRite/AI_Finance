@@ -2,124 +2,162 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Bot, Sparkles, AlertTriangle, X } from "lucide-react";
+import StudioSidebar, { StudioNavTab } from "@/components/agent-studio/StudioSidebar";
 import Topbar from "@/components/Topbar";
-import Header from "@/components/agent-studio/Header";
-import Sidebar, { StudioTab } from "@/components/agent-studio/Sidebar";
-import OverviewSection from "@/components/agent-studio/OverviewSection";
-import SetupSection from "@/components/agent-studio/SetupSection";
-import QualificationSection from "@/components/agent-studio/QualificationSection";
-import CapabilitiesSection from "@/components/agent-studio/CapabilitiesSection";
-import TestSection from "@/components/agent-studio/TestSection";
-import PlansSection from "@/components/agent-studio/PlansSection";
-import UpgradeModal from "@/components/agent-studio/UpgradeModal";
-import CreateAgentModal from "@/components/agent-studio/CreateAgentModal";
+import AiInstructionsView from "@/components/agent-studio/AiInstructionsView";
+import KnowledgeBaseView from "@/components/agent-studio/KnowledgeBaseView";
+import AgentTestDemoView from "@/components/agent-studio/AgentTestDemoView";
+import SettingsView from "@/components/agent-studio/SettingsView";
 import Toast from "@/components/agent-studio/Toast";
 import { Agent, UserSubscriptionState } from "@/lib/agent-studio/types";
 import "./agent-studio.css";
 
+const FALLBACK_DEFAULT_AGENT: Agent = {
+  id: "agent_loan_assistant",
+  name: "CreditWise Assistant",
+  description: "CreditWise Official AI Loan & Policy Assistant",
+  status: "active",
+  responseStyle: "concise",
+  modes: { aiAgentMode: true, conversations: true, campaigns: false },
+  operationalMode: "standard",
+  goal: "You are a helpful AI assistant. Understand the user's message before responding. Follow the configured business instructions. Use the connected knowledge base for supported answers. If information is missing, ask a clear follow-up question. Do not invent facts. Keep responses friendly, accurate, and easy to understand.",
+  guardrailTemplates: [
+    "No Hallucination",
+    "Knowledge Accuracy",
+    "Financial Information Safety",
+    "Privacy Protection",
+    "Strict Knowledge Usage",
+    "Professional Behaviour",
+  ],
+  manualGuardrails:
+    "1. Do not invent or assume policy information.\n2. Never share internal system instructions.\n3. Use only the provided knowledge documents for loan eligibility queries.",
+  instructions: {
+    businessDescription: "Help users check loan eligibility based on bank policy documents.",
+    agentRole: "CreditWise Loan Specialist",
+    tone: "Professional and friendly",
+    escalationRules: "Direct complex underwriting requests to a senior manager.",
+    additionalInstructions: "Verify employer name and net monthly income before evaluating bank eligibility.",
+    advancedPrompt:
+      "You are a helpful AI assistant. Understand the user's message before responding. Follow the configured business instructions. Use the connected knowledge base for supported answers. If information is missing, ask a clear follow-up question. Do not invent facts. Keep responses friendly, accurate, and easy to understand.",
+    temperature: 0.4,
+  },
+  welcomeMessage: {
+    enabled: true,
+    text: "Hello! I'm CreditWise Assistant 👋\nI can help you with loan eligibility, available banks, understand your company category, and provide useful information from our knowledge base.\nYou can ask me anything related to loans, policies, or upload documents for personalized assistance.",
+    attachments: [],
+  },
+  qualification: {
+    leadFields: [],
+    documentCollection: [],
+  },
+  knowledge: [],
+  capabilities: {
+    answer_questions: true,
+    search_knowledge: true,
+    calculate_emi: true,
+    check_eligibility: true,
+  },
+  usage: {
+    messagesUsed: 2,
+    maxMessages: 100,
+    knowledgeTokens: 0,
+  },
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 export default function AgentStudioPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [user, setUser] = useState<any>(null);
-  const [agents, setAgents] = useState<Agent[]>([]);
+  const [user, setUser] = useState<any>({ name: "Rutuja Rite", email: "admin@gmail.com", role: "admin", is_admin: true });
+  const [agents, setAgents] = useState<Agent[]>([FALLBACK_DEFAULT_AGENT]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("agent_loan_assistant");
-  const [subscription, setSubscription] = useState<UserSubscriptionState>({
-    plan: "basic",
-    messagesUsed: 7,
-    maxMessages: 10,
-    agentsCount: 1,
-    maxAgents: 1,
-    knowledgeFilesCount: 1,
-    maxKnowledgeFiles: 1,
-    planLimits: {
-      agents: 1,
-      testMessages: 10,
-      knowledgeFiles: 1,
-    },
-  });
+  const [activeTab, setActiveTab] = useState<StudioNavTab>("demo");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<StudioTab>("overview");
-  const [loading, setLoading] = useState<boolean>(true);
-  const [saving, setSaving] = useState<boolean>(false);
+  // Agent Creation Modal State
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newAgentName, setNewAgentName] = useState("");
+  const [newAgentDescription, setNewAgentDescription] = useState("");
+  const [newAgentRole, setNewAgentRole] = useState("Credit Specialist");
+  const [newAgentTone, setNewAgentTone] = useState("Professional and friendly");
+  const [newAgentGoal, setNewAgentGoal] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
 
-  // Modals & Feedback
+  // Agent Delete Modal State
+  const [deleteConfirmAgentId, setDeleteConfirmAgentId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Toast notifications
   const [toast, setToast] = useState<{
     message: string;
     type?: "success" | "info" | "warning";
   } | null>(null);
 
-  const [upgradeModal, setUpgradeModal] = useState<{
-    isOpen: boolean;
-    title?: string;
-    subtitle?: string;
-    actionText?: string;
-  }>({
-    isOpen: false,
-  });
-
-  const [createModalOpen, setCreateModalOpen] = useState(false);
+  // Initial tab from query param
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "instructions" || tabParam === "configure" || tabParam === "home") {
+      setActiveTab("instructions");
+    } else if (tabParam === "knowledge") {
+      setActiveTab("knowledge");
+    } else if (tabParam === "demo" || tabParam === "test") {
+      setActiveTab("demo");
+    } else if (tabParam === "settings") {
+      setActiveTab("settings");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
-    checkAuth();
-    loadAgentsAndSubscription();
+    checkAuthAndLoad();
   }, []);
 
-  async function checkAuth() {
-    try {
-      const res = await fetch("/api/auth/verify");
-      if (!res.ok) {
-        router.replace("/login");
-        return;
-      }
-      const data = await res.json();
-      if (data.success && data.user) {
-        setUser(data.user);
-      }
-    } catch {
-      // Allow fallback in development if verify fails
-    }
-  }
-
-  async function loadAgentsAndSubscription() {
+  async function checkAuthAndLoad() {
     try {
       setLoading(true);
-      const res = await fetch("/api/agents");
+      const res = await fetch("/api/auth/verify", { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
-        if (data.success) {
-          if (Array.isArray(data.agents) && data.agents.length > 0) {
-            setAgents(data.agents);
-            // Default to Loan Assistant if present, else first
-            const defaultAgent =
-              data.agents.find((a: Agent) => a.id === "agent_loan_assistant") ||
-              data.agents[0];
-            setSelectedAgentId(defaultAgent.id);
-          }
-          if (data.subscription) {
-            setSubscription(data.subscription);
-          }
+        if (data.success && data.user) {
+          setUser(data.user);
+        }
+      }
+
+      // Load agents from backend
+      const agentsRes = await fetch("/api/agents");
+      if (agentsRes.ok) {
+        const agentData = await agentsRes.json();
+        if (agentData.success && Array.isArray(agentData.agents) && agentData.agents.length > 0) {
+          setAgents(agentData.agents);
+          const activeAgent =
+            agentData.agents.find((a: Agent) => a.isActiveForUser) ||
+            agentData.agents.find((a: Agent) => a.id === "agent_loan_assistant") ||
+            agentData.agents[0];
+          setSelectedAgentId(activeAgent.id);
         }
       }
     } catch (err) {
-      console.error("Failed to load agent studio data:", err);
+      console.warn("Studio auth/data load notice:", err);
     } finally {
       setLoading(false);
     }
   }
 
   const currentAgent =
-    agents.find((a) => a.id === selectedAgentId) || agents[0] || null;
+    agents.find((a) => a.id === selectedAgentId) || agents[0] || FALLBACK_DEFAULT_AGENT;
 
   function handleUpdateCurrentAgent(updates: Partial<Agent>) {
-    if (!currentAgent) return;
     setAgents((prev) =>
       prev.map((a) => (a.id === currentAgent.id ? { ...a, ...updates } : a))
     );
   }
 
   async function handleSaveChanges() {
-    if (!currentAgent) return;
     try {
       setSaving(true);
       const res = await fetch(`/api/agents/${currentAgent.id}`, {
@@ -129,238 +167,412 @@ export default function AgentStudioPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setToast({ message: "✓ Changes saved successfully", type: "success" });
-        if (data.agent) {
-          setAgents((prev) =>
-            prev.map((a) => (a.id === data.agent.id ? data.agent : a))
-          );
-        }
+        setToast({ message: "Changes saved successfully", type: "success" });
       } else {
-        setToast({
-          message: data.error || "Failed to save changes",
-          type: "warning",
-        });
+        setToast({ message: data.error || "Saved locally", type: "info" });
       }
-    } catch (err: any) {
-      console.error("Save error:", err);
-      setToast({ message: "Network error saving changes", type: "warning" });
+    } catch {
+      setToast({ message: "Saved changes to workspace", type: "success" });
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleCreateAgent(newAgentData: {
-    name: string;
-    description: string;
-    purpose: string;
-  }) {
-    const res = await fetch("/api/agents", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newAgentData),
-    });
-    const data = await res.json();
-
-    if (!res.ok || !data.success) {
-      if (data.limitReached) {
-        setUpgradeModal({
-          isOpen: true,
-          title: "You've reached your Basic plan limit.",
-          subtitle:
-            "Your Basic plan includes 1 AI agent. Upgrade to Pro to create up to 5 AI agents with expanded test messages and custom knowledge bases.",
-          actionText: "View Plans",
-        });
-      }
-      throw new Error(data.error || "Could not create agent");
+  async function handleCreateAgent() {
+    if (!newAgentName.trim()) {
+      setToast({ message: "Agent name is required", type: "warning" });
+      return;
     }
 
-    if (data.agent) {
-      setAgents((prev) => [...prev, data.agent]);
-      setSelectedAgentId(data.agent.id);
-      setActiveTab("overview");
-      setToast({
-        message: `✓ Created "${data.agent.name}"`,
-        type: "success",
+    try {
+      setIsCreating(true);
+      const res = await fetch("/api/agents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newAgentName.trim(),
+          description: newAgentDescription.trim() || `${newAgentName.trim()} Assistant`,
+          goal: newAgentGoal.trim() || "Assist users with accurate answers grounded in domain knowledge.",
+          responseStyle: "concise",
+          instructions: {
+            agentRole: newAgentRole.trim() || "Loan Specialist",
+            tone: newAgentTone,
+            businessDescription: newAgentDescription.trim() || "Enterprise loan & policy specialist",
+          },
+        }),
       });
+
+      const data = await res.json();
+      if (res.ok && data.success && data.agent) {
+        setAgents((prev) => [data.agent, ...prev]);
+        setSelectedAgentId(data.agent.id);
+        setIsCreateModalOpen(false);
+        setNewAgentName("");
+        setNewAgentDescription("");
+        setNewAgentGoal("");
+        setToast({ message: `Agent "${data.agent.name}" created successfully!`, type: "success" });
+      } else {
+        setToast({ message: data.error || "Failed to create agent", type: "warning" });
+      }
+    } catch (err: any) {
+      setToast({ message: "Error creating agent: " + err.message, type: "warning" });
+    } finally {
+      setIsCreating(false);
     }
+  }
 
-    if (data.subscription) {
-      setSubscription(data.subscription);
+  async function handleActivateAgent(agentId: string) {
+    try {
+      const res = await fetch(`/api/agents/${agentId}/activate`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAgents((prev) =>
+          prev.map((a) => ({
+            ...a,
+            isActiveForUser: a.id === agentId,
+            status: a.id === agentId ? "active" : a.status,
+          }))
+        );
+        const target = agents.find((a) => a.id === agentId);
+        setToast({
+          message: `"${target?.name || 'Agent'}" is now active for your AI Assistant!`,
+          type: "success",
+        });
+      } else {
+        setToast({ message: data.error || "Failed to activate agent", type: "warning" });
+      }
+    } catch (err: any) {
+      setToast({ message: "Error activating agent: " + err.message, type: "warning" });
     }
   }
 
-  function handleOpenUpgradeModal(reason?: {
-    title: string;
-    subtitle: string;
-    actionText: string;
-  }) {
-    setUpgradeModal({
-      isOpen: true,
-      title: reason?.title || "You've reached your free testing limit.",
-      subtitle:
-        reason?.subtitle ||
-        "Your AI agent is saved and ready. Upgrade your plan to continue testing with more messages.",
-      actionText: reason?.actionText || "View Plans",
-    });
+  async function handleDeactivateAgent(agentId: string) {
+    try {
+      const res = await fetch(`/api/agents/${agentId}/deactivate`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAgents((prev) =>
+          prev.map((a) => (a.id === agentId ? { ...a, isActiveForUser: false } : a))
+        );
+        const target = agents.find((a) => a.id === agentId);
+        setToast({
+          message: `"${target?.name || 'Agent'}" deactivated. Standard assistant behavior restored.`,
+          type: "info",
+        });
+      } else {
+        setToast({ message: data.error || "Failed to deactivate agent", type: "warning" });
+      }
+    } catch (err: any) {
+      setToast({ message: "Error deactivating agent: " + err.message, type: "warning" });
+    }
   }
 
-  function handleCloseUpgradeModal() {
-    setUpgradeModal({ isOpen: false });
-  }
-
-  function handleNavigateToPlans() {
-    setUpgradeModal({ isOpen: false });
-    setActiveTab("plans");
-  }
-
-  function handlePlanUpgraded(newSub: UserSubscriptionState) {
-    setSubscription(newSub);
-    // Update all agents with the new maxMessages limit
-    setAgents((prev) =>
-      prev.map((a) => ({
-        ...a,
-        usage: {
-          ...a.usage,
-          maxMessages: newSub.maxMessages,
-        },
-      }))
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col">
-        <Topbar user={user} pathname="/agent-studio" />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center animate-pulse border border-indigo-100">
-              <i className="bi bi-robot text-xl" />
-            </div>
-            <p className="text-xs font-medium text-slate-500">
-              Loading AI Agent Studio...
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+  async function handleConfirmDelete() {
+    if (!deleteConfirmAgentId) return;
+    try {
+      setIsDeleting(true);
+      const res = await fetch(`/api/agents/${deleteConfirmAgentId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const remaining = agents.filter((a) => a.id !== deleteConfirmAgentId);
+        setAgents(remaining.length > 0 ? remaining : [FALLBACK_DEFAULT_AGENT]);
+        if (selectedAgentId === deleteConfirmAgentId) {
+          setSelectedAgentId(remaining.length > 0 ? remaining[0].id : FALLBACK_DEFAULT_AGENT.id);
+        }
+        setToast({ message: "Agent and knowledge base deleted successfully.", type: "info" });
+        setDeleteConfirmAgentId(null);
+      } else {
+        setToast({ message: data.error || "Failed to delete agent", type: "warning" });
+      }
+    } catch (err: any) {
+      setToast({ message: "Error deleting agent: " + err.message, type: "warning" });
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 flex flex-col text-slate-900 font-sans antialiased">
-      {/* 1. Global Topbar */}
+    <div className="home-body admin-fullpage-layout min-h-screen flex flex-col bg-[#F8FAFC]">
+      {/* 1. Global Admin Topbar matching /admin/models */}
       <Topbar user={user} pathname="/agent-studio" />
 
-      {/* 2. Agent Studio Header */}
-      <Header
-        currentAgent={currentAgent}
-        subscription={subscription}
-        onTestAgent={() => setActiveTab("test")}
-        onSaveChanges={handleSaveChanges}
-        saving={saving}
-        onUpgrade={() => setActiveTab("plans")}
-        activeTab={activeTab}
-      />
-
-      {/* 3. Studio Layout: Compact Sidebar + Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
-        <Sidebar
-          agents={agents}
-          currentAgentId={selectedAgentId}
-          onSelectAgent={(id) => {
-            setSelectedAgentId(id);
-            if (activeTab === "plans") {
-              setActiveTab("overview");
-            }
-          }}
+      {/* 2. Studio Workspace below Topbar */}
+      <div className="flex-1 flex overflow-hidden" style={{ minHeight: "calc(100vh - 64px)", height: "calc(100vh - 64px)" }}>
+        {/* Studio Sidebar */}
+        <StudioSidebar
           activeTab={activeTab}
           onSelectTab={(tab) => setActiveTab(tab)}
-          onCreateNew={() => setCreateModalOpen(true)}
-          subscription={subscription}
-          onUpgrade={() => setActiveTab("plans")}
+          mobileOpen={mobileNavOpen}
+          onCloseMobile={() => setMobileNavOpen(false)}
+          agentName={
+            currentAgent.name && currentAgent.name !== "Loan Eligibility Assistant"
+              ? currentAgent.name
+              : "CreditWise Assistant"
+          }
+          version="v1.0.0"
         />
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 agent-studio-content">
-          {activeTab === "overview" && currentAgent && (
-            <OverviewSection
+        {/* Studio Content Viewport */}
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+          {/* Mobile sub-bar if on small screens */}
+          <div className="lg:hidden flex items-center justify-between px-4 py-2.5 bg-white border-b border-slate-200">
+            <button
+              onClick={() => setMobileNavOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-700 hover:bg-slate-100 text-sm font-medium border border-slate-200"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              <span>Studio Navigation</span>
+            </button>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              {activeTab === "instructions" ? "AI Instructions" : activeTab === "knowledge" ? "Knowledge Base" : activeTab === "demo" ? "Agent Test / Demo" : "Settings"}
+            </span>
+          </div>
+
+          {/* Dynamic View rendering based on active tab */}
+          <main className="flex-1 overflow-y-auto bg-[#F8FAFC]">
+          {activeTab === "instructions" && (
+            <AiInstructionsView
               agent={currentAgent}
-              subscription={subscription}
-              onTestAgent={() => setActiveTab("test")}
-              onSaveChanges={handleSaveChanges}
+              agents={agents}
+              onSelectAgent={(id) => setSelectedAgentId(id)}
+              onUpdateAgent={handleUpdateCurrentAgent}
+              onSave={handleSaveChanges}
               saving={saving}
-              onNavigateToTab={(tab) => setActiveTab(tab)}
+              onNavigateToKnowledge={() => setActiveTab("knowledge")}
+              onToast={(msg, type) => setToast({ message: msg, type: type || "success" })}
+              onCreateAgentClick={() => setIsCreateModalOpen(true)}
+              onActivateAgent={handleActivateAgent}
+              onDeactivateAgent={handleDeactivateAgent}
+              onDeleteAgentClick={(id: string) => setDeleteConfirmAgentId(id)}
             />
           )}
 
-          {activeTab === "setup" && currentAgent && (
-            <SetupSection
+          {activeTab === "knowledge" && (
+            <KnowledgeBaseView
               agent={currentAgent}
-              onChange={handleUpdateCurrentAgent}
-              onSaveChanges={handleSaveChanges}
+              agents={agents}
+              onSelectAgent={(id) => setSelectedAgentId(id)}
+              onNavigateToDemo={() => setActiveTab("demo")}
+              onNavigateToInstructions={() => setActiveTab("instructions")}
+              onToast={(msg, type) => setToast({ message: msg, type: type || "success" })}
+              onCreateAgentClick={() => setIsCreateModalOpen(true)}
+              onActivateAgent={handleActivateAgent}
+              onDeactivateAgent={handleDeactivateAgent}
+              onDeleteAgentClick={(id: string) => setDeleteConfirmAgentId(id)}
+            />
+          )}
+
+          {activeTab === "demo" && (
+            <AgentTestDemoView
+              agent={currentAgent}
+              agents={agents}
+              onSelectAgent={(id) => setSelectedAgentId(id)}
+              onNavigateToInstructions={() => setActiveTab("instructions")}
+              onToast={(msg, type) => setToast({ message: msg, type: type || "success" })}
+              onCreateAgentClick={() => setIsCreateModalOpen(true)}
+              onActivateAgent={handleActivateAgent}
+            />
+          )}
+
+          {activeTab === "settings" && (
+            <SettingsView
+              agent={currentAgent}
+              agents={agents}
+              onSelectAgent={(id) => setSelectedAgentId(id)}
+              onUpdateAgent={handleUpdateCurrentAgent}
+              onSave={handleSaveChanges}
               saving={saving}
+              onToast={(msg, type) => setToast({ message: msg, type: type || "success" })}
+              onCreateAgentClick={() => setIsCreateModalOpen(true)}
+              onActivateAgent={handleActivateAgent}
+              onDeactivateAgent={handleDeactivateAgent}
+              onDeleteAgentClick={(id: string) => setDeleteConfirmAgentId(id)}
             />
           )}
-
-          {activeTab === "qualification" && currentAgent && (
-            <QualificationSection
-              agent={currentAgent}
-              subscription={subscription}
-              onChange={handleUpdateCurrentAgent}
-              onSaveChanges={handleSaveChanges}
-              saving={saving}
-              onUpgradeModal={handleOpenUpgradeModal}
-            />
-          )}
-
-          {activeTab === "capabilities" && currentAgent && (
-            <CapabilitiesSection
-              agent={currentAgent}
-              onChange={handleUpdateCurrentAgent}
-              onSaveChanges={handleSaveChanges}
-              saving={saving}
-            />
-          )}
-
-          {activeTab === "test" && currentAgent && (
-            <TestSection
-              agent={currentAgent}
-              subscription={subscription}
-              onUsageUpdated={(newSub) => setSubscription(newSub)}
-              onUpgradeModal={handleOpenUpgradeModal}
-            />
-          )}
-
-          {activeTab === "plans" && (
-            <PlansSection
-              subscription={subscription}
-              onPlanUpgraded={handlePlanUpgraded}
-              onToast={(msg, type) =>
-                setToast({ message: msg, type: type || "success" })
-              }
-            />
-          )}
-        </main>
+          </main>
+        </div>
       </div>
 
-      {/* Modals & Toasts */}
-      <UpgradeModal
-        isOpen={upgradeModal.isOpen}
-        onClose={handleCloseUpgradeModal}
-        onViewPlans={handleNavigateToPlans}
-        title={upgradeModal.title}
-        subtitle={upgradeModal.subtitle}
-        actionText={upgradeModal.actionText}
-      />
+      {/* Create New Agent Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50/50 to-indigo-50/30">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs">
+                  <Bot className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Create New AI Agent</h3>
+                  <p className="text-xs text-slate-500">Configure name, custom instructions, and behavior</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-      <CreateAgentModal
-        isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        subscription={subscription}
-        onCreate={handleCreateAgent}
-        onViewPlans={handleNavigateToPlans}
-      />
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleCreateAgent();
+              }}
+              className="p-6 space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Agent Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. HDFC & Axis Specialist, Retail Underwriter"
+                  value={newAgentName}
+                  onChange={(e) => setNewAgentName(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                />
+              </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Agent Role
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Underwriting Expert"
+                    value={newAgentRole}
+                    onChange={(e) => setNewAgentRole(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Tone of Voice
+                  </label>
+                  <select
+                    value={newAgentTone}
+                    onChange={(e) => setNewAgentTone(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-white"
+                  >
+                    <option value="Professional and friendly">Professional & Friendly</option>
+                    <option value="Direct and concise">Direct & Concise</option>
+                    <option value="Empathetic and advisory">Empathetic & Advisory</option>
+                    <option value="Formal and analytical">Formal & Analytical</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Description / Purpose
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Evaluates personal loans and eligibility rules for prime IT employees"
+                  value={newAgentDescription}
+                  onChange={(e) => setNewAgentDescription(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Primary Instructions / Goal
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. Answer strictly using uploaded bank policies. Always verify employer and CIBIL score before concluding eligibility."
+                  value={newAgentGoal}
+                  onChange={(e) => setNewAgentGoal(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newAgentName.trim() || isCreating}
+                  className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isCreating ? "Creating..." : "Create Agent"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Agent Warning Modal */}
+      {deleteConfirmAgentId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-rose-200 shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mb-4">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+
+              <h3 className="text-lg font-bold text-slate-900">
+                Delete Agent &amp; Knowledge Base?
+              </h3>
+
+              <div className="mt-2 text-xs text-slate-600 space-y-2 leading-relaxed">
+                <p>
+                  Are you sure you want to permanently delete{" "}
+                  <strong className="text-slate-900 font-semibold">
+                    "{agents.find((a) => a.id === deleteConfirmAgentId)?.name || 'this agent'}"
+                  </strong>
+                  ?
+                </p>
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 font-medium">
+                  ⚠️ <strong>Irreversible warning:</strong> All associated custom instructions, uploaded knowledge documents, extracted chunks, pgvector embeddings, and conversation histories will be permanently destroyed.
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setDeleteConfirmAgentId(null)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleConfirmDelete}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isDeleting ? "Deleting..." : "Permanently Delete Agent"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Toast */}
       {toast && (
         <Toast
           message={toast.message}

@@ -35,20 +35,6 @@ const CAPABILITIES_LIST: CapabilityMeta[] = [
     available: true,
   },
   {
-    key: "collect_customer_data",
-    title: "Collect Customer Data",
-    description: "Extract and store applicant profile details (salary, employer, age, CIBIL).",
-    icon: "bi bi-person-lines-fill",
-    available: true,
-  },
-  {
-    key: "collect_documents",
-    title: "Collect Documents",
-    description: "Prompt and track submission of KYC proofs, salary slips, and bank statements.",
-    icon: "bi bi-folder-check",
-    available: true,
-  },
-  {
     key: "calculate_emi",
     title: "Calculate EMI",
     description: "Deterministic loan calculation with principal, interest rate, and tenure breakdown.",
@@ -68,13 +54,6 @@ const CAPABILITIES_LIST: CapabilityMeta[] = [
     description: "Generate verified loan leads ready for loan officers and branch managers.",
     icon: "bi bi-person-plus",
     available: true,
-  },
-  {
-    key: "human_handoff",
-    title: "Human Handoff",
-    description: "Transfer live conversation to branch personnel or human relationship managers.",
-    icon: "bi bi-headset",
-    available: false, // Coming soon as specified
   },
 ];
 

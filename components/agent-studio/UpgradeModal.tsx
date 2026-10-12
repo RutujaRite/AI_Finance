@@ -40,7 +40,7 @@ export default function UpgradeModal({
         </button>
 
         {/* Soft Icon Badge */}
-        <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4 border border-purple-100">
+        <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 border border-blue-100">
           <i className="bi bi-stars text-xl" />
         </div>
 
@@ -59,7 +59,7 @@ export default function UpgradeModal({
               onClose();
               onViewPlans();
             }}
-            className="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl transition shadow-sm hover:shadow"
+            className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl transition shadow-sm hover:shadow"
           >
             {actionText}
           </button>

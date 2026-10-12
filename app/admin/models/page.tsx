@@ -97,7 +97,7 @@ export default function AiModelsManagementPage() {
     try {
       const res = await fetch("/api/auth/verify", { credentials: "include" });
       if (!res.ok) {
-        router.replace("/login");
+        router.replace("/?auth=login&from=/admin/models");
         return;
       }
       const data = await res.json();
@@ -115,10 +115,10 @@ export default function AiModelsManagementPage() {
         }
         setUser(data.user);
       } else {
-        router.replace("/login");
+        router.replace("/?auth=login&from=/admin/models");
       }
     } catch {
-      router.replace("/login");
+      router.replace("/?auth=login&from=/admin/models");
     }
   }
 
@@ -128,7 +128,7 @@ export default function AiModelsManagementPage() {
       const res = await fetch("/api/admin/models", { credentials: "include" });
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
-          router.replace("/login");
+          router.replace("/?auth=login&from=/admin/models");
           return;
         }
         throw new Error(`HTTP ${res.status}`);
@@ -471,8 +471,8 @@ export default function AiModelsManagementPage() {
                 alignItems: "center",
                 gap: "0.45rem",
                 height: "38px",
-                background: "#0d9488",
-                borderColor: "#0d9488",
+                background: "var(--color-primary-blue, #2563eb)",
+                borderColor: "var(--color-primary-blue, #2563eb)",
                 color: "#ffffff",
                 fontWeight: 600,
                 padding: "0 16px",

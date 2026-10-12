@@ -23,6 +23,31 @@ export async function POST(req: NextRequest) {
       [email]
     )
     if (res.rowCount === 0) {
+      if (email === 'user@gmail.com' && (password === '12345' || password === '1234')) {
+        const hashed = await bcrypt.hash('12345', 10)
+        const insertRes = await client.query(
+          'INSERT INTO users (email, password, name, role) VALUES ($1, $2, $3, $4) RETURNING id, email, password, name, role',
+          ['user@gmail.com', hashed, 'Alex Morgan', 'user']
+        )
+        const demoUser = insertRes.rows[0]
+        const token = signToken({
+          id: demoUser.id,
+          email: demoUser.email,
+          name: demoUser.name,
+          role: 'user',
+        })
+        const response = NextResponse.json({
+          success: true,
+          user: { id: demoUser.id, email: demoUser.email, name: demoUser.name, role: 'user' },
+        })
+        response.cookies.set('token', token, {
+          httpOnly: true,
+          path: '/',
+          maxAge: 60 * 60 * 24,
+          sameSite: 'lax',
+        })
+        return response
+      }
       return NextResponse.json({ success: false, error: 'Invalid email or password' }, { status: 401 })
     }
 
@@ -34,8 +59,8 @@ export async function POST(req: NextRequest) {
     if (!valid && user.password === password) {
       valid = true
     }
-    // Support demo passwords for admin@gmail.com (12345 or 1234)
-    if (!valid && user.email === 'admin@gmail.com' && (password === '12345' || password === '1234' || password === 'newpass123')) {
+    // Support demo passwords for admin@gmail.com and user@gmail.com
+    if (!valid && (user.email === 'admin@gmail.com' || user.email === 'user@gmail.com') && (password === '12345' || password === '1234' || password === 'newpass123')) {
       valid = true
     }
     if (!valid) {

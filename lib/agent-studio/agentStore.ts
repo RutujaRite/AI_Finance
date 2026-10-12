@@ -24,6 +24,17 @@ function initializeDefaultAgents(): Map<string, Agent> {
       conversations: true,
       campaigns: false,
     },
+    operationalMode: "standard",
+    goal: "Help users check loan eligibility using the configured bank knowledge, ask only for required missing information, and provide clear eligibility results.",
+    guardrailTemplates: [
+      "No Hallucination",
+      "Knowledge Accuracy",
+      "Financial Information Safety",
+      "Privacy Protection",
+      "Strict Knowledge Usage",
+      "Professional Behaviour",
+    ],
+    manualGuardrails: "Never invent eligibility criteria or interest rates. Never offer binding loan approvals without official verification.",
     instructions: {
       businessDescription: "Leading financial marketplace partner helping retail and corporate applicants compare loan eligibility, calculate EMIs, and understand official bank policies.",
       agentRole: "Senior Loan & Credit Advisory Specialist",
@@ -32,6 +43,43 @@ function initializeDefaultAgents(): Map<string, Agent> {
       additionalInstructions: "Verify loan type first. Guide customers through KYC documents, CIBIL requirements, and repayment tenures clearly without rigid forms.",
       advancedPrompt: "Base bank policy responses strictly on verified knowledge and partner bank rules.",
       temperature: 0.6,
+      knowledgeInstructions: {
+        groundingPolicy: "strict",
+        requireCitations: true,
+        fallbackMessage: "I could not find this specific policy in the verified documents. Please allow me to connect you with an authorized loan officer.",
+        customKnowledgePrompt: "Ground all interest rates, tenures, and eligibility thresholds strictly on uploaded partner bank policy documents.",
+      },
+      guardrails: {
+        preventHallucinations: true,
+        piiProtection: true,
+        financialDisclaimer: true,
+        regulatoryCompliance: true,
+        restrictOutOfScope: true,
+        customGuardrails: "Never offer binding loan approvals or guarantee interest rate reductions without official underwriter verification.",
+      },
+    },
+    generalInstructions: {
+      role: "You are a helpful financial assistant.",
+      goal: "Help users understand loan eligibility, company policies, and financial processes.",
+      behaviour: [
+        "Be accurate",
+        "Be conversational",
+        "Be concise",
+        "Ask only necessary questions",
+        "Do not repeatedly ask the same question",
+        "Maintain relevant conversation context",
+      ],
+      customRules: "Verify loan type first. Guide customers through KYC documents, CIBIL requirements, and repayment tenures clearly without rigid forms.",
+    },
+    allowGeneralKnowledge: true,
+    globalGuardrails: {
+      neverFalseInfo: true,
+      protectSystemPrompt: true,
+      preventHallucinations: true,
+      askMissingInfo: true,
+      noDuplicateQuestions: true,
+      stayWithinCapabilities: true,
+      customGuardrails: "Never offer binding loan approvals or guarantee interest rate reductions without official underwriter verification.",
     },
     welcomeMessage: {
       enabled: true,
@@ -70,12 +118,9 @@ function initializeDefaultAgents(): Map<string, Agent> {
     capabilities: {
       answer_questions: true,
       search_knowledge: true,
-      collect_customer_data: true,
-      collect_documents: true,
       calculate_emi: true,
       check_eligibility: true,
       create_lead: true,
-      human_handoff: false, // Coming soon
     },
     usage: {
       messagesUsed: 7,
@@ -86,62 +131,7 @@ function initializeDefaultAgents(): Map<string, Agent> {
     updatedAt: new Date().toISOString(),
   };
 
-  const customerSupport: Agent = {
-    id: "agent_customer_support",
-    name: "Customer Support",
-    description: "Help customers with product questions, portal access, and general inquiries.",
-    status: "draft",
-    responseStyle: "concise",
-    modes: {
-      aiAgentMode: true,
-      conversations: true,
-      campaigns: false,
-    },
-    instructions: {
-      businessDescription: "CreditWise AI customer assistance hub.",
-      agentRole: "Customer Care Specialist",
-      tone: "Helpful, quick, friendly",
-      escalationRules: "Escalate account locks or billing questions to support@creditwise.ai",
-      additionalInstructions: "Keep answers to under 3 sentences unless detailed steps are requested.",
-      temperature: 0.5,
-    },
-    welcomeMessage: {
-      enabled: true,
-      text: "Hello! How can our customer support team assist you today?",
-      attachments: [],
-    },
-    qualification: {
-      leadFields: [
-        { id: "cs1", name: "Customer Name", key: "customerName", enabled: true, required: true },
-        { id: "cs2", name: "Email Address", key: "email", enabled: true, required: true },
-        { id: "cs3", name: "Issue Category", key: "category", enabled: true, required: false },
-      ],
-      documentCollection: [
-        { id: "csd1", name: "Screenshot of issue", required: false },
-      ],
-    },
-    knowledge: [],
-    capabilities: {
-      answer_questions: true,
-      search_knowledge: false,
-      collect_customer_data: true,
-      collect_documents: false,
-      calculate_emi: false,
-      check_eligibility: false,
-      create_lead: true,
-      human_handoff: false,
-    },
-    usage: {
-      messagesUsed: 0,
-      maxMessages: 10,
-      knowledgeTokens: 0,
-    },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
   map.set(loanAssistant.id, loanAssistant);
-  map.set(customerSupport.id, customerSupport);
   return map;
 }
 
@@ -209,6 +199,17 @@ export function createAgent(data: {
       conversations: true,
       campaigns: false,
     },
+    operationalMode: "standard",
+    goal: data.purpose || "Help users check loan eligibility using the configured bank knowledge, ask only for required missing information, and provide clear eligibility results.",
+    guardrailTemplates: [
+      "No Hallucination",
+      "Knowledge Accuracy",
+      "Financial Information Safety",
+      "Privacy Protection",
+      "Strict Knowledge Usage",
+      "Professional Behaviour",
+    ],
+    manualGuardrails: "",
     instructions: {
       businessDescription: data.purpose || "Customer support and domain assistance.",
       agentRole: `${data.name} Specialist`,
@@ -216,6 +217,43 @@ export function createAgent(data: {
       escalationRules: "Direct complex requests to a team supervisor.",
       additionalInstructions: "Answer questions clearly and helpfully.",
       temperature: 0.6,
+      knowledgeInstructions: {
+        groundingPolicy: "standard",
+        requireCitations: true,
+        fallbackMessage: "I do not have that specific detail in my knowledge documents. Let me connect you with a representative.",
+        customKnowledgePrompt: "",
+      },
+      guardrails: {
+        preventHallucinations: true,
+        piiProtection: true,
+        financialDisclaimer: true,
+        regulatoryCompliance: true,
+        restrictOutOfScope: true,
+        customGuardrails: "",
+      },
+    },
+    generalInstructions: {
+      role: `${data.name} Specialist`,
+      goal: data.purpose || "Customer support and domain assistance.",
+      behaviour: [
+        "Be accurate",
+        "Be conversational",
+        "Be concise",
+        "Ask only necessary questions",
+        "Do not repeatedly ask the same question",
+        "Maintain relevant conversation context",
+      ],
+      customRules: "Answer questions clearly and helpfully.",
+    },
+    allowGeneralKnowledge: true,
+    globalGuardrails: {
+      neverFalseInfo: true,
+      protectSystemPrompt: true,
+      preventHallucinations: true,
+      askMissingInfo: true,
+      noDuplicateQuestions: true,
+      stayWithinCapabilities: true,
+      customGuardrails: "",
     },
     welcomeMessage: {
       enabled: true,
@@ -233,12 +271,9 @@ export function createAgent(data: {
     capabilities: {
       answer_questions: true,
       search_knowledge: false,
-      collect_customer_data: true,
-      collect_documents: false,
       calculate_emi: false,
       check_eligibility: false,
       create_lead: false,
-      human_handoff: false,
     },
     usage: {
       messagesUsed: 0,
@@ -272,12 +307,9 @@ export function updateAgent(id: string, updates: Partial<Agent>): Agent | null {
 
 export function deleteAgent(id: string): { success: boolean; error?: string } {
   const store = getStore();
-  if (id === "agent_loan_assistant") {
-    return { success: false, error: "The default Loan Assistant cannot be deleted." };
-  }
-  const deleted = store.agents.delete(id);
+  store.agents.delete(id);
   store.subscription.agentsCount = store.agents.size;
-  return { success: deleted };
+  return { success: true };
 }
 
 export function getUserSubscription(): UserSubscriptionState {
@@ -318,6 +350,15 @@ export function resetStore(): UserSubscriptionState {
       },
     },
   };
+  return getUserSubscription();
+}
+
+export function resetUsage(): UserSubscriptionState {
+  const store = getStore();
+  store.subscription.messagesUsed = 0;
+  for (const agent of store.agents.values()) {
+    agent.usage.messagesUsed = 0;
+  }
   return getUserSubscription();
 }
 

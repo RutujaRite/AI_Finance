@@ -6,17 +6,38 @@ import {
   deleteAgent,
   getUserSubscription,
 } from "@/lib/agent-studio/agentStore";
+import {
+  syncAgentToDb,
+  deleteAgentFromDb,
+  getAgentFromDb,
+  setUserActiveAgent,
+  clearUserActiveAgent,
+} from "@/lib/agent-studio/dbStore";
+import pool from "@/lib/db";
+import { verifyToken } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function getUserId(req: NextRequest): number | undefined {
+  try {
+    const token = req.cookies.get("token")?.value;
+    const payload: any = token ? verifyToken(token) : null;
+    if (payload?.id && Number.isFinite(Number(payload.id))) {
+      return Number(payload.id);
+    }
+  } catch {}
+  return undefined;
+}
+
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const agent = getAgent(id);
+    const userId = getUserId(req);
+    const agent = (await getAgentFromDb(id, userId)) || getAgent(id);
     if (!agent) {
       return NextResponse.json(
         { success: false, error: "Agent not found" },
@@ -39,17 +60,40 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const userId = getUserId(req);
     const body = await req.json();
+
+    if (body.status === "active") {
+      if (userId !== undefined) {
+        await setUserActiveAgent(userId, id);
+      }
+      try {
+        await pool.query(`UPDATE agents SET status = 'draft' WHERE id != $1`, [id]);
+      } catch (statusErr) {
+        console.warn("[DEACTIVATE_OTHER_AGENTS_WARN]", statusErr);
+      }
+    } else if (body.status === "draft" || body.status === "deactivated") {
+      if (userId !== undefined) {
+        await clearUserActiveAgent(userId);
+      }
+    }
+
     const updated = updateAgent(id, body);
     if (!updated) {
       return NextResponse.json(
         { success: false, error: "Agent not found or could not be updated" },
         { status: 404 }
       );
+    }
+
+    try {
+      await syncAgentToDb(updated, userId);
+    } catch (syncErr) {
+      console.warn("[SYNC_AGENT_TO_DB_FAIL]", syncErr);
     }
 
     return NextResponse.json({
@@ -68,17 +112,33 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const success = deleteAgent(id);
-    if (!success) {
-      return NextResponse.json(
-        { success: false, error: "Agent not found or cannot delete default agent" },
-        { status: 400 }
-      );
+    const userId = getUserId(req);
+
+    try {
+      const countRes = await pool.query("SELECT COUNT(*) FROM agents");
+      const totalCount = parseInt(countRes.rows[0]?.count || "0", 10);
+      if (totalCount <= 1) {
+        return NextResponse.json(
+          { success: false, error: "At least one AI agent must remain in your workspace." },
+          { status: 400 }
+        );
+      }
+      const deleted = await deleteAgentFromDb(id, userId);
+      if (!deleted) {
+        return NextResponse.json(
+          { success: false, error: "Cannot delete agent: ownership verification failed." },
+          { status: 403 }
+        );
+      }
+    } catch (dbErr) {
+      console.warn("[DELETE_AGENT_FROM_DB_WARN]", dbErr);
     }
+
+    deleteAgent(id);
     return NextResponse.json({
       success: true,
       message: "Agent deleted successfully",

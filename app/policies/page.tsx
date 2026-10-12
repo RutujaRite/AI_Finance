@@ -13,7 +13,7 @@ export default function PoliciesPage() {
       try {
         const res = await fetch("/api/auth/verify", { credentials: "include" })
         if (!res.ok) {
-          router.replace("/login")
+          router.replace("/?auth=login&from=/policies")
           return
         }
         const data = await res.json()
@@ -32,10 +32,10 @@ export default function PoliciesPage() {
           setUser(data.user)
           setAuthorized(true)
         } else {
-          router.replace("/login")
+          router.replace("/?auth=login&from=/policies")
         }
       } catch (e) {
-        router.replace("/login")
+        router.replace("/?auth=login&from=/policies")
       }
     }
     checkAuth()

@@ -1116,7 +1116,7 @@ export async function generatePolicyRagResponse(
     }
   }
 
-  let cleanAnswer = (rawAnswer || "").trim() || "The available policy context does not provide enough information.";
+  let cleanAnswer = (rawAnswer || "").trim() || "The requested information is not specified in the available policy and is unavailable in the stored policy.";
   cleanAnswer = cleanAnswer
     .replace(/\bNOT_DEFINED\b/gi, "Not specified in the available policy.")
     .replace(

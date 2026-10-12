@@ -10,6 +10,7 @@ export * from './eligibilityCheckTool';
 export * from './emiCalculatorTool';
 export * from './policyRagSearchTool';
 export * from './bankManagerSearchTool';
+export * from './externalSearchTool';
 
 import { companySearchTool } from './companySearchTool';
 import { companyDetailsTool } from './companyDetailsTool';
@@ -17,6 +18,7 @@ import { eligibilityCheckTool } from './eligibilityCheckTool';
 import { emiCalculatorTool } from './emiCalculatorTool';
 import { policyRagSearchTool } from './policyRagSearchTool';
 import { bankManagerSearchTool } from './bankManagerSearchTool';
+import { externalSearchTool } from './externalSearchTool';
 import { AgentTool } from './types';
 
 export const agentToolRegistry: Record<string, AgentTool<any, any>> = {
@@ -26,6 +28,7 @@ export const agentToolRegistry: Record<string, AgentTool<any, any>> = {
   emiCalculatorTool,
   policyRagSearchTool,
   bankManagerSearchTool,
+  externalSearchTool,
 };
 
 export async function executeAgentTool<TInput, TOutput>(

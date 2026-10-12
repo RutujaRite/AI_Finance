@@ -97,6 +97,7 @@ import {
 } from "@/lib/dynamicEligibilityEngine";
 import { getConversationContext, safeMergeApplicantProfile } from "@/lib/ai/contextBuilder";
 import { resolveCompanyCategories } from "@/lib/companyCategoryResolver";
+import { generateKnowledgeGroundedReply } from "@/lib/agent-studio/groundedAnswerEngine";
 import {
   classifyIntentWithLLM,
   IntentClassificationResult,
@@ -108,9 +109,15 @@ import {
   normalizeBankName,
   isQuestionMessage,
   isBankComparisonQuery,
+  classifyIntelligentIntent,
+  IntelligentIntentResult,
+  CanonicalIntent,
 } from "@/lib/ai/intentClassifier";
+import { getTokenBudget, pruneHistoryToBudget } from "@/lib/ai/tokenOptimizer";
+import { externalSearchTool } from "@/lib/ai/tools";
+import { validateAgentResponse } from "@/lib/ai/responseValidator";
 import { planResponse, getHumanFieldLabel } from "@/lib/ai/responsePlanner";
-import { normalizeModelSlug } from "@/lib/openrouter";
+import { normalizeModelSlug, simpleOpenRouterChat } from "@/lib/openrouter";
 import { searchIncraax, incraaxSearch, isIncraaxSearchConfigured, fetchLiveCompanyIntelligence } from "@/lib/incraax";
 
 const LLM_TIMEOUT_MS = 25000;
@@ -552,10 +559,12 @@ async function answerBankPolicyWithMasterPolicy(
       `[POLICY-RAG-DEBUG] bank=${policyTarget.bankName} policyFileId=${policyTarget.policyFileId} bankId=${policyTarget.bankId} route=POLICY_RAG retrievedChunks=${ragResult?.retrievedChunks || 0}`
     );
     if (ragResult && ragResult.answer) {
-      // Check if ragResult.answer is an unintended refusal for a general or valid policy query
+      // Check if ragResult.answer is an unintended refusal for a general bank policy overview query
+      const isGeneralOverviewAsk = /^(?:what\s+is\s+(?:the\s+)?(?:policy|loan\s+policy|personal\s+loan\s+policy|eligibility\s+criteria)|explain\s+(?:the\s+)?(?:policy|loan\s+policy)|show\s+(?:the\s+)?policy|overview|summary)\b/i.test(effectiveQuery.trim());
       if (
-        ragResult.answer.includes("The retrieved policy evidence does not specify this requirement.") ||
-        (ragResult.answer.includes("Not specified in the available policy.") && ragResult.answer.length < 250)
+        isGeneralOverviewAsk &&
+        (ragResult.answer.includes("The retrieved policy evidence does not specify this requirement.") ||
+        (ragResult.answer.includes("Not specified in the available policy.") && ragResult.answer.length < 250))
       ) {
         console.warn(`[PolicyRAG] Refusal returned for known bank ${policyTarget.bankName}, evaluating comprehensive fallback.`);
         const specificAns = extractSpecificBankPolicyParameter(policyTarget.bankName, effectiveQuery);
@@ -1577,7 +1586,8 @@ async function generateGreetingWithLLM(
   message: string,
   modelOverride?: string,
   eligibilitySession?: any,
-  currentTime?: string
+  currentTime?: string,
+  configuredSystemPrompt?: string
 ): Promise<string> {
   const currTime = currentTime || new Date().toLocaleString('en-US', {
     timeZone: 'Asia/Kolkata',
@@ -1590,6 +1600,10 @@ async function generateGreetingWithLLM(
     day: 'numeric'
   });
 
+  const isGreetingAgentConfigured =
+    Boolean(configuredSystemPrompt &&
+    (/greeting/i.test(configuredSystemPrompt) || /do not start loan eligibility questions when the user only greets/i.test(configuredSystemPrompt)));
+
   const apiKey = getApiKey();
   if (apiKey) {
     const modelsToTry = [modelOverride, getModel(), "openrouter/free"].filter(Boolean) as string[];
@@ -1600,20 +1614,21 @@ async function generateGreetingWithLLM(
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-        let systemPrompt =
-          `You are CreditWise AI, a helpful, expert financial assistant specializing in personal loan eligibility, EMI calculations, bank loan policies, and branch manager contacts.\n\n` +
-          `### DYNAMIC CONTEXT:\n` +
-          `- Current Local Time: ${currTime}\n\n` +
-          `### BEHAVIOR RULES:\n` +
-          `- TIME AWARENESS: Always use the provided Current Local Time. If the user gives a greeting that contradicts the current time (e.g., saying "Good morning" at 10:45 PM), politely acknowledge the current time in a warm, conversational tone (e.g., "Good evening! It's late night, but I'm here to help you with your loan queries!").\n` +
-          `- NATURAL & ADAPTIVE: Do not act like a rigid step-by-step form or force single-question loops. Converse naturally like ChatGPT while gathering missing information efficiently.\n` +
-          `- ACCURACY: Follow the provided Bank Data, Loan Policy, and Manager Contact records strictly for calculations and recommendations.\n\n` +
-          `Generate a warm, natural, and concise greeting in response to the user's message.\n` +
-          `Briefly and naturally let them know you can help with personal loan eligibility across 20+ partner banks, bank policies, EMI calculations, or financial questions.\n` +
-          `Do NOT use robotic bulleted lists or rigid templates. Keep it conversational, welcoming, and concise (1-3 sentences).\n` +
-          `Never start with internal tokens, and do not repeat canned phrases verbatim.`;
+        let systemPrompt = configuredSystemPrompt
+          ? `${configuredSystemPrompt}\n\n### TASK:\nGenerate a natural, friendly, and concise greeting response to the user's message. Follow all configured instructions and guardrails strictly.`
+          : `You are CreditWise AI, a helpful, expert financial assistant specializing in personal loan eligibility, EMI calculations, bank loan policies, and branch manager contacts.\n\n` +
+            `### DYNAMIC CONTEXT:\n` +
+            `- Current Local Time: ${currTime}\n\n` +
+            `### BEHAVIOR RULES:\n` +
+            `- TIME AWARENESS: Always use the provided Current Local Time. If the user gives a greeting that contradicts the current time (e.g., saying "Good morning" at 10:45 PM), politely acknowledge the current time in a warm, conversational tone (e.g., "Good evening! It's late night, but I'm here to help you with your loan queries!").\n` +
+            `- NATURAL & ADAPTIVE: Do not act like a rigid step-by-step form or force single-question loops. Converse naturally like ChatGPT while gathering missing information efficiently.\n` +
+            `- ACCURACY: Follow the provided Bank Data, Loan Policy, and Manager Contact records strictly for calculations and recommendations.\n\n` +
+            `Generate a warm, natural, and concise greeting in response to the user's message.\n` +
+            `Briefly and naturally let them know you can help with personal loan eligibility across 20+ partner banks, bank policies, EMI calculations, or financial questions.\n` +
+            `Do NOT use robotic bulleted lists or rigid templates. Keep it conversational, welcoming, and concise (1-3 sentences).\n` +
+            `Never start with internal tokens, and do not repeat canned phrases verbatim.`;
 
-        if (eligibilitySession?.applicant?.companyName) {
+        if (!configuredSystemPrompt && eligibilitySession?.applicant?.companyName) {
           systemPrompt += `\nNote: The user currently has an ongoing loan eligibility assessment for ${eligibilitySession.applicant.companyName}. You may naturally mention they can continue or explore anything else.`;
         }
 
@@ -1670,8 +1685,12 @@ async function generateGreetingWithLLM(
   }
 
   const contradiction = getContradictoryTimeGreeting(message, currTime);
-  if (contradiction) {
+  if (contradiction && !isGreetingAgentConfigured) {
     return contradiction;
+  }
+
+  if (isGreetingAgentConfigured) {
+    return "Hello! How can I help you today?";
   }
 
   return (
@@ -2401,7 +2420,8 @@ async function answerGeneralQuestionWithLLM(
   modelOverride?: string,
   conversationHistory?: Array<{ role: string; content: string }>,
   eligibilitySession?: any,
-  isEligibleFlowActive?: boolean
+  isEligibleFlowActive?: boolean,
+  configuredSystemPrompt?: string
 ): Promise<string> {
   const apiKey = getApiKey();
 
@@ -2419,7 +2439,7 @@ async function answerGeneralQuestionWithLLM(
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-        let systemContent =
+        let systemContent = configuredSystemPrompt || (
           "You are CreditWise AI, a friendly and helpful personal loan advisor.\n" +
           "Answer the user's question, doubt, or objection in simple, natural, everyday conversational language using GitHub Markdown.\n\n" +
           "COMMUNICATION STYLE & EXPLANATION GUIDELINES:\n" +
@@ -2432,7 +2452,8 @@ async function answerGeneralQuestionWithLLM(
           "- For Age criteria: Explain that banks look at age (typically 21 to 60) to ensure you have enough working years left before retirement to comfortably repay the loan.\n" +
           "- For Employer / Company: Explain that banks offer better interest rates and higher loan limits to employees of recognized companies on their preferred lists.\n" +
           "- For Personal Loans: Clarify that personal loans are unsecured, meaning you do not need to provide any collateral or security deposit.\n" +
-          "- Do NOT use rigid greeting preambles (such as 'I am CreditWise AI, your banking assistant...'). Go straight to the helpful, natural explanation.";
+          "- Do NOT use rigid greeting preambles (such as 'I am CreditWise AI, your banking assistant...'). Go straight to the helpful, natural explanation."
+        );
 
         if (isEligibleFlowActive && eligibilitySession) {
           const applicant = eligibilitySession.applicant || {};
@@ -3006,7 +3027,10 @@ async function executeLookupMasterPolicy(
   userMessage: string,
   isEligibleFlowActive?: boolean,
   eligibilitySession?: any,
-  modelOverride?: string
+  modelOverride?: string,
+  activeAgent?: any,
+  agentKnowledgeResult?: any,
+  optsSystemPrompt?: string
 ): Promise<AgentResult> {
   // If the query is an across-bank multi-lender eligibility request, route to multi-bank engine
   if (isMultiBankEligibilityQuery(userMessage)) {
@@ -3061,6 +3085,19 @@ async function executeLookupMasterPolicy(
         ? "\n\nWhenever you're ready, we can return to your loan eligibility check."
         : "";
       return { reply: policyResult + suggestion };
+    }
+  }
+
+  // 2b. If requested bank is not in stored partner-bank policies, check if active agent uploaded knowledge covers it
+  if (activeAgent && agentKnowledgeResult?.selectedDocuments?.length > 0) {
+    const activeDocChunks = (agentKnowledgeResult.selectedDocuments || []).flatMap((d: any) => d.chunks || []);
+    const activeDocs = (agentKnowledgeResult.selectedDocuments || []).map((d: any) => d.document);
+    const grounded = generateKnowledgeGroundedReply(userMessage, activeAgent, activeDocs, activeDocChunks);
+    if (grounded.isInScope && grounded.matchedChunks.length > 0) {
+      return {
+        reply: grounded.reply,
+        bankData: { bank_name: candidateBankName || activeAgent.name, source_documents: activeDocs.map((d: any) => d.name) },
+      };
     }
   }
 
@@ -3257,7 +3294,8 @@ async function executeAnswerGeneralQuestion(
   isEligibleFlowActive?: boolean,
   eligibilitySession?: any,
   modelOverride?: string,
-  conversationHistory?: Array<{ role: string; content: string }>
+  conversationHistory?: Array<{ role: string; content: string }>,
+  configuredSystemPrompt?: string
 ): Promise<AgentResult> {
   const subType = args.subType || "GENERAL_FAQ";
   const question = args.question || userMessage;
@@ -3281,7 +3319,9 @@ async function executeAnswerGeneralQuestion(
     const greetingReply = await generateGreetingWithLLM(
       question,
       modelOverride,
-      isEligibleFlowActive ? eligibilitySession : undefined
+      isEligibleFlowActive ? eligibilitySession : undefined,
+      undefined,
+      configuredSystemPrompt
     );
     return { reply: greetingReply };
   }
@@ -3303,7 +3343,8 @@ async function executeAnswerGeneralQuestion(
     modelOverride,
     conversationHistory,
     eligibilitySession,
-    isEligibleFlowActive
+    isEligibleFlowActive,
+    configuredSystemPrompt
   );
 
   const normQ = question.toLowerCase();
@@ -5860,6 +5901,8 @@ export async function runCentralAgent(opts: {
   companySelectionAction?: CompanySelectionAction;
   currentTime?: string;
   systemPrompt?: string;
+  activeAgent?: any;
+  agentKnowledgeResult?: any;
   onToken?: (token: string) => void;
   signal?: AbortSignal;
 }): Promise<AgentResult> {
@@ -5902,9 +5945,11 @@ async function runCentralAgentInternal(opts: {
   companySelectionAction?: CompanySelectionAction;
   currentTime?: string;
   systemPrompt?: string;
+  activeAgent?: any;
+  agentKnowledgeResult?: any;
   onToken?: (token: string) => void;
 }): Promise<AgentResult> {
-  const { message, conversationId, model: requestedModel, companySelectionAction, currentTime: optsCurrentTime, systemPrompt: optsSystemPrompt } = opts;
+  const { message, conversationId, model: requestedModel, companySelectionAction, currentTime: optsCurrentTime, systemPrompt: optsSystemPrompt, activeAgent, agentKnowledgeResult } = opts;
   let { conversationHistory } = opts;
   const rawUserMessage = String(message || (opts as any).userMessage || "").trim();
   // Truncate incoming user messages to a maximum of 2,000 characters (~500 tokens)
@@ -6184,7 +6229,17 @@ async function runCentralAgentInternal(opts: {
     }
 
     const invariant = runInvariantSanityChecks(baseState, res.reply, userMessage);
-    const finalReply = sanitizeConciseResponse(invariant.correctedReply || res.reply);
+    let finalReply = sanitizeConciseResponse(invariant.correctedReply || res.reply);
+
+    // Apply active agent custom rules (e.g. verification seal, mandatory phrase)
+    if (activeAgent) {
+      const customRule = (activeAgent.generalInstructions?.customRules || activeAgent.instructions?.additionalInstructions || "").trim();
+      const codeMatch = customRule.match(/\[([A-Z0-9_\-]+)\]/);
+      if (codeMatch && !finalReply.includes(`[${codeMatch[1]}]`)) {
+        finalReply += `\n\n*Verification Seal: [${codeMatch[1]}]*`;
+      }
+    }
+
     const finalSession = invariant.correctedSession || baseState;
     finalSession.lastAssistantQuestion = finalReply;
 
@@ -6211,18 +6266,496 @@ async function runCentralAgentInternal(opts: {
 
   const normUserMsg = userMessage.toLowerCase().trim();
 
-  // =========================================================================
-  // 0c. Conversational Pleasantry & General Assistance Guard
-  // (e.g., "how are you", "how are u", "what can you do", "what is your role")
-  // =========================================================================
-  if (isHowAreYouQuery(userMessage)) {
-    const howReply = formatHowAreYouResponse(isEligibleFlowActive);
-    return await finalizeAndReturn({ reply: howReply });
+  // Active Agent Knowledge Base Direct Grounding check
+  if (activeAgent && agentKnowledgeResult?.selectedDocuments?.length > 0) {
+    const activeDocChunks = (agentKnowledgeResult.selectedDocuments || []).flatMap((d: any) => d.chunks || []);
+    const activeDocs = (agentKnowledgeResult.selectedDocuments || []).map((d: any) => d.document);
+    if (activeDocChunks.length > 0 && activeDocs.length > 0) {
+      const isMultiBankAsk = isMultiBankEligibilityQuery(userMessage);
+      const isGreetingMsg = isPureGreeting(userMessage) || /^(hello|hi|hey|good\s*(?:morning|afternoon|evening)|namaste)\b/i.test(userMessage.trim());
+      if (!isMultiBankAsk && !isGreetingMsg) {
+        const isDocMentioned = activeDocs.some((d: any) => normUserMsg.includes(d.name.toLowerCase().replace(/\.[a-z0-9]+$/i, "")));
+        const isPolicyTopic = /(?:policy|rule|rates?|lockin|lock-in|prepayment|fee|criteria|guideline|underwriting|terms?|interest)\b/i.test(normUserMsg);
+        if (isDocMentioned || isPolicyTopic || activeAgent.operationalMode === "rag_focused") {
+          const grounded = generateKnowledgeGroundedReply(userMessage, activeAgent, activeDocs, activeDocChunks);
+          if (grounded.isInScope && grounded.matchedChunks.length > 0) {
+            return await finalizeAndReturn({
+              reply: grounded.reply,
+              bankData: { bank_name: activeAgent.name, source_documents: activeDocs.map((d: any) => d.name) },
+            });
+          }
+        }
+      }
+    }
   }
 
-  if (isGeneralAssistanceQuery(userMessage)) {
-    const helpReply = formatGeneralAssistanceResponse(isEligibleFlowActive);
-    return await finalizeAndReturn({ reply: helpReply });
+  // =========================================================================
+  // INTELLIGENT INTENT DETECTION & CONTROLLED TOOL ROUTING LAYER
+  // (Sections 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+  // =========================================================================
+  const intelligentNlu = await classifyIntelligentIntent({
+    userMessage,
+    conversationHistory,
+    existingApplicant: eligibilitySession?.applicant || currentApplicant,
+    previousCalculation: eligibilitySession?.lastEligibilityResult,
+    activeContext: {
+      isFlowActive: isEligibleFlowActive,
+      expectedField: eligibilitySession?.expectedField,
+      selectedBank: eligibilitySession?.selectedBank || eligibilitySession?.lastPolicyBank,
+      lastLocation: eligibilitySession?.city,
+      hasCompletedEvaluation: eligibilitySession?.hasCompletedEvaluation || eligibilitySession?.evaluationCompleted,
+    },
+    requestedModel,
+  });
+
+  // 1. GENERAL_QUERY
+  // Greetings, general educational topics (AI, Java, Python), general financial definitions (compound interest, FOIR, credit score)
+  if (intelligentNlu.intent === "GENERAL_QUERY") {
+    const isGreeting = isPureGreeting(userMessage) || /^(hello|hi|hey|good\s*(?:morning|afternoon|evening)|namaste)\b/i.test(userMessage.trim());
+    if (isGreeting) {
+      const greetingReply = await generateGreetingWithLLM(
+        userMessage,
+        requestedModel,
+        isEligibleFlowActive ? eligibilitySession : undefined,
+        currentTime,
+        optsSystemPrompt
+      );
+      return await finalizeAndReturn({ reply: greetingReply });
+    }
+
+    if (isHowAreYouQuery(userMessage)) {
+      const howReply = formatHowAreYouResponse(isEligibleFlowActive);
+      return await finalizeAndReturn({ reply: howReply });
+    }
+
+    if (isGeneralAssistanceQuery(userMessage)) {
+      const helpReply = formatGeneralAssistanceResponse(isEligibleFlowActive);
+      return await finalizeAndReturn({ reply: helpReply });
+    }
+
+    // Direct LLM call with token budget — NO policy RAG, NO company search, NO manager lookup
+    const budget = getTokenBudget("GENERAL_QUERY");
+    const prunedHistory = pruneHistoryToBudget(conversationHistory || [], budget.maxInputTokens || budget.inputMaxTokens);
+    const messages = [
+      {
+        role: "system" as const,
+        content: optsSystemPrompt || "You are CreditWise AI, a helpful, intelligent assistant. Directly answer the user's question clearly, concisely, and accurately. Do not invent bank rules or force the user into loan application flows unless they ask about personal loans.",
+      },
+      ...prunedHistory.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+      { role: "user" as const, content: userMessage },
+    ];
+
+    let llmResponse = "";
+    try {
+      llmResponse = await simpleOpenRouterChat(
+        messages,
+        requestedModel,
+        {
+          max_tokens: budget.maxOutputTokens || budget.outputMaxTokens,
+        }
+      );
+    } catch (err: any) {
+      console.warn("Direct LLM call failed, falling back to executeAnswerGeneralQuestion:", err?.message || err);
+      if (activeAgent && agentKnowledgeResult?.selectedDocuments?.length > 0) {
+        const activeDocChunks = (agentKnowledgeResult.selectedDocuments || []).flatMap((d: any) => d.chunks || []);
+        const activeDocs = (agentKnowledgeResult.selectedDocuments || []).map((d: any) => d.document);
+        const grounded = generateKnowledgeGroundedReply(userMessage, activeAgent, activeDocs, activeDocChunks);
+        if (grounded.isInScope && grounded.matchedChunks.length > 0) {
+          llmResponse = grounded.reply;
+        }
+      }
+      if (!llmResponse) {
+        const fallbackAns = await executeAnswerGeneralQuestion(
+          { question: userMessage },
+          userMessage,
+          conversationId,
+          isEligibleFlowActive,
+          eligibilitySession,
+          requestedModel,
+          conversationHistory,
+          optsSystemPrompt
+        );
+        llmResponse = fallbackAns.reply;
+      }
+    }
+
+    const validated = validateAgentResponse({
+      intent: "GENERAL_QUERY",
+      userMessage,
+      response: llmResponse,
+    });
+    return await finalizeAndReturn({ reply: validated.validatedResponse || llmResponse });
+  }
+
+  // 2. EXTERNAL_INFORMATION_QUERY
+  // Current regulatory updates, latest RBI guidelines, recent repo rate
+  if (intelligentNlu.intent === "EXTERNAL_INFORMATION_QUERY") {
+    const budget = getTokenBudget("EXTERNAL_INFORMATION_QUERY");
+    const searchRes = await externalSearchTool.execute({ query: userMessage });
+    let summaryReply = "";
+    if (searchRes.success && searchRes.data?.results?.length) {
+      const sourcesText = searchRes.data.results
+        .slice(0, 4)
+        .map((r, i) => `${i + 1}. [${r.title}](${r.url}): ${r.snippet}`)
+        .join("\n\n");
+      const messages = [
+        {
+          role: "system" as const,
+          content: "You are CreditWise AI. Summarize current financial and regulatory news accurately using only the verified search results provided. Do not hallucinate.",
+        },
+        {
+          role: "user" as const,
+          content: `Search Results:\n${sourcesText}\n\nUser Question: ${userMessage}\n\nPlease summarize the key facts, dates, and regulations directly from these verified sources. Cite sources clearly and never invent facts.`,
+        },
+      ];
+      try {
+        summaryReply = await simpleOpenRouterChat(
+          messages,
+          requestedModel,
+          { max_tokens: budget.maxOutputTokens || budget.outputMaxTokens }
+        );
+      } catch {
+        summaryReply = `Here are the latest external search results:\n\n${sourcesText}`;
+      }
+    } else {
+      summaryReply = "Current external search results could not be retrieved at this time. For official bank policies and loan criteria, I can provide details from our stored partner bank policies.";
+    }
+
+    const validated = validateAgentResponse({
+      intent: "EXTERNAL_INFORMATION_QUERY",
+      userMessage,
+      response: summaryReply,
+      searchSources: searchRes.data?.sources,
+    });
+    return await finalizeAndReturn({ reply: validated.validatedResponse || summaryReply });
+  }
+
+  // 3. BANK_POLICY_QUERY
+  // Stored policy rules, minimum CIBIL, salary cutoffs, documents required for a bank
+  if (intelligentNlu.intent === "BANK_POLICY_QUERY") {
+    const targetBank =
+      intelligentNlu.targetBank ||
+      eligibilitySession?.lastPolicyBank ||
+      eligibilitySession?.selectedBank ||
+      eligibilitySession?.chosenBank ||
+      "";
+    const policyResult = await executeLookupMasterPolicy(
+      { bankName: targetBank, questionTopic: userMessage },
+      userMessage,
+      isEligibleFlowActive,
+      eligibilitySession,
+      requestedModel,
+      activeAgent,
+      agentKnowledgeResult,
+      optsSystemPrompt
+    );
+    const validated = validateAgentResponse({
+      intent: "BANK_POLICY_QUERY",
+      userMessage,
+      response: policyResult.reply,
+      bankName: targetBank,
+      retrievedPolicyChunks: policyResult.bankData ? [policyResult.bankData] : undefined,
+    });
+    return await finalizeAndReturn(
+      { ...policyResult, reply: validated.validatedResponse || policyResult.reply },
+      { lastPolicyBank: targetBank }
+    );
+  }
+
+  // 4. LOAN_TYPE_OR_LOAN_PROCESS_QUERY
+  if (intelligentNlu.intent === "LOAN_TYPE_OR_LOAN_PROCESS_QUERY") {
+    if (intelligentNlu.targetBank) {
+      const policyResult = await executeLookupMasterPolicy(
+        { bankName: intelligentNlu.targetBank, questionTopic: userMessage },
+        userMessage,
+        isEligibleFlowActive,
+        eligibilitySession,
+        requestedModel,
+        activeAgent,
+        agentKnowledgeResult,
+        optsSystemPrompt
+      );
+      return await finalizeAndReturn(policyResult);
+    } else {
+      const budget = getTokenBudget("LOAN_TYPE_OR_LOAN_PROCESS_QUERY");
+      const messages = [
+        {
+          role: "system" as const,
+          content: optsSystemPrompt || "You are CreditWise AI. Clearly explain the loan type, mechanism, or standard application procedure concisely and professionally.",
+        },
+        ...(conversationHistory || []).slice(-6).map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+        { role: "user" as const, content: userMessage },
+      ];
+      let processReply = "";
+      try {
+        processReply = await simpleOpenRouterChat(
+          messages,
+          requestedModel,
+          { max_tokens: budget.maxOutputTokens || budget.outputMaxTokens }
+        );
+      } catch {
+        processReply = "Personal loans are unsecured credit products evaluated based on monthly salary, CIBIL score (typically 650-750+), and employer category. Applications typically involve KYC verification, bank statement analysis, and income verification.";
+      }
+      return await finalizeAndReturn({ reply: processReply });
+    }
+  }
+
+  // 5. COMPANY_SEARCH_OR_VERIFICATION
+  // Searches PostgreSQL bank_company_data for authoritative category without touching policy RAG!
+  if (intelligentNlu.intent === "COMPANY_SEARCH_OR_VERIFICATION") {
+    const compName =
+      intelligentNlu.targetCompany ||
+      extractCleanCompanyName(userMessage) ||
+      extractTargetCompanyFromMessage(userMessage) ||
+      userMessage;
+
+    if (activeAgent && agentKnowledgeResult?.selectedDocuments?.length > 0) {
+      const activeDocChunks = (agentKnowledgeResult.selectedDocuments || []).flatMap((d: any) => d.chunks || []);
+      const activeDocs = (agentKnowledgeResult.selectedDocuments || []).map((d: any) => d.document);
+      const grounded = generateKnowledgeGroundedReply(userMessage, activeAgent, activeDocs, activeDocChunks);
+      if (grounded.isInScope && grounded.matchedChunks.length > 0) {
+        return await finalizeAndReturn({
+          reply: grounded.reply,
+          companyData: { company_name: compName, source: "active_agent_knowledge" },
+        });
+      }
+    }
+
+    const compResult = await executeSearchCompanyCategory(
+      { companyName: compName },
+      userMessage,
+      isEligibleFlowActive,
+      eligibilitySession
+    );
+    const validated = validateAgentResponse({
+      intent: "COMPANY_SEARCH_OR_VERIFICATION",
+      userMessage,
+      response: compResult.reply,
+      companyCategory: compResult.companyData?.category || compResult.companyData?.tier,
+    });
+    const resolvedCompany = compResult.companyData?.company_name || compResult.companyData?.primaryName || compName;
+    const resolvedCategory = compResult.companyData?.category || compResult.companyData?.tier;
+    return await finalizeAndReturn({
+      ...compResult,
+      reply: validated.validatedResponse || compResult.reply,
+    }, {
+      company: resolvedCompany,
+      selectedCompanyName: resolvedCompany,
+      companyCategory: resolvedCategory,
+      applicant: {
+        ...(eligibilitySession?.applicant || currentApplicant),
+        companyName: resolvedCompany,
+        companyCategory: resolvedCategory,
+      },
+    });
+  }
+
+  // 6. ELIGIBILITY_UPDATE_OR_RECALCULATION
+  // Context-aware update & recalculation (Section 6, TEST F, TEST G, TEST H, TEST N)
+  if (intelligentNlu.intent === "ELIGIBILITY_UPDATE_OR_RECALCULATION") {
+    const recalcRes = await applyProfileUpdateAndRecalculate(
+      conversationId,
+      userMessage,
+      eligibilitySession?.applicant || currentApplicant,
+      intelligentNlu.extractedEntities,
+      requestedModel,
+      { isScenario: intelligentNlu.isScenario }
+    );
+    const validated = validateAgentResponse({
+      intent: "ELIGIBILITY_UPDATE_OR_RECALCULATION",
+      userMessage,
+      response: recalcRes.reply,
+      isScenario: intelligentNlu.isScenario,
+      activeApplicant: recalcRes.applicant,
+    });
+    return await finalizeAndReturn({
+      reply: validated.validatedResponse || recalcRes.reply,
+    }, {
+      applicant: recalcRes.applicant,
+      in_eligibility_flow: !recalcRes.isComplete,
+      hasCompletedEvaluation: recalcRes.isComplete,
+      evaluationCompleted: recalcRes.isComplete,
+      lastEligibilityResult: recalcRes.evalResult || (eligibilitySession as any)?.lastEligibilityResult,
+    });
+  }
+
+  // 7. BANK_MANAGER_SEARCH
+  // Matches bank, city, PIN code from PostgreSQL bank_managers only
+  if (intelligentNlu.intent === "BANK_MANAGER_SEARCH") {
+    const targetBank =
+      intelligentNlu.targetBank ||
+      eligibilitySession?.chosenBank ||
+      eligibilitySession?.selectedBank ||
+      "HDFC Bank";
+    const loc = intelligentNlu.targetLocation || eligibilitySession?.city;
+    const isPin = loc && /^\d{6}$/.test(loc);
+    const mgrResult = await executeSearchBankManagers(
+      {
+        bank_name: targetBank,
+        city: !isPin ? loc : undefined,
+        pincode: isPin ? loc : undefined,
+      },
+      userMessage,
+      isEligibleFlowActive,
+      eligibilitySession,
+      conversationId
+    );
+    const validated = validateAgentResponse({
+      intent: "BANK_MANAGER_SEARCH",
+      userMessage,
+      response: mgrResult.reply,
+      bankName: targetBank,
+      matchedManagers: mgrResult.bankData ? [mgrResult.bankData] : undefined,
+    });
+    return await finalizeAndReturn({
+      ...mgrResult,
+      reply: validated.validatedResponse || mgrResult.reply,
+    });
+  }
+
+  // 8. INFORMATION_CORRECTION
+  if (intelligentNlu.intent === "INFORMATION_CORRECTION") {
+    if (intelligentNlu.fieldBeingUpdated === "employer" && intelligentNlu.targetCompany) {
+      const company = await searchCompany(intelligentNlu.targetCompany);
+      const canonicalName = company.primaryName || intelligentNlu.targetCompany;
+      const categoryRes = await resolveCompanyCategories(canonicalName);
+      const category = categoryRes?.overallCategoryDisplay || (company.bankRecords?.[0]?.company_category) || "Unlisted";
+      const updatedApplicant: ApplicantProfile = {
+        ...(eligibilitySession?.applicant || currentApplicant),
+        companyName: canonicalName,
+        companyCategory: category,
+      };
+      const missing = getRequiredPolicyFields(updatedApplicant);
+      const isComplete = missing.length === 0;
+      let reply = `Updated your employer to **${canonicalName}** (Category: **${category}**).`;
+      if (isComplete) {
+        reply += `\n\nWould you like me to recalculate your eligibility with your updated employer?`;
+      } else {
+        reply += `\n\n${nextEligibilityQuestion(missing[0])}`;
+      }
+      return await finalizeAndReturn({ reply }, {
+        applicant: updatedApplicant,
+        company: canonicalName,
+        companyCategory: category,
+        selectedCompanyName: canonicalName,
+        expectedField: isComplete ? undefined : missing[0],
+        in_eligibility_flow: !isComplete,
+      });
+    } else {
+      const updatedApplicant: ApplicantProfile = {
+        ...(eligibilitySession?.applicant || currentApplicant),
+        ...(intelligentNlu.extractedEntities as Partial<ApplicantProfile>),
+      };
+      const missing = getRequiredPolicyFields(updatedApplicant);
+      const reply = `Got it! I have updated your details. ${missing.length === 0 ? "All required details are present. Say 'calculate' to check your eligibility." : nextEligibilityQuestion(missing[0])}`;
+      return await finalizeAndReturn({ reply }, {
+        applicant: updatedApplicant,
+        expectedField: missing[0],
+        in_eligibility_flow: missing.length > 0,
+      });
+    }
+  }
+
+  // 9. CONVERSATION_FOLLOW_UP
+  if (intelligentNlu.intent === "CONVERSATION_FOLLOW_UP") {
+    const candidateApplicant = {
+      ...(eligibilitySession?.applicant || currentApplicant),
+    };
+    const missing = getRequiredPolicyFields(candidateApplicant);
+    if (missing.length === 0) {
+      return await executeCheckLoanEligibility(
+        candidateApplicant,
+        conversationId,
+        userMessage,
+        eligibilitySession,
+        requestedModel,
+        conversationHistory
+      );
+    } else {
+      const promptMissing = `We have your details on file. To complete your eligibility assessment, could you please provide your **${getHumanFieldLabel(missing[0])}**?`;
+      return await finalizeAndReturn({ reply: promptMissing }, {
+        expectedField: missing[0],
+        in_eligibility_flow: true,
+      });
+    }
+  }
+
+  // 10. MULTI_INTENT
+  if (intelligentNlu.intent === "MULTI_INTENT" && intelligentNlu.multiIntents?.length) {
+    const results: string[] = [];
+    if (intelligentNlu.multiIntents.includes("BANK_POLICY_QUERY")) {
+      const pol = await executeLookupMasterPolicy(
+        { bankName: intelligentNlu.targetBank, questionTopic: userMessage },
+        userMessage,
+        isEligibleFlowActive,
+        eligibilitySession,
+        requestedModel,
+        activeAgent,
+        agentKnowledgeResult,
+        optsSystemPrompt
+      );
+      results.push(pol.reply);
+    }
+    if (intelligentNlu.multiIntents.includes("BANK_MANAGER_SEARCH")) {
+      const mgr = await executeSearchBankManagers(
+        { bank_name: intelligentNlu.targetBank, city: intelligentNlu.targetLocation },
+        userMessage,
+        isEligibleFlowActive,
+        eligibilitySession,
+        conversationId
+      );
+      results.push(mgr.reply);
+    }
+    if (intelligentNlu.multiIntents.includes("COMPANY_SEARCH_OR_VERIFICATION")) {
+      const comp = await executeSearchCompanyCategory(
+        { companyName: intelligentNlu.targetCompany || userMessage },
+        userMessage,
+        isEligibleFlowActive,
+        eligibilitySession
+      );
+      results.push(comp.reply);
+    }
+    if (results.length > 0) {
+      return await finalizeAndReturn({ reply: results.join("\n\n---\n\n") });
+    }
+  }
+
+  // 11. AMBIGUOUS_INTENT
+  if (intelligentNlu.intent === "AMBIGUOUS_INTENT") {
+    const prompt =
+      intelligentNlu.ambiguityReason ||
+      "Could you please clarify your question or specify what information you're looking for?";
+    return await finalizeAndReturn({ reply: prompt });
+  }
+
+  // 12. LOAN_ELIGIBILITY_CALCULATION
+  if (intelligentNlu.intent === "LOAN_ELIGIBILITY_CALCULATION") {
+    const mergedApplicant: ApplicantProfile = {
+      ...(eligibilitySession?.applicant || currentApplicant),
+      ...(intelligentNlu.extractedEntities as Partial<ApplicantProfile>),
+      ...(intelligentNlu.targetCompany ? { companyName: intelligentNlu.targetCompany } : {}),
+    };
+    const missing = getRequiredPolicyFields(mergedApplicant);
+    if (missing.length === 0) {
+      return await executeCheckLoanEligibility(
+        mergedApplicant,
+        conversationId,
+        userMessage,
+        eligibilitySession,
+        requestedModel,
+        conversationHistory
+      );
+    } else {
+      const nextField = missing[0];
+      const ask = `Got it! To evaluate your eligibility across all partner banks, could you please share **${getHumanFieldLabel(nextField)}**?`;
+      return await finalizeAndReturn({ reply: ask }, {
+        applicant: mergedApplicant,
+        expectedField: nextField,
+        in_eligibility_flow: true,
+        activeFlow: "LOAN_ELIGIBILITY",
+        mainUserGoal: "PERSONAL_LOAN",
+      });
+    }
   }
 
   // =========================================================================
@@ -8941,7 +9474,7 @@ async function runCentralAgentInternal(opts: {
   // 2b. Natural Language Greeting & Intent Pre-Router
   // Accurately understand greetings (e.g. "helo", "hello", "hi", "hey", "namaste", "good morning") without mistaking them for company names.
   if (isPureGreeting(userMessage) || isGreetingOrPleasantry(userMessage)) {
-    const greetingText = await generateGreetingWithLLM(userMessage, requestedModel, eligibilitySession, currentTime);
+    const greetingText = await generateGreetingWithLLM(userMessage, requestedModel, eligibilitySession, currentTime, optsSystemPrompt);
     return await finalizeAndReturn({ reply: greetingText });
   }
 

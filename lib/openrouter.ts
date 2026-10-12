@@ -56,7 +56,8 @@ export function normalizeModelSlug(rawModel?: string): string {
 export async function openRouterChat(
   messages: OpenRouterMessage[],
   tools?: OpenRouterTool[],
-  model?: string
+  model?: string,
+  options?: { signal?: AbortSignal; timeoutMs?: number; max_tokens?: number }
 ): Promise<any> {
   const apiKey = process.env.OPENROUTER_API_KEY || OPENROUTER_API_KEY;
   if (!apiKey) {
@@ -70,7 +71,7 @@ export async function openRouterChat(
       model: targetModel,
       messages,
       temperature: 0.1,
-      max_tokens: 500,
+      max_tokens: options?.max_tokens ?? 500,
       reasoning: { max_tokens: 0 },
     };
     if (tools && tools.length > 0) {
@@ -78,8 +79,12 @@ export async function openRouterChat(
       payload.tool_choice = "auto";
     }
 
+    const timeoutSignal = AbortSignal.timeout(options?.timeoutMs ?? 3000);
+    const fetchSignal = options?.signal || timeoutSignal;
+
     const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       method: "POST",
+      signal: fetchSignal,
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
@@ -120,9 +125,10 @@ export async function openRouterChat(
 
 export async function simpleOpenRouterChat(
   messages: OpenRouterMessage[],
-  model?: string
+  model?: string,
+  options?: { signal?: AbortSignal; timeoutMs?: number; max_tokens?: number }
 ): Promise<string> {
-  const response = await openRouterChat(messages, undefined, model);
+  const response = await openRouterChat(messages, undefined, model, options);
   return response?.choices?.[0]?.message?.content || "";
 }
 

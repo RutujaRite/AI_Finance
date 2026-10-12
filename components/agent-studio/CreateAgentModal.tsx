@@ -89,7 +89,7 @@ export default function CreateAgentModal({
                   onClose();
                   onViewPlans();
                 }}
-                className="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl transition shadow-sm hover:shadow"
+                className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl transition shadow-sm hover:shadow"
               >
                 View Plans
               </button>
@@ -104,7 +104,7 @@ export default function CreateAgentModal({
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
                 <i className="bi bi-robot text-lg" />
               </div>
               <div>
@@ -130,7 +130,7 @@ export default function CreateAgentModal({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Customer Support Assistant"
-                  className="w-full px-3.5 py-2.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white text-sm text-slate-800 rounded-xl border border-slate-200 focus:border-indigo-500 focus:outline-none transition"
+                  className="w-full px-3.5 py-2.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white text-sm text-slate-800 rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none transition"
                   required
                 />
               </div>
@@ -144,7 +144,7 @@ export default function CreateAgentModal({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="e.g., Help customers with product questions, order tracking, and policies..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white text-sm text-slate-800 rounded-xl border border-slate-200 focus:border-indigo-500 focus:outline-none transition"
+                  className="w-full px-3.5 py-2.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white text-sm text-slate-800 rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none transition"
                 />
               </div>
 
@@ -157,7 +157,7 @@ export default function CreateAgentModal({
                   onChange={(e) => setPurpose(e.target.value)}
                   rows={3}
                   placeholder="What should this agent help with? (e.g., Greet visitors, explain FAQs, collect qualification data)"
-                  className="w-full px-3.5 py-2.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white text-sm text-slate-800 rounded-xl border border-slate-200 focus:border-indigo-500 focus:outline-none transition resize-none"
+                  className="w-full px-3.5 py-2.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white text-sm text-slate-800 rounded-xl border border-slate-200 focus:border-blue-500 focus:outline-none transition resize-none"
                 />
               </div>
             </div>
@@ -166,7 +166,7 @@ export default function CreateAgentModal({
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl transition shadow-sm hover:shadow disabled:opacity-50"
+                className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl transition shadow-sm hover:shadow disabled:opacity-50"
               >
                 {submitting ? "Creating..." : "Create Agent"}
               </button>

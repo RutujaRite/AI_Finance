@@ -20,6 +20,14 @@ import { getActiveLlmModelName } from "@/lib/ai/modelRouter";
 import { getCreditWiseSystemPrompt } from "@/lib/ai/prompts";
 import pool from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
+import { getAgent, listAgents } from "@/lib/agent-studio/agentStore";
+import { listAgentDocuments, recordConversationExchange, getActiveAgentFromDb, getAgentFromDb, getUserActiveAgent } from "@/lib/agent-studio/dbStore";
+import {
+  selectRelevantDocuments,
+  retrieveKnowledgeChunks,
+  validateAgentResponse,
+  buildConfiguredAgentPrompt,
+} from "@/lib/agent-studio/ragEngine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -201,14 +209,92 @@ export async function POST(req: NextRequest) {
       day: 'numeric'
     });
 
-    // 2. SYSTEM PROMPT: Dynamic context, policy RAG rule, and important conversation rules
-    const systemPrompt = getCreditWiseSystemPrompt(currentTime);
-
-    /* ---------------------------------------------------------------------- */
-    /* Central AI Agent & Server-Sent Events Streaming                        */
-    /* ---------------------------------------------------------------------- */
-
     const shouldStream = body?.stream === true;
+
+    // Check if specific agent was requested or load active agent for this user from PostgreSQL
+    const requestedAgentId = body?.agent_id || body?.agentId;
+    let activeAgent: any = null;
+    if (requestedAgentId) {
+      activeAgent = (await getAgentFromDb(requestedAgentId, userId)) || getAgent(requestedAgentId);
+    } else {
+      activeAgent = (await getUserActiveAgent(userId)) || (await getActiveAgentFromDb()) || listAgents().find((a) => a.status === "active") || null;
+    }
+
+    // Only apply active agent configuration if status is explicitly active
+    const isAgentActive = activeAgent && activeAgent.status === "active";
+
+    if (isAgentActive && activeAgent.modes && activeAgent.modes.conversations === false) {
+      const pausedReply = `Main AI Assistant Live Mode is currently paused for "${activeAgent.name}" in Agent Setup. To resume live conversations with this assistant, please enable 'Main AI Assistant Live' under Agent Modes in Setup.`;
+      try {
+        await pool.query(
+          `INSERT INTO assistant_messages (conversation_id, role, content)
+           VALUES ($1, 'assistant', $2)`,
+          [convId, pausedReply]
+        );
+      } catch (_) {}
+
+      if (shouldStream) {
+        const encoder = new TextEncoder();
+        const customStream = new TransformStream();
+        const writer = customStream.writable.getWriter();
+        (async () => {
+          try {
+            await writer.write(encoder.encode(`data: ${JSON.stringify({ type: "init", conversation_id: conversationIdStr })}\n\n`));
+            await writer.write(encoder.encode(`data: ${JSON.stringify({ type: "token", text: pausedReply })}\n\n`));
+            await writer.write(encoder.encode(`data: ${JSON.stringify({
+              type: "done",
+              message: {
+                id: uid(),
+                role: "ai",
+                content: pausedReply,
+                timestamp: nowISO(),
+              },
+            })}\n\n`));
+          } catch (_) {
+          } finally {
+            await writer.close();
+          }
+        })();
+        return new Response(customStream.readable, {
+          headers: {
+            "Content-Type": "text/event-stream; charset=utf-8",
+            "Cache-Control": "no-cache, no-transform",
+            Connection: "keep-alive",
+          },
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        conversation_id: convId,
+        message: {
+          id: uid(),
+          role: "ai",
+          content: pausedReply,
+          timestamp: nowISO(),
+        },
+      });
+    }
+
+    // 2. DYNAMIC KNOWLEDGE RETRIEVAL FOR CONFIGURED AGENT
+    let agentKnowledgeResult: any = undefined;
+    let relevantDocs: any[] = [];
+    if (isAgentActive) {
+      try {
+        const agentDocuments = await listAgentDocuments(activeAgent.id);
+        relevantDocs = selectRelevantDocuments(message, agentDocuments);
+        if (relevantDocs.length > 0) {
+          agentKnowledgeResult = await retrieveKnowledgeChunks(message, relevantDocs);
+        }
+      } catch (kErr) {
+        console.warn("[AGENT_KNOWLEDGE_RETRIEVAL_WARN]", kErr);
+      }
+    }
+
+    // 3. SYSTEM PROMPT: Dynamic context, agent goal, mode, guardrails, and knowledge
+    const systemPrompt = isAgentActive
+      ? buildConfiguredAgentPrompt(activeAgent, currentTime, agentKnowledgeResult)
+      : getCreditWiseSystemPrompt(currentTime);
 
     if (shouldStream) {
       console.log(`[STREAM] Request received: convId=${conversationIdStr} message="${message.slice(0, 50)}"`);
@@ -242,6 +328,8 @@ export async function POST(req: NextRequest) {
             companySelectionAction,
             currentTime,
             systemPrompt,
+            activeAgent: isAgentActive ? activeAgent : undefined,
+            agentKnowledgeResult,
             signal: req.signal,
             onToken: (token: string) => {
               if (token) {
@@ -284,6 +372,23 @@ export async function POST(req: NextRequest) {
             console.error("Error persisting assistant response to DB:", saveErr);
           }
 
+          if (activeAgent) {
+            recordConversationExchange({
+              conversationId: conversationIdStr,
+              agentId: activeAgent.id,
+              userId,
+              userMessage: message,
+              assistantResponse: agentResult.reply || "",
+              intent: "chat",
+              toolsUsed: [],
+              knowledgeDocumentsUsed: (agentKnowledgeResult?.selectedDocuments || []).map((sd: any) => ({
+                id: sd.document.id,
+                name: sd.document.name,
+                chunkIds: sd.chunks.map((c: any) => c.id),
+              })),
+            }).catch((recErr) => console.warn("[RECORD_CONV_EXCHANGE_STREAM_ERR]", recErr));
+          }
+
           const aiMessage: any = {
             id: uid(),
             role: "ai",
@@ -299,6 +404,9 @@ export async function POST(req: NextRequest) {
           }
           if (agentResult.bankData) {
             aiMessage.bank_data = agentResult.bankData;
+          }
+          if (agentKnowledgeResult?.selectedDocuments?.length > 0) {
+            aiMessage.used_knowledge_documents = agentKnowledgeResult.selectedDocuments.map((sd: any) => sd.document.name);
           }
 
           await sendEvent({
@@ -340,6 +448,8 @@ export async function POST(req: NextRequest) {
       companySelectionAction,
       currentTime,
       systemPrompt,
+      activeAgent: isAgentActive ? activeAgent : undefined,
+      agentKnowledgeResult,
     });
 
     /* ---------------------------------------------------------------------- */
@@ -375,6 +485,10 @@ export async function POST(req: NextRequest) {
       aiMessage.bank_data = agentResult.bankData;
     }
 
+    if (agentKnowledgeResult?.selectedDocuments?.length > 0) {
+      aiMessage.used_knowledge_documents = agentKnowledgeResult.selectedDocuments.map((sd: any) => sd.document.name);
+    }
+
     /* ---------------------------------------------------------------------- */
     /* Persist AI message and update conversation metadata in PostgreSQL       */
     /* ---------------------------------------------------------------------- */
@@ -400,6 +514,23 @@ export async function POST(req: NextRequest) {
       }
     } catch (saveErr) {
       console.error("Error persisting assistant response to DB:", saveErr);
+    }
+
+    if (activeAgent) {
+      recordConversationExchange({
+        conversationId: conversationIdStr,
+        agentId: activeAgent.id,
+        userId,
+        userMessage: message,
+        assistantResponse: agentResult.reply || "",
+        intent: "chat",
+        toolsUsed: [],
+        knowledgeDocumentsUsed: (agentKnowledgeResult?.selectedDocuments || []).map((sd: any) => ({
+          id: sd.document.id,
+          name: sd.document.name,
+          chunkIds: sd.chunks.map((c: any) => c.id),
+        })),
+      }).catch((recErr) => console.warn("[RECORD_CONV_EXCHANGE_NONSTREAM_ERR]", recErr));
     }
 
     /* ---------------------------------------------------------------------- */

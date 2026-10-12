@@ -1,7 +1,9 @@
 /**
- * Bank file download API route.
+ * Bank / Company Data file download API route.
  * Streams the requested file from disk as an attachment.
- * Uses: lib/db, lib/auth (verifyToken)
+ * If the physical file is not present on disk, reconstructs the CSV
+ * directly from the bank_company_data table in PostgreSQL.
+ * Uses: lib/db, lib/auth (verifyToken, isAdminUser)
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -17,7 +19,10 @@ export const dynamic = "force-dynamic";
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "bank-pdfs");
 const URL_PREFIX = "/uploads/bank-pdfs/";
 
-export async function GET(req: NextRequest) {
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   const token = req.cookies.get("token")?.value;
   const payload: any = token ? verifyToken(token) : null;
   if (!payload) {
@@ -32,37 +37,104 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { searchParams } = new URL(req.url);
-    const fileId = searchParams.get("id");
+    const resolvedParams = context?.params ? await context.params : (context as any)?.params;
+    const fileId = resolvedParams?.id || new URL(req.url).searchParams.get("id");
     if (!fileId) {
       return NextResponse.json({ success: false, error: "Missing file id" }, { status: 400 });
     }
 
     const client = await pool.connect();
     try {
-      const res = await client.query("SELECT file_name, file_path FROM bank_uploaded_files WHERE id = $1", [Number(fileId)]);
+      const res = await client.query(
+        "SELECT id, file_name, file_path, file_size FROM bank_uploaded_files WHERE id = $1",
+        [Number(fileId)]
+      );
       if (res.rowCount === 0) {
         return NextResponse.json({ success: false, error: "File not found" }, { status: 404 });
       }
 
       const { file_name, file_path } = res.rows[0];
-      if (!file_path || !file_path.startsWith(URL_PREFIX)) {
-        return NextResponse.json({ success: false, error: "File not found on disk" }, { status: 404 });
+
+      // 1. Try streaming from disk if physical file exists
+      if (file_path) {
+        let fullPath = "";
+        if (file_path.startsWith(URL_PREFIX)) {
+          fullPath = path.join(UPLOAD_DIR, file_path.replace(URL_PREFIX, ""));
+        } else if (file_path.startsWith("/uploads/")) {
+          fullPath = path.join(process.cwd(), "public", file_path.replace(/^\//, ""));
+        } else if (path.isAbsolute(file_path)) {
+          fullPath = file_path;
+        } else {
+          fullPath = path.join(process.cwd(), file_path);
+        }
+
+        if (existsSync(fullPath)) {
+          const fileBuffer = await readFile(fullPath);
+          const ext = path.extname(file_name).toLowerCase();
+          const contentType =
+            ext === ".csv"
+              ? "text/csv; charset=utf-8"
+              : ext === ".xlsx"
+              ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              : ext === ".xls"
+              ? "application/vnd.ms-excel"
+              : "application/octet-stream";
+
+          return new NextResponse(fileBuffer, {
+            headers: {
+              "Content-Type": contentType,
+              "Content-Disposition": `attachment; filename="${encodeURIComponent(file_name)}"`,
+            },
+          });
+        }
       }
 
-      const fileName = file_path.replace(URL_PREFIX, "");
-      const fullPath = path.join(UPLOAD_DIR, fileName);
-      if (!existsSync(fullPath)) {
-        return NextResponse.json({ success: false, error: "File not found on disk" }, { status: 404 });
+      // 2. If file is not present on disk, reconstruct CSV from bank_company_data
+      const compRes = await client.query(
+        `SELECT sr_no, company_name, bank_name, company_category, other_info
+         FROM bank_company_data
+         WHERE file_id = $1
+         ORDER BY id ASC`,
+        [Number(fileId)]
+      );
+
+      if (compRes.rowCount && compRes.rowCount > 0) {
+        function escapeCsv(val: any): string {
+          if (val === null || val === undefined) return "";
+          const s = String(val);
+          if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
+            return `"${s.replace(/"/g, '""')}"`;
+          }
+          return s;
+        }
+
+        const lines: string[] = [];
+        lines.push(["SR_NO", "COMPANY_NAME", "BANK_NAME", "COMPANY_CATEGORY", "OTHER_INFO"].join(","));
+        for (const row of compRes.rows) {
+          lines.push([
+            escapeCsv(row.sr_no),
+            escapeCsv(row.company_name),
+            escapeCsv(row.bank_name),
+            escapeCsv(row.company_category),
+            escapeCsv(row.other_info),
+          ].join(","));
+        }
+
+        const csvData = lines.join("\r\n");
+        const downloadName = file_name.toLowerCase().endsWith(".csv") ? file_name : `${file_name}.csv`;
+
+        return new NextResponse(csvData, {
+          headers: {
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition": `attachment; filename="${encodeURIComponent(downloadName)}"`,
+          },
+        });
       }
 
-      const fileBuffer = await readFile(fullPath);
-      return new NextResponse(fileBuffer, {
-        headers: {
-          "Content-Type": "application/octet-stream",
-          "Content-Disposition": `attachment; filename="${encodeURIComponent(file_name)}"`,
-        },
-      });
+      return NextResponse.json(
+        { success: false, error: "File contents not found on disk or database" },
+        { status: 404 }
+      );
     } finally {
       client.release();
     }

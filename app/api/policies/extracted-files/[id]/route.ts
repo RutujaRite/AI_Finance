@@ -146,7 +146,7 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      message: `Master policy file "${targetFileName}" saved successfully`,
+      message: `Bank policy file "${targetFileName}" saved successfully`,
       file_name: targetFileName,
       file_size_bytes: saveRes.byteSize,
     });

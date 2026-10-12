@@ -35,7 +35,7 @@ export default function ProfilePage() {
       .then((d) => {
         if (d.success) setProfile(d.user)
       })
-      .catch(() => router.replace("/login"))
+      .catch(() => router.replace("/?auth=login"))
       .finally(() => setLoading(false))
   }, [router])
 
@@ -162,7 +162,7 @@ export default function ProfilePage() {
       <main style={{ padding: 48, textAlign: "center" }}>
         <h3>Not authenticated</h3>
         <p style={{ color: "var(--bs-secondary-color)" }}>Please sign in to access your profile.</p>
-        <a href="/login" className="btn btn-primary" style={{ marginTop: 12 }}>Sign In</a>
+        <a href="/?auth=login" className="btn btn-primary" style={{ marginTop: 12 }}>Sign In</a>
       </main>
     )
   }
@@ -200,8 +200,10 @@ export default function ProfilePage() {
               } catch (e) {}
               try {
                 localStorage.removeItem("emi_chat_state_v2")
+                localStorage.removeItem("finai_user")
+                sessionStorage.clear()
               } catch (e) {}
-              router.replace("/login")
+              router.push("/?logout=true")
             }}
             style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", color: "var(--danger)" }}
             title="Log out of your account"
@@ -221,7 +223,7 @@ export default function ProfilePage() {
                     width: "88px",
                     height: "88px",
                     borderRadius: "50%",
-                    background: "linear-gradient(135deg, var(--accent) 0%, #4338ca 100%)",
+                    background: "linear-gradient(135deg, var(--color-primary-deep, #0B1220) 0%, var(--color-primary-blue, #2563EB) 100%)",
                     color: "#fff",
                     display: "flex",
                     alignItems: "center",

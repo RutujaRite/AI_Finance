@@ -17,7 +17,11 @@ const getApiKey = () => process.env.OPENROUTER_API_KEY || "";
 const getModel = () => (process.env.OPENROUTER_MODEL || "openrouter/free").replace(/^["']|["']$/g, "").trim();
 const LLM_TIMEOUT_MS = 12000;
 
+import { CanonicalIntent } from "./tokenOptimizer";
+export type { CanonicalIntent };
+
 export type UserIntentType =
+  | CanonicalIntent
   | "GREETING"
   | "GENERAL_CONVERSATION"
   | "GENERAL_FINANCIAL_QUESTION"
@@ -1318,3 +1322,381 @@ export function fallbackIntentParser(
     rawResponse: res.rawReasoning,
   };
 }
+
+export interface IntelligentIntentOptions {
+  userMessage: string;
+  conversationHistory?: Array<{ role: string; content: string }>;
+  existingApplicant?: any;
+  previousCalculation?: any;
+  previousToolResults?: any;
+  activeContext?: any;
+  requestedModel?: string;
+}
+
+export interface IntelligentIntentResult {
+  intent: CanonicalIntent;
+  confidence: number;
+  extractedEntities: ExtractedEntities;
+  targetBank?: string;
+  targetCompany?: string;
+  targetLocation?: string;
+  isScenario?: boolean;
+  fieldBeingUpdated?: string;
+  updatedValue?: any;
+  multiIntents?: CanonicalIntent[];
+  reasoning?: string;
+  ambiguityReason?: string;
+}
+
+/**
+ * Intelligent intent classifier implementing the 12 canonical intents from Section 1:
+ * GENERAL_QUERY, EXTERNAL_INFORMATION_QUERY, BANK_POLICY_QUERY, LOAN_TYPE_OR_LOAN_PROCESS_QUERY,
+ * COMPANY_SEARCH_OR_VERIFICATION, LOAN_ELIGIBILITY_CALCULATION, ELIGIBILITY_UPDATE_OR_RECALCULATION,
+ * BANK_MANAGER_SEARCH, CONVERSATION_FOLLOW_UP, INFORMATION_CORRECTION, MULTI_INTENT, AMBIGUOUS_INTENT.
+ */
+export async function classifyIntelligentIntent(
+  options: IntelligentIntentOptions
+): Promise<IntelligentIntentResult> {
+  const {
+    userMessage,
+    conversationHistory = [],
+    existingApplicant,
+    previousCalculation,
+    previousToolResults,
+    activeContext,
+  } = options;
+
+  const rawMsg = (userMessage || "").trim();
+  const lowerMsg = rawMsg.toLowerCase().replace(/[.!?]+$/, "").trim();
+
+  // 1. Extract candidate entities from text and context
+  const extracted = extractEntitiesFromText(rawMsg, {
+    expectedField: activeContext?.expectedField,
+    isFlowActive: activeContext?.isFlowActive,
+  });
+
+  // Extract bank mentions
+  const bankMatch = /(?:axis\s*finance|axis\s*bank|\baxis\b|bajaj\s*markets?|bajaj\s*finserv|\bbajaj\b|tata\s*capital|\btata\b(?!.*consultancy)|hdfc\s*bank|hdfc|icici\s*bank|icici|sbi|kotak\s*(?:mahindra)?(?:\s*bank)?|kotak|idfc\s*first(?:\s*bank)?|idfc|indusind\s*bank|indusind|bandhan\s*bank|bandhan|yes\s*bank|piramal|poonawalla|chola|smfg|finnable|fibe|sbm|utkarsh|aditya\s*birla|abfl)/i.exec(lowerMsg);
+  const targetBank = bankMatch ? normalizeBankName(bankMatch[0]) : undefined;
+
+  // Extract location / PIN code
+  const pinMatch = rawMsg.match(/\b([1-9][0-9]{5})\b/);
+  const cityMatch = lowerMsg.match(/\b(pune|mumbai|delhi|bangalore|bengaluru|hyderabad|chennai|kolkata|ahmedabad|jaipur|lucknow|chandigarh|noida|gurgaon|gurugram)\b/i);
+  const targetLocation = pinMatch ? pinMatch[1] : (cityMatch ? cityMatch[1] : undefined);
+
+  // Check for company mentions
+  let targetCompany: string | undefined = extractTargetCompanyFromMessage(rawMsg) || extractCleanCompanyName(rawMsg);
+  if (targetCompany && isInvalidCompanyName(targetCompany)) {
+    targetCompany = undefined;
+  }
+  if (targetCompany && !extracted.companyName) {
+    extracted.companyName = targetCompany;
+  }
+  if (extracted.companyName && !targetCompany) {
+    targetCompany = extracted.companyName;
+  }
+
+  // 2. Identify MULTI_INTENT first
+  // e.g. Policy query + Manager search ("What is HDFC personal loan eligibility and find an HDFC manager in Pune")
+  const isPolicyAsk =
+    /\b(?:policy|criteria|eligibility\s*rules?|minimum\s*(?:cibil|salary|income)|cutoff|foreclosure|prepayment|required\s*documents?|documents?\s*required|interest\s*rates?|roi)\b/i.test(lowerMsg) ||
+    (Boolean(targetBank) && /\b(?:eligibility|cibil|salary|documents?)\b/i.test(lowerMsg));
+
+  const isManagerAsk =
+    /\b(?:bank\s*manager|branch\s*manager|branch\s*head|\basm\b|\brsm\b|manager|branch\s*near|branches\s*near|contact\s*details?\s*of.*manager)\b/i.test(lowerMsg);
+
+  const isCompanyAsk =
+    isCompanyInfoOrSearchIntent(rawMsg) ||
+    /\b(?:company\s*category|category\s*of|employer\s*category|verify\s*employer|check\s*my\s*employer|search\s*for\s*(?:company|employer)?)\b/i.test(lowerMsg);
+
+  const isRecalcAsk =
+    /\b(?:calculate\s*(?:my\s*eligibility\s*)?again|recalculate|check\s*again|again\s*with|now\s*check\s*with|what\s*about\s*\d{3}|change\s*(?:it|my\s*cibil|my\s*salary|my\s*score)\s*to\s*\d+|what\s*if\s*my\s*(?:cibil|score|salary))\b/i.test(lowerMsg);
+
+  const multiDetected: CanonicalIntent[] = [];
+  if (isPolicyAsk && targetBank) multiDetected.push("BANK_POLICY_QUERY");
+  if (isManagerAsk) multiDetected.push("BANK_MANAGER_SEARCH");
+  if (isCompanyAsk && targetCompany) multiDetected.push("COMPANY_SEARCH_OR_VERIFICATION");
+  if (isRecalcAsk) multiDetected.push("ELIGIBILITY_UPDATE_OR_RECALCULATION");
+
+  if (multiDetected.length >= 2) {
+    return {
+      intent: "MULTI_INTENT",
+      confidence: 0.95,
+      extractedEntities: extracted,
+      targetBank,
+      targetCompany,
+      targetLocation,
+      multiIntents: multiDetected,
+      reasoning: `Detected multiple intents in single message: ${multiDetected.join(", ")}`,
+    };
+  }
+
+  // 3. AMBIGUOUS_INTENT
+  // Unanchored single numbers out of context, or completely uninterpretable gibberish
+  const bareNumberMatch = rawMsg.match(/^\s*(?:rs\.?|₹)?\s*(\d{1,8})\s*$/i);
+  if (bareNumberMatch) {
+    const val = parseInt(bareNumberMatch[1], 10);
+    const hasContext = Boolean(activeContext?.expectedField || existingApplicant);
+    if (!hasContext && val > 0 && val <= 100) {
+      return {
+        intent: "AMBIGUOUS_INTENT",
+        confidence: 0.9,
+        extractedEntities: extracted,
+        ambiguityReason: `Unanchored number '${val}' with no active context. Could refer to age, tenure, or loan amount scale.`,
+      };
+    }
+  }
+
+  // 4. BANK_MANAGER_SEARCH
+  // e.g. "Find an HDFC Bank manager in Pune", "Show ICICI Bank branches near PIN 411009", "Find a manager there"
+  if (isManagerAsk) {
+    let resolvedBank = targetBank;
+    let resolvedLoc = targetLocation;
+
+    if (!resolvedBank) {
+      resolvedBank = existingApplicant?.selectedBank || activeContext?.selectedBank || activeContext?.lastPolicyBank;
+    }
+    if (!resolvedLoc && /\b(?:there|near\s*there|that\s*branch|that\s*city)\b/i.test(lowerMsg)) {
+      resolvedLoc = activeContext?.lastLocation || existingApplicant?.city || activeContext?.city;
+    }
+
+    return {
+      intent: "BANK_MANAGER_SEARCH",
+      confidence: 0.95,
+      extractedEntities: extracted,
+      targetBank: resolvedBank,
+      targetLocation: resolvedLoc,
+      reasoning: "User is requesting bank branch manager or branch contact details from PostgreSQL.",
+    };
+  }
+
+  // 5. ELIGIBILITY_UPDATE_OR_RECALCULATION & SCENARIO
+  // e.g. "Calculate my eligibility again with CIBIL 780", "What if my CIBIL score is 780?",
+  // "Check again with CIBIL 760", "Again with 760", "Now check with 720", "What about 800?"
+  const isScenarioQuery = /\b(?:what\s*if|suppose|assume|hypothetically|if\s*my\s*(?:cibil|score|salary)\s*(?:were|was|is))\b/i.test(lowerMsg);
+
+  // Match score in context
+  const cibilFollowUpMatch =
+    lowerMsg.match(/(?:(?:cibil|score)\s*(?:is|to|=|as)?\s*|again\s+with\s+|now\s+(?:check\s+)?with\s+|what\s+about\s+|change\s+(?:it|my\s+cibil|my\s+score)\s+to\s+)(\d{3})\b/i) ||
+    lowerMsg.match(/\b(?:cibil|score)\s*(\d{3})\b/i);
+
+  const salaryFollowUpMatch =
+    lowerMsg.match(/(?:salary|income)\s*(?:is|to|=|as)?\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?)?/i);
+
+  const hasPriorEvaluationOrApplicant = Boolean(
+    previousCalculation ||
+    existingApplicant?.cibil ||
+    existingApplicant?.monthlyIncome ||
+    existingApplicant?.lastEligibilityResult ||
+    activeContext?.hasCompletedEvaluation ||
+    activeContext?.in_eligibility_flow
+  );
+
+  if (isRecalcAsk || isScenarioQuery || (hasPriorEvaluationOrApplicant && (cibilFollowUpMatch || salaryFollowUpMatch))) {
+    let field = "cibilScore";
+    let updatedVal: any = undefined;
+
+    if (cibilFollowUpMatch) {
+      const parsedScore = parseInt(cibilFollowUpMatch[1], 10);
+      if (parsedScore >= 300 && parsedScore <= 900) {
+        field = "cibilScore";
+        updatedVal = parsedScore;
+        extracted.cibil = parsedScore;
+      }
+    } else if (salaryFollowUpMatch) {
+      const parsedSalary = parseFinancialAmount(salaryFollowUpMatch[1] + (salaryFollowUpMatch[2] || ""));
+      if (parsedSalary) {
+        field = "monthlyTakeHomeSalary";
+        updatedVal = parsedSalary;
+        extracted.monthlyIncome = parsedSalary;
+      }
+    }
+
+    return {
+      intent: "ELIGIBILITY_UPDATE_OR_RECALCULATION",
+      confidence: 0.95,
+      extractedEntities: extracted,
+      isScenario: isScenarioQuery,
+      fieldBeingUpdated: field,
+      updatedValue: updatedVal,
+      reasoning: isScenarioQuery
+        ? "Hypothetical scenario calculation: evaluate without permanently replacing saved profile."
+        : "Recalculation with updated applicant profile field while preserving valid context.",
+    };
+  }
+
+  // 6. INFORMATION_CORRECTION
+  // e.g. "I changed my job to Infosys", "I have changed my job to Infosys. Update my employer.", "Actually, it is 760"
+  const isJobChange = /(?:(?:change|changed|update|updated|switch|switched|move|moved)\s+(?:my\s+)?(?:company|employer|job)|switch(?:ed)?\s+to|moved?\s+to|joined|now\s+working\s+at|new\s+(?:company|employer|job)\s+is)\b/i.test(lowerMsg);
+  const isActuallyCorrection = /\b(?:actually|correction|it\s+is\s+actually|my\s+correct)\b/i.test(lowerMsg);
+
+  if (isJobChange || (isActuallyCorrection && (cibilFollowUpMatch || salaryFollowUpMatch || targetCompany))) {
+    let field = "employer";
+    let updatedVal: any = targetCompany;
+
+    if (cibilFollowUpMatch) {
+      field = "cibilScore";
+      updatedVal = parseInt(cibilFollowUpMatch[1], 10);
+    } else if (salaryFollowUpMatch) {
+      field = "monthlyTakeHomeSalary";
+      updatedVal = parseFinancialAmount(salaryFollowUpMatch[1] + (salaryFollowUpMatch[2] || ""));
+    }
+
+    return {
+      intent: "INFORMATION_CORRECTION",
+      confidence: 0.95,
+      extractedEntities: extracted,
+      fieldBeingUpdated: field,
+      updatedValue: updatedVal,
+      targetCompany: isJobChange ? (targetCompany || extractTargetCompanyFromMessage(rawMsg)) : undefined,
+      reasoning: "User is correcting or updating a profile field or employer without necessarily triggering instant calculation.",
+    };
+  }
+
+  // 7. GENERAL_QUERY check (greetings, educational/tech queries, conceptual financial definitions)
+  // Evaluated before company lookup so questions like "What is artificial intelligence?" are never hijacked!
+  const isGreeting = isPureGreeting(rawMsg);
+  const isGeneralTechOrEdu =
+    /\b(?:artificial\s*intelligence|machine\s*learning|ai\s*and\s*ml|\bai\b|\bml\b|java\s*inheritance|inheritance|python|react|javascript|typescript|physics|quantum|photosynthesis|gravity|recursion|database\s*index|speed\s*of\s*light|dns|cloud\s*computing|neural\s*network|object\s*oriented|relativity|inflation)\b/i.test(lowerMsg) ||
+    /^(?:what\s+is\s+(?:ai|artificial\s+intelligence|photosynthesis|inflation|quantum|recursion|dns|cloud|gravity|the\s+speed\s+of\s+light|the\s+theory\s+of\s+relativity)|explain\s+(?:java|python|simple\s+interest|compound\s+interest|the\s+theory\s+of\s+relativity|recursion|object\s+oriented)|how\s+does\s+(?:gravity|dns|neural\s+networks?)\s+work)\b/i.test(lowerMsg);
+
+  const isGeneralFinancialEdu =
+    /\b(?:compound\s*interest|simple\s*interest|what\s+is\s+(?:a\s+)?credit\s*score|what\s+is\s+foir|define\s+foir|how\s+is\s+interest\s+calculated)\b/i.test(lowerMsg) &&
+    !targetBank;
+
+  if (isGreeting || isGeneralTechOrEdu || isGeneralFinancialEdu) {
+    return {
+      intent: "GENERAL_QUERY",
+      confidence: 0.95,
+      extractedEntities: extracted,
+      reasoning: isGreeting
+        ? "Greeting or conversational pleasantry."
+        : "General educational or conceptual question handled directly by the LLM without RAG or DB.",
+    };
+  }
+
+  // 8. CONVERSATION_FOLLOW_UP
+  // e.g. "Use my previous details", "Use the same details", "Now calculate my eligibility" (after company search)
+  const isFollowUpReuse =
+    /\b(?:use\s+(?:my\s+|the\s+)?(?:previous|same)\s+details?|with\s+(?:the\s+|my\s+)?same\s+details?|now\s+calculate\s+(?:my\s+)?eligibility|now\s+check\s+(?:my\s+)?eligibility)\b/i.test(lowerMsg);
+
+  if (isFollowUpReuse) {
+    return {
+      intent: "CONVERSATION_FOLLOW_UP",
+      confidence: 0.95,
+      extractedEntities: extracted,
+      reasoning: "User requested continuation or recalculation using previously established conversation details.",
+    };
+  }
+
+  // 9. COMPANY_SEARCH_OR_VERIFICATION
+  // e.g. "What is the company category of Infosys?", "Check my employer Microsoft", "Search for Tata Consultancy Services", "Find Infosys"
+  // Note: Check this before BANK_POLICY_QUERY so "Check Infosys" or "Search Infosys" never routes to policy RAG!
+  const isExplicitCompanyQuery =
+    isCompanyAsk ||
+    /^(?:search\s+for\s+|find\s+|check\s+|lookup\s+)([A-Za-z0-9\s&.-]+)$/i.test(rawMsg.trim()) &&
+    !isPolicyAsk &&
+    !targetBank &&
+    !isManagerAsk;
+
+  if (isExplicitCompanyQuery && (targetCompany || isCompanyAsk)) {
+    return {
+      intent: "COMPANY_SEARCH_OR_VERIFICATION",
+      confidence: 0.95,
+      extractedEntities: extracted,
+      targetCompany: targetCompany || extractCleanCompanyName(rawMsg) || extractTargetCompanyFromMessage(rawMsg),
+      reasoning: "User is querying company category, verification, or overview from PostgreSQL company tables.",
+    };
+  }
+
+  // 9. EXTERNAL_INFORMATION_QUERY
+  // e.g. "What are the latest RBI guidelines?", "Current repo rate 2024", "Latest personal loan news"
+  const isExternalSearchAsk =
+    /\b(?:latest|recent|current|today'?s?|new)\s+(?:rbi\s*(?:guidelines?|rules?|circulars?|notifications?|repo\s*rate|monetary\s*policy)|repo\s*rate|inflation\s*rate|market\s*rates?|financial\s*news)\b/i.test(lowerMsg) ||
+    /\b(?:what\s+are\s+the\s+latest\s+rbi|current\s+repo\s+rate|latest\s+rbi\s+guidelines)\b/i.test(lowerMsg);
+
+  if (isExternalSearchAsk) {
+    return {
+      intent: "EXTERNAL_INFORMATION_QUERY",
+      confidence: 0.95,
+      extractedEntities: extracted,
+      reasoning: "User asks for real-time, external, or current regulatory information requiring external search.",
+    };
+  }
+
+  // 10. BANK_POLICY_QUERY
+  // e.g. "What is the minimum CIBIL score for an HDFC personal loan?", "What is the minimum salary required by ICICI Bank?",
+  // "Explain the personal loan eligibility criteria for Axis Bank", "What is the foreclosure rule in the stored policy?"
+  if (isPolicyAsk || (targetBank && /\b(?:eligibility|criteria|rule|rules|cibil|salary|document|documents|tenure|amount|roi|rate|charge|foreclosure|prepayment)\b/i.test(lowerMsg))) {
+    return {
+      intent: "BANK_POLICY_QUERY",
+      confidence: 0.95,
+      extractedEntities: extracted,
+      targetBank,
+      reasoning: "User inquires about bank-specific policy, eligibility criteria, or rules backed by semantic policy RAG.",
+    };
+  }
+
+  // 11. LOAN_TYPE_OR_LOAN_PROCESS_QUERY
+  // e.g. "What are the personal loan and education loan application processes?",
+  // "How does a personal loan balance transfer work?", "Difference between secured and unsecured loan"
+  const isLoanProcessOrTypeAsk =
+    /\b(?:application\s*process(?:es)?|how\s+to\s+apply|process\s*to\s*apply|steps\s*to\s*apply|balance\s*transfer|secured\s*(?:vs\.?|versus|and)\s*unsecured|difference\s*between.*loan|types\s*of\s*loans?)\b/i.test(lowerMsg);
+
+  if (isLoanProcessOrTypeAsk) {
+    return {
+      intent: "LOAN_TYPE_OR_LOAN_PROCESS_QUERY",
+      confidence: 0.9,
+      extractedEntities: extracted,
+      targetBank,
+      reasoning: "User asks about loan types, application procedures, or comparative loan mechanics.",
+    };
+  }
+
+  // 12. LOAN_ELIGIBILITY_CALCULATION
+  // e.g. "Check my personal loan eligibility", "Am I eligible for a personal loan?", or multi-slot applicant details provided
+  const nonDerivedKeys = [
+    extracted.monthlyIncome,
+    extracted.cibil,
+    extracted.loanAmount,
+    extracted.companyName,
+    extracted.age,
+    extracted.existingEmi,
+  ].filter((v) => v !== undefined && v !== null);
+
+  const isNaturalLoanIntent =
+    /(?:i\s*(?:need|want|require|wish|am\s*looking\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(lowerMsg) ||
+    /(?:apply\s*(?:for)?\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(lowerMsg) ||
+    /(?:can\s*i\s*(?:get|have|avail|take|apply\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(lowerMsg) ||
+    /(?:check|evaluate|calculate|find\s*out)\s*(?:my\s*)?(?:personal\s*)?(?:loan\s*)?eligib/i.test(lowerMsg) ||
+    isMultiBankEligibilityQuery(rawMsg);
+
+  if (isNaturalLoanIntent || nonDerivedKeys.length >= 2) {
+    return {
+      intent: "LOAN_ELIGIBILITY_CALCULATION",
+      confidence: 0.95,
+      extractedEntities: extracted,
+      reasoning: "User initiates or provides details for calculating multi-bank loan eligibility.",
+    };
+  }
+
+
+  // 14. Answering an active expected field in an existing flow
+  if (activeContext?.isFlowActive && activeContext?.expectedField) {
+    return {
+      intent: "LOAN_ELIGIBILITY_CALCULATION",
+      confidence: 0.9,
+      extractedEntities: extracted,
+      reasoning: `User providing response for active expectedField '${activeContext.expectedField}'.`,
+    };
+  }
+
+  // 15. Default fallback to GENERAL_QUERY
+  return {
+    intent: "GENERAL_QUERY",
+    confidence: 0.8,
+    extractedEntities: extracted,
+    reasoning: "Default conversational or educational query directed to LLM.",
+  };
+}
+

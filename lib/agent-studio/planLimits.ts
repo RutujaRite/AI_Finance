@@ -19,6 +19,9 @@ export interface PlanConfig {
   period: string;
   badge?: string;
   subtitle: string;
+  tagline?: string;
+  priceDisplay?: string;
+  priceSubtext?: string;
   limits: PlanLimits;
   features: string[];
   ctaText: string;
@@ -31,10 +34,13 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
     priceINR: 0,
     period: "month",
     subtitle: "For trying AI Agent Studio",
+    tagline: "For trying AI Agent Studio",
+    priceDisplay: "Free",
+    priceSubtext: "Forever",
     limits: {
-      agents: 1,
-      testMessages: 10,
-      knowledgeFiles: 1,
+      agents: 10,
+      testMessages: 50,
+      knowledgeFiles: 10,
     },
     features: [
       "1 AI Agent",
@@ -54,6 +60,9 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
     period: "month",
     badge: "MOST POPULAR",
     subtitle: "For growing AI assistants",
+    tagline: "For growing AI assistants",
+    priceDisplay: "₹1,499",
+    priceSubtext: "/ month",
     limits: {
       agents: 5,
       testMessages: 500,
@@ -78,6 +87,9 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
     priceINR: 4999,
     period: "month",
     subtitle: "For teams and businesses",
+    tagline: "For teams and businesses",
+    priceDisplay: "₹4,999",
+    priceSubtext: "/ month",
     limits: {
       agents: Infinity,
       testMessages: 5000,

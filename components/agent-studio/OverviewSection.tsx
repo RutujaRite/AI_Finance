@@ -55,13 +55,13 @@ export default function OverviewSection({
             onClick={onTestAgent}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 transition"
           >
-            <i className="bi bi-play-circle text-sm text-indigo-600" />
+            <i className="bi bi-play-circle text-sm text-blue-600" />
             <span>Test Agent</span>
           </button>
           <button
             onClick={onSaveChanges}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm hover:shadow disabled:opacity-60"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm hover:shadow disabled:opacity-60"
           >
             {saving ? (
               <>
@@ -98,7 +98,7 @@ export default function OverviewSection({
             {/* Soft progress bar */}
             <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden my-3">
               <div
-                className="bg-indigo-500 h-full rounded-full transition-all duration-300"
+                className="bg-blue-600 h-full rounded-full transition-all duration-300"
                 style={{ width: `${percentage}%` }}
               />
             </div>
@@ -126,9 +126,15 @@ export default function OverviewSection({
                 </span>
               </div>
               <div className="flex items-center justify-between text-slate-600">
-                <span>Conversations Mode</span>
-                <span className="font-semibold text-emerald-600">
-                  {agent.modes.conversations ? "Enabled" : "Disabled"}
+                <span>Mode</span>
+                <span className="font-semibold text-blue-700 capitalize bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                  {agent.operationalMode ? agent.operationalMode.replace("_", " ") : "Standard"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-slate-600">
+                <span>Main Assistant Live</span>
+                <span className={`font-semibold ${agent.modes.conversations ? "text-emerald-600" : "text-slate-400"}`}>
+                  {agent.modes.conversations ? "Allowed" : "Disabled"}
                 </span>
               </div>
               <div className="flex items-center justify-between text-slate-600">
@@ -142,7 +148,7 @@ export default function OverviewSection({
 
           <button
             onClick={() => onNavigateToTab("setup")}
-            className="mt-4 text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 transition"
+            className="mt-4 text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition"
           >
             <span>Edit Setup</span>
             <i className="bi bi-chevron-right text-[10px]" />
@@ -163,34 +169,43 @@ export default function OverviewSection({
                 </span>
               </div>
               <div className="flex items-center justify-between text-slate-600">
-                <span>Qualification Fields</span>
-                <span className="font-semibold text-slate-800">
-                  {agent.qualification.leadFields.filter((f) => f.enabled).length} active fields
+                <span>Active Tools</span>
+                <span className="font-semibold text-blue-600">
+                  {Object.values(agent.capabilities).filter(Boolean).length} capabilities
                 </span>
               </div>
               <div className="flex items-center justify-between text-slate-600">
-                <span>Active Tools</span>
-                <span className="font-semibold text-indigo-600">
-                  {Object.values(agent.capabilities).filter(Boolean).length} capabilities
+                <span>Test Agent Demo</span>
+                <span className={`font-semibold ${agent.modes.aiAgentMode ? "text-blue-600" : "text-slate-400"}`}>
+                  {agent.modes.aiAgentMode ? "Enabled" : "Disabled"}
                 </span>
               </div>
             </div>
           </div>
 
-          <button
-            onClick={() => onNavigateToTab("capabilities")}
-            className="mt-4 text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 transition"
-          >
-            <span>Manage Capabilities</span>
-            <i className="bi bi-chevron-right text-[10px]" />
-          </button>
+          <div className="mt-4 flex items-center justify-between text-xs font-semibold pt-2 border-t border-slate-100">
+            <button
+              onClick={() => onNavigateToTab("instructions")}
+              className="text-blue-600 hover:text-blue-700 flex items-center gap-1 transition"
+            >
+              <span>AI Instructions</span>
+              <i className="bi bi-chevron-right text-[10px]" />
+            </button>
+            <button
+              onClick={() => onNavigateToTab("test")}
+              className="text-slate-600 hover:text-slate-800 flex items-center gap-1 transition"
+            >
+              <span>Test Agent Demo</span>
+              <i className="bi bi-chevron-right text-[10px]" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Quick Start Guidance Banner (Clean, soft, helpful) */}
-      <div className="bg-gradient-to-r from-indigo-50/70 via-purple-50/40 to-white rounded-2xl border border-indigo-100/70 p-5">
+      <div className="bg-gradient-to-r from-blue-50/70 via-slate-50/40 to-white rounded-2xl border border-blue-100/70 p-5">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl bg-white text-indigo-600 shadow-xs flex items-center justify-center shrink-0 border border-indigo-100">
+          <div className="w-10 h-10 rounded-xl bg-white text-blue-600 shadow-xs flex items-center justify-center shrink-0 border border-blue-100">
             <i className="bi bi-lightbulb text-lg" />
           </div>
           <div className="flex-1">
@@ -198,24 +213,30 @@ export default function OverviewSection({
               Next Step: Customize or Test Your Agent
             </h4>
             <p className="text-xs text-slate-600 leading-relaxed mb-3">
-              Configure your agent instructions in Setup, review lead qualification rules, upload custom policy documents, or jump directly into the playground to test live interactions.
+              Upload documents to Knowledge Base, configure instructions &amp; guardrails, or jump directly into the playground to test live interactions.
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={() => onNavigateToTab("setup")}
+                onClick={() => onNavigateToTab("knowledge")}
+                className="text-xs font-medium px-3 py-1.5 bg-white text-slate-700 hover:text-slate-900 rounded-lg border border-slate-200 transition shadow-xs"
+              >
+                Knowledge Base
+              </button>
+              <button
+                onClick={() => onNavigateToTab("instructions")}
                 className="text-xs font-medium px-3 py-1.5 bg-white text-slate-700 hover:text-slate-900 rounded-lg border border-slate-200 transition shadow-xs"
               >
                 Configure Instructions
               </button>
               <button
-                onClick={() => onNavigateToTab("qualification")}
+                onClick={() => onNavigateToTab("conversations")}
                 className="text-xs font-medium px-3 py-1.5 bg-white text-slate-700 hover:text-slate-900 rounded-lg border border-slate-200 transition shadow-xs"
               >
-                Review Qualification
+                Conversations
               </button>
               <button
                 onClick={onTestAgent}
-                className="text-xs font-semibold px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-xs"
+                className="text-xs font-semibold px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-xs"
               >
                 Test in Playground
               </button>
