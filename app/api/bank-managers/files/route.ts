@@ -40,7 +40,8 @@ export async function GET(req: NextRequest) {
   const client = await pool.connect();
   try {
     const res = await client.query(
-      `SELECT bmf.id, bmf.bank_name, bmf.file_name, bmf.file_path, bmf.file_size, bmf.uploaded_at, u.name as uploaded_by_name
+      `SELECT bmf.id, bmf.bank_name, bmf.file_name, bmf.file_path, bmf.file_size, bmf.uploaded_at, u.name as uploaded_by_name,
+              (SELECT COUNT(*) FROM bank_managers bm WHERE bm.bank_name = bmf.bank_name)::int as record_count
        FROM bank_manager_files bmf
        LEFT JOIN users u ON bmf.uploaded_by = u.id
        ORDER BY bmf.uploaded_at DESC`

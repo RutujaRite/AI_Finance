@@ -437,6 +437,7 @@ export async function saveDocumentConfiguration(
   documentId: string,
   agentId: string,
   config: {
+    name?: string;
     instructionText?: string;
     whenToUse?: string;
     whenNotToUse?: string;
@@ -448,6 +449,13 @@ export async function saveDocumentConfiguration(
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+
+    if (config.name) {
+      await client.query(
+        `UPDATE knowledge_documents SET name = $2, updated_at = NOW() WHERE id = $1`,
+        [documentId, config.name.trim()]
+      );
+    }
 
     if (config.isActive !== undefined) {
       await client.query(
@@ -885,4 +893,251 @@ export async function listAllKnowledgeDocumentsAcrossAgents(): Promise<Array<{
     client.release();
   }
 }
+
+/**
+ * Records an LLM token usage event in ai_token_usage_logs.
+ */
+export async function recordTokenUsage(params: {
+  agentId?: string;
+  agentName?: string;
+  modelName?: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens?: number;
+  source?: "chat" | "playground";
+}): Promise<void> {
+  const prompt = Number(params.promptTokens || 0);
+  const completion = Number(params.completionTokens || 0);
+  const total = Number(params.totalTokens || (prompt + completion));
+  if (total <= 0) return;
+
+  await ensureDb();
+  const client = await pool.connect();
+  try {
+    let resolvedAgentName = params.agentName || "CreditWise Assistant";
+    if (params.agentId && !params.agentName) {
+      const aRes = await client.query(`SELECT name FROM agents WHERE id = $1`, [params.agentId]);
+      if (aRes.rowCount && aRes.rowCount > 0) {
+        resolvedAgentName = aRes.rows[0].name;
+      }
+    }
+
+    await client.query(
+      `INSERT INTO ai_token_usage_logs (agent_id, agent_name, model_name, prompt_tokens, completion_tokens, total_tokens, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        params.agentId || "agent_loan_assistant",
+        resolvedAgentName,
+        params.modelName || process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free",
+        prompt,
+        completion,
+        total,
+        params.source || "chat",
+      ]
+    );
+
+    // Also update agent usage counter if agentId provided
+    if (params.agentId) {
+      await client.query(
+        `UPDATE agents
+         SET usage = jsonb_set(
+           COALESCE(usage, '{}'::jsonb),
+           '{knowledgeTokens}',
+           (COALESCE((usage->>'knowledgeTokens')::int, 0) + $1)::text::jsonb
+         ),
+         updated_at = NOW()
+         WHERE id = $2`,
+        [total, params.agentId]
+      );
+    }
+  } catch (err) {
+    console.error("[RECORD_TOKEN_USAGE_ERROR]", err);
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Returns aggregated token analytics, breakdowns, and recent logs.
+ */
+export async function getTokenUsageAnalytics(): Promise<{
+  summary: {
+    totalTokens: number;
+    promptTokens: number;
+    completionTokens: number;
+    totalCalls: number;
+    budgetTokens: number;
+    alertThresholdPercent: number;
+    budgetUsedPercent: number;
+  };
+  byModel: Array<{ modelName: string; totalTokens: number; count: number }>;
+  byAgent: Array<{ agentId: string; agentName: string; totalTokens: number; count: number }>;
+  recentLogs: Array<{
+    id: number;
+    agentId: string;
+    agentName: string;
+    modelName: string;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    source: string;
+    createdAt: string;
+  }>;
+}> {
+  await ensureDb();
+  const client = await pool.connect();
+  try {
+    // 1. Overall summary
+    const sumRes = await client.query(`
+      SELECT
+        COALESCE(SUM(total_tokens), 0)::bigint as total_tokens,
+        COALESCE(SUM(prompt_tokens), 0)::bigint as prompt_tokens,
+        COALESCE(SUM(completion_tokens), 0)::bigint as completion_tokens,
+        COUNT(*)::bigint as total_calls
+      FROM ai_token_usage_logs
+    `);
+
+    // 2. Settings
+    const setRes = await client.query(`SELECT monthly_budget_tokens, alert_threshold_percent FROM ai_token_settings WHERE id = 'default' LIMIT 1`);
+    const budgetTokens = setRes.rowCount ? Number(setRes.rows[0].monthly_budget_tokens) : 1000000;
+    const alertThresholdPercent = setRes.rowCount ? Number(setRes.rows[0].alert_threshold_percent) : 80;
+
+    const totalTokens = Number(sumRes.rows[0]?.total_tokens || 0);
+    const promptTokens = Number(sumRes.rows[0]?.prompt_tokens || 0);
+    const completionTokens = Number(sumRes.rows[0]?.completion_tokens || 0);
+    const totalCalls = Number(sumRes.rows[0]?.total_calls || 0);
+    const budgetUsedPercent = budgetTokens > 0 ? Math.min(100, Math.round((totalTokens / budgetTokens) * 100)) : 0;
+
+    // 3. By Model
+    const modelRes = await client.query(`
+      SELECT
+        COALESCE(model_name, 'Unknown') as model_name,
+        SUM(total_tokens)::bigint as total_tokens,
+        COUNT(*)::bigint as count
+      FROM ai_token_usage_logs
+      GROUP BY model_name
+      ORDER BY total_tokens DESC
+      LIMIT 10
+    `);
+
+    // 4. By Agent
+    const agentRes = await client.query(`
+      SELECT
+        COALESCE(agent_id, 'system') as agent_id,
+        COALESCE(agent_name, 'CreditWise Assistant') as agent_name,
+        SUM(total_tokens)::bigint as total_tokens,
+        COUNT(*)::bigint as count
+      FROM ai_token_usage_logs
+      GROUP BY agent_id, agent_name
+      ORDER BY total_tokens DESC
+      LIMIT 10
+    `);
+
+    // 5. Recent Logs
+    const logRes = await client.query(`
+      SELECT
+        id,
+        agent_id as "agentId",
+        agent_name as "agentName",
+        model_name as "modelName",
+        prompt_tokens as "promptTokens",
+        completion_tokens as "completionTokens",
+        total_tokens as "totalTokens",
+        source,
+        created_at as "createdAt"
+      FROM ai_token_usage_logs
+      ORDER BY created_at DESC
+      LIMIT 50
+    `);
+
+    return {
+      summary: {
+        totalTokens,
+        promptTokens,
+        completionTokens,
+        totalCalls,
+        budgetTokens,
+        alertThresholdPercent,
+        budgetUsedPercent,
+      },
+      byModel: modelRes.rows.map((r: any) => ({
+        modelName: r.model_name,
+        totalTokens: Number(r.total_tokens),
+        count: Number(r.count),
+      })),
+      byAgent: agentRes.rows.map((r: any) => ({
+        agentId: r.agent_id,
+        agentName: r.agent_name,
+        totalTokens: Number(r.total_tokens),
+        count: Number(r.count),
+      })),
+      recentLogs: logRes.rows.map((r: any) => ({
+        id: r.id,
+        agentId: r.agentId,
+        agentName: r.agentName,
+        modelName: r.modelName,
+        promptTokens: Number(r.promptTokens),
+        completionTokens: Number(r.completionTokens),
+        totalTokens: Number(r.totalTokens),
+        source: r.source,
+        createdAt: new Date(r.createdAt).toISOString(),
+      })),
+    };
+  } catch (err) {
+    console.error("[GET_TOKEN_USAGE_ANALYTICS_ERROR]", err);
+    return {
+      summary: {
+        totalTokens: 0,
+        promptTokens: 0,
+        completionTokens: 0,
+        totalCalls: 0,
+        budgetTokens: 1000000,
+        alertThresholdPercent: 80,
+        budgetUsedPercent: 0,
+      },
+      byModel: [],
+      byAgent: [],
+      recentLogs: [],
+    };
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Updates token monthly budget and alert threshold percent.
+ */
+export async function updateTokenSettings(budgetTokens: number, alertPercent: number): Promise<void> {
+  await ensureDb();
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `INSERT INTO ai_token_settings (id, monthly_budget_tokens, alert_threshold_percent, updated_at)
+       VALUES ('default', $1, $2, NOW())
+       ON CONFLICT (id) DO UPDATE
+       SET monthly_budget_tokens = $1, alert_threshold_percent = $2, updated_at = NOW()`,
+      [Math.max(1000, Number(budgetTokens || 1000000)), Math.min(100, Math.max(1, Number(alertPercent || 80)))]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Clears token usage logs.
+ */
+export async function clearTokenUsageLogs(): Promise<boolean> {
+  await ensureDb();
+  const client = await pool.connect();
+  try {
+    await client.query(`TRUNCATE TABLE ai_token_usage_logs`);
+    return true;
+  } catch (err) {
+    console.error("[CLEAR_TOKEN_USAGE_LOGS_ERROR]", err);
+    return false;
+  } finally {
+    client.release();
+  }
+}
+
 

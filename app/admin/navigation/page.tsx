@@ -24,9 +24,20 @@ interface NavRouteItem {
 
 const SYSTEM_ROUTES: NavRouteItem[] = [
   {
+    id: "admin-ai-agent-studio",
+    path: "/admin/ai-agent-studio",
+    label: "AI Agent Studio (Model Config)",
+    category: "Admin Suite",
+    roles: ["Admin"],
+    icon: "bi bi-gear-wide-connected",
+    status: "Protected",
+    description: "Environment model configuration, provider routing, temperature, max tokens & connected feature usage",
+    badge: "Config",
+  },
+  {
     id: "agent-studio",
     path: "/agent-studio",
-    label: "AI Agent Studio",
+    label: "AI Agent Studio Workspace",
     category: "Admin Suite",
     roles: ["Admin"],
     icon: "bi bi-robot",
@@ -67,7 +78,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
   {
     id: "copilot",
     path: "/home?section=assistant",
-    label: "AI Copilot Workspace",
+    label: "AI Assistant Workspace",
     category: "AI Intelligence",
     roles: ["Admin", "DSA Agent"],
     icon: "bi bi-chat-dots",
@@ -109,7 +120,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
   {
     id: "bank-managers",
     path: "/bank-managers",
-    label: "Location & Contact Bank Manager",
+    label: "Contact and Location Bank Manager",
     category: "Banking Policies",
     roles: ["Admin", "DSA Agent"],
     icon: "bi bi-people",

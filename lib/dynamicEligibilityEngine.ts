@@ -2844,10 +2844,13 @@ export function isInvalidCompanyName(text: string): boolean {
   }
 
   if (
-    /^(?:i\s+am\s+|i\s*m\s+)?(?:jobless|unemployed|no\s*job|without\s*(?:a\s*)?job|laid\s*off|not\s*working(?:\s*anywhere)?|none|nil|na|n\/a|nothing|zero|0|0rs|student|freelancer?|self[\s-]*employed)$/i.test(
+    /^(?:i\s+am\s+|i\s*m\s+)?(?:jobless|unemployed|no\s*job|without\s*(?:a\s*)?job|laid\s*off|not\s*working(?:\s*anywhere)?|none|nil|na|n\/a|nothing|zero|0|0rs|student|in\s*college|studying|house[\s-]*wife|home[\s-]*maker|pensioner|retired|senior\s*citizen|freelancer?|self[t\s-]*employed|self[\s-]*employd|own\s*business|business\s*owner)$/i.test(
       clean
     ) ||
-    /(?:not\s*working(?:\s*anywhere)?|don['’]?t\s*work|have\s*no\s*job|without\s*a?\s*job|jobless|unemployed|un-employed|lost\s*my\s*job|laid\s*off|no\s*employment)/i.test(clean)
+    /(?:not\s*working(?:\s*anywhere)?|don['’]?t\s*work|have\s*no\s*job|without\s*a?\s*job|jobless|unemployed|un-employed|lost\s*my\s*job|laid\s*off|no\s*employment)/i.test(clean) ||
+    /^(?:i\s*don'?t\s*have|i\s*do\s*not\s*have|don'?t\s*have|have\s*no\s*company|without\s*company|no\s*company)\b/i.test(clean) ||
+    /(?:i\s*don'?t\s*have\s*(?:a\s*)?company|no\s*company|without\s*(?:a\s*)?company|don'?t\s*work\s*in\s*a\s*company|not\s*working\s*in\s*any\s*company|not\s*working\s*in\s*a\s*company|this\s+is\s+not\s+(?:my\s+)?company|not\s+my\s+company|wrong\s+company|not\s+having\s+(?:a\s*)?company)/i.test(clean) ||
+    /\b(?:house[\s-]*wife|home[\s-]*maker|pensioner|retired|student|in\s*college|studying|selft?[\s-]*employed|own\s*business)\b/i.test(clean)
   ) {
     return true;
   }
@@ -2922,7 +2925,7 @@ export function isInvalidCompanyName(text: string): boolean {
 export function detectCompanyDisavowal(text: string): { isDisavowal: boolean; replacementCompany?: string } {
   if (!text) return { isDisavowal: false };
   const clean = text.trim();
-  const disavowalRegex = /\b(?:this\s+is\s+not\s+(?:my\s+)?(?:company|employer)|that'?s\s+not\s+(?:where\s+i\s+work|my\s+company|my\s+employer)|not\s+my\s+(?:company|employer)|wrong\s+(?:company|employer)|i\s+don'?t\s+work\s+(?:at|in|there|for)|i\s+do\s+not\s+work\s+(?:at|in|there|for)|remove\s+(?:my\s+)?company|change\s+(?:my\s+)?company|different\s+company|neither|none\s+of\s+these)\b/i;
+  const disavowalRegex = /\b(?:this\s+is\s+not\s+(?:my\s+)?(?:company|employer)|that'?s\s+not\s+(?:where\s+i\s+work|my\s+company|my\s+employer)|not\s+my\s+(?:company|employer)|wrong\s+(?:company|employer)|i\s+don'?t\s+work\s+(?:at|in|there|for)|i\s+do\s+not\s+work\s+(?:at|in|there|for)|i\s*don'?t\s*have\s*(?:a\s*)?company|no\s*company|without\s*company|remove\s+(?:my\s+)?company|change\s+(?:my\s+)?company|different\s+company|neither|none\s+of\s+these)\b/i;
 
   if (!disavowalRegex.test(clean)) {
     return { isDisavowal: false };
@@ -3158,7 +3161,7 @@ export function extractCleanCompanyName(input: string): string {
 export function isCompanyInfoOrSearchIntent(text: string): boolean {
   if (!text) return false;
   const norm = text.toLowerCase().replace(/[.!?]+$/, "").replace(/\s+/g, " ").trim();
-  if (isPureGreeting(norm) || isFinancialOrProfileInput(norm)) return false;
+  if (isPureGreeting(norm) || isFinancialOrProfileInput(norm) || detectCompanyDisavowal(norm).isDisavowal || detectCompanyDisavowal(text).isDisavowal) return false;
   if (isKnownBankName(norm) || Boolean(resolveBankName(norm))) return false;
 
   // 1. Generic company search commands or typos (e.g. "company search", "company serach", "search company", "matching compies list", "matching companies list not displaying")
@@ -3317,6 +3320,9 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
   const raw = text.trim();
   if (isKnownBankName(raw)) return undefined;
   if (isPureGreeting(raw) || isGreetingOrPleasantry(raw)) return undefined;
+  if (detectCompanyDisavowal(raw).isDisavowal) return undefined;
+  if (/(?:i\s*don'?t\s*have\s*(?:a\s*)?company|no\s*company|without\s*(?:a\s*)?company|don'?t\s*work\s*in\s*a\s*company|not\s*working\s*in\s*any\s*company|not\s*working\s*in\s*a\s*company)\b/i.test(raw)) return undefined;
+  if (/\b(?:house[\s-]*wife|home[\s-]*maker|pensioner|retired|student|in\s*college|studying|selft?[\s-]*employed|own\s*business)\b/i.test(raw) && !/(?:works?\s+at|employed\s+at|working\s+at)/i.test(raw)) return undefined;
 
   // 1. Explicit key-value labels or employment phrases anywhere in text (e.g. "I work at Infosys", "I changed my job. I work at Infosys now", "my working company is tech mhindra")
   const explicitMatch = raw.match(
@@ -3614,7 +3620,7 @@ function mapAnswerToTargetField(
     // 2. Check if student
     if (
       llmExtracted?.employmentType === "Student" ||
-      /^(?:i\s+am\s+|i\s*m\s+)?(?:student|in\s*college|studying)\b/i.test(lower)
+      /\b(?:student|in\s*college|studying)\b/i.test(lower)
     ) {
       applicant.employmentType = "Student";
       applicant.companyName = undefined;
@@ -3622,13 +3628,39 @@ function mapAnswerToTargetField(
       return;
     }
 
+    // 2b. Check if housewife / homemaker
+    if (
+      llmExtracted?.employmentType === "Homemaker" ||
+      /\b(?:house[\s-]*wife|home[\s-]*maker)\b/i.test(lower)
+    ) {
+      applicant.employmentType = "Homemaker";
+      applicant.companyName = undefined;
+      applicant.monthlyIncome = 0;
+      return;
+    }
+
+    // 2c. Check if retired / pensioner
+    if (
+      llmExtracted?.employmentType === "Retired" ||
+      /\b(?:retired|pensioner|senior\s*citizen)\b/i.test(lower)
+    ) {
+      applicant.employmentType = "Retired";
+      applicant.companyName = undefined;
+      return;
+    }
+
     // 3. Check if self-employed / freelancer / business
     if (
       llmExtracted?.employmentType === "Self-Employed" ||
-      /^(?:i\s+am\s+|i\s*m\s+)?(?:self[\s-]*employed|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelancer?|doctor|trader|consultant)\b/i.test(lower)
+      /\b(?:self[t\s-]*employed|self[\s-]*employd|own\s*business|business\s*owner|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelancer?|doctor|trader|consultant)\b/i.test(lower) ||
+      /(?:i\s*don'?t\s*have\s*(?:a\s*)?company|no\s*company|without\s*company|don'?t\s*work\s*in\s*a\s*company)/i.test(lower)
     ) {
-      applicant.employmentType = "Self-Employed";
-      applicant.companyName = "Self-Employed";
+      if (/\b(?:self[t\s-]*employed|self[\s-]*employd|own\s*business|business\s*owner|freelancer?|doctor|trader|consultant)\b/i.test(lower)) {
+        applicant.employmentType = "Self-Employed";
+        applicant.companyName = "Self-Employed";
+      } else {
+        applicant.companyName = undefined;
+      }
       return;
     }
 
@@ -3886,9 +3918,14 @@ export function extractSecondaryParameters(
     } else if (/student|in\s*college|studying/i.test(lower)) {
       applicant.employmentType = "Student";
       if (applicant.monthlyIncome === undefined) applicant.monthlyIncome = 0;
+    } else if (/\b(?:house[\s-]*wife|home[\s-]*maker)\b/i.test(lower)) {
+      applicant.employmentType = "Homemaker";
+      if (applicant.monthlyIncome === undefined) applicant.monthlyIncome = 0;
+    } else if (/\b(?:retired|pensioner|senior\s*citizen)\b/i.test(lower)) {
+      applicant.employmentType = "Retired";
     } else if (/salaried|govt|government|private|pvt\s*ltd|mnc|corporate|job|employee/i.test(lower)) {
       applicant.employmentType = "Salaried";
-    } else if (/self\s*employed|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelanc|doctor|trader/i.test(lower)) {
+    } else if (/self[t\s-]*employed|self[\s-]*employd|own\s*business|business\s*owner|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelanc|doctor|trader/i.test(lower)) {
       applicant.employmentType = "Self-Employed";
     }
   }
@@ -3899,6 +3936,9 @@ export function extractSecondaryParameters(
     !applicant.companyName &&
     applicant.employmentType !== "Unemployed" &&
     applicant.employmentType !== "Student" &&
+    applicant.employmentType !== "Homemaker" &&
+    applicant.employmentType !== "Retired" &&
+    applicant.employmentType !== "Self-Employed" &&
     messageMentionsField("companyName", text)
   ) {
     if (llmExtracted?.companyName && !isInvalidCompanyName(llmExtracted.companyName) && !isFinancialOrProfileInput(llmExtracted.companyName)) {
@@ -4264,7 +4304,16 @@ export function consolidateApplicantProfileFromHistory(
       applicant.employmentType = "Student";
       applicant.monthlyIncome = 0;
       applicant.companyName = undefined;
-    } else if (/\b(?:self[\s-]*employed|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelancer?|doctor|trader|consultant)\b/i.test(lower) || extractedForTurn?.employmentStatus === "self-employed" || extractedForTurn?.employmentType === "Self-Employed") {
+    } else if (/\b(?:house[\s-]*wife|home[\s-]*maker)\b/i.test(lower) || extractedForTurn?.employmentStatus === "homemaker" || extractedForTurn?.employmentType === "Homemaker") {
+      applicant.employmentStatus = "homemaker";
+      applicant.employmentType = "Homemaker";
+      applicant.monthlyIncome = 0;
+      applicant.companyName = undefined;
+    } else if (/\b(?:retired|pensioner|senior\s*citizen)\b/i.test(lower) || extractedForTurn?.employmentStatus === "retired" || extractedForTurn?.employmentType === "Retired") {
+      applicant.employmentStatus = "retired";
+      applicant.employmentType = "Retired";
+      applicant.companyName = undefined;
+    } else if (/\b(?:self[t\s-]*employed|self[\s-]*employd|own\s*business|business\s*owner|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelancer?|doctor|trader|consultant)\b/i.test(lower) || extractedForTurn?.employmentStatus === "self-employed" || extractedForTurn?.employmentType === "Self-Employed") {
       applicant.employmentStatus = "self-employed";
       applicant.employmentType = "Self-Employed";
       applicant.companyName = "Self-Employed";
@@ -4289,7 +4338,7 @@ export function consolidateApplicantProfileFromHistory(
     );
 
     if ((!applicant.companyName || (hasExplicitCompanyInTurn && !hasEstablishedCanonicalCompany)) && !isCorrectionMsg) {
-      if (applicant.employmentType !== "Unemployed" && applicant.employmentType !== "Student" && applicant.employmentType !== "Self-Employed") {
+      if (applicant.employmentType !== "Unemployed" && applicant.employmentType !== "Student" && applicant.employmentType !== "Homemaker" && applicant.employmentType !== "Retired" && applicant.employmentType !== "Self-Employed") {
         const compCandidate = extractCompanyCandidateFromText(msg);
         if (compCandidate && !isInvalidCompanyName(compCandidate) && !isFinancialOrProfileInput(compCandidate) && !isFinancialOrProfileInput(msg)) {
           applicant.companyName = compCandidate;
@@ -4372,14 +4421,22 @@ export function getRequiredPolicyFields(
   if (
     applicant.employmentStatus === "unemployed" ||
     applicant.employmentType === "Unemployed" ||
+    applicant.employmentType === "Student" ||
+    applicant.employmentType === "Homemaker" ||
     (applicant.monthlyIncome === 0 && applicant.employmentType !== "Salaried")
   ) {
     return ["employmentStatus"];
   }
 
   // 1. Employer / Company Name is strictly required first for salaried personal loans
-  if (applicant.employmentType === "Student" || applicant.employmentType === "Self-Employed") {
-    // Students and self-employed applicants do not have corporate salaried employers
+  if (
+    applicant.employmentType === "Student" ||
+    applicant.employmentType === "Homemaker" ||
+    applicant.employmentType === "Retired" ||
+    applicant.employmentType === "Unemployed" ||
+    applicant.employmentType === "Self-Employed"
+  ) {
+    // Non-corporate applicants do not have corporate salaried employers
   } else if (
     !applicant.companyName ||
     applicant.companyName.trim().length === 0 ||
@@ -4478,17 +4535,37 @@ function stripReasoningPreamble(text: string): string {
  */
 export interface DefinitiveIneligibilityResult {
   isIneligible: boolean;
-  reasonType?: "UNEMPLOYED_OR_ZERO_INCOME" | "MINIMUM_AGE" | "MAXIMUM_AGE";
+  reasonType?: "UNEMPLOYED_OR_ZERO_INCOME" | "STUDENT_NO_INCOME" | "HOMEMAKER_NO_INCOME" | "MINIMUM_AGE" | "MAXIMUM_AGE";
   explanationSnippet?: string;
 }
 
 export function checkDefinitiveIneligibility(
   applicant: ApplicantProfile
 ): DefinitiveIneligibilityResult {
-  // 1. Unemployed, Jobless, or Zero / severely insufficient income
+  // 1a. Student without independent verifiable income
+  if (applicant.employmentType === "Student" && (!applicant.monthlyIncome || Number(applicant.monthlyIncome) < 10000)) {
+    return {
+      isIneligible: true,
+      reasonType: "STUDENT_NO_INCOME",
+      explanationSnippet:
+        "Standalone unsecured personal loans require regular earned monthly income. As a student, you can explore dedicated Education Loans or apply with an earning parent or guardian as a Primary Applicant / Co-borrower.",
+    };
+  }
+
+  // 1b. Homemaker / Housewife without independent income
+  if (applicant.employmentType === "Homemaker" && (!applicant.monthlyIncome || Number(applicant.monthlyIncome) < 10000)) {
+    return {
+      isIneligible: true,
+      reasonType: "HOMEMAKER_NO_INCOME",
+      explanationSnippet:
+        "Personal loan guidelines require regular verifiable individual income. As a homemaker, you can apply jointly with an earning spouse as a Co-applicant or explore secured credit options such as a Gold Loan.",
+    };
+  }
+
+  // 1c. Unemployed, Jobless, or Zero / severely insufficient income
   if (
     applicant.employmentType === "Unemployed" ||
-    (applicant.monthlyIncome !== undefined && applicant.monthlyIncome !== null && typeof applicant.monthlyIncome === "number" && applicant.monthlyIncome < 10000)
+    (applicant.monthlyIncome !== undefined && applicant.monthlyIncome !== null && Number(applicant.monthlyIncome) < 10000)
   ) {
     return {
       isIneligible: true,
@@ -5239,9 +5316,6 @@ export function formatGeneralAssistanceResponse(inEligibilityFlow?: boolean): st
     `--- \n` +
     `💡 *How can I assist you today? Feel free to ask a loan question, check your eligibility across partner banks, or explore any lender's policy! 😊*`;
 
-  if (inEligibilityFlow) {
-    response += `\n\n*(Whenever you are ready to continue your active loan check, simply share your details!)*`;
-  }
   return response;
 }
 
@@ -5265,9 +5339,6 @@ export function formatHowAreYouResponse(inEligibilityFlow?: boolean): string {
     `I'm doing great, thank you for asking 😊! I am **CreditWise AI**, your intelligent personal loan and financial advisory assistant.\n\n` +
     `How are you doing today? How can I assist you with your loans, bank policies, or EMI calculations? 😊`;
 
-  if (inEligibilityFlow) {
-    reply += `\n\n*(We can also continue your loan eligibility check whenever you're ready!)*`;
-  }
   return reply;
 }
 
@@ -5329,15 +5400,24 @@ export function buildMultiBankIntakePrompt(applicant: Partial<ApplicantProfile>)
   const cibilVal = Number(applicant.cibil) || 0;
   const ageVal = Number(applicant.age) || 0;
 
-  if (salaryVal <= 0) missing.push("Net Monthly Salary (e.g., ₹75,000)");
+  const isNonCorporate =
+    applicant.employmentType === "Self-Employed" ||
+    applicant.employmentType === "Student" ||
+    applicant.employmentType === "Homemaker" ||
+    applicant.employmentType === "Retired" ||
+    applicant.employmentType === "Unemployed";
+
+  if (salaryVal <= 0 && applicant.employmentType !== "Student" && applicant.employmentType !== "Homemaker" && applicant.employmentType !== "Unemployed") {
+    missing.push(applicant.employmentType === "Self-Employed" ? "Net Monthly Business Income / Profit (e.g., ₹75,000)" : "Net Monthly Salary (e.g., ₹75,000)");
+  }
   if (cibilVal < 300) missing.push("Approximate CIBIL Score (e.g., 750, or type 'not sure')");
-  if (!applicant.employmentType) missing.push("Employment Type (e.g., Salaried)");
+  if (!applicant.employmentType) missing.push("Employment Type (e.g., Salaried, Self-Employed)");
   if (ageVal < 18) missing.push("Age");
   if (applicant.existingEmi === undefined || applicant.existingEmi === null) missing.push("Existing Monthly EMI (or enter 0 if none)");
 
   const collected: string[] = [];
-  if (applicant.companyName) collected.push(`employer as **${applicant.companyName}**`);
-  if (salaryVal > 0) collected.push(`monthly salary (**₹${salaryVal.toLocaleString("en-IN")}**)`);
+  if (applicant.companyName && !isNonCorporate) collected.push(`employer as **${applicant.companyName}**`);
+  if (salaryVal > 0) collected.push(`monthly income (**₹${salaryVal.toLocaleString("en-IN")}**)`);
   if (cibilVal >= 300) collected.push(`CIBIL score (**${cibilVal}**)`);
   if (applicant.employmentType) collected.push(`employment type (**${applicant.employmentType}**)`);
   if (ageVal >= 18) collected.push(`age (**${ageVal} years**)`);
@@ -5357,7 +5437,7 @@ export function buildMultiBankIntakePrompt(applicant: Partial<ApplicantProfile>)
   const collectedStr = `I have recorded your ${collected.join(" and ")}.`;
   const missingItems = missing.map((m) => `• **${m}**`).join("\n");
 
-  const companyNote = applicant.companyName
+  const companyNote = applicant.companyName || isNonCorporate
     ? ""
     : `\n\n*(Sharing your **employer/company name** is also recommended to apply preferential corporate category terms.)*`;
 

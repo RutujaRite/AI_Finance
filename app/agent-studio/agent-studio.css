@@ -24,6 +24,292 @@
   --as-success: #159B68;
   --as-emerald: #159B68;
   --as-emerald-soft: rgba(21, 155, 104, 0.08);
+
+  /* AI Studio SaaS Design Tokens */
+  --ai-primary: #2563eb;
+  --ai-primary-hover: #1d4ed8;
+  --ai-primary-light: #eff6ff;
+
+  --ai-background: #f8fafc;
+  --ai-surface: #ffffff;
+
+  --ai-text: #0f172a;
+  --ai-text-secondary: #475569;
+  --ai-text-muted: #64748b;
+
+  --ai-border: #e2e8f0;
+  --ai-border-strong: #cbd5e1;
+
+  --ai-success: #15803d;
+  --ai-success-bg: #f0fdf4;
+
+  --ai-danger: #dc2626;
+  --ai-danger-hover: #b91c1c;
+  --ai-danger-bg: #fef2f2;
+
+  --ai-radius-sm: 6px;
+  --ai-radius-md: 10px;
+  --ai-radius-lg: 14px;
+
+  --ai-shadow-card: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+/* --------------------------------------------------------------------------
+   AI Instructions & Knowledge Base — Modern SaaS UI System
+   -------------------------------------------------------------------------- */
+.ai-main-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  gap: 16px;
+}
+
+.ai-main-content {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.ai-card {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.ai-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.ai-textarea {
+  width: 100%;
+  min-height: 220px;
+  padding: 12px;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.65;
+  resize: vertical;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.ai-textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* Local 2-column layout strictly within Knowledge Base Upload */
+.ai-upload-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+/* Standardized Table Action Buttons */
+.ai-table-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.ai-action-btn {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.ai-action-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+.ai-action-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.ai-action-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.ai-action-btn--delete {
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.ai-action-btn--delete:hover {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #f87171;
+}
+
+/* File Table Styling */
+.ai-file-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.ai-file-table {
+  width: 100%;
+  min-width: 850px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.ai-file-table thead th {
+  padding: 13px 14px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.ai-file-table tbody td {
+  padding: 14px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  color: #334155;
+}
+
+.ai-file-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ai-file-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.ai-file-status--active {
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+/* Scrollable Pane with sleek custom scrollbar */
+.ai-scroll-pane {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.ai-scroll-pane::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.ai-scroll-pane::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+.ai-scroll-pane::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.ai-scroll-pane::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 2-Column Upper Layout: Persona + Instructions (Left) & Quick Settings + Pro Tip (Right) */
+.ai-top-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(290px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.ai-pro-tip-card {
+  background: linear-gradient(135deg, #f0f7ff 0%, #e8f2fe 100%);
+  border: 1px solid #d0e3fc;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.04);
+}
+
+.ai-source-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.ai-source-card:hover {
+  border-color: #93c5fd;
+  background-color: #f8fbff;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.06);
+}
+
+/* Responsive Media Queries */
+@media (max-width: 1024px) {
+  .ai-top-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .ai-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-upload-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-card {
+    padding: 16px;
+  }
+
+  .ai-main-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-table-actions {
+    gap: 6px;
+  }
 }
 
 @keyframes fadeIn {
@@ -910,4 +1196,168 @@ input:focus, textarea:focus, select:focus {
   color: #2563eb !important;
 }
 
+/* ==========================================================================
+   CallNow CRM UI Skills — Component Extensions for AI Agent Studio
+   ========================================================================== */
 
+/* Page Header */
+.cn-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.cn-page-header-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.cn-page-header-subtitle {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.cn-page-header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Sidebar Section Labels */
+.cn-sidebar-section-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  padding: 0.5rem 0.75rem 0.25rem;
+}
+
+/* CallNow Metric Card */
+.cn-metric-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1rem 1.125rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+  height: 100%;
+}
+
+.cn-metric-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
+}
+
+.cn-metric-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.cn-metric-card-icon.success { background: rgba(16, 185, 129, 0.10); color: #10b981; }
+.cn-metric-card-icon.warning { background: rgba(245, 158, 11, 0.10); color: #f59e0b; }
+.cn-metric-card-icon.danger  { background: rgba(239, 68, 68, 0.10);  color: #ef4444; }
+.cn-metric-card-icon.info    { background: rgba(14, 165, 233, 0.10); color: #0ea5e9; }
+.cn-metric-card-icon.purple  { background: rgba(124, 58, 237, 0.10); color: #7c3aed; }
+
+.cn-metric-card-body { min-width: 0; flex: 1; }
+.cn-metric-card-label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.125rem; }
+.cn-metric-card-value { font-size: 1.375rem; font-weight: 700; color: #0f172a; line-height: 1.2; letter-spacing: -0.02em; }
+.cn-metric-card-sub   { font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem; }
+
+.cn-metric-card-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.125rem 0.4375rem;
+  border-radius: 999px;
+  margin-top: 0.5rem;
+}
+
+.cn-metric-card-trend.up   { background: rgba(16, 185, 129, 0.10); color: #10b981; }
+.cn-metric-card-trend.down { background: rgba(239, 68, 68, 0.10);  color: #ef4444; }
+.cn-metric-card-trend.flat { background: #f1f5f9;                 color: #64748b; }
+
+/* Status Pill */
+.cn-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.cn-status-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.cn-status-pill.success { background: rgba(16, 185, 129, 0.10); color: #059669; }
+.cn-status-pill.warning { background: rgba(245, 158, 11, 0.10); color: #d97706; }
+.cn-status-pill.danger  { background: rgba(239, 68, 68, 0.10);  color: #dc2626; }
+.cn-status-pill.info    { background: rgba(14, 165, 233, 0.10); color: #0284c7; }
+.cn-status-pill.muted   { background: #f1f5f9;                 color: #64748b; }
+.cn-status-pill.primary { background: rgba(37, 99, 235, 0.10);  color: #2563eb; }
+
+/* Table Wrapper */
+.cn-table-wrapper {
+  overflow: auto;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+/* CallNow Card Header & Body */
+.cn-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.cn-card-header {
+  background: transparent;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.875rem 1.25rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #0f172a;
+}
+
+.cn-card-body {
+  padding: 1.25rem;
+}
+
+.cn-card-footer {
+  background: transparent;
+  border-top: 1px solid #e2e8f0;
+  padding: 0.875rem 1.25rem;
+}

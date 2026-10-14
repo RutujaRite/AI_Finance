@@ -8,6 +8,9 @@
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Topbar from "./Topbar"
+import { Eye, Pencil, Download } from "lucide-react"
+import ModernConfirmDialog from "@/components/ui/ModernConfirmDialog"
+import ModernTableActionBtn, { ModernDeleteActionBtn } from "@/components/ui/ModernTableActionBtn"
 
 export default function PoliciesView({
   user: propUser,
@@ -89,6 +92,18 @@ export default function PoliciesView({
   // Delete Confirmation Modal State
   const [deleteConfirmPolicy, setDeleteConfirmPolicy] = useState<any | null>(null)
   const [isDeletingPolicy, setIsDeletingPolicy] = useState(false)
+
+  // Upload Policy Modal State
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadBankId, setUploadBankId] = useState<number>(0)
+  const [uploadBankName, setUploadBankName] = useState<string>("")
+  const [uploadLoanType, setUploadLoanType] = useState<string>("Personal Loan")
+  const [uploadPolicyVersion, setUploadPolicyVersion] = useState<string>("V1")
+  const [uploadEmployment, setUploadEmployment] = useState<string>("Salaried")
+  const [uploadDescription, setUploadDescription] = useState<string>("")
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const uploadFileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (propUser) {
@@ -336,7 +351,7 @@ export default function PoliciesView({
       const data = await res.json()
       if (data.success) {
         showToast(
-          `✓ Deleted bank policy file (${fileName}) for ${deleteConfirmPolicy.bank_name}. Bank remains in the list.`,
+          `✓ Deleted master policy file (${fileName}) for ${deleteConfirmPolicy.bank_name}. Bank remains in the list.`,
           "success"
         )
         setDeleteConfirmPolicy(null)
@@ -351,6 +366,71 @@ export default function PoliciesView({
       showToast("✕ Failed to delete policy file", "error")
     } finally {
       setIsDeletingPolicy(false)
+    }
+  }
+
+  // Upload Policy File Handler
+  function handleOpenUploadModal() {
+    setUploadBankId(0)
+    setUploadBankName("")
+    setUploadLoanType("Personal Loan")
+    setUploadPolicyVersion("V1")
+    setUploadEmployment("Salaried")
+    setUploadDescription("")
+    setUploadFile(null)
+    setUploadModalOpen(true)
+  }
+
+  function handleUploadFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadFile(file)
+  }
+
+  async function handleUploadPolicy(e?: React.FormEvent) {
+    if (e) e.preventDefault()
+    if (!uploadFile) {
+      showToast("Please select a file to upload", "error")
+      return
+    }
+    if (!uploadBankId) {
+      showToast("Please select a bank", "error")
+      return
+    }
+    if (!uploadLoanType) {
+      showToast("Please select a loan type", "error")
+      return
+    }
+
+    setIsUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", uploadFile)
+      formData.append("bank_id", String(uploadBankId))
+      formData.append("loan_type", uploadLoanType)
+      formData.append("policy_version", uploadPolicyVersion)
+      formData.append("employment_type", uploadEmployment)
+      formData.append("description", uploadDescription)
+
+      const res = await fetch("/api/policies", {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        showToast(`✓ ${data.message}`, "success")
+        setUploadModalOpen(false)
+        loadPolicies()
+        loadPolicyFiles()
+      } else {
+        showToast(`✕ Failed to upload: ${data.error || "Unknown error"}`, "error")
+      }
+    } catch (err) {
+      console.error("Failed to upload policy file", err)
+      showToast("✕ Failed to upload policy file", "error")
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -482,7 +562,7 @@ export default function PoliciesView({
           )
         )
 
-        showToast(`✓ Bank policy file "${fileName}" saved successfully`, "success")
+        showToast(`✓ Master policy file "${fileName}" saved successfully`, "success")
       } else {
         showToast(`✕ Failed to save file: ${data.error || "Unknown error"}`, "error")
       }
@@ -665,7 +745,7 @@ export default function PoliciesView({
 
           <div className="page-header-actions">
             <span className="badge bg-primary">{policies.length} Banks</span>
-            <span className="badge bg-info">{policyFiles.length} Bank Policy Files</span>
+            <span className="badge bg-purple">{policyFiles.length} Master Files</span>
           </div>
         </div>
 
@@ -676,14 +756,14 @@ export default function PoliciesView({
             className={`nav-link ${activeTab === "rules" ? "active" : ""}`}
             onClick={() => setActiveTab("rules")}
           >
-            <i className="bi bi-card-checklist" /> Bank Policies ({policies.length})
+            <i className="bi bi-card-checklist" /> Bank Master Policies ({policies.length})
           </button>
           <button
             type="button"
             className={`nav-link ${activeTab === "files" ? "active" : ""}`}
             onClick={() => setActiveTab("files")}
           >
-            <i className="bi bi-file-earmark-pdf" /> Bank Policy Files ({policyFiles.length})
+            <i className="bi bi-file-earmark-pdf" /> Policy Master Files ({policyFiles.length})
           </button>
         </div>
 
@@ -759,70 +839,64 @@ export default function PoliciesView({
                 </p>
               </div>
             ) : (
-              <div className="table-wrapper">
-                <table className="table table-hover">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 45 }}>#</th>
-                      <th>Bank Name</th>
-                      <th>Loan Category</th>
-                      <th>Status</th>
-                      <th style={{ textAlign: "right", minWidth: 200 }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredPolicies.map((policy: any, idx: number) => {
-                      const status = (policy.status || "active").toLowerCase()
-                      return (
-                        <tr key={policy.bank_id || policy.id || idx}>
-                          <td style={{ color: "var(--ink-muted)", fontWeight: 500 }}>{idx + 1}</td>
-                          <td style={{ fontWeight: 600, color: "var(--ink)" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                              <i className="bi bi-bank" style={{ color: "var(--accent)" }} />
-                              {policy.bank_name || policy.bank_code || "Partner Bank"}
-                            </div>
-                          </td>
-                          <td style={{ color: "var(--accent)", fontWeight: 500 }}>
-                            {policy.loan_type || "General Policy"}
-                          </td>
-                          <td>
-                            <span className={`status-pill ${status === "active" ? "success" : "warning"}`}>
-                              {status === "review" ? "In Review" : status.charAt(0).toUpperCase() + status.slice(1)}
-                            </span>
-                          </td>
-                          <td style={{ textAlign: "right" }}>
-                            <div style={{ display: "inline-flex", gap: "0.375rem", alignItems: "center", justifyContent: "flex-end" }}>
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                title="View Bank Policy Text File"
-                                onClick={() => handleOpenViewerFile(policy)}
-                              >
-                                <i className="bi bi-eye" /> View
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                title="Edit Bank Policy Text File"
-                                onClick={() => handleOpenEditorFile(policy)}
-                              >
-                                <i className="bi bi-pencil" /> Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-outline-danger btn-sm"
-                                title="Delete Bank Policy Text File"
-                                onClick={() => handleOpenDelete(policy)}
-                              >
-                                <i className="bi bi-trash3" /> Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+              <div className="saas-table-card">
+                <div className="saas-table-wrapper">
+                  <table className="saas-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 50 }}>#</th>
+                        <th>Bank Name</th>
+                        <th style={{ width: 220 }}>Loan Category</th>
+                        <th style={{ width: 140 }}>Status</th>
+                        <th style={{ textAlign: "right", width: 130 }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPolicies.map((policy: any, idx: number) => {
+                        const status = (policy.status || "active").toLowerCase()
+                        return (
+                          <tr key={policy.bank_id || policy.id || idx}>
+                            <td style={{ color: "var(--ink-muted)", fontWeight: 500 }}>{idx + 1}</td>
+                            <td style={{ fontWeight: 600, color: "var(--ink)" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <i className="bi bi-bank" style={{ color: "var(--accent)" }} />
+                                {policy.bank_name || policy.bank_code || "Partner Bank"}
+                              </div>
+                            </td>
+                            <td style={{ color: "var(--accent)", fontWeight: 500 }}>
+                              {policy.loan_type || "General Policy"}
+                            </td>
+                            <td>
+                              <span className={`status-pill ${status === "active" ? "success" : "warning"}`}>
+                                {status === "review" ? "In Review" : status.charAt(0).toUpperCase() + status.slice(1)}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              <div className="saas-actions-group">
+                                <ModernTableActionBtn
+                                  icon={<Eye className="w-3.5 h-3.5" />}
+                                  variant="neutral"
+                                  tooltip="View Policy Text"
+                                  onClick={() => handleOpenViewerFile(policy)}
+                                />
+                                <ModernTableActionBtn
+                                  icon={<Pencil className="w-3.5 h-3.5" />}
+                                  variant="primary"
+                                  tooltip="Edit Policy"
+                                  onClick={() => handleOpenEditorFile(policy)}
+                                />
+                                <ModernDeleteActionBtn
+                                  tooltip="Delete Policy"
+                                  onClick={() => handleOpenDelete(policy)}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </>
@@ -840,6 +914,14 @@ export default function PoliciesView({
                     onChange={(e) => setSearchFileQuery(e.target.value)}
                   />
                 </div>
+                <button
+                  className="btn btn-success"
+                  onClick={handleOpenUploadModal}
+                  disabled={isUploading}
+                  style={{ height: "35px" }}
+                >
+                  {isUploading ? <span className="spinner-inline" /> : <i className="bi bi-upload" />} Upload Policy File
+                </button>
                 <button
                   className="btn btn-primary"
                   onClick={loadPolicyFiles}
@@ -865,115 +947,107 @@ export default function PoliciesView({
                 </p>
               </div>
             ) : (
-              <div className="table-wrapper">
-                <table className="table table-hover">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 45 }}>#</th>
-                      <th>Bank Name</th>
-                      <th>Bank Policy File</th>
-                      <th style={{ width: 110 }}>Size</th>
-                      <th style={{ textAlign: "right", minWidth: 260 }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredPolicyFiles.map((file: any, idx: number) => {
-                      const kbSize = file.file_size_bytes
-                        ? file.file_size_bytes > 1024 * 1024
-                          ? (file.file_size_bytes / (1024 * 1024)).toFixed(1) + " MB"
-                          : (file.file_size_bytes / 1024).toFixed(1) + " KB"
-                        : file.text_length
-                        ? (file.text_length / 1024).toFixed(1) + " KB"
-                        : "0 KB"
-                      return (
-                        <tr key={file.bank_id || file.id || idx}>
-                          <td style={{ color: "var(--ink-muted)", fontWeight: 500 }}>{idx + 1}</td>
-                          <td style={{ fontWeight: 600, color: "var(--ink)" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                              <i className="bi bi-bank" style={{ color: "var(--accent)" }} />
-                              {file.bank_name}
-                            </div>
-                          </td>
-                          <td>
-                            <div
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "0.4rem",
-                                fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                                fontSize: "0.8125rem",
-                                color: "var(--ink)",
-                                background: "var(--surface-2)",
-                                padding: "0.25rem 0.6rem",
-                                borderRadius: "var(--radius-sm)",
-                                border: "1px solid var(--border)",
-                                maxWidth: "340px",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                              title={file.file_name}
-                            >
-                              <i className="bi bi-file-earmark-text" style={{ color: "var(--accent)", flexShrink: 0 }} />
-                              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                                {file.file_name}
-                              </span>
-                            </div>
-                          </td>
-                          <td>
-                            <span className="badge">{kbSize}</span>
-                          </td>
-                          <td style={{ textAlign: "right" }}>
-                            <div style={{ display: "inline-flex", gap: "0.375rem", alignItems: "center", justifyContent: "flex-end" }}>
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                title="View Bank Policy Document"
-                                onClick={() => handleOpenViewer(file.id, file)}
-                              >
-                                <i className="bi bi-eye" /> View
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                title="Edit Bank Policy Text File"
-                                onClick={() => handleOpenEditorFile(file)}
-                              >
-                                <i className="bi bi-pencil" /> Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-outline-danger btn-sm"
-                                title="Delete Bank Policy Text File"
-                                onClick={() => handleOpenDelete(file)}
-                              >
-                                <i className="bi bi-trash3" /> Delete
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                title="Download .txt File"
-                                onClick={async () => {
-                                  if (file.extracted_text) {
-                                    handleDownloadText(file.file_name, file.extracted_text)
-                                  } else {
-                                    const res = await fetch(`/api/policies/extracted-files/${file.id}`)
-                                    const data = await res.json()
-                                    if (data.success && data.file?.extracted_text) {
-                                      handleDownloadText(file.file_name, data.file.extracted_text)
-                                    }
-                                  }
+              <div className="saas-table-card">
+                <div className="saas-table-wrapper">
+                  <table className="saas-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 50 }}>#</th>
+                        <th>Bank Name</th>
+                        <th>Master Policy File</th>
+                        <th style={{ width: 120 }}>Size</th>
+                        <th style={{ textAlign: "right", width: 160 }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPolicyFiles.map((file: any, idx: number) => {
+                        const kbSize = file.file_size_bytes
+                          ? file.file_size_bytes > 1024 * 1024
+                            ? (file.file_size_bytes / (1024 * 1024)).toFixed(1) + " MB"
+                            : (file.file_size_bytes / 1024).toFixed(1) + " KB"
+                          : file.text_length
+                          ? (file.text_length / 1024).toFixed(1) + " KB"
+                          : "0 KB"
+                        return (
+                          <tr key={file.bank_id || file.id || idx}>
+                            <td style={{ color: "var(--ink-muted)", fontWeight: 500 }}>{idx + 1}</td>
+                            <td style={{ fontWeight: 600, color: "var(--ink)" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <i className="bi bi-bank" style={{ color: "var(--accent)" }} />
+                                {file.bank_name}
+                              </div>
+                            </td>
+                            <td>
+                              <div
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.4rem",
+                                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                  fontSize: "0.8125rem",
+                                  color: "var(--ink)",
+                                  background: "var(--surface-2)",
+                                  padding: "0.25rem 0.6rem",
+                                  borderRadius: "var(--radius-sm)",
+                                  border: "1px solid var(--border)",
+                                  maxWidth: "340px",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
                                 }}
+                                title={file.file_name}
                               >
-                                <i className="bi bi-download" /> Download
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                                <i className="bi bi-file-earmark-text" style={{ color: "var(--accent)", flexShrink: 0 }} />
+                                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  {file.file_name}
+                                </span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="badge">{kbSize}</span>
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              <div className="saas-actions-group">
+                                <ModernTableActionBtn
+                                  icon={<Eye className="w-3.5 h-3.5" />}
+                                  variant="neutral"
+                                  tooltip="View Document"
+                                  onClick={() => handleOpenViewer(file.id, file)}
+                                />
+                                <ModernTableActionBtn
+                                  icon={<Pencil className="w-3.5 h-3.5" />}
+                                  variant="primary"
+                                  tooltip="Edit Master Policy"
+                                  onClick={() => handleOpenEditorFile(file)}
+                                />
+                                <ModernTableActionBtn
+                                  icon={<Download className="w-3.5 h-3.5" />}
+                                  variant="neutral"
+                                  tooltip="Download .txt File"
+                                  onClick={async () => {
+                                    if (file.extracted_text) {
+                                      handleDownloadText(file.file_name, file.extracted_text)
+                                    } else {
+                                      const res = await fetch(`/api/policies/extracted-files/${file.id}`)
+                                      const data = await res.json()
+                                      if (data.success && data.file?.extracted_text) {
+                                        handleDownloadText(file.file_name, data.file.extracted_text)
+                                      }
+                                    }
+                                  }}
+                                />
+                                <ModernDeleteActionBtn
+                                  tooltip="Delete Policy File"
+                                  onClick={() => handleOpenDelete(file)}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </>
@@ -1409,70 +1483,19 @@ export default function PoliciesView({
       )}
 
       {/* =========================================================================
-          DELETE CONFIRMATION MODAL
+          MODERN DELETE CONFIRMATION MODAL
           ========================================================================= */}
-      {deleteConfirmPolicy && (
-        <div className="modal-backdrop" onClick={() => !isDeletingPolicy && setDeleteConfirmPolicy(null)}>
-          <div
-            className="modal-content"
-            style={{ maxWidth: 480, padding: 0, overflow: "hidden", borderRadius: 16 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ padding: "1.75rem 1.5rem", textAlign: "center" }}>
-              <div
-                style={{
-                  width: 54,
-                  height: 54,
-                  borderRadius: "50%",
-                  background: "#fee2e2",
-                  color: "#ef4444",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "1.75rem",
-                  marginBottom: "1rem",
-                }}
-              >
-                <i className="bi bi-trash3" />
-              </div>
-              <h3 style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--ink)", marginBottom: "0.5rem" }}>
-                Delete Bank Policy File?
-              </h3>
-              <p style={{ fontSize: "0.875rem", color: "var(--ink-soft)", lineHeight: 1.5, margin: "0 auto 1.5rem", maxWidth: 380 }}>
-                Are you sure you want to delete the bank policy text file{" "}
-                <strong style={{ color: "var(--ink)" }}>({deleteConfirmPolicy.file_name || deleteConfirmPolicy.attachment_file_name || "bank document"})</strong> for{" "}
-                <strong style={{ color: "var(--ink)" }}>{deleteConfirmPolicy.bank_name || "this bank"}</strong>?
-                <br />
-                <span style={{ color: "var(--ink-muted)", fontSize: "0.8125rem", display: "inline-block", marginTop: "0.5rem" }}>
-                  The bank database record will remain active in the list.
-                </span>
-              </p>
-
-              <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={{ minWidth: 100 }}
-                  onClick={() => setDeleteConfirmPolicy(null)}
-                  disabled={isDeletingPolicy}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  style={{ minWidth: 150, background: "#ef4444", color: "#ffffff", border: "none" }}
-                  onClick={handleConfirmDelete}
-                  disabled={isDeletingPolicy}
-                >
-                  {isDeletingPolicy ? <span className="spinner-inline" /> : <i className="bi bi-trash3" style={{ marginRight: "0.375rem" }} />}
-                  Confirm Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ModernConfirmDialog
+        isOpen={!!deleteConfirmPolicy}
+        onClose={() => !isDeletingPolicy && setDeleteConfirmPolicy(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Master Policy File?"
+        description="Are you sure you want to delete this master policy file? The bank database record will remain active in the system, but the associated policy document will be permanently removed."
+        itemTitle={deleteConfirmPolicy ? (deleteConfirmPolicy.file_name || deleteConfirmPolicy.attachment_file_name || "Master Policy Document") : undefined}
+        itemSubtitle={deleteConfirmPolicy ? `Bank: ${deleteConfirmPolicy.bank_name || "Partner Bank"}` : undefined}
+        confirmText="Confirm Delete"
+        isLoading={isDeletingPolicy}
+      />
 
       {/* POLICY DOCUMENT VIEWER & EDITOR MODAL */}
       {activeViewerFile && (
@@ -1519,7 +1542,7 @@ export default function PoliciesView({
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        title="Edit Bank Policy Document"
+                        title="Edit Master Policy Document"
                         onClick={handleEnterEdit}
                         style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
                       >
@@ -1529,7 +1552,7 @@ export default function PoliciesView({
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
-                      title="Download Bank Policy Document"
+                      title="Download Master Document"
                       onClick={() => handleDownloadText(activeViewerFile.file_name, activeViewerFile.extracted_text || "")}
                       style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
                     >
@@ -1577,7 +1600,7 @@ export default function PoliciesView({
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Search inside bank policy document..."
+                    placeholder="Search inside master policy document..."
                     value={modalSearch}
                     onChange={(e) => setModalSearch(e.target.value)}
                     style={{ flex: 1, fontSize: "0.8125rem" }}
@@ -1686,7 +1709,7 @@ export default function PoliciesView({
                       }
                     }}
                     spellCheck={false}
-                    placeholder="Enter or edit bank policy document content here..."
+                    placeholder="Enter or edit master policy document content here..."
                     style={{
                       width: "100%",
                       height: "56vh",
@@ -1734,6 +1757,195 @@ export default function PoliciesView({
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          UPLOAD POLICY FILE MODAL
+          ========================================================================= */}
+      {uploadModalOpen && (
+        <div className="modal-backdrop" onClick={() => !isUploading && setUploadModalOpen(false)}>
+          <div className="edit-policy-modal" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="edit-policy-header">
+              <div className="edit-policy-title-area">
+                <div className="edit-policy-icon-badge">
+                  <i className="bi bi-upload" />
+                </div>
+                <div>
+                  <h2 className="edit-policy-title">Upload Policy File</h2>
+                  <p className="edit-policy-subtitle">
+                    Upload a new bank policy document with loan type classification.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => !isUploading && setUploadModalOpen(false)}
+                aria-label="Close"
+              >
+                <i className="bi bi-x-lg" style={{ fontSize: "1.1rem" }} />
+              </button>
+            </div>
+
+            {/* Modal Form Body */}
+            <form onSubmit={handleUploadPolicy} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+              <div className="edit-policy-body" style={{ padding: "1.5rem" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+
+                  {/* Bank Selection */}
+                  <div className="policy-field-group">
+                    <label className="policy-field-label">Bank <span style={{ color: "var(--danger)" }}>*</span></label>
+                    <div className="policy-select-wrap">
+                      <i className="bi bi-bank policy-select-icon" />
+                      <select
+                        className="form-select policy-select-has-icon"
+                        value={uploadBankName}
+                        onChange={(e) => {
+                          const selectedName = e.target.value
+                          setUploadBankName(selectedName)
+                          const matched = allBankOptions.find((b) => b.name === selectedName)
+                          if (matched) setUploadBankId(matched.id)
+                        }}
+                        required
+                      >
+                        <option value="">Select a bank...</option>
+                        {allBankOptions.length > 0 ? (
+                          allBankOptions.map((b) => (
+                            <option key={b.name} value={b.name}>
+                              {b.name}
+                            </option>
+                          ))
+                        ) : (
+                          <option value={uploadBankName}>{uploadBankName}</option>
+                        )}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Loan Type */}
+                  <div className="policy-field-group">
+                    <label className="policy-field-label">Loan Type <span style={{ color: "var(--danger)" }}>*</span></label>
+                    <select
+                      className="form-select"
+                      value={uploadLoanType}
+                      onChange={(e) => setUploadLoanType(e.target.value)}
+                      required
+                    >
+                      <option value="Personal Loan">Personal Loan</option>
+                      <option value="Home Loan">Home Loan</option>
+                      <option value="Auto Loan">Auto Loan</option>
+                      <option value="Business Loan">Business Loan</option>
+                      <option value="Education Loan">Education Loan</option>
+                    </select>
+                  </div>
+
+                  {/* Policy Version */}
+                  <div className="policy-field-group">
+                    <label className="policy-field-label">Policy Version</label>
+                    <select
+                      className="form-select"
+                      value={uploadPolicyVersion}
+                      onChange={(e) => setUploadPolicyVersion(e.target.value)}
+                    >
+                      <option value="V1">V1 (Initial)</option>
+                      <option value="V2">V2 (Updated)</option>
+                      <option value="V3">V3 (Latest)</option>
+                    </select>
+                  </div>
+
+                  {/* Employment Type */}
+                  <div className="policy-field-group">
+                    <label className="policy-field-label">Employment Type</label>
+                    <select
+                      className="form-select"
+                      value={uploadEmployment}
+                      onChange={(e) => setUploadEmployment(e.target.value)}
+                    >
+                      <option value="Salaried">Salaried</option>
+                      <option value="Self-Employed">Self-Employed</option>
+                      <option value="Business Owner">Business Owner</option>
+                      <option value="Professional">Professional</option>
+                    </select>
+                  </div>
+
+                  {/* File Upload */}
+                  <div className="policy-field-group">
+                    <label className="policy-field-label">Policy File <span style={{ color: "var(--danger)" }}>*</span></label>
+                    <div className="file-upload-area" style={{ border: "2px dashed var(--border)", borderRadius: "var(--radius-md)", padding: "1.5rem", textAlign: "center", background: "var(--surface-2)" }}>
+                      <input
+                        ref={uploadFileInputRef}
+                        type="file"
+                        accept=".txt,.pdf,.docx,.csv"
+                        style={{ display: "none" }}
+                        onChange={handleUploadFileSelected}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary"
+                        onClick={() => uploadFileInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        <i className="bi bi-file-earmark-arrow-up" style={{ marginRight: "0.5rem" }} />
+                        {uploadFile ? `Selected: ${uploadFile.name}` : "Choose File (.txt, .pdf, .docx, .csv)"}
+                      </button>
+                      {uploadFile && (
+                        <p style={{ marginTop: "0.75rem", fontSize: "0.8125rem", color: "var(--ink-soft)" }}>
+                          Size: {(uploadFile.size / 1024).toFixed(1)} KB
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="policy-field-group">
+                    <label className="policy-field-label">Description (Optional)</label>
+                    <textarea
+                      className="form-control"
+                      value={uploadDescription}
+                      onChange={(e) => setUploadDescription(e.target.value)}
+                      placeholder="Add any notes about this policy file..."
+                      rows={3}
+                    />
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="edit-policy-footer">
+                <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", justifyContent: "flex-end", width: "100%" }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => !isUploading && setUploadModalOpen(false)}
+                    disabled={isUploading}
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="btn btn-success"
+                    disabled={isUploading || !uploadFile || !uploadBankId || !uploadLoanType}
+                    style={{ background: "var(--success)", color: "#ffffff", border: "none", minWidth: 150 }}
+                  >
+                    {isUploading ? (
+                      <>
+                        <span className="spinner-inline" /> Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-upload" style={{ marginRight: "0.25rem" }} /> Upload Policy
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}

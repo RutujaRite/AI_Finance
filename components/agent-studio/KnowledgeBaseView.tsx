@@ -14,6 +14,11 @@ import {
   ChevronDown,
   RefreshCw,
   Plus,
+  BookOpen,
+  ShieldCheck,
+  Globe,
+  CheckCircle2,
+  ArrowLeft,
 } from "lucide-react";
 import { Agent } from "@/lib/agent-studio/types";
 
@@ -217,24 +222,34 @@ export default function KnowledgeBaseView({
   return (
     <div className="flex-1 bg-[#F8FAFC] min-h-screen p-6 md:p-8 overflow-y-auto">
       <div className="max-w-6xl mx-auto space-y-6">
+        {/* Top Navigation Bar: Back to AI Agent Studio */}
+        <div className="flex items-center justify-between pb-1">
+          <button
+            onClick={onNavigateToInstructions}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-blue-400 hover:bg-blue-50/60 text-xs font-semibold text-slate-700 hover:text-blue-600 transition shadow-xs cursor-pointer group"
+          >
+            <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:text-blue-600 transition-transform group-hover:-translate-x-0.5" />
+            <span>← Back to AI Agent Studio</span>
+          </button>
+
+          <span className="text-xs font-medium text-slate-500 bg-slate-100/80 px-2.5 py-1 rounded-full border border-slate-200/60">
+            Dedicated Knowledge Base View
+          </span>
+        </div>
+
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
-              <Layers className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                Knowledge Base
-              </h1>
-              <p className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
-                View and inspect all uploaded knowledge base files, bank policies, and RAG chunks indexed across your created agents.
-              </p>
-            </div>
+        <div className="cn-page-header">
+          <div>
+            <h1 className="cn-page-header-title">
+              Knowledge Base
+            </h1>
+            <p className="cn-page-header-subtitle">
+              View and inspect all uploaded knowledge base files, bank policies, and RAG chunks indexed across your created agents.
+            </p>
           </div>
 
           {/* Actions & Indicator badges */}
-          <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+          <div className="cn-page-header-actions">
             {/* Hidden File Input for direct document uploads */}
             <input
               ref={fileInputRef}
@@ -248,7 +263,7 @@ export default function KnowledgeBaseView({
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition cursor-pointer shadow-xs disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition cursor-pointer shadow-xs disabled:opacity-50"
             >
               <Upload className="w-3.5 h-3.5 text-white" />
               <span>{isUploading ? "Uploading..." : "Upload Document"}</span>
@@ -257,7 +272,7 @@ export default function KnowledgeBaseView({
             {onNavigateToInstructions && (
               <button
                 onClick={onNavigateToInstructions}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-xs font-semibold text-slate-700 transition cursor-pointer shadow-xs"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50 text-xs font-semibold text-slate-700 transition cursor-pointer shadow-xs"
               >
                 <FileText className="w-3.5 h-3.5 text-slate-500" />
                 <span>AI Instructions</span>
@@ -351,6 +366,36 @@ export default function KnowledgeBaseView({
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Knowledge Scope & Grounding Behavior Card */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
+              <Globe className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-bold text-slate-900">
+                  Global Bank Policy Access:
+                </h3>
+                <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  Enabled
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5 max-w-xl">
+                {agentDisplayName} prioritizes its own uploaded documents below, while also cross-referencing official master bank policies (Axis, HDFC, ICICI, Bandhan, etc.) during multi-lender evaluations.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <span className="text-[11px] font-semibold text-slate-500">Grounding Strictness:</span>
+            <span className="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 text-xs font-bold rounded-lg">
+              {agent.guardrailTemplates?.includes("Strict Knowledge Usage") ? "Strict (No Hallucination)" : "Standard (Hybrid)"}
+            </span>
           </div>
         </div>
 
@@ -558,8 +603,16 @@ export default function KnowledgeBaseView({
 
                       {/* Status Pill */}
                       <td className="py-3 px-2">
-                        <span className="as-badge as-badge-processed inline-flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span
+                          className={`cn-status-pill ${
+                            doc.status === "Processed"
+                              ? "success"
+                              : doc.status === "Processing"
+                              ? "warning"
+                              : "danger"
+                          }`}
+                        >
+                          <span className="cn-status-dot" />
                           {doc.status}
                         </span>
                       </td>
@@ -583,7 +636,7 @@ export default function KnowledgeBaseView({
                           </button>
                           <button
                             onClick={() => handleDeleteDoc(doc.id, doc.name)}
-                            className="p-1 hover:text-rose-600 rounded transition cursor-pointer"
+                            className="p-1.5 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer active:scale-95"
                             title="Remove document"
                           >
                             <Trash2 className="w-3.5 h-3.5" />

@@ -8,8 +8,6 @@ import pool from "@/lib/db";
 import fs from "fs";
 import path from "path";
 
-import { verifyToken, isAdminUser } from "@/lib/auth";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -105,19 +103,6 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const token = req.cookies.get("token")?.value;
-  const payload: any = token ? verifyToken(token) : null;
-  if (!payload) {
-    return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 });
-  }
-
-  if (!isAdminUser(payload)) {
-    return NextResponse.json(
-      { success: false, error: "Forbidden", message: "Admin privileges required" },
-      { status: 403 }
-    );
-  }
-
   try {
     const { id } = await params;
     const fileId = parseInt(id, 10);
@@ -146,7 +131,7 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      message: `Bank policy file "${targetFileName}" saved successfully`,
+      message: `Master policy file "${targetFileName}" saved successfully`,
       file_name: targetFileName,
       file_size_bytes: saveRes.byteSize,
     });

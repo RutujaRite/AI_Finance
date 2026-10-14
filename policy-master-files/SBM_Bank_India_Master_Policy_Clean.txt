@@ -1,0 +1,171 @@
+================================================================================
+SBM BANK INDIA PERSONAL LOAN - MASTER POLICY
+================================================================================
+
+BANK: SBM Bank India
+PRODUCT: Personal Loan
+PROFILE: Salaried Individuals
+SOURCE: SBM Bank India PL Policy (Digital Co-Lending Program)
+
+================================================================================
+1. COMPANY CATEGORIES
+================================================================================
+
+Company Categories:
+- CAT Super A: Listed Companies, Government entities
+- CAT A: Tier 1 / Prime Corporates
+- CAT B: Tier 2 / Preferred Corporates
+- CAT C: Standard Corporates
+- CAT D: Non-Listed / Unlisted Companies
+
+Company category must be resolved from the SBM Bank India company list.
+
+Category-based treatment:
+- CAT Super A / Listed Company (Tier 1): Min Salary ₹30,000 | FOIR up to 65% | ROI starts from 11.25%
+- CAT A (Tier 1): Min Salary ₹30,000 | FOIR up to 65% | ROI starts from 11.25%
+- CAT B (Tier 2): Min Salary ₹30,000 | FOIR up to 60% | ROI starts from 11.50%
+- CAT C / CAT D / Non-Listed (Standard): Min Salary ₹50,000 | FOIR up to 50% | ROI starts from 12.25%
+- Government: Min Salary ₹30,000 | FOIR up to 65% | ROI starts from 11.25%
+
+================================================================================
+2. ELIGIBILITY CRITERIA
+================================================================================
+
+Age:
+- Minimum: 23 years
+- Maximum: 58 years or retirement age, whichever is earlier
+
+CIBIL:
+- Minimum CIBIL Score: 720+
+
+Employment Type:
+- Salaried individuals only
+- Minimum 1 year work experience with current employer
+
+Work Experience:
+- Minimum 2 years total work experience
+- At least 1 year with current employer
+
+Residence Stability:
+- Minimum 6 months at current residence
+
+================================================================================
+3. LOAN AMOUNT
+================================================================================
+
+Loan Amount:
+- Minimum Loan Amount: Rs. 5,00,000
+- Maximum Loan Amount: Rs. 30,00,000 (CAT Super A / Listed / Government / Tier 1)
+- Maximum Loan Amount: Rs. 25,00,000 (CAT B / Tier 2)
+- Maximum Loan Amount: Rs. 20,00,000 (CAT C / CAT D / Non-Listed / Standard)
+
+================================================================================
+4. TENURE
+================================================================================
+
+Tenure:
+- Minimum Tenure: 12 months
+- Maximum Tenure: 60 months
+
+================================================================================
+5. MINIMUM NET MONTHLY INCOME (NTH)
+================================================================================
+
+Listed Company / Tier 1 / Government:
+- Minimum NTH: Rs. 30,000
+
+Preferred Company / Tier 2:
+- Minimum NTH: Rs. 30,000
+
+Non-Listed Company / Standard Corporate:
+- Minimum NTH: Rs. 50,000
+
+Banking:
+- Salary must be credited directly into applicant's bank account with regular monthly credits
+
+================================================================================
+6. FOIR
+================================================================================
+
+Listed Company / Tier 1 / Government:
+- Maximum FOIR: 65%
+
+Preferred Company / Tier 2:
+- Maximum FOIR: 60%
+
+Non-Listed Company / Standard Corporate:
+- Maximum FOIR: 50%
+
+================================================================================
+7. ROI GRID - PERSONAL LOAN SALARIED
+================================================================================
+
+Applicability:
+- ROI depends on Net Monthly Income and Company Category
+
+Net Monthly Income up to Rs. 50,000:
+- CAT Super A / Listed Company: 12.50%
+- CAT B (Tier 2): 12.75%
+- Non-Listed / Standard: 13.50%
+
+Net Monthly Income above Rs. 50,001:
+- CAT Super A / Listed Company: 11.25%
+- CAT B (Tier 2): 11.50%
+- Non-Listed / Standard: 12.25%
+
+Note: SBM Bank operates via digital co-lending program verification.
+
+================================================================================
+8. PROCESSING FEE
+================================================================================
+
+- Processing Fee: 1.50% of loan amount
+- Minimum: Rs. 2,500
+- Maximum: Rs. 10,000
+- Plus applicable GST and stamp duty
+
+================================================================================
+9. DOCUMENTS
+================================================================================
+
+Mandatory Documents:
+- PAN Card
+- Aadhaar Card
+- Latest 3 months Salary Slips
+- Latest 6 months Bank Statement showing salary credits
+- Employee ID Card
+- Employment Verification Letter
+
+================================================================================
+10. SPECIAL PROFILE RULES
+================================================================================
+
+Digital Co-Lending:
+- SBM Bank partners with fintech co-lenders for digital underwriting
+- Fast-track processing for salaried customers with verified bank statements
+
+Existing Relationships:
+- Existing SBM Bank savings/current account holders receive preferential processing
+
+================================================================================
+11. EXCEPTIONS & DEVIATIONS
+================================================================================
+
+Non-Listed Companies:
+- Higher minimum salary requirement (Rs. 50,000+) applies
+- Strict FOIR cap of 50% applies
+- Review required for approval
+
+Balance Transfer:
+- Up to 3 credit card balance transfers allowed
+- Existing personal loan BT considered on case-by-case basis
+
+================================================================================
+12. CONFLICTS/REVIEW ITEMS
+================================================================================
+
+None. Policy is deterministic with consistent values across categories.
+
+================================================================================
+END OF SBM BANK INDIA PERSONAL LOAN MASTER POLICY
+================================================================================

@@ -7,16 +7,18 @@ import {
 } from "@/lib/agent-studio/agentStore";
 import { runCentralAgent } from "@/lib/ai/agent";
 import { openRouterChat } from "@/lib/openrouter";
-import { listAgentDocuments, recordConversationExchange, getAgentFromDb } from "@/lib/agent-studio/dbStore";
+import { listAgentDocuments, recordConversationExchange, getAgentFromDb, recordTokenUsage } from "@/lib/agent-studio/dbStore";
 import {
   selectRelevantDocuments,
   retrieveKnowledgeChunks,
   validateAgentResponse,
   buildConfiguredAgentPrompt,
 } from "@/lib/agent-studio/ragEngine";
-import { generateKnowledgeGroundedReply } from "@/lib/agent-studio/groundedAnswerEngine";
-
+import { getActiveLlmModelName } from "@/lib/ai/modelRouter";
 import { verifyToken } from "@/lib/auth";
+import { calculateEmi, formatEmiResult } from "@/lib/eligibilityWizard";
+import { parseFinancialAmount } from "@/lib/dynamicEligibilityEngine";
+import { generateKnowledgeGroundedReply } from "@/lib/agent-studio/groundedAnswerEngine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -85,6 +87,7 @@ export async function POST(
     let reply = "";
     let knowledgeSource = "Agent Knowledge Base";
     const toolsUsed: string[] = [];
+    let recordedTokenUsage: any = null;
 
     // 2. Fetch connected agent documents from Database (Section 10)
     const agentDocuments = await listAgentDocuments(agent.id);
@@ -130,75 +133,184 @@ export async function POST(
       { step: "Response Validation", detail: "Validated against anti-hallucination and security boundaries." },
     ];
 
-    // 4. Generate agent response strictly grounded on the uploaded knowledge base as per instruction
-    const hasUploadedDocs = agentDocuments.length > 0;
+    // 4. Intent detection & RAG context setup
     const isLoanQuery = /loan|emi|cibil|credit|interest|eligib/i.test(cleanInput);
+    const userRequestedNoDocs =
+      /do not use (any )?(uploaded )?(documents|knowledge|files)/i.test(cleanInput) ||
+      /without (using )?(any )?(uploaded )?(documents|knowledge|files)/i.test(cleanInput) ||
+      /don't use (any )?(uploaded )?(documents|knowledge|files)/i.test(cleanInput);
 
-    if (hasUploadedDocs) {
-      // Ground strictly on the uploaded knowledge documents
-      const basePrompt = buildConfiguredAgentPrompt(agent, new Date().toLocaleString(), ragResult);
-      const docNamesList = agentDocuments.map((d) => `"${d.name}"`).join(", ");
-      const strictKnowledgePrompt = `${basePrompt}
+    const currentTime = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+    const effectiveRagResult = userRequestedNoDocs
+      ? { hasRelevantKnowledge: false, selectedDocuments: [], allRetrievedChunkIds: [], groundingPrompt: "" }
+      : ragResult;
 
-### MANDATORY KNOWLEDGE BOUNDARY & TESTING INSTRUCTION:
-1. You are running in the Test Agent Demo for "${agent.name}".
-2. You must ONLY answer testing questions that are DIRECTLY RELATED to the uploaded knowledge base document(s): ${docNamesList}.
-3. The uploaded knowledge base contains the ONLY authorized information you have access to.
-4. If the user's query asks about anything NOT covered in or NOT related to the uploaded knowledge base (such as external banks, policies, or general topics not documented in ${docNamesList}):
-   You MUST politely decline and respond:
-   "Based on the uploaded knowledge base (${docNamesList}), this information is not covered. In this test demo, I am configured to only answer questions strictly related to the uploaded knowledge base as per your agent instructions. Please ask a question related to ${docNamesList}."
-5. Never assume, fabricate, or incorporate external data outside the uploaded knowledge base.
-6. Strictly adhere to the configured Agent Goal, Guardrails, and Persona at all times.`;
+    // Check for EMI Calculation capability
+    const isEmiCalcQuery =
+      /(?:calculate\s+(?:the\s+)?emi|emi\s+for|what\s+is\s+(?:the\s+)?emi|compute\s+(?:the\s+)?emi)\b/i.test(cleanInput);
+
+    let parsedPrincipal: number | undefined;
+    let parsedRate: number | undefined;
+    let parsedTenureMonths: number | undefined;
+
+    if (agent.capabilities?.calculate_emi !== false && isEmiCalcQuery) {
+      const curMatch = cleanInput.match(/(?:rs\.?|₹|inr)\s*([\d,]+(?:\.\d+)?(?:\s*(?:k|lakhs?|lacs?|l\b|cr|crores?))?)/i);
+      const unitMatch = cleanInput.match(/(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|cr|crores?)\b/i);
+      const loanMatch = cleanInput.match(/(?:loan|amount|borrow)\s*(?:of|for)?\s*(?:a\s*)?(?:rs\.?|₹)?\s*([\d,]+(?:\.\d+)?)/i);
+
+      if (curMatch) {
+        parsedPrincipal = parseFinancialAmount(curMatch[1]) || undefined;
+      } else if (unitMatch) {
+        parsedPrincipal = parseFinancialAmount(unitMatch[0]) || undefined;
+      } else if (loanMatch) {
+        parsedPrincipal = parseFinancialAmount(loanMatch[1]) || undefined;
+      }
+      const rateMatch = cleanInput.match(/(\d+(?:\.\d+)?)\s*%/);
+      if (rateMatch) {
+        parsedRate = parseFloat(rateMatch[1]);
+      }
+      const tenureYearMatch = cleanInput.match(/(\d+(?:\.\d+)?)\s*(?:years?|yrs?)/i);
+      if (tenureYearMatch) {
+        parsedTenureMonths = Math.round(parseFloat(tenureYearMatch[1]) * 12);
+      } else {
+        const monthMatch = cleanInput.match(/(\d+)\s*(?:months?|m\b)/i);
+        if (monthMatch) {
+          parsedTenureMonths = parseInt(monthMatch[1], 10);
+        }
+      }
+    }
+
+    if (
+      agent.capabilities?.calculate_emi !== false &&
+      isEmiCalcQuery &&
+      parsedPrincipal &&
+      parsedPrincipal > 0
+    ) {
+      const effectiveRate = parsedRate && parsedRate > 0 ? parsedRate : 10.5;
+      const effectiveTenure = parsedTenureMonths && parsedTenureMonths > 0 ? parsedTenureMonths : 12;
+      const monthlyEmi = calculateEmi(parsedPrincipal, effectiveRate, effectiveTenure);
+      reply = formatEmiResult({ principal: parsedPrincipal, rate: effectiveRate, tenure: effectiveTenure }, monthlyEmi);
+      knowledgeSource = "Financial Calculation Engine";
+      toolsUsed.push("calculate_emi");
+      pipeline.push({
+        step: "Tool Execution",
+        detail: `Executed emiCalculatorTool using standard financial formula for ₹${parsedPrincipal.toLocaleString("en-IN")} at ${effectiveRate}% over ${effectiveTenure} months.`,
+      });
+    } else {
+      // Generate agent response using configured LLM
+      let basePrompt = buildConfiguredAgentPrompt(agent, currentTime, effectiveRagResult);
+      if (userRequestedNoDocs) {
+        basePrompt += `\n\n### USER CONSTRAINT OVERRIDE:\nThe user explicitly instructed: "Do not use uploaded documents". Do NOT cite, reference, or use any uploaded documents or loan files. Answer the user query directly and accurately using your general knowledge and intelligence.`;
+      }
+      if (!isLoanQuery) {
+        basePrompt += `\n\n### GENERAL QUERY DIRECTIVE:\nThis query is not a personal loan application or loan policy lookup. Answer the question directly and accurately using your general knowledge. Follow all user formatting requirements (such as exact bullet point counts). Do NOT force loan rules, TCS, or personal financial questionnaires into the response.`;
+      }
 
       try {
-        const chatMessages: any[] = [{ role: "system", content: strictKnowledgePrompt }];
+        const chatMessages: any[] = [{ role: "system", content: basePrompt }];
         if (Array.isArray(history)) {
           for (const h of history.slice(-6)) {
-            chatMessages.push({ role: h.role, content: h.content });
+            if (h && h.role && h.content) {
+              chatMessages.push({ role: h.role, content: h.content });
+            }
           }
         }
         chatMessages.push({ role: "user", content: cleanInput });
 
-        const llmRes = await openRouterChat(chatMessages, undefined, "openrouter/auto");
+        const activeModelName = await getActiveLlmModelName();
+        const llmRes = await openRouterChat(chatMessages, undefined, activeModelName);
         const generated = llmRes?.choices?.[0]?.message?.content;
-        if (generated && generated.trim()) {
-          reply = generated.trim();
-          knowledgeSource = relevantDocs.length > 0
-            ? relevantDocs.map((d) => d.name).join(", ")
-            : agentDocuments.map((d) => d.name).join(", ");
-          toolsUsed.push("Uploaded Knowledge Base RAG");
+
+        if (llmRes?.usage) {
+          recordedTokenUsage = {
+            promptTokens: Number(llmRes.usage.prompt_tokens || 0),
+            completionTokens: Number(llmRes.usage.completion_tokens || 0),
+            totalTokens: Number(llmRes.usage.total_tokens || 0),
+            modelName: activeModelName,
+          };
+          await recordTokenUsage({
+            agentId: agent.id,
+            agentName: agent.name,
+            modelName: activeModelName,
+            promptTokens: recordedTokenUsage.promptTokens,
+            completionTokens: recordedTokenUsage.completionTokens,
+            totalTokens: recordedTokenUsage.totalTokens,
+            source: "playground",
+          });
         }
-      } catch (llmErr) {
-        console.warn("[STUDIO_TEST_OPENROUTER_FALLBACK]", llmErr);
-      }
 
-      const flattenedChunks = ragResult.selectedDocuments.flatMap((d) => d.chunks);
-      const groundedEvaluation = generateKnowledgeGroundedReply(
-        cleanInput,
-        agent,
-        agentDocuments,
-        flattenedChunks
-      );
+        if (generated && generated.trim()) {
+          // Check if LLM emitted a tool call JSON for EMI Calculator
+          let toolCallData: any = null;
+          try {
+            const trimmedGen = generated.trim();
+            if (trimmedGen.startsWith("{") && trimmedGen.endsWith("}")) {
+              const parsed = JSON.parse(trimmedGen);
+              if (parsed.tool === "EMI Calculator" || parsed.tool === "calculate_emi") {
+                toolCallData = parsed;
+              }
+            }
+          } catch {}
 
-      // If query is out of scope for the uploaded documents, enforce strict boundary
-      if (!groundedEvaluation.isInScope) {
-        reply = groundedEvaluation.reply;
-        knowledgeSource = agentDocuments.map((d) => d.name).join(", ");
-      } else if (!reply) {
-        // Grounded fallback if LLM is offline or returned empty
-        reply = groundedEvaluation.reply;
-        knowledgeSource = agentDocuments.map((d) => d.name).join(", ");
-        toolsUsed.push("Uploaded Knowledge Base RAG");
+          if (toolCallData && agent.capabilities?.calculate_emi !== false) {
+            const tPrincipal = Number(toolCallData.parameters?.principal || 0);
+            const tRate = Number(toolCallData.parameters?.annualRate ?? toolCallData.parameters?.rate ?? 10.5);
+            const tTenure = Number(toolCallData.parameters?.tenureMonths ?? toolCallData.parameters?.tenure ?? 12);
+            if (tPrincipal > 0) {
+              const monthlyEmi = calculateEmi(tPrincipal, tRate, tTenure);
+              reply = formatEmiResult({ principal: tPrincipal, rate: tRate, tenure: tTenure }, monthlyEmi);
+              knowledgeSource = "Financial Calculation Engine";
+              toolsUsed.push("calculate_emi");
+              pipeline.push({
+                step: "Tool Execution",
+                detail: `Executed emiCalculatorTool via LLM tool call for ₹${tPrincipal.toLocaleString("en-IN")} at ${tRate}% over ${tTenure} months.`,
+              });
+            } else {
+              reply = generated.trim();
+            }
+          } else {
+            reply = generated.trim();
+            if (!userRequestedNoDocs && effectiveRagResult.hasRelevantKnowledge && relevantDocs.length > 0) {
+              knowledgeSource = relevantDocs.map((d) => d.name).join(", ");
+              toolsUsed.push("Uploaded Knowledge Base RAG");
+            } else {
+              knowledgeSource = "General Knowledge";
+            }
+          }
+        }
+      } catch (llmErr: any) {
+        console.warn("[STUDIO_TEST_OPENROUTER_ERROR]", llmErr);
+        const errStr = String(llmErr?.message || "");
+        const isRateLimit = errStr.includes("429") || errStr.toLowerCase().includes("rate limit");
+
+        // Fallback to deterministic Knowledge-Grounded Synthesis if LLM rate limits (HTTP 429) or fails
+        if (!userRequestedNoDocs && effectiveRagResult.hasRelevantKnowledge && relevantDocs.length > 0) {
+          const allRetrievedChunks = effectiveRagResult.selectedDocuments.flatMap((d: any) => d.chunks || []);
+          const groundedResult = generateKnowledgeGroundedReply(cleanInput, agent, relevantDocs, allRetrievedChunks);
+          if (groundedResult && groundedResult.reply) {
+            reply = groundedResult.reply;
+            knowledgeSource = relevantDocs.map((d) => d.name).join(", ");
+            toolsUsed.push("Uploaded Knowledge Base RAG");
+            pipeline.push({
+              step: "Knowledge-Grounded Synthesis (Fallback)",
+              detail: `Synthesized answer directly from verified knowledge document (${knowledgeSource}) following LLM rate limit fallback.`,
+            });
+          }
+        }
+
+        if (!reply) {
+          if (isRateLimit) {
+            reply = "The OpenRouter daily free-tier limit (50 requests/day) has been reached for the configured API key. Please add credits to your OpenRouter account or configure an active model key under AI Model settings.";
+          } else {
+            const errMsg = llmErr?.message || "LLM request failed";
+            reply = `[Error: Unable to generate response from configured AI model - ${errMsg}]. Please verify your API key and model configuration.`;
+          }
+        }
       }
-    } else {
-      // If no knowledge documents are uploaded yet, inform the user clearly
-      const lower = cleanInput.toLowerCase();
-      if (lower.startsWith("hi") || lower.startsWith("hello") || lower.startsWith("hey")) {
-        reply = `Hello! I'm your **${agent.name}** 👋\n\nTo test my responses grounded in your specific policies, please upload a knowledge document (e.g. .txt, .pdf, .docx) under **AI Instructions**.\n\nMy currently configured goal is: *${agent.goal || agent.instructions?.businessDescription}*. How can I help you get started?`;
-      } else {
-        reply = `No knowledge base documents have been uploaded for **${agent.name}** yet.\n\nTo test my answers against your specific bank or organization policies, please upload your policy document under **AI Instructions**.\n\n*(Currently operating under agent instructions & goal: "${agent.goal || agent.instructions?.businessDescription}")*`;
-      }
-      knowledgeSource = "No documents uploaded";
+    }
+
+    if (!reply) {
+      reply = "Unable to generate a response from the configured model. Please check the AI model configuration.";
     }
 
     // 5. Response Validation (Section 16)
@@ -206,17 +318,19 @@ export async function POST(
       reply,
       cleanInput,
       agent,
-      ragResult.selectedDocuments
+      effectiveRagResult.selectedDocuments
     );
     const finalReply = validation.sanitizedResponse;
 
     // 6. Record Conversation & Knowledge Usage in Database (Section 12 & 13)
     const convId = conversationId || `studio_conv_${agent.id}_${Date.now().toString().slice(-6)}`;
-    const usedDocsMetadata = ragResult.selectedDocuments.map((ctx) => ({
-      id: ctx.document.id,
-      name: ctx.document.name,
-      chunkIds: ctx.chunks.map((c) => c.id),
-    }));
+    const usedDocsMetadata = (!userRequestedNoDocs && effectiveRagResult.hasRelevantKnowledge)
+      ? effectiveRagResult.selectedDocuments.map((ctx: any) => ({
+          id: ctx.document.id,
+          name: ctx.document.name,
+          chunkIds: ctx.chunks.map((c: any) => c.id),
+        }))
+      : [];
 
     recordConversationExchange({
       conversationId: convId,
@@ -249,8 +363,9 @@ export async function POST(
       pipeline,
       knowledgeSource,
       conversationId: convId,
-      usedKnowledgeDocuments: usedDocsMetadata.map((d) => d.name),
+      usedKnowledgeDocuments: usedDocsMetadata.map((d: any) => d.name),
       debug,
+      tokenUsage: recordedTokenUsage,
       usage: {
         messagesUsed: usageCheck.messagesUsed,
         maxMessages: usageCheck.maxMessages,

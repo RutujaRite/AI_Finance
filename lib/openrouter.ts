@@ -12,7 +12,7 @@
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openrouter/auto";
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free";
 
 export interface OpenRouterMessage {
   role: "system" | "user" | "assistant" | "tool";
@@ -32,18 +32,19 @@ export interface OpenRouterTool {
 }
 
 export function normalizeModelSlug(rawModel?: string): string {
-  if (!rawModel) return "openrouter/auto";
+  if (!rawModel) return "nvidia/nemotron-3-super-120b-a12b:free";
   const trimmed = rawModel.replace(/^["']|["']$/g, "").trim();
   if (
     !trimmed ||
     trimmed === "liquid/lfm-2.5-embedding-350m:free" ||
     trimmed === "Ling 3.0 Flash Fin" ||
+    trimmed === "openrouter/auto" ||
     trimmed === "openrouter/free" ||
     trimmed === "deepseek/deepseek-flash-latest" ||
     trimmed === "deepseek/deepseek-v4-flash-latest" ||
     trimmed.includes("deepseek-v4")
   ) {
-    return "openrouter/auto";
+    return "nvidia/nemotron-3-super-120b-a12b:free";
   }
   if (trimmed === "gpt-4o") return "openai/gpt-4o";
   if (trimmed === "claude-3.5-sonnet") return "anthropic/claude-3.5-sonnet";
@@ -71,7 +72,7 @@ export async function openRouterChat(
       model: targetModel,
       messages,
       temperature: 0.1,
-      max_tokens: options?.max_tokens ?? 500,
+      max_tokens: options?.max_tokens ?? 600,
       reasoning: { max_tokens: 0 },
     };
     if (tools && tools.length > 0) {
@@ -79,7 +80,7 @@ export async function openRouterChat(
       payload.tool_choice = "auto";
     }
 
-    const timeoutSignal = AbortSignal.timeout(options?.timeoutMs ?? 3000);
+    const timeoutSignal = AbortSignal.timeout(options?.timeoutMs ?? 30000);
     const fetchSignal = options?.signal || timeoutSignal;
 
     const res = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
@@ -96,7 +97,14 @@ export async function openRouterChat(
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
-      throw new Error(`OpenRouter HTTP ${res.status}: ${errBody}`);
+      let parsedMsg = errBody;
+      try {
+        const j = JSON.parse(errBody);
+        if (j?.error?.message) {
+          parsedMsg = j.error.message;
+        }
+      } catch {}
+      throw new Error(`OpenRouter HTTP ${res.status}: ${parsedMsg}`);
     }
 
     return await res.json();
@@ -107,16 +115,20 @@ export async function openRouterChat(
   } catch (err: any) {
     const errMsg = String(err?.message || "");
     if (
-      effectiveModel !== "openrouter/auto" &&
+      effectiveModel !== "nvidia/nemotron-3-super-120b-a12b:free" &&
       (errMsg.includes("not a valid model") ||
         errMsg.includes("embedding model") ||
         errMsg.includes("404") ||
-        errMsg.includes("400"))
+        errMsg.includes("400") ||
+        errMsg.includes("402") ||
+        errMsg.includes("credits") ||
+        errMsg.includes("429"))
     ) {
       try {
-        return await makeRequest("openrouter/auto");
+        console.warn(`[OpenRouter] Primary model ${effectiveModel} failed, retrying with nvidia/nemotron-3-super-120b-a12b:free...`);
+        return await makeRequest("nvidia/nemotron-3-super-120b-a12b:free");
       } catch (retryErr) {
-        console.error("[OpenRouter] Retry with openrouter/auto failed:", retryErr);
+        console.error("[OpenRouter] Retry with nvidia/nemotron-3-super-120b-a12b:free failed:", retryErr);
       }
     }
     throw err;
@@ -248,17 +260,19 @@ export async function openRouterChatStream(
     }
     const errMsg = String(err?.message || "");
     if (
-      effectiveModel !== "openrouter/free" &&
+      effectiveModel !== "nvidia/nemotron-3-super-120b-a12b:free" &&
       (errMsg.includes("429") ||
         errMsg.includes("RateLimit") ||
         errMsg.includes("rate-limited") ||
         errMsg.includes("not a valid model") ||
         errMsg.includes("404") ||
+        errMsg.includes("402") ||
+        errMsg.includes("credits") ||
         errMsg.includes("400"))
     ) {
-      console.warn(`[OpenRouterStream] Primary model ${effectiveModel} failed, retrying with openrouter/free...`);
+      console.warn(`[OpenRouterStream] Primary model ${effectiveModel} failed, retrying with nvidia/nemotron-3-super-120b-a12b:free...`);
       try {
-        return await executeStream("openrouter/free");
+        return await executeStream("nvidia/nemotron-3-super-120b-a12b:free");
       } catch (retryErr) {
         console.error("[OpenRouterStream] Fallback retry failed:", retryErr);
       }

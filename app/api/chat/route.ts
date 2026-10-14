@@ -21,7 +21,7 @@ import { getCreditWiseSystemPrompt } from "@/lib/ai/prompts";
 import pool from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
 import { getAgent, listAgents } from "@/lib/agent-studio/agentStore";
-import { listAgentDocuments, recordConversationExchange, getActiveAgentFromDb, getAgentFromDb, getUserActiveAgent } from "@/lib/agent-studio/dbStore";
+import { listAgentDocuments, recordConversationExchange, getActiveAgentFromDb, getAgentFromDb, getUserActiveAgent, recordTokenUsage } from "@/lib/agent-studio/dbStore";
 import {
   selectRelevantDocuments,
   retrieveKnowledgeChunks,
@@ -347,6 +347,22 @@ export async function POST(req: NextRequest) {
           });
 
           console.log(`[STREAM] Stream completed: totalTokens=${tokenCount}`);
+
+          try {
+            const approxPromptTokens = Math.max(15, Math.ceil(((systemPrompt || "").length + message.length) / 4));
+            const completionTokens = Math.max(5, tokenCount || Math.ceil((agentResult?.reply || "").length / 4));
+            await recordTokenUsage({
+              agentId: isAgentActive ? activeAgent.id : "agent_loan_assistant",
+              agentName: isAgentActive ? activeAgent.name : "CreditWise Assistant",
+              modelName: requestedModel || process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free",
+              promptTokens: approxPromptTokens,
+              completionTokens: completionTokens,
+              totalTokens: approxPromptTokens + completionTokens,
+              source: "chat",
+            });
+          } catch (tErr) {
+            console.warn("[TOKEN_LOG_WARN]", tErr);
+          }
 
           let effectiveTitle = message.slice(0, 40) || "Loan Assistant";
           try {

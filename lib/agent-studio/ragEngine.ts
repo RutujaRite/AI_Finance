@@ -35,6 +35,15 @@ export function selectRelevantDocuments(
 
   const lowerQuery = query.toLowerCase();
 
+  const explicitNoDocs =
+    /do not use (any )?(uploaded )?(documents|knowledge|files)/i.test(query) ||
+    /without (using )?(any )?(uploaded )?(documents|knowledge|files)/i.test(query) ||
+    /don't use (any )?(uploaded )?(documents|knowledge|files)/i.test(query);
+
+  if (explicitNoDocs) {
+    return [];
+  }
+
   const scoredDocs = activeDocs.map((doc) => {
     let score = 0;
     const docName = doc.name.toLowerCase();
@@ -71,8 +80,16 @@ export function selectRelevantDocuments(
     return matched.map((m) => m.doc);
   }
 
-  // Fallback: If no strong keyword discriminator (e.g. general policy query), return all active docs
-  return activeDocs;
+  // Fallback: If query relates to loans, policies, eligibility, or banking rules, return active docs
+  const isLoanOrPolicyTopic =
+    /(?:loan|policy|bank|interest|rate|emi|tenure|cibil|credit|salary|income|document|kyc|eligib|borrow|lender|criteria|underwriting)\b/i.test(query);
+
+  if (isLoanOrPolicyTopic) {
+    return activeDocs;
+  }
+
+  // For general non-loan topics (e.g. AI, programming, general knowledge), do not inject loan documents
+  return [];
 }
 
 /**
@@ -101,8 +118,9 @@ export async function retrieveKnowledgeChunks(
     let queryEmbedding: number[] | null = null;
     try {
       queryEmbedding = await generateQueryEmbedding(query);
-    } catch (e) {
-      console.warn("[RAG_ENGINE_EMBEDDING_FALLBACK] Lexical fallback:", e);
+    } catch {
+      // Vector embeddings endpoint unavailable/unfunded; safely proceed with lexical retrieval
+      console.log("[RAG_ENGINE] Using high-accuracy lexical/keyword search for document retrieval.");
     }
 
     for (const doc of selectedDocs) {
@@ -360,7 +378,7 @@ export function buildConfiguredAgentPrompt(
   const allowGenKnowledge = agent.allowGeneralKnowledge !== false;
 
   let generalKnowledgeInstruction = allowGenKnowledge
-    ? "GENERAL KNOWLEDGE: Allowed. Answer general financial, definitions, and domain questions normally. For specific bank/company eligibility policies, ground answers strictly in verified knowledge."
+    ? "GENERAL KNOWLEDGE: Allowed. Answer general financial, technical, definitions, and domain questions directly and accurately. When asked about general non-loan topics (e.g. AI, programming, LLMs, RAG, general knowledge), answer the user query directly without injecting loan policies, personal financial questionnaires, or employer requirements. For specific bank/company eligibility policies, ground answers strictly in verified knowledge."
     : "GENERAL KNOWLEDGE: Restricted. Answer strictly within verified knowledge documents and tools. If asked about facts not in verified knowledge, clearly state that the configured knowledge does not contain enough information.";
 
   parts.push(

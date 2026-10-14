@@ -218,8 +218,15 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { documentId, instructionText, whenToUse, whenNotToUse, guardrailText, isActive } =
-      body;
+    const {
+      documentId,
+      name,
+      instructionText,
+      whenToUse,
+      whenNotToUse,
+      guardrailText,
+      isActive,
+    } = body;
 
     if (!documentId) {
       return NextResponse.json(
@@ -229,6 +236,7 @@ export async function PATCH(
     }
 
     const updated = await saveDocumentConfiguration(documentId, id, {
+      name,
       instructionText,
       whenToUse,
       whenNotToUse,

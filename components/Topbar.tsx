@@ -122,7 +122,7 @@ export default function Topbar({
   }> = [
     {
       id: "assistant",
-      label: "AI Copilot",
+      label: "AI Assistant",
       section: "assistant",
       href: "/home?section=assistant",
       iconClass: "bi bi-chat-dots",
@@ -154,11 +154,20 @@ export default function Topbar({
     badge?: string
   }> = [
     {
-      id: "company-data",
-      label: "Company Data",
-      shortLabel: "Company Data",
+      id: "dashboard",
+      label: "Admin Dashboard",
+      shortLabel: "Dashboard",
       href: "/admin",
-      iconClass: "bi bi-building-gear",
+      iconClass: "bi bi-grid-fill",
+      description: "Platform data, cards & activity center",
+      badge: "Admin",
+    },
+    {
+      id: "company-data",
+      label: "Company Search",
+      shortLabel: "Company Search",
+      href: "/admin/company-search",
+      iconClass: "bi bi-building",
       description: "Bank company categories & employer lists",
       badge: "Data",
     },
@@ -166,17 +175,17 @@ export default function Topbar({
       id: "policies",
       label: "Bank Policy",
       shortLabel: "Bank Policy",
-      href: "/policies",
-      iconClass: "bi bi-file-earmark-text",
+      href: "/admin/bank-policy",
+      iconClass: "bi bi-shield-check",
       description: "Bank guidelines & credit cutoffs",
       badge: "Rules",
     },
     {
       id: "bank-managers",
-      label: "Location & Contact Bank Manager",
-      shortLabel: "Location & Contact",
-      href: "/bank-managers",
-      iconClass: "bi bi-person-badge",
+      label: "Contact and Location Bank Manager",
+      shortLabel: "Contact & Location",
+      href: "/admin/bank-managers",
+      iconClass: "bi bi-people",
       description: "Branch locations & official manager contacts",
       badge: "Contacts",
     },
@@ -184,7 +193,7 @@ export default function Topbar({
       id: "models",
       label: "AI Model",
       shortLabel: "AI Model",
-      href: "/admin/models",
+      href: "/admin/ai-model",
       iconClass: "bi bi-cpu",
       description: "STT, LLM & Voice dynamic engines",
       badge: "AI",
@@ -197,15 +206,6 @@ export default function Topbar({
       iconClass: "bi bi-robot",
       description: "Persona, instructions & RAG demo",
       badge: "Studio",
-    },
-    {
-      id: "navigation",
-      label: "Admin Navigation Suite",
-      shortLabel: "Navigation",
-      href: "/admin/navigation",
-      iconClass: "bi bi-compass",
-      description: "Portal sitemap & quick jump links",
-      badge: "Suite",
     },
     {
       id: "users",
@@ -353,7 +353,7 @@ export default function Topbar({
 
       {/* Main Desktop Navigation Items */}
       <nav className="nav-menu" aria-label="Main navigation">
-        {/* Core items: AI Copilot, EMI Calculator, Eligibility Calculator — ALWAYS CONSTANT */}
+        {/* Core items: AI Assistant, EMI Calculator, Eligibility Calculator — ALWAYS CONSTANT */}
         {coreNavItems.map((item) => {
           const isSectionActive =
             !isAdminRouteActive &&
@@ -409,120 +409,24 @@ export default function Topbar({
           )
         })}
 
-        {/* Admin Navigation: Dynamic Active Admin Tool Tab + Admin Tool Dropdown */}
+        {/* Admin Dashboard: Immediately beside Eligibility Calculator (Admin only) */}
         {isAdmin && (
-          <>
-            {/*
-              DYNAMIC ACTIVE ADMIN TOOL TAB:
-              Opened immediately to the LEFT of the Admin Tool tab.
-              When another admin tool is clicked from the list, it REPLACES this tab!
-            */}
-            {activeAdminTool && activeAdminTool.id !== 'company-data' && (
-              <div
-                key={activeAdminTool.id}
-                className="admin-active-tab-wrapper animate-fade-in"
-                style={{ display: "inline-flex", alignItems: "center" }}
-              >
-                <a
-                  href={activeAdminTool.href}
-                  className={`nav-item ${isCurrentAdminToolRoute ? "active" : ""}`}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    router.push(activeAdminTool.href)
-                  }}
-                  title={`Active Tool: ${activeAdminTool.label}`}
-                  style={{
-                    fontWeight: 600,
-                    border: isCurrentAdminToolRoute
-                      ? "1px solid rgba(139, 92, 246, 0.45)"
-                      : "1px solid rgba(139, 92, 246, 0.2)",
-                    background: isCurrentAdminToolRoute
-                      ? "rgba(139, 92, 246, 0.14)"
-                      : "var(--surface-2)",
-                    color: isCurrentAdminToolRoute ? "#8b5cf6" : "var(--ink)",
-                    paddingRight: "0.45rem",
-                    gap: "6px",
-                  }}
-                >
-                  <i className={activeAdminTool.iconClass} style={{ color: "#8b5cf6" }} />
-                  <span>{activeAdminTool.label}</span>
-                  {activeAdminTool.badge && (
-                    <span
-                      style={{
-                        fontSize: "0.625rem",
-                        fontWeight: 700,
-                        padding: "1px 5px",
-                        borderRadius: "4px",
-                        background: "rgba(139, 92, 246, 0.2)",
-                        color: "#8b5cf6",
-                        marginLeft: "2px",
-                      }}
-                    >
-                      {activeAdminTool.badge}
-                    </span>
-                  )}
-                  {/* Close Tab Button */}
-                  <button
-                    type="button"
-                    onClick={handleCloseAdminTool}
-                    title={`Close ${activeAdminTool.label} tab`}
-                    aria-label={`Close ${activeAdminTool.label} tab`}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: "18px",
-                      height: "18px",
-                      borderRadius: "50%",
-                      border: "none",
-                      background: "rgba(139, 92, 246, 0.18)",
-                      color: "#8b5cf6",
-                      cursor: "pointer",
-                      marginLeft: "4px",
-                      fontSize: "0.75rem",
-                      lineHeight: 1,
-                      padding: 0,
-                      transition: "all 0.15s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)"
-                      e.currentTarget.style.color = "#ef4444"
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "rgba(139, 92, 246, 0.18)"
-                      e.currentTarget.style.color = "#8b5cf6"
-                    }}
-                  >
-                    <i className="bi bi-x" style={{ fontSize: "0.85rem", lineHeight: 1 }} />
-                  </button>
-                </a>
-              </div>
-            )}
-
-            <a
-              href="/admin"
-              id="adminPanelNavBtn"
-              className={`nav-item ${isAdminRouteActive ? "active" : ""}`}
-              onClick={(e) => {
-                e.preventDefault()
-                router.push("/admin")
-              }}
-              style={{
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                fontWeight: 600,
-                background: isAdminRouteActive ? "rgba(139, 92, 246, 0.15)" : "transparent",
-                color: isAdminRouteActive ? "#8b5cf6" : "var(--ink)",
-                borderColor: isAdminRouteActive ? "rgba(139, 92, 246, 0.35)" : "transparent",
-              }}
-              title="Open Admin Panel (/admin)"
-            >
-              <i className="bi bi-shield-lock" style={{ color: "#8b5cf6" }} />
-              <span>Admin Panel</span>
-            </a>
-          </>
+          <a
+            href="/admin"
+            id="adminDashboardNavBtn"
+            className={`nav-item ${effectivePath === "/admin" ? "active" : ""}`}
+            onClick={(e) => {
+              e.preventDefault()
+              router.push("/admin")
+            }}
+            style={{
+              fontWeight: effectivePath === "/admin" ? 600 : 500,
+            }}
+            title="Open Admin Dashboard (/admin)"
+          >
+            <i className="bi bi-grid-fill" />
+            <span>Admin Dashboard</span>
+          </a>
         )}
       </nav>
 
@@ -789,7 +693,7 @@ export default function Topbar({
           })}
         </div>
 
-        {/* Quick return to AI Copilot workspace */}
+        {/* Quick return to AI Assistant workspace */}
         <a
           href="/home?section=assistant"
           onClick={(e) => {
@@ -814,10 +718,10 @@ export default function Topbar({
             flexShrink: 0,
             border: "1px solid var(--border)",
           }}
-          title="Return to AI Copilot Workspace"
+          title="Return to AI Assistant Workspace"
         >
           <i className="bi bi-arrow-left" />
-          <span>AI Copilot</span>
+          <span>AI Assistant</span>
         </a>
       </nav>
     )}

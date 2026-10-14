@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   Settings,
   Shield,
@@ -13,6 +14,17 @@ import {
   RefreshCw,
   Bot,
   ChevronDown,
+  ExternalLink,
+  Key,
+  Eye,
+  EyeOff,
+  Zap,
+  AlertCircle,
+  CheckCircle2,
+  Sliders,
+  ArrowRight,
+  Sparkles,
+  Trash2,
 } from "lucide-react";
 import { Agent } from "@/lib/agent-studio/types";
 
@@ -43,7 +55,15 @@ export default function SettingsView({
   onDeactivateAgent,
   onDeleteAgentClick,
 }: SettingsViewProps) {
-  const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash");
+  const [modelIdentifier, setModelIdentifier] = useState("nvidia/nemotron-3-ultra-550b-a55b:free");
+  const [customModelInput, setCustomModelInput] = useState("");
+  const [isCustomModel, setIsCustomModel] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isTestingModel, setIsTestingModel] = useState(false);
+  const [testResult, setTestResult] = useState<{ is_operational: boolean; message: string; latency_ms?: number } | null>(null);
+  const [isSavingGlobalModel, setIsSavingGlobalModel] = useState(false);
+
   const [temperature, setTemperature] = useState(
     agent.instructions?.temperature ?? 0.4
   );
@@ -66,6 +86,36 @@ export default function SettingsView({
 
   const agentDisplayName = agent.name || "CreditWise Assistant";
 
+  // Load active studio LLM from database on mount
+  useEffect(() => {
+    async function loadActiveStudioModel() {
+      try {
+        const res = await fetch("/api/admin/studio-model");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.config) {
+            const mid = data.config.model_identifier;
+            setModelIdentifier(mid);
+            const standardList = [
+              "nvidia/nemotron-3-ultra-550b-a55b:free",
+              "deepseek/deepseek-v3",
+              "google/gemini-2.5-flash",
+              "openai/gpt-4o",
+              "anthropic/claude-3.5-sonnet",
+            ];
+            if (!standardList.includes(mid)) {
+              setIsCustomModel(true);
+              setCustomModelInput(mid);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch studio model:", err);
+      }
+    }
+    loadActiveStudioModel();
+  }, []);
+
   // Sync settings when selected agent changes
   useEffect(() => {
     setTemperature(agent.instructions?.temperature ?? 0.4);
@@ -81,6 +131,76 @@ export default function SettingsView({
       agent.guardrailTemplates?.includes("No Hallucination") ?? true
     );
   }, [agent.id]);
+
+  async function handleTestConnection() {
+    try {
+      setIsTestingModel(true);
+      setTestResult(null);
+      const effectiveMid = isCustomModel ? customModelInput.trim() : modelIdentifier;
+      const res = await fetch("/api/admin/models/test-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model_name: effectiveMid,
+          api_key: apiKeyInput.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTestResult({
+          is_operational: Boolean(data.is_operational),
+          message: data.message || (data.is_operational ? "Connection verified successfully!" : "Test failed"),
+          latency_ms: data.test_result?.latency_ms,
+        });
+        if (data.is_operational) {
+          onToast(`Model operational! Latency: ${data.test_result?.latency_ms || 180}ms`, "success");
+        } else {
+          onToast(data.message || "Model test reported issues", "warning");
+        }
+      } else {
+        setTestResult({
+          is_operational: false,
+          message: data.message || "Failed to reach model service",
+        });
+        onToast(data.message || "Connection failed", "warning");
+      }
+    } catch (err: any) {
+      setTestResult({ is_operational: false, message: err.message });
+      onToast("Test request error: " + err.message, "warning");
+    } finally {
+      setIsTestingModel(false);
+    }
+  }
+
+  async function handleSaveGlobalModel() {
+    try {
+      setIsSavingGlobalModel(true);
+      const effectiveMid = isCustomModel ? customModelInput.trim() : modelIdentifier;
+      if (!effectiveMid) {
+        onToast("Please select or enter a valid model identifier", "warning");
+        return;
+      }
+      const res = await fetch("/api/admin/studio-model", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model_identifier: effectiveMid,
+          temperature,
+          custom_api_key: apiKeyInput.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        onToast(`Global LLM updated to "${effectiveMid}" across full project!`, "success");
+      } else {
+        onToast(data.message || "Failed to save global model", "warning");
+      }
+    } catch (err: any) {
+      onToast("Error saving global model: " + err.message, "warning");
+    } finally {
+      setIsSavingGlobalModel(false);
+    }
+  }
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -169,30 +289,25 @@ export default function SettingsView({
     <div className="flex-1 bg-[#F8FAFC] min-h-screen p-6 md:p-8 overflow-y-auto">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header with Agent Dropdown and Save Settings */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-              <Settings className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                Studio Settings
-              </h1>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Manage foundational AI models, safety guardrails, and knowledge grounding.
-              </p>
-            </div>
+        <div className="cn-page-header">
+          <div>
+            <h1 className="cn-page-header-title">
+              Studio Settings
+            </h1>
+            <p className="cn-page-header-subtitle">
+              Manage foundational AI models, safety guardrails, and knowledge grounding.
+            </p>
           </div>
 
-          <div className="flex items-center gap-3 self-start sm:self-auto">
+          <div className="cn-page-header-actions">
             {/* Select Agent Dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
                 onClick={() => setIsAgentDropdownOpen((prev) => !prev)}
-                className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 hover:border-blue-300 rounded-lg bg-white shadow-xs text-xs font-semibold text-slate-800 transition cursor-pointer"
+                className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 hover:border-emerald-500 rounded-lg bg-white shadow-xs text-xs font-semibold text-slate-800 transition cursor-pointer"
               >
-                <Bot className="w-4 h-4 text-blue-600" />
+                <Bot className="w-4 h-4 text-emerald-600" />
                 <span>{agentDisplayName}</span>
                 <ChevronDown
                   className={`w-3.5 h-3.5 text-slate-400 transition-transform ${
@@ -226,7 +341,7 @@ export default function SettingsView({
                           }}
                           className={`w-full text-left px-3 py-2 flex items-center justify-between text-xs transition cursor-pointer ${
                             isSelected
-                              ? "bg-blue-50/80 text-blue-600 font-semibold"
+                              ? "bg-emerald-50 text-emerald-700 font-semibold"
                               : "text-slate-700 hover:bg-slate-50"
                           }`}
                         >
@@ -234,7 +349,7 @@ export default function SettingsView({
                             <div
                               className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
                                 isSelected
-                                  ? "bg-blue-600 text-white"
+                                  ? "bg-emerald-600 text-white"
                                   : "bg-slate-100 text-slate-500"
                               }`}
                             >
@@ -256,7 +371,7 @@ export default function SettingsView({
                             </div>
                           </div>
                           {isSelected && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0 ml-2" />
+                            <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0 ml-2" />
                           )}
                         </button>
                       );
@@ -270,9 +385,9 @@ export default function SettingsView({
                           setIsAgentDropdownOpen(false);
                           onCreateAgentClick();
                         }}
-                        className="w-full text-left px-3 py-1.5 flex items-center gap-2 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                        className="w-full text-left px-3 py-1.5 flex items-center gap-2 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
                       >
-                        <RefreshCw className="w-3.5 h-3.5 text-blue-600 hidden" />
+                        <RefreshCw className="w-3.5 h-3.5 text-emerald-600 hidden" />
                         <span>+ Create New Agent</span>
                       </button>
                     </div>
@@ -284,7 +399,7 @@ export default function SettingsView({
             <button
               onClick={handleSaveSettings}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5" />
               <span>{saving ? "Saving..." : "Save Settings"}</span>
@@ -337,27 +452,51 @@ export default function SettingsView({
               </div>
             </div>
 
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "4px 10px",
-                borderRadius: "20px",
-                fontSize: "0.75rem",
-                fontWeight: 600,
-                background: "#dcfce7",
-                color: "#15803d",
-                border: "1px solid #bbf7d0",
-              }}
-            >
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e" }} />
-              Active Engine
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <Link
+                href="/agent-studio?tab=models"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "5px 12px",
+                  borderRadius: "8px",
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  background: "#ffffff",
+                  color: "#6d28d9",
+                  border: "1px solid #ddd6fe",
+                  textDecoration: "none",
+                  boxShadow: "0 1px 2px rgba(109, 40, 217, 0.05)",
+                }}
+              >
+                <Sliders style={{ width: 12, height: 12 }} />
+                <span>Configure Models</span>
+                <ArrowRight style={{ width: 12, height: 12 }} />
+              </Link>
+
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "4px 10px",
+                  borderRadius: "20px",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  background: "#dcfce7",
+                  color: "#15803d",
+                  border: "1px solid #bbf7d0",
+                }}
+              >
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e" }} />
+                Active Engine
+              </span>
+            </div>
           </div>
 
           <div className="p-6 space-y-5">
-            {/* Engine Overview Specs */}
+            {/* Active Engine Overview Specs (Unactive engines hidden) */}
             <div
               style={{
                 display: "grid",
@@ -371,14 +510,10 @@ export default function SettingsView({
             >
               <div>
                 <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500, display: "block", marginBottom: "2px" }}>
-                  Selected Engine:
+                  Active LLM Engine:
                 </span>
-                <strong style={{ fontSize: "0.9rem", color: "#0f172a" }}>
-                  {selectedModel === "gemini-2.5-flash"
-                    ? "Gemini 2.5 Flash"
-                    : selectedModel === "gpt-4o"
-                    ? "GPT-4o Enterprise"
-                    : "Claude 3.5 Sonnet"}
+                <strong style={{ fontSize: "0.85rem", color: "#0f172a", fontFamily: "monospace" }}>
+                  {isCustomModel ? (customModelInput || "Custom Model") : modelIdentifier}
                 </strong>
               </div>
               <div>
@@ -386,51 +521,102 @@ export default function SettingsView({
                   Provider:
                 </span>
                 <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#7c3aed" }}>
-                  {selectedModel.includes("gemini")
+                  {modelIdentifier.includes("nvidia")
+                    ? "OpenRouter (Nvidia)"
+                    : modelIdentifier.includes("deepseek")
+                    ? "DeepSeek"
+                    : modelIdentifier.includes("gemini")
                     ? "Google AI"
-                    : selectedModel.includes("gpt")
+                    : modelIdentifier.includes("gpt")
                     ? "OpenAI"
-                    : "Anthropic"}
+                    : modelIdentifier.includes("claude")
+                    ? "Anthropic"
+                    : "OpenRouter"}
                 </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Default LLM Model
-                </label>
-                <select
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  className="w-full px-3 py-2 text-xs text-slate-800 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-purple-500 cursor-pointer shadow-xs"
-                >
-                  <option value="gemini-2.5-flash">
-                    Google Gemini 2.5 Flash (Fast &amp; Precise)
-                  </option>
-                  <option value="gpt-4o">OpenAI GPT-4o (Enterprise)</option>
-                  <option value="claude-3.5-sonnet">
-                    Anthropic Claude 3.5 Sonnet
-                  </option>
-                </select>
+            {/* Unactive Engines Hidden - Managed in Model Configuration */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-purple-50/50 border border-purple-100 text-xs text-purple-900">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="font-semibold block">Primary platform intelligence is locked to this active engine.</span>
+                  <span className="text-[11px] text-purple-600">Unactive foundational engines are hidden to maintain optimal throughput and avoid unwanted drift.</span>
+                </div>
               </div>
+              <Link
+                href="/agent-studio?tab=models"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-purple-200 text-purple-700 hover:bg-purple-100/60 font-semibold text-xs shadow-xs transition shrink-0"
+              >
+                <span>Switch Engine</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
 
+            {/* Grounding Strictness */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Grounding Strictness
+              </label>
+              <select
+                value={groundingStrictness}
+                onChange={(e) => handleStrictnessChange(e.target.value)}
+                className="w-full px-3 py-2 text-xs text-slate-800 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-purple-500 cursor-pointer shadow-xs"
+              >
+                <option value="Strict">Strict (Ground only to Knowledge Base)</option>
+                <option value="Standard">Standard (Knowledge + General FinTech)</option>
+                <option value="Flexible">Flexible Advisory</option>
+              </select>
+            </div>
+
+            {isCustomModel && (
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Grounding Strictness
+                  Custom Model Slug (OpenRouter / Provider Identifier)
                 </label>
-                <select
-                  value={groundingStrictness}
-                  onChange={(e) => handleStrictnessChange(e.target.value)}
-                  className="w-full px-3 py-2 text-xs text-slate-800 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-purple-500 cursor-pointer shadow-xs"
+                <input
+                  type="text"
+                  placeholder="e.g. meta-llama/llama-3.3-70b-instruct or mistralai/mistral-large"
+                  value={customModelInput}
+                  onChange={(e) => setCustomModelInput(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-mono text-slate-800 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-purple-500 shadow-xs"
+                />
+              </div>
+            )}
+
+            {/* API Key Input Field */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5 text-purple-600" />
+                  <span>API Key (OpenRouter / Provider Key)</span>
+                </span>
+                <span className="text-[11px] font-normal text-slate-400">
+                  Leave blank to use current active credentials
+                </span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  placeholder="sk-or-v1-••••••••••••••••••••••••••••••••••••••••"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  className="w-full pl-3 pr-10 py-2 text-xs font-mono text-slate-800 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-purple-500 shadow-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
                 >
-                  <option value="Strict">Strict (Ground only to Knowledge Base)</option>
-                  <option value="Standard">Standard (Knowledge + General FinTech)</option>
-                  <option value="Flexible">Flexible Advisory</option>
-                </select>
+                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
+            {/* Temperature Slider */}
             <div>
               <div className="flex items-center justify-between text-xs mb-1.5">
                 <span className="font-semibold text-slate-700">Temperature (Creativity):</span>
@@ -452,6 +638,54 @@ export default function SettingsView({
                 <span>0.5 (Balanced)</span>
                 <span>1.0 (Creative &amp; Exploratory)</span>
               </div>
+            </div>
+
+            {/* Test Status Banner if Tested */}
+            {testResult && (
+              <div
+                className={`p-3 rounded-lg border text-xs flex items-center justify-between ${
+                  testResult.is_operational
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                    : "bg-red-50 border-red-200 text-red-800"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {testResult.is_operational ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  )}
+                  <span>{testResult.message}</span>
+                </div>
+                {testResult.latency_ms && (
+                  <span className="font-mono text-[11px] font-bold">
+                    {testResult.latency_ms}ms
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Action Buttons for Testing and Saving */}
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={handleTestConnection}
+                disabled={isTestingModel}
+                className="flex items-center gap-1.5 px-3.5 py-2 border border-purple-200 hover:bg-purple-50 text-purple-700 text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer disabled:opacity-50"
+              >
+                <Zap className={`w-3.5 h-3.5 ${isTestingModel ? "animate-pulse" : ""}`} />
+                <span>{isTestingModel ? "Testing Latency..." : "Test Connection"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveGlobalModel}
+                disabled={isSavingGlobalModel}
+                className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{isSavingGlobalModel ? "Saving Model..." : "Save Model & Credentials"}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -760,7 +994,7 @@ export default function SettingsView({
 
             {/* Danger Zone: Delete Agent */}
             {onDeleteAgentClick && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-rose-50/50 border border-rose-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-rose-50/50 border border-rose-200/80">
                 <div>
                   <div className="text-xs font-semibold text-rose-800">
                     Delete This Agent
@@ -771,10 +1005,12 @@ export default function SettingsView({
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => onDeleteAgentClick(agent.id)}
-                  className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 border border-rose-200/80 rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer shrink-0 active:scale-95"
                 >
-                  Delete Agent
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Delete Agent</span>
                 </button>
               </div>
             )}

@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import Topbar from "@/components/Topbar";
+import AdminHeader from "@/components/admin/AdminHeader";
 
 export type ModelCategory = "STT" | "LLM" | "TTS";
 
@@ -372,8 +372,13 @@ export default function AiModelsManagementPage() {
   }
 
   return (
-    <div className="home-body admin-fullpage-layout" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg)", width: "100%" }}>
-      <Topbar user={user} pathname="/admin/models" />
+    <div className="home-body admin-fullpage-layout" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg, #f8fafc)", width: "100%" }}>
+      <AdminHeader
+        user={user}
+        title="AI Model Configuration"
+        description="Configure, deploy, and dynamically route Speech-to-Text, LLM Reasoning, and Voice Synthesis engines."
+        breadcrumbs={[{ label: "AI Model Configuration" }]}
+      />
 
       {/* Floating Action Toast */}
       {toast && (
@@ -429,6 +434,17 @@ export default function AiModelsManagementPage() {
 
           {/* Action buttons */}
           <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => router.push("/admin")}
+              title="Return to Admin Dashboard"
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", height: "38px", fontWeight: 600 }}
+            >
+              <i className="bi bi-grid-fill" />
+              Dashboard
+            </button>
+
             <button
               type="button"
               className="btn btn-secondary btn-sm"

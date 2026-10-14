@@ -76,6 +76,9 @@ export async function ensureAiModelsTable(): Promise<void> {
       );
       CREATE INDEX IF NOT EXISTS idx_ai_models_category ON ai_models(category);
       CREATE INDEX IF NOT EXISTS idx_ai_models_active ON ai_models(category, is_active);
+      ALTER TABLE ai_models ADD COLUMN IF NOT EXISTS temperature NUMERIC(3,2) DEFAULT 0.7;
+      ALTER TABLE ai_models ADD COLUMN IF NOT EXISTS max_tokens INTEGER DEFAULT 1024;
+      ALTER TABLE ai_models ADD COLUMN IF NOT EXISTS display_name VARCHAR(150);
     `);
 
     // Check count
@@ -117,10 +120,17 @@ const SYSTEM_DEFAULTS: Array<{
   // LLM Reasoning Engine
   {
     category: "LLM",
-    model_name: "openrouter/auto",
+    model_name: "deepseek/deepseek-v3",
     provider: "OpenRouter",
     is_active: true,
     is_default: true,
+  },
+  {
+    category: "LLM",
+    model_name: "openrouter/auto",
+    provider: "OpenRouter",
+    is_active: false,
+    is_default: false,
   },
   {
     category: "LLM",

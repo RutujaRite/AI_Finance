@@ -171,6 +171,34 @@ export async function initAgentStudioDb(): Promise<void> {
       );
     `);
 
+    // 11. AI Token Usage Logs
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ai_token_usage_logs (
+        id SERIAL PRIMARY KEY,
+        agent_id VARCHAR(100),
+        agent_name VARCHAR(255),
+        model_name VARCHAR(150),
+        prompt_tokens INTEGER DEFAULT 0,
+        completion_tokens INTEGER DEFAULT 0,
+        total_tokens INTEGER DEFAULT 0,
+        source VARCHAR(50) DEFAULT 'chat',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_token_logs_agent ON ai_token_usage_logs(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_token_logs_created ON ai_token_usage_logs(created_at);
+
+      -- 12. Token Budget & Alert Settings
+      CREATE TABLE IF NOT EXISTS ai_token_settings (
+        id VARCHAR(50) PRIMARY KEY DEFAULT 'default',
+        monthly_budget_tokens BIGINT DEFAULT 1000000,
+        alert_threshold_percent INTEGER DEFAULT 80,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT INTO ai_token_settings (id, monthly_budget_tokens, alert_threshold_percent)
+      VALUES ('default', 1000000, 80)
+      ON CONFLICT (id) DO NOTHING;
+    `);
+
     await client.query("COMMIT");
   } catch (err: any) {
     await client.query("ROLLBACK");

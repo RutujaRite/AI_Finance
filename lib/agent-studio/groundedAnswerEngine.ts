@@ -131,7 +131,7 @@ export function generateKnowledgeGroundedReply(
 
     // OUT OF SCOPE check: The document is a greeting knowledge base, but user asks about loans, credit, banking, or unrelated topics
     return {
-      reply: `Based on the uploaded knowledge base (${docNamesStr}), this information is not covered.\n\nIn this test demo, I am configured to strictly answer questions related to your uploaded knowledge base document(s) as per your agent instructions.\n\n💡 **Tip:** Your uploaded document is a Greeting Knowledge Base. Please test with greetings like *"Hello"*, *"Good morning"*, or *"Namaste"*, or upload a policy document under **AI Instructions** to test specific lender policies.`,
+      reply: `I apologize, but related information is not available in the uploaded knowledge base (${docNamesStr}).\n\nIn this evaluation demo, I am configured to answer questions strictly grounded in your verified uploaded document(s).\n\n💡 **Tip:** Your uploaded document is a Greeting Knowledge Base. Please feel free to test with greetings like *"Hello"*, *"Good morning"*, or *"Namaste"*, or upload a loan policy document under **AI Instructions** to test specific lender policies.`,
       isInScope: false,
       matchedChunks: [],
       docNames,
@@ -152,9 +152,28 @@ export function generateKnowledgeGroundedReply(
 
     if (requestedBank && !docHasBank) {
       return {
-        reply: `Based on the uploaded knowledge base (${docNamesStr}), information for **${requestedBank.toUpperCase()}** is not specified.\n\nIn this test demo, I am strictly restricted to evaluating the uploaded document(s): ${docNamesStr} as per your agent instructions.`,
+        reply: `I apologize, but related information for **${requestedBank.toUpperCase()}** is not available in the uploaded knowledge base (${docNamesStr}).\n\nIn this evaluation demo, I am strictly restricted to evaluating your verified uploaded document(s): ${docNamesStr} as per your agent instructions.`,
         isInScope: false,
         matchedChunks: [],
+        docNames,
+      };
+    }
+
+    // If query asks to "tell me about", summarize, or explain the demo loan / uploaded policy
+    const isDocOrDemoAsk =
+      /\b(?:demo\s*loan|uploaded\s*(?:knowledge|document|policy|file)|knowledge\s*base|the\s*document|the\s*policy|this\s*policy|this\s*document|this\s*knowledge|t?polic(?:y|ies)?|loan\s*policy|demo)\b/i.test(lowerQuery) ||
+      docNames.some((n) => lowerQuery.includes(n.toLowerCase().replace(/\.[a-z0-9]+$/i, "")));
+
+    if (
+      isDocOrDemoAsk &&
+      /\b(?:tell\s+me\s+about|what\s+is|explain|overview|summary|details\s+of|features\s+of|about\s+the|describe|give\s+me|read)\b/i.test(lowerQuery)
+    ) {
+      const topSnippets = chunks.slice(0, 3).map((c) => c.content).join("\n\n");
+      const summaryText = topSnippets || allChunksText.slice(0, 900);
+      return {
+        reply: `### 🏦 ${docNames[0] || "CreditWise Demo Loan"} — Policy Overview\n\n${summaryText}\n\n*Note: Grounded exclusively in your uploaded knowledge base document (${docNamesStr}) for test evaluation.*`,
+        isInScope: true,
+        matchedChunks: chunks.slice(0, 3).map((c) => c.content),
         docNames,
       };
     }
@@ -193,8 +212,15 @@ export function generateKnowledgeGroundedReply(
       };
     }
 
-    // If query asks for documents needed
-    if (lowerQuery.includes("document") || lowerQuery.includes("kyc") || lowerQuery.includes("statement") || lowerQuery.includes("payslip")) {
+    // If query asks for documents needed for loan
+    if (
+      !/do not use (any )?(uploaded )?(documents|knowledge|files)/i.test(lowerQuery) &&
+      !/without (using )?(any )?(uploaded )?(documents|knowledge|files)/i.test(lowerQuery) &&
+      (/(?:what\s+(?:are\s+the\s+)?documents|documentation\s+requirements?|required\s+documents|documents?\s+(?:needed|required|list)|checklist)\b/i.test(lowerQuery) ||
+        lowerQuery.includes("kyc") ||
+        lowerQuery.includes("statement") ||
+        lowerQuery.includes("payslip"))
+    ) {
       const relevantSnippets = chunks
         .filter((c) => /document|kyc|statement|payslip|itr|pan|aadhaar/i.test(c.content))
         .map((c) => c.content)
@@ -243,7 +269,7 @@ export function generateKnowledgeGroundedReply(
 
     // Otherwise Out of Scope
     return {
-      reply: `Based on the uploaded knowledge base (${docNamesStr}), this information is not covered.\n\nIn this test demo, I am configured to strictly answer questions related to your uploaded knowledge base document(s) as per your agent instructions. Please ask a question related to ${docNamesStr}.`,
+      reply: `I apologize, but related information is not available in the uploaded knowledge base (${docNamesStr}).\n\nIn this evaluation demo, I am configured to answer questions strictly grounded in your verified uploaded document(s) as per your agent instructions. Please feel free to ask about any details covered in ${docNamesStr}.`,
       isInScope: false,
       matchedChunks: [],
       docNames,
@@ -270,7 +296,7 @@ export function generateKnowledgeGroundedReply(
   }
 
   return {
-    reply: `Based on the uploaded knowledge base (${docNamesStr}), this information is not covered.\n\nIn this test demo, I am configured to strictly answer questions related to your uploaded knowledge base document(s) as per your agent instructions. Please ask a question related to ${docNamesStr}.`,
+    reply: `I apologize, but related information is not available in the uploaded knowledge base (${docNamesStr}).\n\nIn this evaluation demo, I am configured to answer questions strictly grounded in your verified uploaded document(s) as per your agent instructions. Please feel free to ask about any details covered in ${docNamesStr}.`,
     isInScope: false,
     matchedChunks: [],
     docNames,

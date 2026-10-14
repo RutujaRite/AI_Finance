@@ -1628,10 +1628,6 @@ async function generateGreetingWithLLM(
             `Do NOT use robotic bulleted lists or rigid templates. Keep it conversational, welcoming, and concise (1-3 sentences).\n` +
             `Never start with internal tokens, and do not repeat canned phrases verbatim.`;
 
-        if (!configuredSystemPrompt && eligibilitySession?.applicant?.companyName) {
-          systemPrompt += `\nNote: The user currently has an ongoing loan eligibility assessment for ${eligibilitySession.applicant.companyName}. You may naturally mention they can continue or explore anything else.`;
-        }
-
         const streamToken = agentTokenStorage.getStore();
         if (streamToken) {
           const { openRouterChatStream } = await import("@/lib/openrouter");
@@ -2595,14 +2591,15 @@ async function handleGeneralInformationIntent(
 
   // 3. Corporate Employer Rating / Category Query
   if (
-    classification.subIntent === "COMPANY_SEARCH" ||
-    (/(?:company|employer|category\s*rating|company\s*tier|corporate\s*listing|is.*listed)/i.test(norm) && !/policy|rule|cutoff|foir|tenure|cibil/i.test(norm))
+    !detectCompanyDisavowal(userMessage).isDisavowal &&
+    (classification.subIntent === "COMPANY_SEARCH" ||
+      (/(?:company|employer|category\s*rating|company\s*tier|corporate\s*listing|is.*listed)/i.test(norm) && !/policy|rule|cutoff|foir|tenure|cibil/i.test(norm)))
   ) {
     const rawTarget = classification.extracted?.companyName || userMessage;
     const cleanFromExtracted = classification.extracted?.companyName ? (extractCleanCompanyName(classification.extracted.companyName) || extractCompanyCandidateFromText(classification.extracted.companyName)) : "";
     const cleanFromUser = extractCleanCompanyName(userMessage) || extractCompanyCandidateFromText(userMessage) || extractTargetCompanyFromMessage(userMessage);
     const compQuery = cleanFromExtracted || cleanFromUser || (rawTarget && !isInvalidCompanyName(rawTarget) ? rawTarget.replace(/(?:is|what\s*is|tell\s*me\s*about|search|check|category|rating|of|for|listed\s*in)\b/gi, "").trim() : "");
-    if (compQuery && !isInvalidCompanyName(compQuery)) {
+    if (compQuery && !isInvalidCompanyName(compQuery) && !detectCompanyDisavowal(compQuery).isDisavowal) {
       const company = await searchCompany(compQuery);
       if (company?.found) {
         if (company.needsDisambiguation && company.candidateOptions && company.candidateOptions.length > 1) {
@@ -2761,9 +2758,9 @@ async function formatBankPolicyNotAvailableResponse(requestedBank?: string): Pro
   const dynamicBankList = await formatAvailablePolicyBanksList();
 
   return (
-    `### 🏦 Bank Policy Not Available\n\n` +
-    `The requested bank policy${bankLabel} is **not available** in our stored records.\n\n` +
-    `We can only provide official policy guidelines for our **partner banks** whose Master Policies are actively stored and maintained in our platform.\n\n` +
+    `### 🏦 Policy Information Not Available\n\n` +
+    `I apologize, but related policy information${bankLabel} is **not available** in our verified records at this moment.\n\n` +
+    `To ensure accuracy, we only provide official lending guidelines and credit cutoffs for our **supported partner banks** whose Master Policies are actively maintained in our platform.\n\n` +
     dynamicBankList
   );
 }
@@ -2884,6 +2881,9 @@ async function handleMultiBankEligibilityCheck(
   if (Array.isArray(conversationHistory)) {
     for (const msg of conversationHistory) {
       if (msg.role === "user" && msg.content) {
+        if (detectCompanyDisavowal(msg.content).isDisavowal) {
+          delete currentApplicant.companyName;
+        }
         const histUpdates = extractApplicantDetails(msg.content);
         const histRaw = extractEntitiesFromText(msg.content);
         Object.assign(currentApplicant, histUpdates);
@@ -2912,10 +2912,22 @@ async function handleMultiBankEligibilityCheck(
   if (rawEntities.loanAmount && !currentApplicant.loanAmount) currentApplicant.loanAmount = rawEntities.loanAmount;
   if (rawEntities.tenureMonths && !currentApplicant.tenureMonths) currentApplicant.tenureMonths = rawEntities.tenureMonths;
 
+  if (detectCompanyDisavowal(userMessage).isDisavowal) {
+    const dis = detectCompanyDisavowal(userMessage);
+    if (dis.replacementCompany) {
+      currentApplicant.companyName = dis.replacementCompany;
+    } else {
+      delete currentApplicant.companyName;
+    }
+  }
+
   if (currentApplicant.companyName) {
     currentApplicant.companyName = currentApplicant.companyName
       .replace(/^(?:salaried\s+at|working\s+(?:at|in)|employed\s+at|at)\s+/i, "")
       .trim();
+    if (isInvalidCompanyName(currentApplicant.companyName) || detectCompanyDisavowal(currentApplicant.companyName).isDisavowal) {
+      delete currentApplicant.companyName;
+    }
   }
 
   // Defaults for evaluation
@@ -2925,8 +2937,19 @@ async function handleMultiBankEligibilityCheck(
   if (!currentApplicant.tenureMonths || Number(currentApplicant.tenureMonths) <= 0) {
     currentApplicant.tenureMonths = 60;
   }
-  if (!currentApplicant.employmentType && (currentApplicant.monthlyIncome || currentApplicant.companyName)) {
-    currentApplicant.employmentType = "Salaried";
+  const isNonCorporate =
+    currentApplicant.employmentType === "Self-Employed" ||
+    currentApplicant.employmentType === "Student" ||
+    currentApplicant.employmentType === "Homemaker" ||
+    currentApplicant.employmentType === "Retired" ||
+    currentApplicant.employmentType === "Unemployed";
+
+  if (!currentApplicant.employmentType && !isNonCorporate) {
+    if (currentApplicant.companyName && currentApplicant.companyName !== "Self-Employed") {
+      currentApplicant.employmentType = "Salaried";
+    } else if (currentApplicant.monthlyIncome && Number(currentApplicant.monthlyIncome) > 0) {
+      currentApplicant.employmentType = "Salaried";
+    }
   }
 
   // Step 2: Identify missing information
@@ -3059,16 +3082,10 @@ async function executeLookupMasterPolicy(
         eligibilitySession.selectedBank = resolvedTarget.bankName;
         eligibilitySession.chosenBank = resolvedTarget.bankName;
       }
-      const suggestion = isEligibleFlowActive
-        ? "\n\nWhenever you're ready, we can return to your loan eligibility check."
-        : "";
-      return { reply: docReply + suggestion, bankData: { bank_name: resolvedTarget.bankName } };
+      return { reply: docReply, bankData: { bank_name: resolvedTarget.bankName } };
     } else if (!candidateBankName || candidateBankName === "partner banks") {
       const compReply = formatDocumentComparisonAcrossBanks();
-      const suggestion = isEligibleFlowActive
-        ? "\n\nWhenever you're ready, we can return to your loan eligibility check."
-        : "";
-      return { reply: compReply + suggestion };
+      return { reply: compReply };
     }
   }
 
@@ -3081,10 +3098,7 @@ async function executeLookupMasterPolicy(
         eligibilitySession.selectedBank = resolvedTarget.bankName;
         eligibilitySession.chosenBank = resolvedTarget.bankName;
       }
-      const suggestion = isEligibleFlowActive
-        ? "\n\nWhenever you're ready, we can return to your loan eligibility check."
-        : "";
-      return { reply: policyResult + suggestion };
+      return { reply: policyResult };
     }
   }
 
@@ -3092,12 +3106,42 @@ async function executeLookupMasterPolicy(
   if (activeAgent && agentKnowledgeResult?.selectedDocuments?.length > 0) {
     const activeDocChunks = (agentKnowledgeResult.selectedDocuments || []).flatMap((d: any) => d.chunks || []);
     const activeDocs = (agentKnowledgeResult.selectedDocuments || []).map((d: any) => d.document);
-    const grounded = generateKnowledgeGroundedReply(userMessage, activeAgent, activeDocs, activeDocChunks);
-    if (grounded.isInScope && grounded.matchedChunks.length > 0) {
-      return {
-        reply: grounded.reply,
-        bankData: { bank_name: candidateBankName || activeAgent.name, source_documents: activeDocs.map((d: any) => d.name) },
-      };
+    if (activeDocChunks.length > 0 && activeDocs.length > 0) {
+      const chunksText = activeDocChunks.map((c: any, i: number) => `[Chunk ${i + 1}]:\n${c.content}`).join("\n\n");
+      const docName = activeDocs[0]?.name || "CreditWise_Demo_Loan_Knowledge_Base(1).docx";
+      const sysPrompt =
+        `You are CreditWise AI. Answer the user's question about the knowledge base document "${docName}" using the verified document chunks provided below.\n\n` +
+        `Document Chunks from ${docName}:\n${chunksText}\n\n` +
+        `Critical Requirements:\n` +
+        `1. Ground your answer strictly in the provided knowledge base.\n` +
+        `2. Clearly identify that this document contains fictional demo data created strictly for testing and AI evaluation.\n` +
+        `3. Cite the source document "${docName}" clearly.\n` +
+        `4. If the user asks for information not specified in the document (such as processing fee), explicitly state that it is not specified in the uploaded demo Knowledge Base. Do NOT invent an answer.\n` +
+        `5. Do NOT append any unsolicited loan eligibility questions, questionnaires, or references to other employers or salaries.`;
+
+      try {
+        const llmReply = await simpleOpenRouterChat(
+          [
+            { role: "system", content: sysPrompt },
+            { role: "user", content: userMessage },
+          ],
+          modelOverride,
+          { max_tokens: 600 }
+        );
+        if (llmReply && llmReply.trim()) {
+          return {
+            reply: llmReply.trim(),
+            bankData: { bank_name: candidateBankName || activeAgent.name, source_documents: activeDocs.map((d: any) => d.name) },
+          };
+        }
+      } catch (llmErr) {
+        console.warn("[LOOKUP_POLICY_KNOWLEDGE_LLM_ERROR]", llmErr);
+        const topChunks = activeDocChunks.slice(0, 3).map((c: any) => c.content).join("\n\n");
+        return {
+          reply: `### 🏦 ${docName} — Policy Overview\n\n${topChunks}\n\n*Note: Grounded strictly in uploaded knowledge base document (${docName}) for evaluation.*`,
+          bankData: { bank_name: candidateBankName || activeAgent.name, source_documents: activeDocs.map((d: any) => d.name) },
+        };
+      }
     }
   }
 
@@ -3864,8 +3908,8 @@ export interface MasterConversationAnalysis {
     existingEmi?: number | string | null;
     age?: number | string | null;
     location?: string | null;
-    employmentStatus?: "unemployed" | "salaried" | "self-employed" | "student" | string | null;
-    employmentType?: "Salaried" | "Self-Employed" | "Unemployed" | "Student" | null;
+    employmentStatus?: "unemployed" | "salaried" | "self-employed" | "student" | "homemaker" | "retired" | string | null;
+    employmentType?: "Salaried" | "Self-Employed" | "Unemployed" | "Student" | "Homemaker" | "Retired" | string | null;
   };
   isCorrection: boolean;
   correctedFields: string[];
@@ -6270,20 +6314,52 @@ async function runCentralAgentInternal(opts: {
   if (activeAgent && agentKnowledgeResult?.selectedDocuments?.length > 0) {
     const activeDocChunks = (agentKnowledgeResult.selectedDocuments || []).flatMap((d: any) => d.chunks || []);
     const activeDocs = (agentKnowledgeResult.selectedDocuments || []).map((d: any) => d.document);
-    if (activeDocChunks.length > 0 && activeDocs.length > 0) {
+    const isExplicitNoDocs =
+      /do not use (any )?(uploaded )?(documents|knowledge|files)/i.test(normUserMsg) ||
+      /without (using )?(any )?(uploaded )?(documents|knowledge|files)/i.test(normUserMsg);
+
+    if (activeDocChunks.length > 0 && activeDocs.length > 0 && !isExplicitNoDocs) {
       const isMultiBankAsk = isMultiBankEligibilityQuery(userMessage);
       const isGreetingMsg = isPureGreeting(userMessage) || /^(hello|hi|hey|good\s*(?:morning|afternoon|evening)|namaste)\b/i.test(userMessage.trim());
-      if (!isMultiBankAsk && !isGreetingMsg) {
-        const isDocMentioned = activeDocs.some((d: any) => normUserMsg.includes(d.name.toLowerCase().replace(/\.[a-z0-9]+$/i, "")));
-        const isPolicyTopic = /(?:policy|rule|rates?|lockin|lock-in|prepayment|fee|criteria|guideline|underwriting|terms?|interest)\b/i.test(normUserMsg);
-        if (isDocMentioned || isPolicyTopic || activeAgent.operationalMode === "rag_focused") {
-          const grounded = generateKnowledgeGroundedReply(userMessage, activeAgent, activeDocs, activeDocChunks);
-          if (grounded.isInScope && grounded.matchedChunks.length > 0) {
+      const isIdentityMsg = isGeneralAssistanceQuery(userMessage) || /^(?:who\s+(?:are|r)\s+(?:you|u)|what\s+can\s+(?:you|u)\s+do|introduce\s+yourself)\b/i.test(normUserMsg);
+      const isDemoLoanAsk = /\b(?:demo\s*(?:loan|policy|product|criteria)|uploaded\s*(?:knowledge|document|policy|file)|knowledge\s*base)\b/i.test(normUserMsg);
+      const isDocMentioned = activeDocs.some((d: any) => normUserMsg.includes(d.name.toLowerCase().replace(/\.[a-z0-9]+$/i, "")));
+
+      if (!isMultiBankAsk && !isGreetingMsg && !isIdentityMsg && (isDocMentioned || isDemoLoanAsk)) {
+        const chunksText = activeDocChunks.map((c: any, i: number) => `[Chunk ${i + 1}]:\n${c.content}`).join("\n\n");
+        const docName = activeDocs[0]?.name || "CreditWise_Demo_Loan_Knowledge_Base(1).docx";
+        const sysPrompt =
+          `You are CreditWise AI. Answer the user's question about the knowledge base document "${docName}" using the verified document chunks provided below.\n\n` +
+          `Document Chunks from ${docName}:\n${chunksText}\n\n` +
+          `Critical Requirements:\n` +
+          `1. Ground your answer strictly in the provided knowledge base.\n` +
+          `2. Clearly identify that this document contains fictional demo data created strictly for testing and AI evaluation.\n` +
+          `3. Cite the source document "${docName}" clearly.\n` +
+          `4. If the user asks for information not specified in the document (such as processing fee), explicitly state that it is not specified in the uploaded demo Knowledge Base. Do NOT invent an answer.\n` +
+          `5. Do NOT append any unsolicited loan eligibility questions, questionnaires, or references to other employers or salaries.`;
+
+        try {
+          const llmReply = await simpleOpenRouterChat(
+            [
+              { role: "system", content: sysPrompt },
+              { role: "user", content: userMessage },
+            ],
+            requestedModel,
+            { max_tokens: 600 }
+          );
+          if (llmReply && llmReply.trim()) {
             return await finalizeAndReturn({
-              reply: grounded.reply,
+              reply: llmReply.trim(),
               bankData: { bank_name: activeAgent.name, source_documents: activeDocs.map((d: any) => d.name) },
             });
           }
+        } catch (llmErr: any) {
+          console.warn("[KNOWLEDGE_GROUNDED_LLM_ERROR]", llmErr);
+          const topChunks = activeDocChunks.slice(0, 3).map((c: any) => c.content).join("\n\n");
+          return await finalizeAndReturn({
+            reply: `### 🏦 ${docName} — Policy Overview\n\n${topChunks}\n\n*Note: Grounded strictly in uploaded knowledge base document (${docName}) for evaluation.*`,
+            bankData: { bank_name: activeAgent.name, source_documents: activeDocs.map((d: any) => d.name) },
+          });
         }
       }
     }
@@ -6316,7 +6392,7 @@ async function runCentralAgentInternal(opts: {
       const greetingReply = await generateGreetingWithLLM(
         userMessage,
         requestedModel,
-        isEligibleFlowActive ? eligibilitySession : undefined,
+        undefined,
         currentTime,
         optsSystemPrompt
       );
@@ -6324,22 +6400,27 @@ async function runCentralAgentInternal(opts: {
     }
 
     if (isHowAreYouQuery(userMessage)) {
-      const howReply = formatHowAreYouResponse(isEligibleFlowActive);
+      const howReply = formatHowAreYouResponse(false);
       return await finalizeAndReturn({ reply: howReply });
     }
 
-    if (isGeneralAssistanceQuery(userMessage)) {
-      const helpReply = formatGeneralAssistanceResponse(isEligibleFlowActive);
+    if (isGeneralAssistanceQuery(userMessage) || /^(?:who\s+(?:are|r)\s+(?:you|u)|what\s+can\s+(?:you|u)\s+do|introduce\s+yourself)\b/i.test(userMessage.trim())) {
+      const helpReply = formatGeneralAssistanceResponse(false);
       return await finalizeAndReturn({ reply: helpReply });
     }
 
     // Direct LLM call with token budget — NO policy RAG, NO company search, NO manager lookup
     const budget = getTokenBudget("GENERAL_QUERY");
     const prunedHistory = pruneHistoryToBudget(conversationHistory || [], budget.maxInputTokens || budget.inputMaxTokens);
+    const isLoanContextMsg = /loan|emi|cibil|credit|borrow|lender|bank/i.test(userMessage);
+    const sysPromptContent = !isLoanContextMsg
+      ? "You are CreditWise AI, a helpful, intelligent assistant. Directly answer the user's question clearly, concisely, and accurately. Follow all user instructions strictly (such as exact bullet point counts or formatting constraints). Do not inject loan policy details, employer requirements, or personal financial questionnaires when answering general technical or educational questions."
+      : (optsSystemPrompt || "You are CreditWise AI, a helpful, intelligent assistant. Directly answer the user's question clearly, concisely, and accurately. Do not invent bank rules or force the user into loan application flows unless they ask about personal loans.");
+
     const messages = [
       {
         role: "system" as const,
-        content: optsSystemPrompt || "You are CreditWise AI, a helpful, intelligent assistant. Directly answer the user's question clearly, concisely, and accurately. Do not invent bank rules or force the user into loan application flows unless they ask about personal loans.",
+        content: sysPromptContent,
       },
       ...prunedHistory.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
       { role: "user" as const, content: userMessage },
@@ -6355,28 +6436,8 @@ async function runCentralAgentInternal(opts: {
         }
       );
     } catch (err: any) {
-      console.warn("Direct LLM call failed, falling back to executeAnswerGeneralQuestion:", err?.message || err);
-      if (activeAgent && agentKnowledgeResult?.selectedDocuments?.length > 0) {
-        const activeDocChunks = (agentKnowledgeResult.selectedDocuments || []).flatMap((d: any) => d.chunks || []);
-        const activeDocs = (agentKnowledgeResult.selectedDocuments || []).map((d: any) => d.document);
-        const grounded = generateKnowledgeGroundedReply(userMessage, activeAgent, activeDocs, activeDocChunks);
-        if (grounded.isInScope && grounded.matchedChunks.length > 0) {
-          llmResponse = grounded.reply;
-        }
-      }
-      if (!llmResponse) {
-        const fallbackAns = await executeAnswerGeneralQuestion(
-          { question: userMessage },
-          userMessage,
-          conversationId,
-          isEligibleFlowActive,
-          eligibilitySession,
-          requestedModel,
-          conversationHistory,
-          optsSystemPrompt
-        );
-        llmResponse = fallbackAns.reply;
-      }
+      console.warn("Direct LLM call failed:", err?.message || err);
+      llmResponse = `[Error: Unable to generate response from configured AI model - ${err?.message || "provider error"}]. Please verify your API key and model configuration.`;
     }
 
     const validated = validateAgentResponse({
@@ -6672,10 +6733,15 @@ async function runCentralAgentInternal(opts: {
         conversationHistory
       );
     } else {
-      const promptMissing = `We have your details on file. To complete your eligibility assessment, could you please provide your **${getHumanFieldLabel(missing[0])}**?`;
+      const resumePrompt = buildMultiBankIntakePrompt(candidateApplicant);
+      const promptMissing = `Welcome back! Let's continue your loan eligibility check.\n\n${resumePrompt}`;
       return await finalizeAndReturn({ reply: promptMissing }, {
+        applicant: candidateApplicant,
         expectedField: missing[0],
+        missingFields: missing,
         in_eligibility_flow: true,
+        activeFlow: "MULTI_BANK_ELIGIBILITY_CHECK",
+        mainUserGoal: "PERSONAL_LOAN",
       });
     }
   }
@@ -6746,51 +6812,65 @@ async function runCentralAgentInternal(opts: {
         conversationHistory
       );
     } else {
-      const nextField = missing[0];
-      const ask = `Got it! To evaluate your eligibility across all partner banks, could you please share **${getHumanFieldLabel(nextField)}**?`;
+      const ask = buildMultiBankIntakePrompt(mergedApplicant);
       return await finalizeAndReturn({ reply: ask }, {
         applicant: mergedApplicant,
-        expectedField: nextField,
+        expectedField: missing[0],
+        missingFields: missing,
         in_eligibility_flow: true,
-        activeFlow: "LOAN_ELIGIBILITY",
+        activeFlow: "MULTI_BANK_ELIGIBILITY_CHECK",
         mainUserGoal: "PERSONAL_LOAN",
       });
     }
   }
 
   // =========================================================================
-  // TASKSTACK RESUME INTERCEPTOR (StackResume)
-  // When user returns to a previously suspended loan evaluation ("resume", "continue loan", etc.)
+  // TASKSTACK & FLOW RESUME INTERCEPTOR (StackResume)
+  // When user returns to a previously started loan evaluation ("continue my eligibility check", "resume", etc.)
   // =========================================================================
-  const isExplicitResumeCmd = /^(?:resume(?:\s+(?:my\s+)?loan(?:\s*check|\s*eligibility)?)?|continue(?:\s+(?:my\s+)?loan(?:\s*check|\s*eligibility)?)?|go\s*back\s*to\s*(?:my\s*)?loan|let'?s\s*continue(?:\s+(?:my\s+)?loan)?)\b/i.test(normUserMsg);
-  if (isExplicitResumeCmd && eligibilitySession?.taskStack && eligibilitySession.taskStack.length > 0) {
-    const updatedStack = [...eligibilitySession.taskStack];
-    const popped = updatedStack.pop();
-    if (popped) {
-      const restoredApplicant: ApplicantProfile = {
-        ...(popped.applicantSnapshot || {}),
-        ...currentApplicant,
-      };
-      const revalidatedMissing = getRequiredPolicyFields(restoredApplicant);
-      const nextMissing = revalidatedMissing[0] || popped.expectedField || "monthlyIncome";
-      const bridge = buildContextualEligibilityResumptionBridge(restoredApplicant, nextMissing);
-      const resumeReply = `Welcome back! Let's continue your loan eligibility check.${bridge.replace(/^\n\n---\n\*\*Coming back to your loan eligibility check:\*\*/, "")}`;
+  const isExplicitResumeCmd =
+    /^(?:resume(?:\s+(?:my\s+)?loan(?:\s*check|\s*eligibility)?)?|continue(?:\s+(?:my\s+)?loan(?:\s*check|\s*eligibility)?)?|go\s*back\s*to\s*(?:my\s*)?loan|let'?s\s*continue(?:\s+(?:my\s+)?loan)?|what\s+(?:information|details|info)\s+do\s+you\s+(?:still\s+)?need)\b/i.test(normUserMsg);
 
-      return await finalizeAndReturn(
-        { reply: resumeReply },
-        {
-          applicant: restoredApplicant,
-          company: restoredApplicant.companyName,
-          companyCategory: restoredApplicant.companyCategory,
-          selectedCompanyName: restoredApplicant.companyName,
-          expectedField: nextMissing,
-          missingFields: revalidatedMissing,
-          taskStack: updatedStack,
-          in_eligibility_flow: true,
-          activeFlow: "LOAN_ELIGIBILITY",
-        }
-      );
+  const hasApplicantData = Boolean(
+    eligibilitySession?.applicant?.companyName ||
+    eligibilitySession?.applicant?.monthlyIncome ||
+    currentApplicant?.companyName ||
+    currentApplicant?.monthlyIncome
+  );
+
+  if (isExplicitResumeCmd && hasApplicantData) {
+    let restoredApplicant: ApplicantProfile = {
+      ...(eligibilitySession?.applicant || {}),
+      ...currentApplicant,
+    };
+    let updatedStack = eligibilitySession?.taskStack ? [...eligibilitySession.taskStack] : [];
+    if (updatedStack.length > 0) {
+      const popped = updatedStack.pop();
+      if (popped?.applicantSnapshot) {
+        restoredApplicant = { ...popped.applicantSnapshot, ...restoredApplicant };
+      }
     }
+
+    const revalidatedMissing = getRequiredPolicyFields(restoredApplicant);
+    const nextMissing = revalidatedMissing[0] || eligibilitySession?.expectedField || "cibilScore";
+    const resumePrompt = buildMultiBankIntakePrompt(restoredApplicant);
+    const resumeReply = `Welcome back! Let's continue your loan eligibility check.\n\n${resumePrompt}`;
+
+    return await finalizeAndReturn(
+      { reply: resumeReply },
+      {
+        applicant: restoredApplicant,
+        company: restoredApplicant.companyName,
+        companyCategory: restoredApplicant.companyCategory,
+        selectedCompanyName: restoredApplicant.companyName,
+        expectedField: nextMissing,
+        missingFields: revalidatedMissing,
+        taskStack: updatedStack,
+        in_eligibility_flow: true,
+        activeFlow: "MULTI_BANK_ELIGIBILITY_CHECK",
+        mainUserGoal: "PERSONAL_LOAN",
+      }
+    );
   }
 
   // =========================================================================
@@ -6962,18 +7042,8 @@ async function runCentralAgentInternal(opts: {
     // Check if user is asking for comparison between specific banks (e.g. "documents for HDFC and ICICI")
     if (bankCompCheck.isComparison && bankCompCheck.banks.length >= 2) {
       const compDocReply = formatDocumentComparisonAcrossBanks(bankCompCheck.banks);
-      if (isEligibleFlowActive && !isTopicSwitch) {
-        const nextField = currentMissingFields[0] || eligibilitySession?.expectedField || "company";
-        const bridge = buildContextualEligibilityResumptionBridge(currentApplicant, nextField);
-        return {
-          reply: compDocReply + bridge,
-        };
-      }
-      const suggestion = isEligibleFlowActive
-        ? "\n\n*(Your loan eligibility assessment is paused. Whenever you would like to return, simply say \"resume\" or \"continue\".)*"
-        : "";
       return {
-        reply: compDocReply + suggestion,
+        reply: compDocReply,
       };
     }
 
@@ -7009,21 +7079,10 @@ async function runCentralAgentInternal(opts: {
       docReply = formatDocumentComparisonAcrossBanks();
     }
 
-    // Mid-flow interruption: answer first + append concise resumption bridge
+    // Mid-flow interruption: answer first
     if (isEligibleFlowActive && !isTopicSwitch) {
-      const nextField = currentMissingFields[0] || eligibilitySession?.expectedField || "company";
-      const bridge = buildContextualEligibilityResumptionBridge(currentApplicant, nextField);
-
-      const updatedSession: SessionState = {
-        ...(eligibilitySession || {}),
-        in_eligibility_flow: true,
-        expectedField: nextField,
-        updatedAt: Date.now(),
-      } as SessionState;
-      await saveEligibilityState(conversationId, updatedSession);
-
       return {
-        reply: docReply + bridge,
+        reply: docReply,
         bankData,
       };
     }
@@ -7130,46 +7189,12 @@ async function runCentralAgentInternal(opts: {
       const catLetter = catMatch ? catMatch[1].toUpperCase() : "A";
       const crossBankReply = formatCategorySalaryAcrossBanks(catLetter);
 
-      if (isEligibleFlowActive && !isTopicSwitch) {
-        const nextField = currentMissingFields[0] || eligibilitySession?.expectedField || "company";
-        const bridge = buildContextualEligibilityResumptionBridge(currentApplicant, nextField);
-
-        const updatedSession: SessionState = {
-          ...(eligibilitySession || {}),
-          in_eligibility_flow: true,
-          expectedField: nextField,
-          updatedAt: Date.now(),
-        } as SessionState;
-        await saveEligibilityState(conversationId, updatedSession);
-
-        if (!bankMatchPolicy) {
-          if (bankToQuery) {
-            try {
-              const bankSpecific = await answerBankPolicyWithMasterPolicy(bankToQuery, userMessage, requestedModel, conversationHistory);
-              return {
-                reply: bankSpecific + "\n\n---\n\n" + crossBankReply + bridge,
-                bankData: { bank_name: bankToQuery },
-              };
-            } catch (e) {
-              console.warn("[Category Policy Err]:", e);
-            }
-          }
-          return {
-            reply: crossBankReply + bridge,
-          };
-        }
-      }
-
-      const suggestion = isEligibleFlowActive
-        ? "\n\n*(Your loan eligibility assessment is paused. Whenever you would like to return, simply say \"resume\" or \"continue\".)*"
-        : "";
-
       if (!bankMatchPolicy) {
         if (bankToQuery) {
           try {
             const bankSpecific = await answerBankPolicyWithMasterPolicy(bankToQuery, userMessage, requestedModel, conversationHistory);
             return {
-              reply: bankSpecific + "\n\n---\n\n" + crossBankReply + suggestion,
+              reply: bankSpecific + "\n\n---\n\n" + crossBankReply,
               bankData: { bank_name: bankToQuery },
             };
           } catch (e) {
@@ -7177,29 +7202,17 @@ async function runCentralAgentInternal(opts: {
           }
         }
         return {
-          reply: crossBankReply + suggestion,
+          reply: crossBankReply,
         };
       }
     }
 
     const policyReply = await answerBankPolicyWithMasterPolicy(bankToQuery, userMessage, requestedModel, conversationHistory);
 
-    // Mid-flow interruption: answer policy first + append concise resumption bridge
+    // Mid-flow interruption: answer policy directly
     if (isEligibleFlowActive && !isTopicSwitch) {
-      const nextField = currentMissingFields[0] || eligibilitySession?.expectedField || "company";
-      const bridge = buildContextualEligibilityResumptionBridge(currentApplicant, nextField);
-
-      const updatedSession: SessionState = {
-        ...(eligibilitySession || {}),
-        in_eligibility_flow: true,
-        expectedField: nextField,
-        lastPolicyBank: bankToQuery || eligibilitySession?.lastPolicyBank,
-        updatedAt: Date.now(),
-      } as SessionState;
-      await saveEligibilityState(conversationId, updatedSession);
-
       return {
-        reply: policyReply + bridge,
+        reply: policyReply,
         bankData: bankToQuery ? { bank_name: bankToQuery } : undefined,
       };
     }
@@ -7637,9 +7650,8 @@ async function runCentralAgentInternal(opts: {
 
       if (isEligibleFlowActive && !isTopicSwitch) {
         const nextField = missing[0] || "company";
-        const bridge = buildContextualEligibilityResumptionBridge(currentApplicant, nextField);
         const ackText = acknowledgedParts.length > 0 ? `\n\nI have recorded your ${acknowledgedParts.join(" and ")}.` : "";
-        const fullReply = `${educationalAnswer}${ackText}${bridge}`;
+        const fullReply = `${educationalAnswer}${ackText}`;
 
         const updatedSession: SessionState = {
           ...(eligibilitySession || {}),
@@ -7656,7 +7668,7 @@ async function runCentralAgentInternal(opts: {
       }
 
       const ackText = acknowledgedParts.length > 0 ? `\n\nI have recorded your ${acknowledgedParts.join(" and ")}.` : "";
-      const fullReply = `${educationalAnswer}${ackText}\n\nWhenever you're ready, we can return to your loan eligibility check. Would you like to proceed?`;
+      const fullReply = `${educationalAnswer}${ackText}`;
 
       const updatedSession: SessionState = {
         ...(eligibilitySession || {}),
@@ -7675,7 +7687,6 @@ async function runCentralAgentInternal(opts: {
 
     if (isEligibleFlowActive && !isTopicSwitch) {
       const nextField = currentMissingFields[0] || eligibilitySession?.expectedField || "company";
-      const bridge = buildContextualEligibilityResumptionBridge(currentApplicant, nextField);
 
       const updatedSession: SessionState = {
         ...(eligibilitySession || {}),
@@ -7687,15 +7698,11 @@ async function runCentralAgentInternal(opts: {
       await saveEligibilityState(conversationId, updatedSession);
 
       return {
-        reply: educationalAnswer + bridge,
+        reply: educationalAnswer,
       };
     }
 
-    const suggestion = isEligibleFlowActive
-      ? "\n\n*(Your loan eligibility assessment is paused. Whenever you would like to return, simply say \"resume\" or \"continue\".)*"
-      : `\n\n${RESUME_TRANSITION_LINE}`;
-
-    const fullReply = `${educationalAnswer}${suggestion}`;
+    const fullReply = educationalAnswer;
 
     const updatedSession: SessionState = {
       ...(eligibilitySession || {}),
@@ -8120,9 +8127,8 @@ async function runCentralAgentInternal(opts: {
           answerText = await answerGeneralQuestionWithLLM(userMessage, requestedModel);
         }
         if (answerText) {
-          const bridge = buildContextualEligibilityResumptionBridge(currentApplicant, "company");
           return await finalizeAndReturn(
-            { reply: `${answerText.trim()}${bridge}` },
+            { reply: answerText.trim() },
             {
               applicant: currentApplicant,
               company: undefined,
@@ -10685,8 +10691,7 @@ async function runCentralAgentInternal(opts: {
           return await executeCompanyInfoSwitch(extractTargetCompanyFromMessage(userMessage));
         }
 
-        const bridge = buildContextualEligibilityResumptionBridge(currentApplicant, currentStepField);
-        const reply = `${answerText.trim()}${bridge}`;
+        const reply = answerText.trim();
 
         return await finalizeAndReturn({ reply }, {
           ...eligibilitySession,
@@ -10910,8 +10915,7 @@ async function runCentralAgentInternal(opts: {
         if (!answerText) {
           answerText = await answerGeneralQuestionWithLLM(userMessage, requestedModel);
         }
-        const bridge = buildContextualEligibilityResumptionBridge(currentApplicant, currentStepField);
-        const reply = `${answerText.trim()}${bridge}`;
+        const reply = answerText.trim();
 
         return await finalizeAndReturn({ reply }, {
           ...eligibilitySession,
@@ -12557,6 +12561,20 @@ async function runCentralAgentInternal(opts: {
         updatedApplicant.employmentStatus = "unemployed";
         updatedApplicant.monthlyIncome = 0;
         updatedApplicant.companyName = undefined;
+      } else if (analysis.extractedDetails.employmentType === "Student") {
+        updatedApplicant.employmentStatus = "student";
+        if (!updatedApplicant.monthlyIncome) updatedApplicant.monthlyIncome = 0;
+        updatedApplicant.companyName = undefined;
+      } else if (analysis.extractedDetails.employmentType === "Homemaker") {
+        updatedApplicant.employmentStatus = "homemaker";
+        if (!updatedApplicant.monthlyIncome) updatedApplicant.monthlyIncome = 0;
+        updatedApplicant.companyName = undefined;
+      } else if (analysis.extractedDetails.employmentType === "Retired") {
+        updatedApplicant.employmentStatus = "retired";
+        updatedApplicant.companyName = undefined;
+      } else if (analysis.extractedDetails.employmentType === "Self-Employed") {
+        updatedApplicant.employmentStatus = "self-employed";
+        updatedApplicant.companyName = "Self-Employed";
       }
     }
   }
@@ -12565,8 +12583,27 @@ async function runCentralAgentInternal(opts: {
   const fallbackExtracted = extractApplicantDetails(userMessage, updatedApplicant, currentMissingFields, analysis.extractedDetails);
   Object.assign(updatedApplicant, fallbackExtracted);
 
+  if (detectCompanyDisavowal(userMessage).isDisavowal) {
+    const dis = detectCompanyDisavowal(userMessage);
+    if (dis.replacementCompany) {
+      updatedApplicant.companyName = dis.replacementCompany;
+    } else {
+      delete updatedApplicant.companyName;
+    }
+  }
+
   // Resolve corporate company category against 339,000+ bank records
-  if (updatedApplicant.companyName && updatedApplicant.companyName !== "Self-Employed") {
+  if (
+    updatedApplicant.companyName &&
+    updatedApplicant.companyName !== "Self-Employed" &&
+    !isInvalidCompanyName(updatedApplicant.companyName) &&
+    !detectCompanyDisavowal(updatedApplicant.companyName).isDisavowal &&
+    updatedApplicant.employmentType !== "Student" &&
+    updatedApplicant.employmentType !== "Homemaker" &&
+    updatedApplicant.employmentType !== "Retired" &&
+    updatedApplicant.employmentType !== "Self-Employed" &&
+    updatedApplicant.employmentType !== "Unemployed"
+  ) {
     try {
       const resolved = await resolveCompanyCategories(updatedApplicant.companyName);
       if (resolved?.matchedName) {
@@ -12663,11 +12700,29 @@ async function runCentralAgentInternal(opts: {
     updatedApplicant.employmentStatus === "unemployed" ||
     updatedApplicant.employmentType === "Unemployed";
 
-  // If user is unemployed, DO NOT generate a bank table and DO NOT continue asking for loan details!
-  if (isUnemployed) {
+  const isStudentNoIncome =
+    updatedApplicant.employmentType === "Student" &&
+    (!updatedApplicant.monthlyIncome || Number(updatedApplicant.monthlyIncome) < 10000);
+
+  const isHomemakerNoIncome =
+    updatedApplicant.employmentType === "Homemaker" &&
+    (!updatedApplicant.monthlyIncome || Number(updatedApplicant.monthlyIncome) < 10000);
+
+  // If user is unemployed, student without income, or homemaker without income, DO NOT generate a bank table and DO NOT continue asking for loan details!
+  if (isUnemployed || isStudentNoIncome || isHomemakerNoIncome) {
     await clearEligibilityState(conversationId);
     if (analysis.naturalResponse && analysis.naturalResponse.trim().length > 0) {
       return { reply: analysis.naturalResponse.trim() };
+    }
+    if (isStudentNoIncome) {
+      return {
+        reply: "Personal loans require regular verifiable monthly earned income. As a student without independent salary, you are not eligible for a standalone unsecured personal loan. However, you can explore dedicated Education Loans for academic needs or apply jointly with an earning parent/guardian as a Co-borrower.",
+      };
+    }
+    if (isHomemakerNoIncome) {
+      return {
+        reply: "Under partner bank lending policies, unsecured personal loans require verifiable individual monthly income. As a homemaker without independent income, you can apply jointly with an earning spouse as a Co-applicant, or consider secured credit options such as a Gold Loan or Loan against Fixed Deposits.",
+      };
     }
     return {
       reply: "Under partner bank policies, unsecured personal loans require active employment (Salaried or Self-Employed) with regular verifiable monthly income to confirm repayment capacity. Unemployed applicants are currently not eligible for unsecured personal loans. If you have collateral, secured options like a gold loan or loan against fixed deposits may be possible.",

@@ -4,7 +4,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Menu, User, LogOut, ArrowLeft, Shield } from "lucide-react";
+import { ChevronDown, Menu, User, LogOut, ArrowLeft, Shield, LayoutDashboard } from "lucide-react";
 
 interface StudioTopbarProps {
   user?: any;
@@ -53,7 +53,22 @@ export default function StudioTopbar({
             <Menu className="w-5 h-5" />
           </button>
         )}
+        <Link
+          href="/admin"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-xs"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Dashboard</span>
+        </Link>
+        <span className="text-slate-300 hidden md:inline">/</span>
+        <span className="text-xs font-medium text-slate-500 hidden md:inline">Studio Control Center</span>
       </div>
+
+      <div className="flex items-center gap-3">
+        {/* CallNow Live Engine Status Pill */}
+        <div className="hidden sm:inline-flex">
+          <span className="cn-status-pill success">Live Engine Online</span>
+        </div>
 
       {/* Right User Badge matching screenshot */}
       <div className="relative" ref={dropdownRef}>
@@ -89,6 +104,15 @@ export default function StudioTopbar({
             </div>
 
             <Link
+              href="/admin"
+              className="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 text-xs font-medium"
+              onClick={() => setDropdownOpen(false)}
+            >
+              <LayoutDashboard className="w-4 h-4 text-slate-400" />
+              <span>Admin Dashboard</span>
+            </Link>
+
+            <Link
               href="/home?section=assistant"
               className="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 text-xs font-medium"
               onClick={() => setDropdownOpen(false)}
@@ -114,6 +138,7 @@ export default function StudioTopbar({
             </button>
           </div>
         )}
+      </div>
       </div>
     </header>
   );

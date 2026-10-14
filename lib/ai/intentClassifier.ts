@@ -11,6 +11,7 @@ import {
   extractTargetCompanyFromMessage,
   isMultiBankEligibilityQuery,
   isGeneralAssistanceQuery,
+  detectCompanyDisavowal,
 } from "@/lib/dynamicEligibilityEngine";
 
 const getApiKey = () => process.env.OPENROUTER_API_KEY || "";
@@ -792,12 +793,25 @@ export function extractEntitiesFromText(
   } else if (/(?:student|in\s*college|studying)\b/i.test(norm)) {
     extracted.employmentType = "Student";
     extracted.monthlyIncome = 0;
-  } else if (/(?:self[\s-]*employed|freelanc|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|doctor|trader)\b/i.test(norm)) {
+  } else if (/\b(?:house[\s-]*wife|home[\s-]*maker)\b/i.test(norm)) {
+    extracted.employmentType = "Homemaker";
+    extracted.monthlyIncome = 0;
+  } else if (/\b(?:retired|pensioner|senior\s*citizen)\b/i.test(norm)) {
+    extracted.employmentType = "Retired";
+  } else if (/(?:self[t\s-]*employed|self[\s-]*employd|own\s*business|business\s*owner|freelanc|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|doctor|trader)\b/i.test(norm)) {
     extracted.employmentType = "Self-Employed";
   }
 
-  // 8. Company Name (strictly avoid assigning search intents, general assistance, employment status, locations, or zero answers as company)
-  if (!isGeneralAssistanceQuery(text) && !isCompanyInfoOrSearchIntent(text) && !isInvalidCompanyName(text) && !isLocationInput(text)) {
+  // 8. Company Name (strictly avoid assigning search intents, general assistance, employment status, locations, disavowals, or zero answers as company)
+  const isDisavowalMsg = detectCompanyDisavowal(text).isDisavowal;
+  const isNonCorporateUser =
+    extracted.employmentType === "Unemployed" ||
+    extracted.employmentType === "Student" ||
+    extracted.employmentType === "Homemaker" ||
+    extracted.employmentType === "Retired" ||
+    extracted.employmentType === "Self-Employed";
+
+  if (!isDisavowalMsg && !isNonCorporateUser && !isGeneralAssistanceQuery(text) && !isCompanyInfoOrSearchIntent(text) && !isInvalidCompanyName(text) && !isLocationInput(text)) {
     const compCandidate = extractCompanyCandidateFromText(text, context?.expectedField);
     if (compCandidate && !isCompanyInfoOrSearchIntent(compCandidate) && !isInvalidCompanyName(compCandidate) && !isLocationInput(compCandidate)) {
       extracted.companyName = compCandidate;
@@ -909,7 +923,10 @@ export function fallbackMultidimensionalNluParser(
       };
     }
   }
-  if (isCompanyInfoOrSearchIntent(text) || /(?:forget\s*(?:the\s*)?loan|leave\s*loan|switch\s*to|show\s*(?:me\s*)?(?:the\s*)?company|company\s*details)/i.test(norm)) {
+  if (
+    !detectCompanyDisavowal(text).isDisavowal &&
+    (isCompanyInfoOrSearchIntent(text) || /(?:forget\s*(?:the\s*)?loan|leave\s*loan|switch\s*to|show\s*(?:me\s*)?(?:the\s*)?company|company\s*details)/i.test(norm))
+  ) {
     const candidate = extractTargetCompanyFromMessage(text) || extractCompanyCandidateFromText(text);
     const cleanedCandidate = candidate ? candidate.replace(/^(?:show|details\s+for|info\s+on)\s+/i, "").replace(/\s+details\.?$/i, "").trim() : undefined;
     const compMatch = cleanedCandidate && !isCompanyInfoOrSearchIntent(cleanedCandidate) && !isInvalidCompanyName(cleanedCandidate) ? cleanedCandidate : undefined;
@@ -951,6 +968,26 @@ export function fallbackMultidimensionalNluParser(
       confidence: { intentConfidence: 0.99, entityConfidence: 1.0, stateConfidence: 1.0 },
       entities: {},
       corrections: [],
+    };
+  }
+
+  // 4c. Company Disavowal / Removal (e.g. "this is not my company", "I dont have company. I am selft employed")
+  const disavowalCheckInNlu = detectCompanyDisavowal(text);
+  if (disavowalCheckInNlu.isDisavowal) {
+    const corrections: EntityCorrection[] = [{
+      field: "companyName" as any,
+      newValue: disavowalCheckInNlu.replacementCompany || "",
+      rawExpression: text,
+    }];
+    return {
+      messageType: "STATEMENT",
+      primaryIntent: "CHANGING_DETAILS",
+      secondaryIntents: ["CORRECTION"],
+      conversationAction: "CORRECTION",
+      mainUserGoal: (context?.mainUserGoal as MainUserGoal) || "PERSONAL_LOAN",
+      confidence: { intentConfidence: 0.98, entityConfidence: 0.95, stateConfidence: 0.95 },
+      entities: disavowalCheckInNlu.replacementCompany ? { companyName: disavowalCheckInNlu.replacementCompany } : {},
+      corrections,
     };
   }
 
@@ -1385,8 +1422,10 @@ export async function classifyIntelligentIntent(
   const targetLocation = pinMatch ? pinMatch[1] : (cityMatch ? cityMatch[1] : undefined);
 
   // Check for company mentions
-  let targetCompany: string | undefined = extractTargetCompanyFromMessage(rawMsg) || extractCleanCompanyName(rawMsg);
-  if (targetCompany && isInvalidCompanyName(targetCompany)) {
+  let targetCompany: string | undefined = !detectCompanyDisavowal(rawMsg).isDisavowal
+    ? (extractTargetCompanyFromMessage(rawMsg) || extractCleanCompanyName(rawMsg))
+    : undefined;
+  if (targetCompany && (isInvalidCompanyName(targetCompany) || detectCompanyDisavowal(targetCompany).isDisavowal)) {
     targetCompany = undefined;
   }
   if (targetCompany && !extracted.companyName) {
@@ -1406,8 +1445,9 @@ export async function classifyIntelligentIntent(
     /\b(?:bank\s*manager|branch\s*manager|branch\s*head|\basm\b|\brsm\b|manager|branch\s*near|branches\s*near|contact\s*details?\s*of.*manager)\b/i.test(lowerMsg);
 
   const isCompanyAsk =
-    isCompanyInfoOrSearchIntent(rawMsg) ||
-    /\b(?:company\s*category|category\s*of|employer\s*category|verify\s*employer|check\s*my\s*employer|search\s*for\s*(?:company|employer)?)\b/i.test(lowerMsg);
+    !detectCompanyDisavowal(rawMsg).isDisavowal &&
+    (isCompanyInfoOrSearchIntent(rawMsg) ||
+    /\b(?:company\s*category|category\s*of|employer\s*category|verify\s*employer|check\s*my\s*employer|search\s*for\s*(?:company|employer)?)\b/i.test(lowerMsg));
 
   const isRecalcAsk =
     /\b(?:calculate\s*(?:my\s*eligibility\s*)?again|recalculate|check\s*again|again\s*with|now\s*check\s*with|what\s*about\s*\d{3}|change\s*(?:it|my\s*cibil|my\s*salary|my\s*score)\s*to\s*\d+|what\s*if\s*my\s*(?:cibil|score|salary))\b/i.test(lowerMsg);
@@ -1526,9 +1566,23 @@ export async function classifyIntelligentIntent(
   }
 
   // 6. INFORMATION_CORRECTION
-  // e.g. "I changed my job to Infosys", "I have changed my job to Infosys. Update my employer.", "Actually, it is 760"
+  // e.g. "I changed my job to Infosys", "I have changed my job to Infosys. Update my employer.", "Actually, it is 760", "this is not my company"
   const isJobChange = /(?:(?:change|changed|update|updated|switch|switched|move|moved)\s+(?:my\s+)?(?:company|employer|job)|switch(?:ed)?\s+to|moved?\s+to|joined|now\s+working\s+at|new\s+(?:company|employer|job)\s+is)\b/i.test(lowerMsg);
   const isActuallyCorrection = /\b(?:actually|correction|it\s+is\s+actually|my\s+correct)\b/i.test(lowerMsg);
+  const isCompanyDisavowalMsg = detectCompanyDisavowal(rawMsg).isDisavowal;
+
+  if (isCompanyDisavowalMsg) {
+    const disResult = detectCompanyDisavowal(rawMsg);
+    return {
+      intent: "INFORMATION_CORRECTION",
+      confidence: 0.98,
+      extractedEntities: extracted,
+      fieldBeingUpdated: "employer",
+      updatedValue: disResult.replacementCompany || undefined,
+      targetCompany: disResult.replacementCompany || undefined,
+      reasoning: "User disavowed currently inferred company name.",
+    };
+  }
 
   if (isJobChange || (isActuallyCorrection && (cibilFollowUpMatch || salaryFollowUpMatch || targetCompany))) {
     let field = "employer";
@@ -1553,34 +1607,48 @@ export async function classifyIntelligentIntent(
     };
   }
 
-  // 7. GENERAL_QUERY check (greetings, educational/tech queries, conceptual financial definitions)
-  // Evaluated before company lookup so questions like "What is artificial intelligence?" are never hijacked!
+  // 7. GENERAL_QUERY check (greetings, identity, educational/tech queries, conceptual financial definitions)
+  // Evaluated before company lookup and active flow so questions like "Who are you?", "What is an API?" or "Explain LLM and RAG" are never hijacked!
   const isGreeting = isPureGreeting(rawMsg);
+  const isIdentityAsk =
+    isGeneralAssistanceQuery(rawMsg) ||
+    /^(?:who\s+(?:are|r)\s+(?:you|u)|who\s+are\s+ya|what\s+(?:are|r)\s+(?:you|u)|tell\s+me\s+about\s+(?:yourself|urself)|introduce\s+(?:yourself|urself)|what\s+is\s+(?:creditwise|this(?:\s+app|\s+platform|\s+website)?)|what\s+(?:can|could)\s+(?:you|u)\s+do|what\s+do\s+(?:you|u)\s+do|what\s+are\s+(?:your|ur)\s+capabilities|what\s+is\s+your\s+role|what\s+can\s+i\s+do\s+here)\b/i.test(lowerMsg);
+
   const isGeneralTechOrEdu =
-    /\b(?:artificial\s*intelligence|machine\s*learning|ai\s*and\s*ml|\bai\b|\bml\b|java\s*inheritance|inheritance|python|react|javascript|typescript|physics|quantum|photosynthesis|gravity|recursion|database\s*index|speed\s*of\s*light|dns|cloud\s*computing|neural\s*network|object\s*oriented|relativity|inflation)\b/i.test(lowerMsg) ||
-    /^(?:what\s+is\s+(?:ai|artificial\s+intelligence|photosynthesis|inflation|quantum|recursion|dns|cloud|gravity|the\s+speed\s+of\s+light|the\s+theory\s+of\s+relativity)|explain\s+(?:java|python|simple\s+interest|compound\s+interest|the\s+theory\s+of\s+relativity|recursion|object\s+oriented)|how\s+does\s+(?:gravity|dns|neural\s+networks?)\s+work)\b/i.test(lowerMsg);
+    /\b(?:artificial\s*intelligence|machine\s*learning|ai\s*and\s*ml|\bai\b|\bml\b|llm|rag|prompt|api|rest|oop|object\s*oriented|java|python|react|javascript|typescript|physics|quantum|photosynthesis|gravity|recursion|database|cloud|neural\s*network|docker|kubernetes|git)\b/i.test(lowerMsg) ||
+    (/^(?:what\s+is|what\s+are|how\s+does|how\s+do|explain|difference\s+between|compare)\b/i.test(lowerMsg) &&
+      !isPolicyAsk &&
+      !targetBank &&
+      !isCompanyAsk &&
+      !isManagerAsk &&
+      !/loan|bank|policy|cibil|emi|salary|credit/i.test(lowerMsg));
 
   const isGeneralFinancialEdu =
     /\b(?:compound\s*interest|simple\s*interest|what\s+is\s+(?:a\s+)?credit\s*score|what\s+is\s+foir|define\s+foir|how\s+is\s+interest\s+calculated)\b/i.test(lowerMsg) &&
     !targetBank;
 
-  if (isGreeting || isGeneralTechOrEdu || isGeneralFinancialEdu) {
+  if (isGreeting || isIdentityAsk || isGeneralTechOrEdu || isGeneralFinancialEdu) {
     return {
       intent: "GENERAL_QUERY",
       confidence: 0.95,
       extractedEntities: extracted,
       reasoning: isGreeting
         ? "Greeting or conversational pleasantry."
+        : isIdentityAsk
+        ? "Assistant identity or capability inquiry."
         : "General educational or conceptual question handled directly by the LLM without RAG or DB.",
     };
   }
 
   // 8. CONVERSATION_FOLLOW_UP
-  // e.g. "Use my previous details", "Use the same details", "Now calculate my eligibility" (after company search)
+  // e.g. "Use my previous details", "Continue my eligibility check", "What information do you still need?"
   const isFollowUpReuse =
     /\b(?:use\s+(?:my\s+|the\s+)?(?:previous|same)\s+details?|with\s+(?:the\s+|my\s+)?same\s+details?|now\s+calculate\s+(?:my\s+)?eligibility|now\s+check\s+(?:my\s+)?eligibility)\b/i.test(lowerMsg);
+  const isExplicitResume =
+    /\b(?:continue\s+(?:my\s+)?(?:eligibility|loan|assessment|check)|resume\s+(?:my\s+)?(?:eligibility|loan|assessment|check)|continue\s+(?:with\s+)?(?:the\s+)?(?:eligibility|assessment|check)|what\s+(?:information|details|info)\s+do\s+you\s+(?:still\s+)?need)\b/i.test(lowerMsg) ||
+    /^(?:continue|resume|proceed|what\s+next)\b/i.test(lowerMsg);
 
-  if (isFollowUpReuse) {
+  if (isFollowUpReuse || isExplicitResume) {
     return {
       intent: "CONVERSATION_FOLLOW_UP",
       confidence: 0.95,
@@ -1593,11 +1661,12 @@ export async function classifyIntelligentIntent(
   // e.g. "What is the company category of Infosys?", "Check my employer Microsoft", "Search for Tata Consultancy Services", "Find Infosys"
   // Note: Check this before BANK_POLICY_QUERY so "Check Infosys" or "Search Infosys" never routes to policy RAG!
   const isExplicitCompanyQuery =
-    isCompanyAsk ||
-    /^(?:search\s+for\s+|find\s+|check\s+|lookup\s+)([A-Za-z0-9\s&.-]+)$/i.test(rawMsg.trim()) &&
+    !detectCompanyDisavowal(rawMsg).isDisavowal &&
+    (isCompanyAsk ||
+    (/^(?:search\s+for\s+|find\s+|check\s+|lookup\s+)([A-Za-z0-9\s&.-]+)$/i.test(rawMsg.trim()) &&
     !isPolicyAsk &&
     !targetBank &&
-    !isManagerAsk;
+    !isManagerAsk));
 
   if (isExplicitCompanyQuery && (targetCompany || isCompanyAsk)) {
     return {
@@ -1624,16 +1693,20 @@ export async function classifyIntelligentIntent(
     };
   }
 
-  // 10. BANK_POLICY_QUERY
-  // e.g. "What is the minimum CIBIL score for an HDFC personal loan?", "What is the minimum salary required by ICICI Bank?",
-  // "Explain the personal loan eligibility criteria for Axis Bank", "What is the foreclosure rule in the stored policy?"
-  if (isPolicyAsk || (targetBank && /\b(?:eligibility|criteria|rule|rules|cibil|salary|document|documents|tenure|amount|roi|rate|charge|foreclosure|prepayment)\b/i.test(lowerMsg))) {
+  // 10. BANK_POLICY_QUERY or DEMO LOAN KNOWLEDGE BASE QUERY
+  // e.g. "What is the minimum CIBIL score for an HDFC personal loan?", "Tell me about demo loan", "What is the processing fee for the demo loan?"
+  const isDemoLoanOrKnowledgeDocQuery =
+    /\b(?:demo\s*(?:loan|policy|product|criteria)|uploaded\s*(?:knowledge|document|policy|file)|knowledge\s*base)\b/i.test(lowerMsg);
+
+  if (isDemoLoanOrKnowledgeDocQuery || isPolicyAsk || (targetBank && /\b(?:eligibility|criteria|rule|rules|cibil|salary|document|documents|tenure|amount|roi|rate|charge|foreclosure|prepayment)\b/i.test(lowerMsg))) {
     return {
       intent: "BANK_POLICY_QUERY",
       confidence: 0.95,
       extractedEntities: extracted,
-      targetBank,
-      reasoning: "User inquires about bank-specific policy, eligibility criteria, or rules backed by semantic policy RAG.",
+      targetBank: isDemoLoanOrKnowledgeDocQuery ? "Demo Loan" : targetBank,
+      reasoning: isDemoLoanOrKnowledgeDocQuery
+        ? "User inquires about demo loan knowledge base document."
+        : "User inquires about bank-specific policy, eligibility criteria, or rules backed by semantic policy RAG.",
     };
   }
 
@@ -1682,7 +1755,19 @@ export async function classifyIntelligentIntent(
 
 
   // 14. Answering an active expected field in an existing flow
-  if (activeContext?.isFlowActive && activeContext?.expectedField) {
+  const isQuestionLike =
+    /\?$/.test(rawMsg) ||
+    /^(?:who|what|why|where|how|can|could|tell\s+me|explain|is\s+it|does)\b/i.test(lowerMsg);
+
+  if (
+    activeContext?.isFlowActive &&
+    activeContext?.expectedField &&
+    !isQuestionLike &&
+    !isGreeting &&
+    !isIdentityAsk &&
+    !isGeneralTechOrEdu &&
+    !isDemoLoanOrKnowledgeDocQuery
+  ) {
     return {
       intent: "LOAN_ELIGIBILITY_CALCULATION",
       confidence: 0.9,

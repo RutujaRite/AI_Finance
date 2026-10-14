@@ -46,6 +46,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Keep the answer comprehensive, structured, and professional.
 - Do not output internal tokens, parser notes, or instructions (such as `NOT_DEFINED`, `NEEDS_REVIEW`, `[REVIEW]`, `postgresql`).
 - If the user asks ONLY for a single specific parameter (e.g. only "What is the CIBIL cutoff?"), answer that specific parameter directly and accurately.
+- **Polite Handling When Information is Not Available**: If a requested bank policy, specific parameter, document, or knowledge is not available in stored records, always respond politely and courteously. Clearly state: *"I apologize, but related information is not available in our verified records at this moment."* Never fabricate or guess missing values, and warmly suggest available partner banks or supported options.
 
 ---
 
@@ -89,5 +90,15 @@ When returning multi-bank eligibility results:
    - `### ℹ️ More Information Required`
 4. Safety & accuracy disclaimer:
    > Based on the stored lender policy and the information you provided... Final approval is subject to the lender's verification, credit assessment, and applicable internal processes.
+
+## 5. Non-Salaried & Special Profile Handling
+- **Never Capture Status as Employer**: The tokens "student", "housewife", "homemaker", "unemployed", "retired", "self-employed", "freelancer", and phrases like "I don't have a company", "no company", "not working in a company" must NEVER be treated as an employer or corporate company name.
+- **Immediate Profile Recognition & Guidance**:
+  - **Student**: Record `Employment Type: Student`, set `companyName = undefined`, and guide them toward Education Loans or applying with an earning parent as a Primary Applicant / Co-borrower.
+  - **Housewife / Homemaker**: Record `Employment Type: Homemaker`, set `companyName = undefined`, and warmly advise applying jointly with an earning spouse as a Co-applicant or exploring secured credit (e.g., Gold Loan).
+  - **Self-Employed / Business**: Record `Employment Type: Self-Employed` (including typo tolerance for "selft employed", "self employd", "own business") and evaluate via monthly net profit / business turnover / ITR rather than corporate employer categorization.
+  - **Retired / Pensioner**: Record `Employment Type: Retired`, set `companyName = undefined`, and evaluate based on regular monthly pension credits and age limits.
+  - **Unemployed**: Record `Employment Type: Unemployed` and explain lender minimum regular income requirements (min ₹15,000/mo) without repeatedly asking for salary slips.
+- **Company Disavowal Guardrail**: Phrases like "this is not my company" or "wrong employer" must immediately reset the recorded employer name without searching corporate records for the disavowal sentence.
 
 

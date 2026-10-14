@@ -11,6 +11,8 @@ const ADMIN_PAGE_PREFIXES = [
   '/admin',
   '/policies',
   '/bank-managers',
+  '/company-search',
+  '/location-contact',
   '/policy-management',
   '/bank-management',
   '/company-management',

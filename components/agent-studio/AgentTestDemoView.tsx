@@ -21,6 +21,11 @@ import {
   Sparkles,
   ShieldCheck,
   Zap,
+  Search,
+  X,
+  Cpu,
+  Clock,
+  Activity,
 } from "lucide-react";
 import { Agent } from "@/lib/agent-studio/types";
 
@@ -32,6 +37,12 @@ interface ChatMessage {
   read?: boolean;
   isSimulated?: boolean;
   sources?: string[];
+  tokenUsage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    modelName?: string;
+  };
 }
 
 const INITIAL_MESSAGES: ChatMessage[] = [
@@ -94,6 +105,15 @@ export default function AgentTestDemoView({
   >("Quick Test");
   const [runtimeMode, setRuntimeMode] = useState<"live" | "demo">("live");
   const [isAgentMenuOpen, setIsAgentMenuOpen] = useState(false);
+
+  // Search states for Agent Test Demo
+  const [panelSearchQuery, setPanelSearchQuery] = useState("");
+  const [isChatSearchOpen, setIsChatSearchOpen] = useState(false);
+  const [chatSearchQuery, setChatSearchQuery] = useState("");
+  const sessionTokens = messages.reduce(
+    (acc, m) => acc + (m.tokenUsage?.totalTokens || (m.role === "assistant" ? 112 : 28)),
+    0
+  );
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -224,6 +244,7 @@ export default function AgentTestDemoView({
           text: replyText,
           isSimulated: false,
           sources: usedDocs,
+          tokenUsage: data.tokenUsage || undefined,
           time: new Date().toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
@@ -236,7 +257,7 @@ export default function AgentTestDemoView({
       const fallbackMsg: ChatMessage = {
         id: `bot-${Date.now()}`,
         role: "assistant",
-        text: "I reviewed your inquiry against our lender policy database. For permanent employees at leading IT firms like TCS, HDFC and ICICI offer favorable FOIR limits and interest rates starting at 10.5%.",
+        text: "Connection error: Unable to reach the AI agent service. Please verify your network connection or check the server logs.",
         isSimulated: false,
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
@@ -335,24 +356,74 @@ export default function AgentTestDemoView({
                 </div>
               </div>
 
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "4px 10px",
-                  borderRadius: "20px",
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  background: "#dcfce7",
-                  color: "#15803d",
-                  border: "1px solid #bbf7d0",
-                }}
-              >
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e" }}></span>
-                Agent Online
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsChatSearchOpen(!isChatSearchOpen);
+                    if (isChatSearchOpen) setChatSearchQuery("");
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer active:scale-95 ${
+                    isChatSearchOpen
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-white hover:bg-blue-50/80 text-blue-700 border border-blue-200 shadow-xs"
+                  }`}
+                  title="Search messages in conversation"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Search</span>
+                </button>
+
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "4px 10px",
+                    borderRadius: "20px",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    background: "#dcfce7",
+                    color: "#15803d",
+                    border: "1px solid #bbf7d0",
+                  }}
+                >
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e" }}></span>
+                  Agent Online
+                </span>
+              </div>
             </div>
+
+            {/* In-Chat Message Search Bar (Collapsible) */}
+            {isChatSearchOpen && (
+              <div className="px-4 py-2.5 bg-blue-50/70 border-b border-blue-100 flex items-center justify-between gap-3 animate-fadeIn shrink-0">
+                <div className="relative flex-1">
+                  <Search className="w-3.5 h-3.5 text-blue-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={chatSearchQuery}
+                    onChange={(e) => setChatSearchQuery(e.target.value)}
+                    placeholder="Search messages in this conversation..."
+                    className="w-full pl-8.5 pr-8 py-1.5 bg-white border border-blue-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 shadow-xs"
+                    autoFocus
+                  />
+                  {chatSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setChatSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <span className="text-[11px] font-semibold text-blue-700 shrink-0">
+                  {chatSearchQuery
+                    ? `${messages.filter((m) => m.text.toLowerCase().includes(chatSearchQuery.toLowerCase())).length} found`
+                    : `${messages.length} messages`}
+                </span>
+              </div>
+            )}
 
             {/* Top Controls Bar - Locked */}
             <div className="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-white shrink-0">
@@ -510,7 +581,10 @@ export default function AgentTestDemoView({
               ref={chatContainerRef}
               className="flex-1 min-h-0 p-5 overflow-y-auto space-y-4 bg-white overscroll-contain"
             >
-              {messages.map((msg) => {
+              {(chatSearchQuery.trim()
+                ? messages.filter((m) => m.text.toLowerCase().includes(chatSearchQuery.toLowerCase()))
+                : messages
+              ).map((msg) => {
                 const isUser = msg.role === "user";
                 return (
                   <div
@@ -556,6 +630,15 @@ export default function AgentTestDemoView({
                               {src}
                             </span>
                           ))}
+                        </div>
+                      )}
+
+                      {!isUser && msg.tokenUsage && msg.tokenUsage.totalTokens > 0 && (
+                        <div className="mt-2 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200/60 text-[10px] text-emerald-700 font-semibold w-fit">
+                          <Zap className="w-3 h-3 text-emerald-600" />
+                          <span>
+                            {msg.tokenUsage.totalTokens} tokens ({msg.tokenUsage.promptTokens} prompt • {msg.tokenUsage.completionTokens} completion)
+                          </span>
                         </div>
                       )}
 
@@ -658,12 +741,35 @@ export default function AgentTestDemoView({
           </div>
 
           {/* RIGHT COLUMN: Quick Test / Scenarios / History Panels - Anchored & Sticky */}
-          <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-6 lg:self-start">
+          <div className="lg:col-span-4 space-y-3.5 lg:sticky lg:top-6 lg:self-start">
+            {/* Integrated Professional Search Bar */}
+            <div className="bg-white p-2.5 rounded-2xl border border-slate-200/80 shadow-xs">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={panelSearchQuery}
+                  onChange={(e) => setPanelSearchQuery(e.target.value)}
+                  placeholder="Search scenarios, policies & prompts..."
+                  className="w-full pl-8.5 pr-8 py-2 bg-slate-50 hover:bg-slate-50/80 focus:bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 shadow-xs transition"
+                />
+                {panelSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setPanelSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Soft Segmented Tab Navigation matching AI Models page */}
             <div className="inline-flex items-center gap-1 p-1 bg-slate-100/90 border border-slate-200/80 rounded-xl overflow-x-auto w-full">
               <button
                 onClick={() => setActiveTab("Quick Test")}
-                className={`flex-1 text-center py-1.5 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                className={`flex-1 text-center py-1.5 px-2 rounded-lg text-xs font-semibold transition cursor-pointer active:scale-95 ${
                   activeTab === "Quick Test"
                     ? "bg-white text-slate-900 shadow-xs border border-slate-200/70"
                     : "text-slate-600 hover:text-slate-900 border border-transparent"
@@ -674,7 +780,7 @@ export default function AgentTestDemoView({
 
               <button
                 onClick={() => setActiveTab("Sample Scenarios")}
-                className={`flex-1 text-center py-1.5 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                className={`flex-1 text-center py-1.5 px-2 rounded-lg text-xs font-semibold transition cursor-pointer active:scale-95 ${
                   activeTab === "Sample Scenarios"
                     ? "bg-white text-slate-900 shadow-xs border border-slate-200/70"
                     : "text-slate-600 hover:text-slate-900 border border-transparent"
@@ -685,7 +791,7 @@ export default function AgentTestDemoView({
 
               <button
                 onClick={() => setActiveTab("Conversation History")}
-                className={`flex-1 text-center py-1.5 px-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                className={`flex-1 text-center py-1.5 px-2 rounded-lg text-xs font-semibold transition cursor-pointer active:scale-95 ${
                   activeTab === "Conversation History"
                     ? "bg-white text-slate-900 shadow-xs border border-slate-200/70"
                     : "text-slate-600 hover:text-slate-900 border border-transparent"
@@ -695,88 +801,98 @@ export default function AgentTestDemoView({
               </button>
             </div>
 
-            {/* TAB 1: Quick Test Content */}
+            {/* TAB 1: Quick Test Content — CallNow 4-Card Telemetry Metric Grid */}
             {activeTab === "Quick Test" && (
               <div className="space-y-4">
-                {/* Agent Details & Grounding Card (AI Model Purple Ribbon Style) */}
-                <div
-                  style={{
-                    background: "#ffffff",
-                    borderRadius: "16px",
-                    border: "1px solid #ddd6fe",
-                    boxShadow: "0 4px 16px rgba(139, 92, 246, 0.06)",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      background: "linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(124, 58, 237, 0.04) 100%)",
-                      padding: "12px 16px",
-                      borderBottom: "1px solid #ede9fe",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <div
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: "8px",
-                          background: "#7c3aed",
-                          color: "#fff",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Bot className="w-4 h-4 text-white" />
+                {/* 4 Metric Cards Grid */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  {/* Card 1: Active Model */}
+                  <div className="cn-metric-card p-3">
+                    <div className="cn-metric-card-icon purple w-8 h-8 rounded-lg">
+                      <Cpu className="w-4 h-4" />
+                    </div>
+                    <div className="cn-metric-card-body">
+                      <div className="cn-metric-card-label text-[10px]">Model</div>
+                      <div className="text-xs font-bold text-slate-900 truncate mt-0.5">
+                        {agent.name && agent.name !== "Loan Eligibility Assistant"
+                          ? agent.name
+                          : "Nemotron 550B"}
                       </div>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, color: "#4c1d95" }}>
-                          {agent.name && agent.name !== "Loan Eligibility Assistant"
-                            ? agent.name
-                            : "CreditWise Assistant"}
-                        </h3>
-                        <p style={{ margin: 0, fontSize: "0.7rem", color: "#a78bfa" }}>
-                          Configuration Summary
-                        </p>
+                      <div className="mt-1">
+                        <span className="cn-status-pill primary text-[9px] px-1.5 py-0.5">OpenRouter</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-4 space-y-2.5 text-xs">
-                    <div className="flex items-center justify-between text-slate-600">
-                      <span className="text-[11px] text-slate-500">Status</span>
-                      <span className="flex items-center gap-1.5 text-emerald-600 font-medium text-[11px]">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        Online &amp; Ready
-                      </span>
+                  {/* Card 2: Turn Latency */}
+                  <div className="cn-metric-card p-3">
+                    <div className="cn-metric-card-icon success w-8 h-8 rounded-lg">
+                      <Clock className="w-4 h-4" />
                     </div>
+                    <div className="cn-metric-card-body">
+                      <div className="cn-metric-card-label text-[10px]">Avg Latency</div>
+                      <div className="cn-metric-card-value text-base mt-0.5">0.82s</div>
+                      <div className="cn-metric-card-trend up text-[9px] px-1.5 py-0.5 mt-1">
+                        <span>Fast Stream</span>
+                      </div>
+                    </div>
+                  </div>
 
-                    <div className="flex items-center justify-between text-slate-600">
-                      <span className="text-[11px] text-slate-500">Tone</span>
-                      <span className="font-medium text-slate-800 text-[11px]">
-                        {agent.instructions?.tone || "Professional and friendly"}
-                      </span>
+                  {/* Card 3: Session Tokens */}
+                  <div className="cn-metric-card p-3">
+                    <div className="cn-metric-card-icon warning w-8 h-8 rounded-lg">
+                      <Zap className="w-4 h-4" />
                     </div>
+                    <div className="cn-metric-card-body">
+                      <div className="cn-metric-card-label text-[10px]">Session Tokens</div>
+                      <div className="cn-metric-card-value text-base mt-0.5">
+                        {sessionTokens.toLocaleString()}
+                      </div>
+                      <div className="cn-metric-card-trend flat text-[9px] px-1.5 py-0.5 mt-1">
+                        <span>Live Count</span>
+                      </div>
+                    </div>
+                  </div>
 
-                    <div className="flex items-center justify-between text-slate-600">
-                      <span className="text-[11px] text-slate-500">Response Style</span>
-                      <span className="font-medium text-slate-800 text-[11px]">
-                        {agent.responseStyle === "detailed"
-                          ? "Detailed & explanatory"
-                          : "Clear, helpful, concise"}
-                      </span>
+                  {/* Card 4: Context Window Meter */}
+                  <div className="cn-metric-card p-3">
+                    <div className="cn-metric-card-icon info w-8 h-8 rounded-lg">
+                      <Activity className="w-4 h-4" />
                     </div>
+                    <div className="cn-metric-card-body">
+                      <div className="cn-metric-card-label text-[10px]">Context Window</div>
+                      <div className="cn-metric-card-value text-base mt-0.5">128K</div>
+                      <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2">
+                        <div
+                          className="bg-blue-600 h-1.5 rounded-full"
+                          style={{
+                            width: `${Math.min(100, Math.max(5, (sessionTokens / 128000) * 100))}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-                    <div className="flex items-center justify-between text-slate-600">
-                      <span className="text-[11px] text-slate-500">Knowledge</span>
-                      <span className="font-medium text-blue-600 text-[11px]">
-                        Verified Grounding
-                      </span>
-                    </div>
+                {/* Configuration Overview Card */}
+                <div className="cn-card p-3.5 space-y-2 text-xs">
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span className="text-[11px] text-slate-500 font-medium">Status</span>
+                    <span className="cn-status-pill success">Online &amp; Grounded</span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span className="text-[11px] text-slate-500 font-medium">Tone</span>
+                    <span className="font-semibold text-slate-800 text-[11px]">
+                      {agent.instructions?.tone || "Professional and friendly"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span className="text-[11px] text-slate-500 font-medium">Response Style</span>
+                    <span className="font-semibold text-slate-800 text-[11px]">
+                      {agent.responseStyle === "detailed"
+                        ? "Detailed & explanatory"
+                        : "Clear, helpful, concise"}
+                    </span>
                   </div>
                 </div>
 
@@ -943,36 +1059,81 @@ export default function AgentTestDemoView({
                 </div>
 
                 <div className="p-4 space-y-2.5">
-                  {[
-                    {
-                      title: "TCS Salaried Employee Eligibility",
-                      salary: "₹80,000 / month",
-                      query: "I work at TCS with ₹80,000 salary, CIBIL 760, and no current loans. Which banks give me the lowest rate?",
-                    },
-                    {
-                      title: "Multi-Bank Policy Comparison",
-                      salary: "₹50,000 / month",
-                      query: "Compare loan criteria between Axis Bank, HDFC, and ICICI for a software engineer.",
-                    },
-                    {
-                      title: "Missing Info & Clarification Flow",
-                      salary: "₹35,000 / month",
-                      query: "Can I get a loan? (Let agent ask for missing employer, CIBIL, and EMI details).",
-                    },
-                  ].map((sc, i) => (
-                    <div
-                      key={i}
-                      onClick={() => handleSendMessage(sc.query)}
-                      className="p-3 border border-slate-200/80 hover:border-blue-300 hover:bg-blue-50/30 rounded-xl cursor-pointer transition shadow-xs"
-                    >
-                      <div className="text-xs font-semibold text-slate-800">
-                        {sc.title}
+                  {(() => {
+                    const scenariosList = [
+                      {
+                        title: "TCS Salaried Employee Eligibility",
+                        salary: "₹80,000 / month",
+                        category: "Eligibility",
+                        query: "I work at TCS with ₹80,000 salary, CIBIL 760, and no current loans. Which banks give me the lowest rate?",
+                      },
+                      {
+                        title: "Finnable Credit Minimum Net Salary",
+                        salary: "₹25,000 / month",
+                        category: "Eligibility",
+                        query: "What is the minimum in-hand salary required for Finnable personal loans across Tier-1 and Tier-2 cities?",
+                      },
+                      {
+                        title: "EMI Calculation for ₹10 Lakh",
+                        salary: "36 Months • 10.5%",
+                        category: "EMI",
+                        query: "Calculate monthly EMI for ₹10 Lakh personal loan at 10.5% interest rate for 3 years tenure.",
+                      },
+                      {
+                        title: "Debt-to-Income / FOIR Limit Check",
+                        salary: "₹60,000 / month",
+                        category: "EMI",
+                        query: "How much existing EMI can I have if my salary is ₹60,000? Explain FOIR calculation rules.",
+                      },
+                      {
+                        title: "Multi-Bank Policy Comparison",
+                        salary: "Axis vs HDFC vs ICICI",
+                        category: "Policies",
+                        query: "Compare personal loan eligibility and CIBIL cutoffs between Axis Bank, HDFC, and ICICI.",
+                      },
+                      {
+                        title: "Missing Info & Clarification Flow",
+                        salary: "₹35,000 / month",
+                        category: "Policies",
+                        query: "Can I get a loan? (Ask me friendly clarifying questions for missing employer, CIBIL, and EMI details).",
+                      },
+                    ];
+
+                    const filtered = scenariosList.filter((sc) => {
+                      const matchesQuery = !panelSearchQuery.trim() ||
+                        sc.title.toLowerCase().includes(panelSearchQuery.toLowerCase()) ||
+                        sc.query.toLowerCase().includes(panelSearchQuery.toLowerCase());
+                      return matchesQuery;
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="p-6 text-center text-xs text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                          No scenarios found matching "{panelSearchQuery}".
+                        </div>
+                      );
+                    }
+
+                    return filtered.map((sc, i) => (
+                      <div
+                        key={i}
+                        onClick={() => handleSendMessage(sc.query)}
+                        className="p-3 border border-slate-200/80 hover:border-blue-300 hover:bg-blue-50/40 rounded-xl cursor-pointer transition shadow-xs active:scale-[0.99]"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-xs font-semibold text-slate-800">
+                            {sc.title}
+                          </div>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase tracking-wide">
+                            {sc.category}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-400 mt-1">
+                          Sample: {sc.salary}
+                        </div>
                       </div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">
-                        Sample: {sc.salary}
-                      </div>
-                    </div>
-                  ))}
+                    ));
+                  })()}
                 </div>
               </div>
             )}

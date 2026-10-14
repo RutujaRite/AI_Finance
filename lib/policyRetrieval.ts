@@ -69,7 +69,7 @@ export async function generateQueryEmbedding(query: string): Promise<number[]> {
       const bodyText = await response.text();
 
       if (!response.ok) {
-        if (response.status === 400 || response.status === 401 || response.status === 403) {
+        if (response.status === 400 || response.status === 401 || response.status === 402 || response.status === 403) {
           throw new Error(`OpenRouter HTTP ${response.status}: ${bodyText}`);
         }
 
@@ -98,7 +98,13 @@ export async function generateQueryEmbedding(query: string): Promise<number[]> {
 
       return vector;
     } catch (err: any) {
-      if (attempt < maxRetries && !err.message?.includes("HTTP 401") && !err.message?.includes("HTTP 400")) {
+      if (
+        attempt < maxRetries &&
+        !err.message?.includes("HTTP 401") &&
+        !err.message?.includes("HTTP 402") &&
+        !err.message?.includes("HTTP 400") &&
+        !err.message?.includes("HTTP 403")
+      ) {
         attempt++;
         await new Promise((r) => setTimeout(r, delayMs));
         delayMs *= 2;

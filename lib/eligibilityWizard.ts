@@ -84,11 +84,12 @@ export function formatEmiResult(
   md += `| **Total Interest Payable** | **₹${totalInterest.toLocaleString("en-IN")}** |\n`;
   md += `| **Total Repayment Amount** | **₹${totalPayment.toLocaleString("en-IN")}** |\n\n`;
 
-  // STEP 2 — STATE PARAMETERS USED
-  md += `#### 2. Parameters Used in Formula\n`;
+  // STEP 2 — STATE PARAMETERS & ASSUMPTIONS
+  md += `#### 2. Parameters & Assumptions\n`;
   md += `* **Principal Amount (P)**: ₹${principal.toLocaleString("en-IN")}\n`;
   md += `* **Annual Interest Rate (R)**: ${rate}% p.a. (Monthly Rate: ${monthlyRatePct}%)\n`;
-  md += `* **Repayment Tenure (N)**: ${tenure} months (${(tenure / 12).toFixed(1)} years)\n\n`;
+  md += `* **Repayment Tenure (N)**: ${tenure} months (${(tenure / 12).toFixed(1)} years)\n`;
+  md += `* **Calculation Assumptions**: Standard reducing-balance monthly amortization formula [$E = P \\times r \\times (1+r)^n / ((1+r)^n - 1)$], constant interest rate throughout the repayment tenure, zero advance EMI payments, and excludes processing fees or optional insurance charges.\n\n`;
 
   // STEP 3 — FOLLOW-UP / PARTNER SELECTION (LAST)
   md += `#### 3. Partner Bank Comparison & Next Steps\n`;

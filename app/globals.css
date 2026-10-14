@@ -5287,7 +5287,7 @@ html, body {
     transform: translateX(3px);
 }
 
-/* Modern AI Chat Layout & Copilot */
+/* Modern AI Chat Layout & Assistant */
 .chat-layout {
     height: calc(100vh - 64px) !important;
     height: calc(100dvh - 64px) !important;

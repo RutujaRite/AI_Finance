@@ -5,11 +5,13 @@ import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bot, Sparkles, AlertTriangle, X } from "lucide-react";
 import StudioSidebar, { StudioNavTab } from "@/components/agent-studio/StudioSidebar";
-import Topbar from "@/components/Topbar";
+import AdminHeader from "@/components/admin/AdminHeader";
 import AiInstructionsView from "@/components/agent-studio/AiInstructionsView";
 import KnowledgeBaseView from "@/components/agent-studio/KnowledgeBaseView";
 import AgentTestDemoView from "@/components/agent-studio/AgentTestDemoView";
 import SettingsView from "@/components/agent-studio/SettingsView";
+import TokenAnalyticsView from "@/components/agent-studio/TokenAnalyticsView";
+import ModelConfigurationView from "@/components/agent-studio/ModelConfigurationView";
 import Toast from "@/components/agent-studio/Toast";
 import { Agent, UserSubscriptionState } from "@/lib/agent-studio/types";
 import "./agent-studio.css";
@@ -75,7 +77,7 @@ export default function AgentStudioPage() {
   const [user, setUser] = useState<any>({ name: "Rutuja Rite", email: "admin@gmail.com", role: "admin", is_admin: true });
   const [agents, setAgents] = useState<Agent[]>([FALLBACK_DEFAULT_AGENT]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("agent_loan_assistant");
-  const [activeTab, setActiveTab] = useState<StudioNavTab>("demo");
+  const [activeTab, setActiveTab] = useState<StudioNavTab>("instructions");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -108,6 +110,10 @@ export default function AgentStudioPage() {
       setActiveTab("knowledge");
     } else if (tabParam === "demo" || tabParam === "test") {
       setActiveTab("demo");
+    } else if (tabParam === "tokens" || tabParam === "analytics") {
+      setActiveTab("tokens");
+    } else if (tabParam === "models" || tabParam === "model" || tabParam === "model-config") {
+      setActiveTab("models");
     } else if (tabParam === "settings") {
       setActiveTab("settings");
     }
@@ -298,9 +304,14 @@ export default function AgentStudioPage() {
   }
 
   return (
-    <div className="home-body admin-fullpage-layout min-h-screen flex flex-col bg-[#F8FAFC]">
-      {/* 1. Global Admin Topbar matching /admin/models */}
-      <Topbar user={user} pathname="/agent-studio" />
+    <div className="home-body admin-fullpage-layout h-screen max-h-screen overflow-hidden flex flex-col bg-[#F8FAFC]">
+      {/* 1. Global Admin Topbar & Breadcrumbs without sidebar */}
+      <AdminHeader
+        user={user}
+        title="AI Agent Studio"
+        description="Configure agent prompts, guardrails, policy knowledge bases, and test simulations."
+        breadcrumbs={[{ label: "AI Agent Studio" }]}
+      />
 
       {/* 2. Studio Workspace below Topbar */}
       <div className="flex-1 flex overflow-hidden" style={{ minHeight: "calc(100vh - 64px)", height: "calc(100vh - 64px)" }}>
@@ -332,12 +343,12 @@ export default function AgentStudioPage() {
               <span>Studio Navigation</span>
             </button>
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-              {activeTab === "instructions" ? "AI Instructions" : activeTab === "knowledge" ? "Knowledge Base" : activeTab === "demo" ? "Agent Test / Demo" : "Settings"}
+              {activeTab === "instructions" ? "AI Instructions" : activeTab === "knowledge" ? "Knowledge Base" : activeTab === "demo" ? "Agent Test / Demo" : activeTab === "tokens" ? "Token Analytics" : activeTab === "models" ? "Model Configuration" : "Settings"}
             </span>
           </div>
 
           {/* Dynamic View rendering based on active tab */}
-          <main className="flex-1 overflow-y-auto bg-[#F8FAFC]">
+          <main className="flex-1 h-full overflow-hidden bg-[#F8FAFC]">
           {activeTab === "instructions" && (
             <AiInstructionsView
               agent={currentAgent}
@@ -347,6 +358,7 @@ export default function AgentStudioPage() {
               onSave={handleSaveChanges}
               saving={saving}
               onNavigateToKnowledge={() => setActiveTab("knowledge")}
+              onNavigateToDemo={() => setActiveTab("demo")}
               onToast={(msg, type) => setToast({ message: msg, type: type || "success" })}
               onCreateAgentClick={() => setIsCreateModalOpen(true)}
               onActivateAgent={handleActivateAgent}
@@ -379,6 +391,18 @@ export default function AgentStudioPage() {
               onToast={(msg, type) => setToast({ message: msg, type: type || "success" })}
               onCreateAgentClick={() => setIsCreateModalOpen(true)}
               onActivateAgent={handleActivateAgent}
+            />
+          )}
+
+          {activeTab === "tokens" && (
+            <TokenAnalyticsView
+              onToast={(msg, type) => setToast({ message: msg, type: type || "success" })}
+            />
+          )}
+
+          {activeTab === "models" && (
+            <ModelConfigurationView
+              onToast={(msg, type) => setToast({ message: msg, type: type || "success" })}
             />
           )}
 
@@ -524,37 +548,56 @@ export default function AgentStudioPage() {
       )}
 
       {/* Delete Agent Warning Modal */}
+      {/* Modernized Delete Agent Warning Modal */}
       {deleteConfirmAgentId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-2xl border border-rose-200 shadow-2xl w-full max-w-md overflow-hidden">
+          <div className="bg-white rounded-2xl border border-rose-200/80 shadow-2xl w-full max-w-md overflow-hidden animate-scaleIn">
             <div className="p-6">
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mb-4">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-
-              <h3 className="text-lg font-bold text-slate-900">
-                Delete Agent &amp; Knowledge Base?
-              </h3>
-
-              <div className="mt-2 text-xs text-slate-600 space-y-2 leading-relaxed">
-                <p>
-                  Are you sure you want to permanently delete{" "}
-                  <strong className="text-slate-900 font-semibold">
-                    "{agents.find((a) => a.id === deleteConfirmAgentId)?.name || 'this agent'}"
-                  </strong>
-                  ?
-                </p>
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 font-medium">
-                  ⚠️ <strong>Irreversible warning:</strong> All associated custom instructions, uploaded knowledge documents, extracted chunks, pgvector embeddings, and conversation histories will be permanently destroyed.
+              <div className="flex items-center gap-3.5 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shadow-xs ring-4 ring-rose-50/60 shrink-0">
+                  <AlertTriangle className="w-6 h-6 text-rose-600 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 leading-tight">
+                    Permanently Delete Agent?
+                  </h3>
+                  <span className="text-[11px] font-semibold text-rose-600 uppercase tracking-wide">
+                    Destructive Action • Irreversible
+                  </span>
                 </div>
               </div>
 
-              <div className="mt-6 flex items-center justify-end gap-3">
+              {/* Agent Preview Box */}
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 mb-4">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500 font-medium">Target Agent:</span>
+                  <span className="font-bold text-slate-900">
+                    {agents.find((a) => a.id === deleteConfirmAgentId)?.name || 'CreditWise Assistant'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] mt-1 text-slate-500">
+                  <span>Assigned Role:</span>
+                  <span className="font-medium text-slate-700 capitalize">
+                    {agents.find((a) => a.id === deleteConfirmAgentId)?.instructions?.agentRole || 'Loan Specialist'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-xs text-slate-600 space-y-2 leading-relaxed">
+                <p>
+                  You are about to delete this agent and its complete configuration.
+                </p>
+                <div className="p-3 rounded-xl bg-rose-50/70 border border-rose-200/80 text-rose-800 text-[11px] font-medium leading-relaxed">
+                  ⚠️ <strong>Irreversible warning:</strong> All custom system instructions, uploaded knowledge documents, pgvector embeddings, and conversation histories tied to this agent will be permanently erased.
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   disabled={isDeleting}
                   onClick={() => setDeleteConfirmAgentId(null)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition shadow-xs cursor-pointer active:scale-95"
                 >
                   Cancel
                 </button>
@@ -562,9 +605,16 @@ export default function AgentStudioPage() {
                   type="button"
                   disabled={isDeleting}
                   onClick={handleConfirmDelete}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs transition disabled:opacity-50 cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer active:scale-95 flex items-center gap-1.5"
                 >
-                  {isDeleting ? "Deleting..." : "Permanently Delete Agent"}
+                  {isDeleting ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <span>Permanently Delete Agent</span>
+                  )}
                 </button>
               </div>
             </div>
