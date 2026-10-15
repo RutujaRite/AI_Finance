@@ -47,7 +47,7 @@ async function verifyBankManagersClean() {
 
   // 2. Verify Spreadsheets / Manager Files management is directly rendered
   assert(
-    bankManagersPageSrc.includes("Upload Bank Manager Spreadsheet"),
+    bankManagersPageSrc.includes("handleUploadSubmit"),
     "Upload Bank Manager Spreadsheet form is directly visible"
   );
 

@@ -198,38 +198,22 @@ export default function BankManagersDedicatedPage() {
             background: "#ffffff",
             border: "1px solid #e2e8f0",
             borderRadius: "14px",
-            padding: "24px",
+            padding: "20px 24px",
             marginBottom: "24px",
             boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
-                Upload Contact and Location Bank Manager Spreadsheet
-              </h3>
-              <p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", color: "#64748b" }}>
-                Upload manager directories in Excel (.xlsx, .xls) or CSV (.csv) format.
-              </p>
-            </div>
-            <span
+          <form onSubmit={handleUploadSubmit}>
+            <div
               style={{
-                background: "#eff6ff",
-                color: "#2563eb",
-                padding: "6px 12px",
-                borderRadius: "20px",
-                fontSize: "0.8rem",
-                fontWeight: 600,
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                gap: "18px",
+                alignItems: "flex-end",
               }}
             >
-              {files.length} Files Available
-            </span>
-          </div>
-
-          <form onSubmit={handleUploadSubmit}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "16px", alignItems: "flex-end" }}>
               <div>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: "0.85rem", color: "#334155" }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: "0.85rem", color: "#334155", marginBottom: "6px" }}>
                   Bank Name
                 </label>
                 <input
@@ -243,7 +227,7 @@ export default function BankManagersDedicatedPage() {
               </div>
 
               <div>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: "0.85rem", color: "#334155" }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: "0.85rem", color: "#334155", marginBottom: "6px" }}>
                   Spreadsheet File (.xlsx, .xls, .csv)
                 </label>
                 <input
@@ -256,21 +240,38 @@ export default function BankManagersDedicatedPage() {
                 />
               </div>
 
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={isUploading}
-                style={{
-                  height: "42px",
-                  padding: "0 22px",
-                  borderRadius: "8px",
-                  fontWeight: 600,
-                  background: "#2563eb",
-                  borderColor: "#2563eb",
-                }}
-              >
-                {isUploading ? "Uploading..." : "Upload & Parse"}
-              </button>
+              <div>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isUploading}
+                  style={{
+                    height: "42px",
+                    width: "100%",
+                    padding: "0 22px",
+                    borderRadius: "8px",
+                    fontWeight: 600,
+                    background: "#2563eb",
+                    borderColor: "#2563eb",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                  }}
+                >
+                  {isUploading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-cloud-arrow-up-fill" />
+                      Upload &amp; Parse
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -287,34 +288,51 @@ export default function BankManagersDedicatedPage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            flexWrap: "wrap",
             gap: "16px",
           }}
         >
-          <div style={{ position: "relative", flex: 1, maxWidth: "400px" }}>
-            <i
-              className="bi bi-search"
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1, minWidth: "280px" }}>
+            <div style={{ position: "relative", flex: 1, maxWidth: "420px" }}>
+              <i
+                className="bi bi-search"
+                style={{
+                  position: "absolute",
+                  left: "14px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "#94a3b8",
+                }}
+              />
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Search by filename or bank name..."
+                value={searchFileQuery}
+                onChange={(e) => setSearchFileQuery(e.target.value)}
+                style={{
+                  paddingLeft: "38px",
+                  height: "40px",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  fontSize: "0.875rem",
+                }}
+              />
+            </div>
+            <span
               style={{
-                position: "absolute",
-                left: "14px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#94a3b8",
+                background: "#eff6ff",
+                color: "#2563eb",
+                padding: "6px 14px",
+                borderRadius: "20px",
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                border: "1px solid #dbeafe",
               }}
-            />
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Search by filename or bank name..."
-              value={searchFileQuery}
-              onChange={(e) => setSearchFileQuery(e.target.value)}
-              style={{
-                paddingLeft: "38px",
-                height: "40px",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                fontSize: "0.875rem",
-              }}
-            />
+            >
+              {files.length} {files.length === 1 ? "File Available" : "Files Available"}
+            </span>
           </div>
 
           <button

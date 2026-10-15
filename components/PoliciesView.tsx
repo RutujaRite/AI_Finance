@@ -736,11 +736,8 @@ export default function PoliciesView({
           <div>
             <h1 className="page-header-title">
               <i className="bi bi-file-earmark-text" style={{ color: "var(--accent)", marginRight: "0.5rem" }} />
-              Bank Policy Guidelines &amp; Documents
+              Bank Policies
             </h1>
-            <p className="page-header-subtitle">
-              View and manage underwriting policy rules, FOIR multipliers, minimum salary requirements, and official bank documents.
-            </p>
           </div>
 
           <div className="page-header-actions">
@@ -844,11 +841,11 @@ export default function PoliciesView({
                   <table className="saas-table">
                     <thead>
                       <tr>
-                        <th style={{ width: 50 }}>#</th>
-                        <th>Bank Name</th>
-                        <th style={{ width: 220 }}>Loan Category</th>
-                        <th style={{ width: 140 }}>Status</th>
-                        <th style={{ textAlign: "right", width: 130 }}>Actions</th>
+                        <th style={{ width: 48, textAlign: "left", paddingLeft: "1rem" }}>#</th>
+                        <th style={{ width: 240, textAlign: "left" }}>Bank Name</th>
+                        <th style={{ width: 180, textAlign: "left" }}>Category</th>
+                        <th style={{ width: 140, textAlign: "left" }}>Status</th>
+                        <th style={{ width: 160, textAlign: "left", paddingLeft: "0.75rem" }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -871,22 +868,22 @@ export default function PoliciesView({
                                 {status === "review" ? "In Review" : status.charAt(0).toUpperCase() + status.slice(1)}
                               </span>
                             </td>
-                            <td style={{ textAlign: "right" }}>
-                              <div className="saas-actions-group">
+                            <td style={{ textAlign: "left" }}>
+                              <div className="saas-actions-group" style={{ justifyContent: "flex-start", gap: "4px", padding: "2px", borderRadius: "12px", background: "rgba(255,255,255,0.08)", backdropFilter: "blur(8px) saturate(120%)", WebkitBackdropFilter: "blur(8px) saturate(120%)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15), 0 1px 4px rgba(0,0,0,0.05)" }}>
                                 <ModernTableActionBtn
                                   icon={<Eye className="w-3.5 h-3.5" />}
                                   variant="neutral"
-                                  tooltip="View Policy Text"
+                                  tooltip="View File"
                                   onClick={() => handleOpenViewerFile(policy)}
                                 />
                                 <ModernTableActionBtn
                                   icon={<Pencil className="w-3.5 h-3.5" />}
                                   variant="primary"
-                                  tooltip="Edit Policy"
+                                  tooltip="Edit File"
                                   onClick={() => handleOpenEditorFile(policy)}
                                 />
                                 <ModernDeleteActionBtn
-                                  tooltip="Delete Policy"
+                                  tooltip="Delete File"
                                   onClick={() => handleOpenDelete(policy)}
                                 />
                               </div>
@@ -952,11 +949,11 @@ export default function PoliciesView({
                   <table className="saas-table">
                     <thead>
                       <tr>
-                        <th style={{ width: 50 }}>#</th>
-                        <th>Bank Name</th>
-                        <th>Master Policy File</th>
-                        <th style={{ width: 120 }}>Size</th>
-                        <th style={{ textAlign: "right", width: 160 }}>Actions</th>
+                        <th style={{ width: 50, textAlign: "left" }}>#</th>
+                        <th style={{ width: 240, textAlign: "left" }}>Bank Name</th>
+                        <th style={{ textAlign: "left" }}>Master Policy File</th>
+                        <th style={{ width: 120, textAlign: "left" }}>Size</th>
+                        <th style={{ width: 180, textAlign: "left" }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>

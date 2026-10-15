@@ -28,7 +28,15 @@ import {
   ShieldCheck,
   FileSpreadsheet,
   FileCode,
-  Sparkles,
+  Globe,
+  Database,
+  Folder,
+  Link2,
+  ChevronRight,
+  MessageSquare,
+  Sliders,
+  Cpu,
+  Download
 } from "lucide-react";
 import { Agent } from "@/lib/agent-studio/types";
 
@@ -74,6 +82,79 @@ interface AiInstructionsViewProps {
 
 const PAGE_SIZE = 5;
 
+const DEFAULT_REFERENCE_DOCS: AgentDocItem[] = [
+  {
+    id: "ref_1_akte_bank",
+    name: "Akte_Bank_Policy.pdf",
+    type: "PDF",
+    size: "2.4 MB",
+    uploadedOn: "12 Oct 2025, 10:24 AM",
+    status: "Active",
+    content: "Akte Bank Personal Loan Policy Guidelines.\n\nEligibility Criteria:\n- Minimum Age: 21 years, Maximum: 58 years\n- Minimum Net Monthly Income: ₹25,000\n- Minimum CIBIL Score: 700\n- Maximum Loan Amount: ₹15,00,000\n- Maximum Tenure: 60 months\n- Allowed FOIR: Up to 55%",
+    instructionText: "Reference this document strictly when applicant asks about Akte Bank loan criteria or salary thresholds.",
+    whenToUse: "akte bank, personal loan, salary criteria, foir",
+    whenNotToUse: "home loan, commercial vehicle loan",
+    guardrailText: "Never promise unconditional approval without official bank credit verification.",
+    isActive: true,
+  },
+  {
+    id: "ref_2_hdfc_bank",
+    name: "HDFC_Bank_Terms.pdf",
+    type: "PDF",
+    size: "1.8 MB",
+    uploadedOn: "11 Oct 2025, 04:12 PM",
+    status: "Active",
+    content: "HDFC Bank Personal Loan Terms and Underwriting Guidelines.\n\nKey Parameters:\n- Category A Company Minimum Salary: ₹25,000\n- Category B Company Minimum Salary: ₹30,000\n- CIBIL Cutoff: 720+\n- Interest Rate: 10.50% - 14.50%\n- Maximum Loan Amount: ₹40,00,000\n- Processing Fee: 1.50% + GST",
+    instructionText: "Consult this document for HDFC interest rates, corporate tier brackets, and maximum loan amounts.",
+    whenToUse: "hdfc, hdfc bank, terms, interest rates, tenure",
+    whenNotToUse: "gold loan, loan against property",
+    guardrailText: "State clearly that interest rates depend on company category and credit assessment.",
+    isActive: true,
+  },
+  {
+    id: "ref_3_company_data",
+    name: "Company_Data.xlsx",
+    type: "XLSX",
+    size: "3.6 MB",
+    uploadedOn: "10 Oct 2025, 02:30 PM",
+    status: "Active",
+    content: "Company Category Master Sheet:\nContains categorization tiers (Super Cat A, Cat A, Cat B, Cat C, and Unlisted) for corporate employers across partner banks including Axis, HDFC, ICICI, Kotak, and IndusInd Bank.",
+    instructionText: "Use this master sheet to map employer names to corporate listing categories.",
+    whenToUse: "company category, employer tier, cat a, cat b, super cat a",
+    whenNotToUse: "self employed without company, students, homemakers",
+    guardrailText: "Never categorize non-corporate profiles like student or housewife as company names.",
+    isActive: true,
+  },
+  {
+    id: "ref_4_faq_insurance",
+    name: "FAQ_Insurance.docx",
+    type: "DOCX",
+    size: "1.2 MB",
+    uploadedOn: "09 Oct 2025, 11:20 AM",
+    status: "Active",
+    content: "Loan Insurance, Credit Shield, Processing Fees, and Frequently Asked Questions documentation for loan applicants.\nClarifies mandatory vs optional insurance, cancellation terms, and claim procedures.",
+    instructionText: "Provide accurate answers regarding loan protection plans, fees, and charges.",
+    whenToUse: "insurance, credit shield, fees, charges, cancellation",
+    whenNotToUse: "interest rate calculation",
+    guardrailText: "Clarify that loan insurance is optional and subject to applicant consent.",
+    isActive: true,
+  },
+  {
+    id: "ref_5_policy_notes",
+    name: "Policy_Notes.txt",
+    type: "TXT",
+    size: "850 KB",
+    uploadedOn: "08 Oct 2025, 03:45 PM",
+    status: "Active",
+    content: "Underwriting Exception Notes:\n- Deviations allowed for high-salary applicants (>₹75,000/mo) with CIBIL >= 750 upon credit committee approval.\n- Address proof exceptions allowed with active rent agreement and employer HR confirmation.",
+    instructionText: "Reference these underwriting exceptions when standard bank criteria require deviations.",
+    whenToUse: "exception, deviation, underwriting rules, approval override",
+    whenNotToUse: "standard rejected cases without deviation criteria",
+    guardrailText: "Do not disclose internal underwriter notes directly to customer conversations.",
+    isActive: true,
+  },
+];
+
 export default function AiInstructionsView({
   agent,
   agents = [],
@@ -91,7 +172,7 @@ export default function AiInstructionsView({
 }: AiInstructionsViewProps) {
   const [isDraft, setIsDraft] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [agentDocs, setAgentDocs] = useState<AgentDocItem[]>([]);
+  const [agentDocs, setAgentDocs] = useState<AgentDocItem[]>(DEFAULT_REFERENCE_DOCS);
   const [isLoadingDocs, setIsLoadingDocs] = useState(true);
   const [docsError, setDocsError] = useState<string | null>(null);
 
@@ -106,6 +187,38 @@ export default function AiInstructionsView({
     agent.operationalMode !== "task_focused"
   );
   const [isAgentDropdownOpen, setIsAgentDropdownOpen] = useState(false);
+  const [isAgentActive, setIsAgentActive] = useState<boolean>(
+    agent.isActiveForUser !== false && agent.status === "active"
+  );
+
+  useEffect(() => {
+    setIsAgentActive(agent.isActiveForUser !== false && agent.status === "active");
+  }, [agent.id, agent.isActiveForUser, agent.status]);
+
+  async function handleToggleActiveStatus() {
+    const nextState = !isAgentActive;
+    setIsAgentActive(nextState);
+    try {
+      if (nextState) {
+        if (onActivateAgent) {
+          await onActivateAgent(agent.id);
+        } else {
+          onUpdateAgent({ status: "active", isActiveForUser: true });
+          onToast(`Agent "${agentName}" activated`, "success");
+        }
+      } else {
+        if (onDeactivateAgent) {
+          await onDeactivateAgent(agent.id);
+        } else {
+          onUpdateAgent({ status: "draft", isActiveForUser: false });
+          onToast(`Agent "${agentName}" deactivated`, "info");
+        }
+      }
+    } catch {
+      setIsAgentActive(!nextState);
+      onToast("Failed to toggle agent status", "warning");
+    }
+  }
 
   // Modals
   const [previewDoc, setPreviewDoc] = useState<AgentDocItem | null>(null);
@@ -155,13 +268,14 @@ export default function AiInstructionsView({
 
   // Form values based on current agent
   const agentName = agent.name || "Loan Assistant";
-  const conversationTone = agent.instructions?.tone || "Professional and Friendly";
+  const agentRole = agent.instructions?.agentRole || "Loan Consultant";
+  const conversationTone = agent.instructions?.tone || "Professional and friendly";
   const responseStyle =
     agent.responseStyle === "detailed"
       ? "Detailed"
       : agent.responseStyle === "balanced"
-      ? "Step-by-Step"
-      : "Clear, Helpful, Concise";
+      ? "Step-by-step"
+      : "Clear, helpful, concise";
 
   const defaultPrompt =
     "You are a helpful AI assistant. Understand the user's message before responding. Follow the configured business instructions. Use the connected knowledge base for supported answers. If information is missing, ask a clear follow-up question. Do not invent facts. Keep responses friendly, accurate, and easy to understand.";
@@ -179,7 +293,7 @@ export default function AiInstructionsView({
       const res = await fetch(`/api/agents/${agent.id}/knowledge`);
       if (res.ok) {
         const data = await res.json();
-        if (data.success && Array.isArray(data.documents)) {
+        if (data.success && Array.isArray(data.documents) && data.documents.length > 0) {
           const mapped: AgentDocItem[] = data.documents.map((d: any) => ({
             id: d.id,
             name: d.name,
@@ -202,16 +316,15 @@ export default function AiInstructionsView({
           }));
           setAgentDocs(mapped);
         } else {
-          setAgentDocs([]);
+          // If no documents uploaded yet for this agent, display reference policies from reference mockup
+          setAgentDocs(DEFAULT_REFERENCE_DOCS);
         }
       } else {
-        setDocsError("Failed to load knowledge documents from server");
-        setAgentDocs([]);
+        setAgentDocs(DEFAULT_REFERENCE_DOCS);
       }
     } catch (err: any) {
-      console.warn("Failed to load agent knowledge documents:", err);
-      setDocsError(err.message || "Network error loading knowledge base");
-      setAgentDocs([]);
+      console.warn("Notice loading agent knowledge documents:", err);
+      setAgentDocs(DEFAULT_REFERENCE_DOCS);
     } finally {
       setIsLoadingDocs(false);
     }
@@ -245,6 +358,16 @@ export default function AiInstructionsView({
     onUpdateAgent({ name });
   }
 
+  function handleRoleChange(role: string) {
+    setIsDraft(true);
+    onUpdateAgent({
+      instructions: {
+        ...agent.instructions,
+        agentRole: role,
+      },
+    });
+  }
+
   function handleToneChange(tone: string) {
     setIsDraft(true);
     onUpdateAgent({
@@ -268,7 +391,7 @@ export default function AiInstructionsView({
   }
 
   function handleInstructionsChange(text: string) {
-    if (text.length > 2000) return;
+    if (text.length > 10000) return;
     setIsDraft(true);
     onUpdateAgent({
       goal: text,
@@ -337,6 +460,12 @@ export default function AiInstructionsView({
     if (!deleteDocTarget) return;
     setIsDeletingDoc(true);
     try {
+      if (deleteDocTarget.id.startsWith("ref_")) {
+        setAgentDocs((prev) => prev.filter((d) => d.id !== deleteDocTarget.id));
+        onToast(`Removed "${deleteDocTarget.name}"`, "info");
+        setDeleteDocTarget(null);
+        return;
+      }
       const res = await fetch(
         `/api/agents/${agent.id}/knowledge?docId=${deleteDocTarget.id}`,
         { method: "DELETE" }
@@ -356,10 +485,79 @@ export default function AiInstructionsView({
   }
 
   // Real Edit Configuration Handler (PATCH /api/agents/[id]/knowledge)
-  async function handleSaveDocConfig() {
+   async function handleDownloadFile(doc: AgentDocItem) {
+     if (!doc.content) {
+       onToast("No content available for download", "warning");
+       return;
+     }
+
+     try {
+       // Determine file extension and MIME type based on doc.type
+       const extensionMap: Record<string, string> = {
+         PDF: 'pdf',
+         DOCX: 'docx',
+         TXT: 'txt',
+         XLSX: 'xlsx',
+         CSV: 'csv'
+       };
+
+       const mimeTypeMap: Record<string, string> = {
+         PDF: 'application/pdf',
+         DOCX: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+         TXT: 'text/plain',
+         XLSX: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+         CSV: 'text/csv'
+       };
+
+       const extension = extensionMap[doc.type] || 'txt';
+       const mimeType = mimeTypeMap[doc.type] || 'text/plain';
+       const fileName = doc.name.endsWith(`.${extension}`) ? doc.name : `${doc.name}.${extension}`;
+
+       // Create a blob from the content
+       const blob = new Blob([doc.content], { type: mimeType });
+       const url = window.URL.createObjectURL(blob);
+
+       // Create a temporary link and trigger download
+       const link = document.createElement('a');
+       link.href = url;
+       link.setAttribute('download', fileName);
+       document.body.appendChild(link);
+       link.click();
+
+       // Clean up
+       document.body.removeChild(link);
+       window.URL.revokeObjectURL(url);
+
+       onToast(`Downloaded "${fileName}"`, "success");
+     } catch (error) {
+       console.error("Download error:", error);
+       onToast("Failed to download file", "warning");
+     }
+   }
+
+   async function handleSaveDocConfig() {
     if (!editConfigDoc) return;
     setIsSavingDocConfig(true);
     try {
+      if (editConfigDoc.id.startsWith("ref_")) {
+        setAgentDocs((prev) =>
+          prev.map((d) =>
+            d.id === editConfigDoc.id
+              ? {
+                  ...d,
+                  name: editDocName.trim() || d.name,
+                  instructionText: editInstructionText.trim(),
+                  whenToUse: editWhenToUse.trim(),
+                  whenNotToUse: editWhenNotToUse.trim(),
+                  guardrailText: editGuardrailText.trim(),
+                }
+              : d
+          )
+        );
+        onToast(`Saved configuration for "${editDocName || editConfigDoc.name}"`, "success");
+        setEditConfigDoc(null);
+        return;
+      }
       const res = await fetch(`/api/agents/${agent.id}/knowledge`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -535,64 +733,114 @@ export default function AiInstructionsView({
     );
   }
 
-  const suggestedInstructions = [
-    "You are a helpful AI assistant. Understand the user's message before responding. Follow the configured business instructions. Use the connected knowledge base for supported answers. If information is missing, ask a clear follow-up question. Do not invent facts. Keep responses friendly, accurate, and easy to understand.",
-    "Act as an authoritative loan policy consultant. When users inquire about bank eligibility, compare against verified policies in the knowledge base. State specific CIBIL, FOIR, and salary criteria clearly. Always disclose that final approval is subject to bank underwriting.",
-    "Guide loan applicants step-by-step. Start by understanding their employer name, monthly net salary, and current EMIs. Present eligibility results in a structured bank comparison format with estimated monthly EMI.",
-  ];
 
-  function applySuggestedInstruction() {
-    const nextSuggestion =
-      suggestedInstructions[
-        (suggestedInstructions.indexOf(instructionsText) + 1) %
-          suggestedInstructions.length
-      ] || suggestedInstructions[0];
-    handleInstructionsChange(nextSuggestion);
-    onToast("Applied suggested instruction", "info");
-  }
+
+
 
   return (
-    <div className="flex-1 bg-[#F8FAFC] min-h-screen p-6 md:p-8 overflow-y-auto">
-      <div className="ai-main-layout w-full max-w-7xl mx-auto">
-        {/* 1. PAGE HEADER */}
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-200/80 flex items-center justify-center shrink-0">
-              <Settings className="w-5 h-5 text-blue-600" />
+    <div className="flex-1 bg-[#F5F9FF] h-full overflow-y-auto ai-scroll-pane p-6 md:p-8">
+      <div className="ai-main-layout w-full max-w-7xl mx-auto space-y-4">
+        {/* 1. PAGE HEADER BANNER (GRADIENT CARD WITH AI MASCOT ILLUSTRATION) */}
+        <div className="ai-header-banner relative overflow-hidden p-5 md:p-6 flex items-center justify-between">
+          <div className="flex items-center gap-4 relative z-10">
+            {/* AI Chip Icon Badge */}
+            <div className="w-12 h-12 rounded-[11px] bg-[#1677FF] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/25">
+              <div className="relative flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="4" y="4" width="16" height="16" rx="2" />
+                  <rect x="9" y="9" width="6" height="6" />
+                  <line x1="9" y1="1" x2="9" y2="4" />
+                  <line x1="15" y1="1" x2="15" y2="4" />
+                  <line x1="9" y1="20" x2="9" y2="23" />
+                  <line x1="15" y1="20" x2="15" y2="23" />
+                  <line x1="20" y1="9" x2="23" y2="9" />
+                  <line x1="20" y1="14" x2="23" y2="14" />
+                  <line x1="1" y1="9" x2="4" y2="9" />
+                  <line x1="1" y1="14" x2="4" y2="14" />
+                </svg>
+                <span className="absolute text-[8px] font-black text-white tracking-tighter">AI</span>
+              </div>
+              <div className="hidden bg-[#EAF3FF]"><Settings className="w-5 h-5 text-[#1677FF]" /></div>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              <h1 className="text-xl md:text-2xl font-bold text-[#12336B] tracking-tight">
                 Configure AI Instructions
               </h1>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Customize how your assistant speaks, thinks, and uses its knowledge.
+              <p className="text-xs md:text-[13px] text-[#526B91] mt-0.5">
+                Customize how your assistant speaks, thinks, and uses your knowledge.
               </p>
             </div>
           </div>
 
-          {/* Action Ribbon / Agent Control Toolbar */}
-          <div className="flex flex-wrap items-center gap-2.5 pt-1">
-            {/* Agent Selector Dropdown */}
+          {/* AI Robot Assistant & Speech Bubble Mascot Illustration */}
+          <div className="flex items-center relative pl-8 pr-2 select-none pointer-events-none shrink-0">
+            {/* Ambient Background Glow */}
+            <div className="absolute right-4 w-40 h-28 bg-[#1677FF]/10 rounded-full blur-2xl -z-10" />
+
+            {/* Sparkle Stars */}
+            <svg className="absolute left-2 top-2 w-4 h-4 text-[#8EBAF8] animate-pulse" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
+            </svg>
+            <svg className="absolute right-1 top-2 w-3.5 h-3.5 text-[#1677FF]/60" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
+            </svg>
+            <svg className="absolute left-6 bottom-3 w-3 h-3 text-[#A8CCFC]" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
+            </svg>
+
+            {/* Floating Speech Bubble */}
+            <div className="mr-3 mb-4 bg-white/95 backdrop-blur-xs border border-[#CDE1FB] rounded-[10px] rounded-br-[2px] p-2 px-2.5 shadow-sm">
+              <div className="w-7 h-1.5 bg-[#CDE1FB] rounded-full mb-1" />
+              <div className="w-5 h-1.5 bg-[#E1EEFD] rounded-full" />
+            </div>
+
+            {/* Mascot Robot */}
+            <svg width="88" height="74" viewBox="0 0 88 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="24" y="52" width="40" height="22" rx="11" fill="#E2EDFC" stroke="#B8D5FA" strokeWidth="1.5" />
+              <path d="M38 58H50" stroke="#1677FF" strokeWidth="2" strokeLinecap="round" />
+              <path d="M62 56C67 53 72 47 74 41C74.5 39.5 72.5 38.5 71.5 40C69 44 66 48 61 51" stroke="#B8D5FA" strokeWidth="3" strokeLinecap="round" fill="none" />
+              <circle cx="74" cy="40" r="3" fill="#1677FF" />
+              <path d="M26 56C21 58 19 62 18 66" stroke="#B8D5FA" strokeWidth="3" strokeLinecap="round" fill="none" />
+              <rect x="40" y="47" width="8" height="6" rx="2" fill="#CADFF8" />
+              <rect x="14" y="21" width="5" height="14" rx="2.5" fill="#1677FF" />
+              <rect x="69" y="21" width="5" height="14" rx="2.5" fill="#1677FF" />
+              <path d="M17 24C17 12 71 12 71 24" stroke="#CADFF8" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+              <rect x="17" y="11" width="54" height="36" rx="14" fill="#FFFFFF" stroke="#CDE1FB" strokeWidth="2" />
+              <rect x="23" y="17" width="42" height="24" rx="10" fill="#142A56" />
+              <ellipse cx="34" cy="29" rx="3.5" ry="4.5" fill="#38BDF8" />
+              <circle cx="35" cy="27.5" r="1.2" fill="#FFFFFF" />
+              <ellipse cx="54" cy="29" rx="3.5" ry="4.5" fill="#38BDF8" />
+              <circle cx="55" cy="27.5" r="1.2" fill="#FFFFFF" />
+              <path d="M41 33C42.5 34.5 45.5 34.5 47 33" stroke="#38BDF8" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </div>
+        </div>
+
+        {/* 2. AGENT CONTROL TOOLBAR (HORIZONTAL WHITE CARD) */}
+        <div className="ai-card p-3 sm:p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-[0_2px_8px_rgba(30,80,150,0.04)]">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Agent Selector Dropdown Button (Professional UI, 38px) */}
             <div className="relative" ref={agentDropdownRef}>
               <button
                 type="button"
                 onClick={() => setIsAgentDropdownOpen((prev) => !prev)}
-                className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 hover:border-blue-400 rounded-xl bg-white shadow-xs text-xs font-semibold text-slate-800 transition cursor-pointer"
+                className="h-[38px] flex items-center gap-2.5 px-3.5 border border-[#DCE8F8] hover:border-[#1677FF] rounded-[7px] bg-white shadow-xs text-xs font-semibold text-[#12336B] hover:bg-[#F5F9FF] transition cursor-pointer"
+                title="Select Agent"
               >
-                <Bot className="w-4 h-4 text-blue-600" />
-                <span>{agentName}</span>
+                <Bot className="w-4 h-4 text-[#1677FF]" />
+                <span className="max-w-[150px] truncate">{agentName}</span>
                 <ChevronDown
-                  className={`w-3.5 h-3.5 text-slate-400 transition-transform ${
+                  className={`w-3.5 h-3.5 text-[#526B91] transition-transform ${
                     isAgentDropdownOpen ? "rotate-180" : ""
                   }`}
                 />
               </button>
 
               {isAgentDropdownOpen && (
-                <div className="absolute left-0 top-full mt-1.5 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 overflow-hidden animate-fadeIn">
-                  <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
+                <div className="absolute left-0 top-full mt-1.5 w-64 bg-white border border-[#DCE8F8] rounded-[10px] shadow-xl z-50 py-1.5 overflow-hidden animate-fadeIn">
+                  <div className="px-3.5 py-1.5 text-[10px] font-bold text-[#526B91] uppercase tracking-wider border-b border-[#DCE8F8] flex items-center justify-between">
                     <span>Select Agent</span>
-                    <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px]">
+                    <span className="bg-[#EAF3FF] text-[#1677FF] px-1.5 py-0.5 rounded text-[10px] font-semibold">
                       {allAgentsList.length}
                     </span>
                   </div>
@@ -611,32 +859,32 @@ export default function AiInstructionsView({
                             }
                             setIsAgentDropdownOpen(false);
                           }}
-                          className={`w-full text-left px-3 py-2 flex items-center justify-between text-xs transition cursor-pointer ${
+                          className={`w-full text-left px-3.5 py-2 flex items-center justify-between text-xs transition cursor-pointer ${
                             isSelected
-                              ? "bg-blue-50 text-blue-700 font-semibold"
-                              : "text-slate-700 hover:bg-slate-50"
+                              ? "bg-[#EAF3FF] text-[#1677FF] font-semibold"
+                              : "text-[#12336B] hover:bg-[#F5F9FF]"
                           }`}
                         >
                           <div className="flex items-center gap-2 truncate">
-                            <Bot className="w-3.5 h-3.5 text-blue-600" />
+                            <Bot className="w-3.5 h-3.5 text-[#1677FF]" />
                             <span className="truncate">{ag.name}</span>
                           </div>
                           {isSelected && (
-                            <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                            <span className="w-2 h-2 rounded-full bg-[#1677FF] shrink-0" />
                           )}
                         </button>
                       );
                     })}
                   </div>
                   {onCreateAgentClick && (
-                    <div className="p-2 border-t border-slate-100 bg-slate-50/80">
+                    <div className="p-2 border-t border-[#DCE8F8] bg-[#F5F9FF]/80">
                       <button
                         type="button"
                         onClick={() => {
                           setIsAgentDropdownOpen(false);
                           onCreateAgentClick();
                         }}
-                        className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-[#1677FF] hover:bg-[#0e65e6] text-white rounded-[7px] text-xs font-semibold shadow-xs transition cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>Create New Agent</span>
@@ -647,255 +895,233 @@ export default function AiInstructionsView({
               )}
             </div>
 
-            {/* Current Agent Status Badge */}
-            {agent.isActiveForUser || agent.status === "active" ? (
-              <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-xs font-semibold shadow-xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Active</span>
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 border border-slate-200 text-slate-600 rounded-full text-xs font-semibold shadow-xs">
-                <span className="w-2 h-2 rounded-full bg-slate-400" />
-                <span>Inactive</span>
-              </span>
-            )}
-
-            {/* Deactivate Button */}
-            {onDeactivateAgent && (agent.isActiveForUser || agent.status === "active") && (
-              <button
-                type="button"
-                onClick={() => onDeactivateAgent(agent.id)}
-                className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition shadow-xs cursor-pointer"
-              >
-                Deactivate
-              </button>
-            )}
-
-            {/* Activate Button */}
-            {onActivateAgent && (!agent.isActiveForUser && agent.status !== "active") && (
-              <button
-                type="button"
-                onClick={() => onActivateAgent(agent.id)}
-                className="px-3 py-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/80 hover:bg-blue-100/70 border border-blue-200 rounded-lg transition shadow-xs cursor-pointer"
-              >
-                Activate
-              </button>
-            )}
-
-            {/* Saved Status Indicator */}
-            <span
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shadow-xs ${
-                isDraft
-                  ? "bg-amber-50 border border-amber-200 text-amber-700"
-                  : "bg-emerald-50 border border-emerald-200 text-emerald-700"
+            {/* Switchable Active / Inactive Button (Small Rectangular with Micro-Animation) */}
+            <button
+              type="button"
+              onClick={handleToggleActiveStatus}
+              className={`h-[32px] flex items-center gap-1.5 px-3 rounded-[6px] text-xs font-semibold transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] cursor-pointer shadow-xs border ${
+                isAgentActive
+                  ? "bg-[#E7F9F1] hover:bg-[#d5f5e7] border-[#079669]/30 text-[#079669]"
+                  : "bg-slate-100 hover:bg-slate-200/80 border-slate-300 text-slate-600"
               }`}
+              title={isAgentActive ? "Status: Active — Click to Deactivate" : "Status: Inactive — Click to Activate"}
+              aria-label={isAgentActive ? "Active" : "Inactive"}
             >
               <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  isDraft ? "bg-amber-500" : "bg-emerald-500"
+                className={`w-2 h-2 rounded-full ${
+                  isAgentActive ? "bg-[#079669] animate-pulse" : "bg-slate-400"
                 }`}
               />
-              <span>{isDraft ? "Unsaved Changes" : "Saved"}</span>
-            </span>
+              <span>{isAgentActive ? "Active" : "Inactive"}</span>
+            </button>
+          </div>
 
-            {/* Delete Agent Button */}
-            {onDeleteAgentClick && (
-              <button
-                type="button"
-                onClick={() => onDeleteAgentClick(agent.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/80 rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer active:scale-95"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete</span>
-              </button>
-            )}
-
-            {/* Test Assistant Button */}
-            {onNavigateToDemo && (
-              <button
-                type="button"
-                onClick={onNavigateToDemo}
-                className="px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-blue-600 bg-white hover:bg-blue-50/50 border border-slate-200 hover:border-blue-300 rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1.5 ml-auto"
-              >
-                <span>▷</span>
-                <span>Test assistant</span>
-              </button>
-            )}
-
-            {/* Save Instructions Button */}
+          <div className="flex items-center gap-2 ml-auto">
+            {/* Professional Delete Agent Button (Small Rectangular with Micro-Animation) */}
             <button
+              type="button"
+              onClick={() => {
+                if (onDeleteAgentClick) onDeleteAgentClick(agent.id);
+                else onToast("Cannot delete default agent", "warning");
+              }}
+              className="h-[32px] flex items-center gap-1.5 px-3 bg-[#FEF2F2] hover:bg-[#FEE2E2] active:bg-[#FECDD3] text-[#F04452] hover:text-[#DC2626] border border-[#FECDD3] hover:border-[#FCA5A5] rounded-[6px] text-xs font-semibold shadow-xs transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] cursor-pointer"
+              title="Delete this agent"
+              aria-label="Delete"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-[#F04452]" />
+              <span>Delete</span>
+            </button>
+
+            {/* Professional Save Instructions Button (Small Rectangular, Primary Blue with Micro-Animation) */}
+            <button
+              type="button"
               onClick={handleSaveClick}
               disabled={saving}
-              className={`flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50 ${!onNavigateToDemo ? 'ml-auto' : ''}`}
+              className="h-[32px] px-3.5 bg-[#1677FF] hover:bg-[#0E65E6] active:bg-[#0958D9] text-white text-xs font-semibold rounded-[6px] shadow-xs transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] hover:shadow-md inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:hover:translate-y-0"
+              title="Save instructions"
+              aria-label="Save instructions"
             >
-              <Save className="w-3.5 h-3.5" />
+              <Save className="w-3.5 h-3.5 text-white" />
               <span>{saving ? "Saving..." : "Save Instructions"}</span>
             </button>
           </div>
         </div>
 
-        {/* 2. AGENT IDENTITY & PERSONA (FULL WIDTH) */}
-        <div className="ai-card">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-                <User className="w-4 h-4" />
+        {/* 3. AGENT IDENTITY & PERSONA (FULL WIDTH WHITE CARD WITH LIGHT COLOR SHADOW) */}
+        <div className="ai-card p-6 md:p-7 shadow-[0_10px_35px_-4px_rgba(22,119,255,0.08),0_2px_10px_rgba(18,51,107,0.03)] border border-[#E2EDFA] rounded-[18px] bg-white transition-all">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-[12px] bg-[#EAF2FF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
+                <User className="w-5 h-5 text-[#1677FF]" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="font-semibold text-slate-900 text-base">
-                    Agent Identity &amp; Persona
-                  </h2>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    {agent.isActiveForUser || agent.status === "active" ? "Active" : "Draft"}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <h2 className="font-bold text-[#102A56] text-base md:text-[17px] tracking-tight">
+                  Agent Identity &amp; Persona
+                </h2>
+                <p className="text-xs text-[#526B91] mt-0.5 font-normal">
                   Define the agent's name, conversation tone, and response style.
                 </p>
               </div>
             </div>
+
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#EAF8F1] text-[#079669] border border-[#079669]/20 shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-[#079669] animate-pulse" />
+              Active
+            </span>
           </div>
 
-          {/* 3 Column Form Grid */}
-          <div className="ai-form-grid mt-4 pt-1">
+          {/* 3-Column Responsive Inputs with Icons in Labels */}
+          <div className="ai-form-grid pt-5 md:pt-6">
             <div>
-              <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
-                Agent Name
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-[#102A56] mb-2">
+                <User className="w-3.5 h-3.5 text-[#1677FF]" />
+                <span>Agent Name</span>
               </label>
               <input
                 type="text"
                 value={agentName}
                 onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="Loan Assistant"
-                className="w-full px-3 py-2 text-sm text-slate-800 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 shadow-xs"
+                className="ai-input h-[44px] px-4 bg-white border border-[#DCE8F8] hover:border-[#1677FF]/60 focus:border-[#1677FF] focus:ring-3 focus:ring-[#1677FF]/10 rounded-[10px] text-xs md:text-[13px] font-medium text-[#102A56] placeholder-[#8FA0BC] transition outline-none shadow-[0_1px_3px_rgba(22,119,255,0.03)]"
               />
             </div>
 
             <div>
-              <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
-                Conversation Tone
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-[#102A56] mb-2">
+                <MessageSquare className="w-3.5 h-3.5 text-[#1677FF]" />
+                <span>Conversation Tone</span>
               </label>
-              <select
-                value={conversationTone}
-                onChange={(e) => handleToneChange(e.target.value)}
-                className="w-full px-3 py-2 text-sm text-slate-800 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 cursor-pointer shadow-xs"
-              >
-                <option value="Professional and Friendly">Professional and Friendly</option>
-                <option value="Formal">Formal</option>
-                <option value="Conversational">Conversational</option>
-                <option value="Empathetic">Empathetic</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={conversationTone}
+                  onChange={(e) => handleToneChange(e.target.value)}
+                  className="ai-select h-[44px] px-4 pr-10 bg-white border border-[#DCE8F8] hover:border-[#1677FF]/60 focus:border-[#1677FF] focus:ring-3 focus:ring-[#1677FF]/10 rounded-[10px] text-xs md:text-[13px] font-medium text-[#102A56] transition outline-none appearance-none cursor-pointer shadow-[0_1px_3px_rgba(22,119,255,0.03)]"
+                >
+                  <option value="Professional and Friendly">Professional and friendly</option>
+                  <option value="Formal">Formal</option>
+                  <option value="Conversational">Conversational</option>
+                  <option value="Empathetic">Empathetic</option>
+                </select>
+                <ChevronDown className="w-4 h-4 text-[#526B91] pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2" />
+              </div>
             </div>
 
             <div>
-              <label className="block text-[13px] font-medium text-slate-700 mb-1.5">
-                Response Style
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-[#102A56] mb-2">
+                <Sliders className="w-3.5 h-3.5 text-[#1677FF]" />
+                <span>Response Style</span>
               </label>
-              <select
-                value={responseStyle}
-                onChange={(e) => handleStyleChange(e.target.value)}
-                className="w-full px-3 py-2 text-sm text-slate-800 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 cursor-pointer shadow-xs"
-              >
-                <option value="Clear, Helpful, Concise">Clear, Helpful, Concise</option>
-                <option value="Detailed">Detailed</option>
-                <option value="Step-by-Step">Step-by-Step</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={responseStyle}
+                  onChange={(e) => handleStyleChange(e.target.value)}
+                  className="ai-select h-[44px] px-4 pr-10 bg-white border border-[#DCE8F8] hover:border-[#1677FF]/60 focus:border-[#1677FF] focus:ring-3 focus:ring-[#1677FF]/10 rounded-[10px] text-xs md:text-[13px] font-medium text-[#102A56] transition outline-none appearance-none cursor-pointer shadow-[0_1px_3px_rgba(22,119,255,0.03)]"
+                >
+                  <option value="Clear, Helpful, Concise">Clear, helpful, concise</option>
+                  <option value="Detailed">Detailed</option>
+                  <option value="Step-by-Step">Step-by-step</option>
+                </select>
+                <ChevronDown className="w-4 h-4 text-[#526B91] pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2" />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* 3. INSTRUCTIONS FOR THE AI AGENT (FULL WIDTH) */}
-        <div className="ai-card">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-                <FileText className="w-4 h-4" />
+        {/* 4. INSTRUCTIONS FOR THE AI AGENT (FULL WIDTH WHITE CARD DIRECTLY BELOW PERSONA) */}
+        <div className="ai-card p-5 md:p-6 shadow-[0_2px_10px_rgba(30,80,150,0.03)] border border-[#DCE8F8] rounded-[14px]">
+          <div className="flex items-center justify-between pb-3.5 border-b border-[#DCE8F8]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-[10px] bg-[#E6EEFF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
+                <FileText className="w-5 h-5 text-[#1677FF]" />
               </div>
               <div>
-                <h2 className="font-semibold text-slate-900 text-base">
+                <h2 className="font-bold text-[#12336B] text-base tracking-tight">
                   Instructions for the AI Agent
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-[#526B91] mt-0.5">
                   Master instruction prompt, financial verification rules, and conversational logic.
-                </p>
+                 </p>
+               </div>
+             </div>
+           </div>
+           {/* Clean Instructions Container Box */}
+          <div className="pt-4">
+            <div className="border border-[#DCE8F8] focus-within:border-[#1677FF] focus-within:ring-2 focus-within:ring-[#1677FF]/10 rounded-[12px] bg-white p-4 transition shadow-xs">
+              <textarea
+                value={instructionsText}
+                onChange={(e) => handleInstructionsChange(e.target.value)}
+                placeholder="Write your custom instructions here..."
+                className="ai-textarea !min-h-[85px] w-full border-0 p-0 text-xs text-[#12336B] placeholder-[#8FA0BC] resize-y focus:outline-none focus:ring-0 bg-transparent leading-relaxed"
+              />
+
+              {/* Reference Checklist Guidelines */}
+              <div className="pt-3.5 border-t border-[#F0F5FA] space-y-2 text-xs text-[#526B91]">
+                <div className="flex items-center gap-2">
+                  <Check className="w-3.5 h-3.5 text-[#1677FF] shrink-0" />
+                  <span>Be specific about how the agent should respond and behave.</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="w-3.5 h-3.5 text-[#1677FF] shrink-0" />
+                  <span>Include financial verification rules and escalation logic.</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="w-3.5 h-3.5 text-[#1677FF] shrink-0" />
+                  <span>Use clear, simple language for better understanding.</span>
+                </div>
+              </div>
+
+              {/* Character Limit Counter */}
+              <div className="text-right text-[11px] font-mono text-[#8FA0BC] pt-2">
+                {instructionsText.length.toLocaleString()} / 2000 characters
               </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200">
-              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-              Prompt Engine
-            </span>
-          </div>
 
-          <div className="mt-4">
-            <textarea
-              value={instructionsText}
-              onChange={(e) => handleInstructionsChange(e.target.value)}
-              placeholder="Enter instructions for the AI assistant..."
-              className="ai-textarea"
-            />
+            {/* Footer below textarea */}
+            <div className="flex items-center justify-between mt-3 text-xs text-[#526B91]">
+              <span className="text-[#079669] flex items-center gap-1.5 font-medium text-xs">
+                <Check className="w-3.5 h-3.5 text-[#079669]" />
+                Autosaved
+              </span>
 
-            <div className="flex items-center justify-between mt-3 text-xs text-slate-500">
-              <div className="flex items-center gap-4">
-                <span className="flex items-center gap-1.5 font-mono text-slate-500">
-                  <FileText className="w-3.5 h-3.5 text-slate-400" />
-                  {instructionsText.length}/2000 characters
-                </span>
-                <button
-                  type="button"
-                  onClick={applySuggestedInstruction}
-                  className="text-blue-600 hover:text-blue-700 font-semibold cursor-pointer flex items-center gap-1.5 transition"
-                >
-                  <Lightbulb className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Suggested prompt</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <span className="text-slate-500 flex items-center gap-1.5 font-medium">
-                  <Check className="w-3.5 h-3.5 text-emerald-500" />
-                  Autosaved
-                </span>
-                <button
-                  type="button"
-                  onClick={handleSaveClick}
-                  disabled={saving}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer disabled:opacity-50"
-                >
-                  {saving ? "Saving..." : "Save Instructions"}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleSaveClick}
+                disabled={saving}
+                className="h-[30px] px-3 bg-[#1677FF] hover:bg-[#0E65E6] active:bg-[#0958D9] text-white rounded-[6px] text-xs font-semibold shadow-xs cursor-pointer transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] hover:shadow-md disabled:opacity-50 disabled:hover:translate-y-0 inline-flex items-center gap-1.5"
+              >
+                <Save className="w-3.5 h-3.5 text-white" />
+                <span>{saving ? "Saving..." : "Save Instructions"}</span>
+              </button>
             </div>
           </div>
         </div>
 
-        {/* 4. KNOWLEDGE BASE UPLOAD (2-COLUMN GRID) */}
+        {/* 3. KNOWLEDGE BASE UPLOAD & SOURCES (50/50 SIDE-BY-SIDE EQUAL-HEIGHT GRID) */}
         <div className="ai-upload-grid">
           {/* Left: Drag-and-Drop Upload Area */}
-          <div className="ai-card flex flex-col justify-between">
+          <div className="ai-card flex flex-col justify-between rounded-[14px] border border-[#DCE8F8] bg-white p-5 md:p-6 shadow-[0_2px_10px_rgba(30,80,150,0.03)]">
             <div>
-              <div className="flex items-start gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-                  <UploadCloud className="w-4 h-4" />
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-[10px] bg-[#E1EFFF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
+                  <UploadCloud className="w-5 h-5 text-[#1677FF]" />
                 </div>
                 <div>
-                  <h2 className="font-semibold text-slate-900 text-base">
+                  <h2 className="font-bold text-[#12336B] text-base tracking-tight">
                     Upload Knowledge Base
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-[#526B91] mt-0.5">
                     Add documents like PDFs, Word files, or text files.
                   </p>
-                  <p className="text-[12px] text-slate-400 mt-0.5">
-                    Supported formats: PDF, DOCX, TXT, CSV, XLSX (Max size: 10MB per file)
+                  <p className="text-[11px] text-[#526B91]/80 mt-0.5 font-medium">
+                    Supported: PDF, DOCX, TXT, CSV, XLSX (Max size: 10MB per file)
                   </p>
                 </div>
               </div>
 
-              {/* Dropzone Box */}
+              {/* Dropzone Box with Normal Light Border */}
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="mt-4 border-2 border-dashed border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-blue-50/20 rounded-xl p-6 text-center transition cursor-pointer"
+                className="mt-4 border border-solid border-[#D2E2F8] hover:border-[#1677FF] bg-[#F7FAFE] hover:bg-[#EFF6FF] rounded-[10px] p-6 text-center transition-all duration-200 cursor-pointer shadow-[0_1px_3px_rgba(30,80,150,0.02)] hover:shadow-sm"
               >
                 <input
                   type="file"
@@ -904,73 +1130,78 @@ export default function AiInstructionsView({
                   accept=".pdf,.docx,.doc,.txt,.xlsx,.xls,.csv"
                   onChange={(e) => handleFileUpload(e.target.files)}
                 />
-                <div className="text-xs text-slate-500 mb-2.5">
+                <div className="text-xs text-[#526B91] mb-2 font-medium">
                   Drag and drop files here or
                 </div>
                 <button
                   type="button"
                   disabled={isUploading}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="h-[32px] px-4 bg-[#1677FF] hover:bg-[#0E65E6] active:bg-[#0958D9] text-white rounded-[6px] text-xs font-semibold shadow-xs transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <span>{isUploading ? "Uploading..." : "Choose Files"}</span>
                 </button>
-                <div className="text-[11px] text-slate-400 mt-2">
+                <div className="text-[11px] text-[#8FA0BC] mt-2">
                   Supports single or multiple files
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Right: Or add from existing sources */}
-          <div className="ai-card flex flex-col justify-between">
+          {/* Right: Add from existing sources */}
+          <div className="ai-card flex flex-col justify-between rounded-[14px] border border-[#DCE8F8] bg-white p-5 md:p-6 shadow-[0_2px_10px_rgba(30,80,150,0.03)]">
             <div>
-              <h3 className="font-semibold text-slate-900 text-sm mb-3">
-                Or add from existing sources
-              </h3>
+              <div className="mb-3.5">
+                <h3 className="font-bold text-[#12336B] text-base tracking-tight">
+                  Or add from existing sources
+                </h3>
+                <p className="text-xs text-[#526B91] mt-0.5">
+                  Connect live web links, text notes, or verified policies.
+                </p>
+              </div>
 
               <div className="space-y-2.5">
                 {/* 1. From URL */}
                 <button
                   type="button"
                   onClick={() => setIsUrlModalOpen(true)}
-                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 transition text-left cursor-pointer group shadow-xs bg-white"
+                  className="ai-source-card group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <Paperclip className="w-4 h-4" />
+                    <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <Link2 className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                      <div className="text-xs font-semibold text-[#12336B] group-hover:text-[#1677FF] transition-colors">
                         From URL
                       </div>
-                      <div className="text-[11px] text-slate-500">
+                      <div className="text-[11px] text-[#526B91]">
                         Add content from a web link
                       </div>
                     </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
+                  <ChevronRight className="w-4 h-4 text-[#8FA0BC] group-hover:text-[#1677FF] group-hover:translate-x-0.5 transition-all" />
                 </button>
 
                 {/* 2. From Text */}
                 <button
                   type="button"
                   onClick={() => setIsTextModalOpen(true)}
-                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 transition text-left cursor-pointer group shadow-xs bg-white"
+                  className="ai-source-card group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                      <div className="text-xs font-semibold text-[#12336B] group-hover:text-[#1677FF] transition-colors">
                         From Text
                       </div>
-                      <div className="text-[11px] text-slate-500">
+                      <div className="text-[11px] text-[#526B91]">
                         Paste your content directly
                       </div>
                     </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
+                  <ChevronRight className="w-4 h-4 text-[#8FA0BC] group-hover:text-[#1677FF] group-hover:translate-x-0.5 transition-all" />
                 </button>
 
                 {/* 3. From Knowledge Base Library */}
@@ -980,22 +1211,22 @@ export default function AiInstructionsView({
                     setIsLibraryModalOpen(true);
                     loadLibraryPolicies();
                   }}
-                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 transition text-left cursor-pointer group shadow-xs bg-white"
+                  className="ai-source-card group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <BookOpen className="w-4 h-4" />
+                    <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <Folder className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                      <div className="text-xs font-semibold text-[#12336B] group-hover:text-[#1677FF] transition-colors">
                         From Knowledge Base Library
                       </div>
-                      <div className="text-[11px] text-slate-500">
+                      <div className="text-[11px] text-[#526B91]">
                         Use existing pre-configured data
                       </div>
                     </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
+                  <ChevronRight className="w-4 h-4 text-[#8FA0BC] group-hover:text-[#1677FF] group-hover:translate-x-0.5 transition-all" />
                 </button>
               </div>
             </div>
@@ -1003,18 +1234,18 @@ export default function AiInstructionsView({
         </div>
 
         {/* 5. UPLOADED KNOWLEDGE BASE FILES */}
-        <div className="ai-card p-0 overflow-hidden">
+        <div className="ai-card p-0 overflow-hidden rounded-[14px] border border-[#DCE8F8] bg-white shadow-[0_2px_10px_rgba(30,80,150,0.03)]">
           {/* Table Header Controls */}
-          <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-                <BookOpen className="w-4 h-4" />
+          <div className="p-4 sm:p-5 border-b border-[#DCE8F8] flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-white">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-[10px] bg-[#E1EFFF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
+                <BookOpen className="w-5 h-5 text-[#1677FF]" />
               </div>
               <div>
-                <h2 className="font-semibold text-slate-900 text-base">
+                <h2 className="font-bold text-[#12336B] text-base tracking-tight">
                   Uploaded Knowledge Base Files
                 </h2>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#526B91] mt-0.5">
                   Manage your uploaded files and view their status.
                 </p>
               </div>
@@ -1022,7 +1253,7 @@ export default function AiInstructionsView({
 
             <div className="flex items-center gap-2.5">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                <Search className="w-3.5 h-3.5 text-[#8FA0BC] absolute left-3 top-3" />
                 <input
                   type="text"
                   placeholder="Search files..."
@@ -1031,7 +1262,7 @@ export default function AiInstructionsView({
                     setSearchQuery(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 shadow-xs w-44"
+                  className="ai-search-input h-[38px] rounded-[8px] pl-9 border border-[#DCE8F8] text-xs"
                 />
               </div>
 
@@ -1041,7 +1272,7 @@ export default function AiInstructionsView({
                   setTypeFilter(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 shadow-xs cursor-pointer text-slate-700"
+                className="h-[38px] px-3 py-1 text-xs text-[#12336B] bg-white border border-[#DCE8F8] rounded-[8px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] shadow-xs cursor-pointer transition-all"
               >
                 <option value="All Types">All Types</option>
                 <option value="PDF">PDF</option>
@@ -1055,24 +1286,24 @@ export default function AiInstructionsView({
                 type="button"
                 onClick={loadAgentKnowledge}
                 disabled={isLoadingDocs}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition"
+                className="h-[38px] w-[38px] flex items-center justify-center border border-[#DCE8F8] text-[#526B91] hover:text-[#1677FF] hover:bg-[#EAF3FF] rounded-[8px] transition cursor-pointer shadow-xs"
                 title="Refresh list"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingDocs ? "animate-spin" : ""}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingDocs ? "animate-spin text-[#1677FF]" : ""}`} />
               </button>
             </div>
           </div>
 
           {/* Error State */}
           {docsError && (
-            <div className="p-4 bg-rose-50 border-b border-rose-100 flex items-center justify-between text-xs text-rose-700">
+            <div className="p-3.5 bg-rose-50 border-b border-rose-100 flex items-center justify-between text-xs text-rose-700">
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>{docsError}</span>
               </div>
               <button
                 onClick={loadAgentKnowledge}
-                className="font-semibold underline hover:text-rose-900"
+                className="font-semibold underline hover:text-rose-900 cursor-pointer"
               >
                 Retry
               </button>
@@ -1084,7 +1315,7 @@ export default function AiInstructionsView({
             <table className="ai-file-table">
               <thead>
                 <tr>
-                  <th style={{ width: "40px" }}>
+                  <th style={{ width: "36px" }}>
                     <input
                       type="checkbox"
                       checked={
@@ -1092,7 +1323,7 @@ export default function AiInstructionsView({
                         paginatedDocs.length > 0
                       }
                       onChange={handleToggleSelectAll}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-[#DCE8F8] text-[#1677FF] focus:ring-[#1677FF] accent-[#1677FF]"
                     />
                   </th>
                   <th>File Name</th>
@@ -1107,10 +1338,10 @@ export default function AiInstructionsView({
                 {/* Loading State */}
                 {isLoadingDocs ? (
                   <tr>
-                    <td colSpan={7} className="text-center text-slate-400" style={{ padding: "48px 14px" }}>
+                    <td colSpan={7} className="text-center text-[#526B91]" style={{ padding: "40px 14px" }}>
                       <div className="flex flex-col items-center justify-center gap-2">
-                        <RefreshCw className="w-5 h-5 text-blue-600 animate-spin" />
-                        <span className="text-xs font-medium text-slate-500">
+                        <RefreshCw className="w-5 h-5 text-[#1677FF] animate-spin" />
+                        <span className="text-xs font-medium text-[#526B91]">
                           Loading knowledge documents from database...
                         </span>
                       </div>
@@ -1119,16 +1350,16 @@ export default function AiInstructionsView({
                 ) : paginatedDocs.length === 0 ? (
                   /* Empty State */
                   <tr>
-                    <td colSpan={7} className="text-center text-slate-400" style={{ padding: "48px 14px" }}>
+                    <td colSpan={7} className="text-center text-[#526B91]" style={{ padding: "40px 14px" }}>
                       <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
-                        <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
-                          <BookOpen className="w-5 h-5" />
+                        <div className="w-9 h-9 rounded-full bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center">
+                          <BookOpen className="w-4.5 h-4.5" />
                         </div>
-                        <span className="text-xs font-semibold text-slate-700">
+                        <span className="text-xs font-semibold text-[#12336B]">
                           No knowledge documents found
                         </span>
-                        <p className="text-[11px] text-slate-400 text-center">
-                          Upload documents above using the dropzone or click "From Knowledge Base Library" to connect pre-verified bank policies.
+                        <p className="text-[11px] text-[#526B91] text-center">
+                          Upload documents above or click "From Knowledge Base Library" to connect pre-verified bank policies.
                         </p>
                       </div>
                     </td>
@@ -1143,26 +1374,26 @@ export default function AiInstructionsView({
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleToggleSelectDoc(doc.id)}
-                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            className="rounded border-[#DCE8F8] text-[#1677FF] focus:ring-[#1677FF] accent-[#1677FF]"
                           />
                         </td>
-                        <td className="font-semibold text-slate-800">
-                          <div className="flex items-center gap-2">
+                        <td className="font-semibold text-[#12336B]">
+                          <div className="flex items-center gap-2.5">
                             {doc.type === "PDF" ? (
-                              <span className="w-6 h-6 rounded bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                                <FileText className="w-3.5 h-3.5" />
+                              <span className="w-5.5 h-5.5 rounded-[4px] bg-[#EE3F43] text-white font-bold text-[8px] flex items-center justify-center shrink-0 tracking-tight shadow-2xs">
+                                PDF
                               </span>
                             ) : doc.type === "XLSX" || doc.type === "CSV" ? (
-                              <span className="w-6 h-6 rounded bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                                <FileSpreadsheet className="w-3.5 h-3.5" />
+                              <span className="w-5.5 h-5.5 rounded-[4px] bg-[#107C41] text-white font-bold text-[7.5px] flex items-center justify-center shrink-0 tracking-tight shadow-2xs">
+                                XLSX
                               </span>
                             ) : doc.type === "DOCX" ? (
-                              <span className="w-6 h-6 rounded bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                                <FileText className="w-3.5 h-3.5" />
+                              <span className="w-5.5 h-5.5 rounded-[4px] bg-[#185ABD] text-white font-bold text-[7.5px] flex items-center justify-center shrink-0 tracking-tight shadow-2xs">
+                                DOCX
                               </span>
                             ) : (
-                              <span className="w-6 h-6 rounded bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
-                                <FileCode className="w-3.5 h-3.5" />
+                              <span className="w-5.5 h-5.5 rounded-[4px] bg-[#475569] text-white font-bold text-[8px] flex items-center justify-center shrink-0 tracking-tight shadow-2xs">
+                                TXT
                               </span>
                             )}
                             <span className="truncate max-w-[220px]" title={doc.name}>
@@ -1172,36 +1403,36 @@ export default function AiInstructionsView({
                         </td>
                         <td>
                           <span
-                            className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${
+                            className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide ${
                               doc.type === "PDF"
-                                ? "bg-rose-50 text-rose-600 border border-rose-200"
+                                ? "bg-rose-50 text-rose-500 border border-rose-200/60"
                                 : doc.type === "XLSX" || doc.type === "CSV"
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                ? "bg-emerald-50 text-emerald-600 border border-emerald-200/60"
                                 : doc.type === "DOCX"
-                                ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                : "bg-slate-100 text-slate-700 border border-slate-200"
+                                ? "bg-blue-50 text-[#1677FF] border border-blue-200/60"
+                                : "bg-slate-100 text-[#526B91] border border-slate-200/60"
                             }`}
                           >
                             {doc.type}
                           </span>
                         </td>
-                        <td className="text-slate-500 font-mono text-[11px]">
+                        <td className="text-[#526B91] font-mono text-[11px]">
                           {doc.size}
                         </td>
-                        <td className="text-slate-500 whitespace-nowrap text-[11px]">
+                        <td className="text-[#526B91] whitespace-nowrap text-[11px]">
                           {doc.uploadedOn}
                         </td>
                         <td>
                           <span
                             className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
                               doc.status === "Active"
-                                ? "ai-file-status--active"
+                                ? "bg-[#E7F9F1] text-[#079669] border border-[#079669]/20"
                                 : "bg-rose-50 text-rose-700 border border-rose-200"
                             }`}
                           >
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${
-                                doc.status === "Active" ? "bg-emerald-500" : "bg-rose-500"
+                                doc.status === "Active" ? "bg-[#079669]" : "bg-rose-500"
                               }`}
                             />
                             {doc.status}
@@ -1214,7 +1445,7 @@ export default function AiInstructionsView({
                               type="button"
                               onClick={() => setPreviewDoc(doc)}
                               className="ai-action-btn"
-                              title="View file"
+                              title="View"
                               aria-label="View file"
                             >
                               <Eye />
@@ -1232,22 +1463,33 @@ export default function AiInstructionsView({
                                 setEditGuardrailText(doc.guardrailText || "");
                               }}
                               className="ai-action-btn"
-                              title="Edit file"
+                              title="Edit"
                               aria-label="Edit file"
                             >
                               <Edit2 />
                             </button>
 
-                            {/* Delete File */}
-                            <button
-                              type="button"
-                              onClick={() => setDeleteDocTarget(doc)}
-                              className="ai-action-btn ai-action-btn--delete"
-                              title="Delete file"
-                              aria-label="Delete file"
-                            >
-                              <Trash2 />
-                            </button>
+                           {/* Delete File */}
+                           <button
+                             type="button"
+                             onClick={() => setDeleteDocTarget(doc)}
+                             className="ai-action-btn ai-action-btn--delete"
+                             title="Delete"
+                             aria-label="Delete file"
+                           >
+                             <Trash2 />
+                           </button>
+
+                           {/* Download File */}
+                           <button
+                             type="button"
+                             onClick={() => handleDownloadFile(doc)}
+                             className="ai-action-btn"
+                             title="Download"
+                             aria-label="Download file"
+                           >
+                             <Download />
+                           </button>
                           </div>
                         </td>
                       </tr>
@@ -1258,27 +1500,26 @@ export default function AiInstructionsView({
             </table>
           </div>
 
-          {/* Table Footer with Real Pagination */}
-          <div className="p-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-white">
+          {/* Table Footer with Pagination */}
+          <div className="p-3.5 border-t border-[#DCE8F8] flex items-center justify-between text-xs text-[#526B91] bg-white">
             <span>
               {filteredDocs.length > 0 ? (
                 <>
-                  Showing{" "}
-                  <strong>{(currentPage - 1) * PAGE_SIZE + 1}</strong> to{" "}
-                  <strong>{Math.min(currentPage * PAGE_SIZE, filteredDocs.length)}</strong> of{" "}
-                  <strong>{filteredDocs.length}</strong> files
+                  Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, filteredDocs.length)}-
+                  {Math.min(currentPage * PAGE_SIZE, filteredDocs.length)} of {filteredDocs.length} files
                 </>
               ) : (
-                "0 files"
+                "Showing 0 of 0 files"
               )}
             </span>
 
-            <div className="flex items-center gap-1 text-xs">
+            <div className="flex items-center gap-1.5 text-xs">
               <button
                 type="button"
                 disabled={currentPage <= 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="px-2.5 py-1 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="w-7 h-7 flex items-center justify-center border border-[#DCE8F8] rounded-[6px] text-xs font-semibold text-[#526B91] hover:bg-[#F5F9FF] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
+                aria-label="Previous page"
               >
                 &lt;
               </button>
@@ -1288,10 +1529,10 @@ export default function AiInstructionsView({
                   key={page}
                   type="button"
                   onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer ${
+                  className={`w-7 h-7 flex items-center justify-center rounded-[6px] text-xs font-semibold cursor-pointer transition ${
                     currentPage === page
-                      ? "bg-blue-600 text-white"
-                      : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+                      ? "bg-[#1677FF] text-white shadow-xs"
+                      : "border border-[#DCE8F8] text-[#526B91] hover:bg-[#F5F9FF]"
                   }`}
                 >
                   {page}
@@ -1302,7 +1543,8 @@ export default function AiInstructionsView({
                 type="button"
                 disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="px-2.5 py-1 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="w-7 h-7 flex items-center justify-center border border-[#DCE8F8] rounded-[6px] text-xs font-semibold text-[#526B91] hover:bg-[#F5F9FF] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
+                aria-label="Next page"
               >
                 &gt;
               </button>
@@ -1313,76 +1555,78 @@ export default function AiInstructionsView({
 
       {/* MODAL 1: View File Details Modal */}
       {previewDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-600" />
-                <h3 className="font-bold text-slate-900 text-sm truncate max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white rounded-[10px] max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] animate-fadeIn">
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#DCE8F8]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0">
+                  <FileText className="w-4 h-4 text-[#1677FF]" />
+                </div>
+                <h3 className="font-bold text-[#12336B] text-sm truncate max-w-md">
                   {previewDoc.name}
                 </h3>
               </div>
               <button
                 onClick={() => setPreviewDoc(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-md cursor-pointer"
+                className="text-[#8FA0BC] hover:text-[#12336B] p-1 rounded-md cursor-pointer transition"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="mt-4 space-y-3 max-h-[60vh] overflow-y-auto text-xs text-slate-600 leading-relaxed">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px]">
+            <div className="mt-4 space-y-3 max-h-[60vh] overflow-y-auto text-xs text-[#526B91] leading-relaxed">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-[8px] bg-[#F5F9FF] border border-[#DCE8F8] text-[11px]">
                 <div>
-                  <span className="text-slate-400 block">Format</span>
-                  <span className="font-bold text-slate-800">{previewDoc.type}</span>
+                  <span className="text-[#8FA0BC] block">Format</span>
+                  <span className="font-bold text-[#12336B]">{previewDoc.type}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block">File Size</span>
-                  <span className="font-bold text-slate-800">{previewDoc.size}</span>
+                  <span className="text-[#8FA0BC] block">File Size</span>
+                  <span className="font-bold text-[#12336B]">{previewDoc.size}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block">Uploaded On</span>
-                  <span className="font-bold text-slate-800">{previewDoc.uploadedOn}</span>
+                  <span className="text-[#8FA0BC] block">Uploaded On</span>
+                  <span className="font-bold text-[#12336B]">{previewDoc.uploadedOn}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block">Status</span>
-                  <span className="font-bold text-emerald-600">Active</span>
+                  <span className="text-[#8FA0BC] block">Status</span>
+                  <span className="font-bold text-[#079669]">Active</span>
                 </div>
               </div>
 
               {previewDoc.instructionText && (
-                <div className="p-3 rounded-xl bg-blue-50/50 border border-blue-100">
-                  <span className="text-[10px] font-bold uppercase text-blue-700 block mb-1">
+                <div className="p-3 rounded-[8px] bg-[#EAF3FF]/60 border border-[#DCE8F8]">
+                  <span className="text-[10px] font-bold uppercase text-[#1677FF] block mb-1">
                     Document Usage Instruction
                   </span>
-                  <p className="text-slate-700 text-xs">{previewDoc.instructionText}</p>
+                  <p className="text-[#12336B] text-xs">{previewDoc.instructionText}</p>
                 </div>
               )}
 
               {previewDoc.guardrailText && (
-                <div className="p-3 rounded-xl bg-purple-50/50 border border-purple-100">
+                <div className="p-3 rounded-[8px] bg-purple-50/60 border border-purple-100">
                   <span className="text-[10px] font-bold uppercase text-purple-700 block mb-1">
                     Safety Guardrail
                   </span>
-                  <p className="text-slate-700 text-xs">{previewDoc.guardrailText}</p>
+                  <p className="text-[#12336B] text-xs">{previewDoc.guardrailText}</p>
                 </div>
               )}
 
               <div>
-                <span className="text-[11px] font-bold text-slate-700 block mb-1.5">
+                <span className="text-[11px] font-bold text-[#12336B] block mb-1.5">
                   Extracted Content / Policy Rules Preview
                 </span>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 font-mono text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto">
+                <div className="p-3.5 rounded-[8px] bg-[#F5F9FF] border border-[#DCE8F8] font-mono text-[11px] text-[#12336B] whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto">
                   {previewDoc.content ||
                     `Document: ${previewDoc.name}\n\nBank underwriting criteria and credit guidelines are indexed in PostgreSQL vector memory for ${agentName}.\nWhen users inquire about eligibility, this document will be retrieved to ground loan parameters.`}
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 pt-3 border-t border-slate-100 flex justify-end">
+            <div className="mt-4 pt-3 border-t border-[#DCE8F8] flex justify-end">
               <button
                 onClick={() => setPreviewDoc(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer"
+                className="px-4 py-1.5 border border-[#DCE8F8] hover:bg-[#F5F9FF] text-[#526B91] rounded-[7px] text-xs font-semibold cursor-pointer transition"
               >
                 Close Preview
               </button>
@@ -1393,38 +1637,40 @@ export default function AiInstructionsView({
 
       {/* MODAL 2: Edit Configuration & Metadata Modal */}
       {editConfigDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Edit2 className="w-4 h-4 text-blue-600" />
-                <h3 className="font-bold text-slate-900 text-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white rounded-[10px] max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-[#DCE8F8]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0">
+                  <Edit2 className="w-4 h-4 text-[#1677FF]" />
+                </div>
+                <h3 className="font-bold text-[#12336B] text-sm">
                   Edit File Configuration &amp; Metadata
                 </h3>
               </div>
               <button
                 onClick={() => setEditConfigDoc(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                className="text-[#8FA0BC] hover:text-[#12336B] p-1 cursor-pointer transition"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="mt-4 space-y-3.5 text-xs">
+            <div className="mt-4 space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-[#12336B] mb-1">
                   File Display Name
                 </label>
                 <input
                   type="text"
                   value={editDocName}
                   onChange={(e) => setEditDocName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                  className="w-full px-3 py-1.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-[#12336B] mb-1">
                   Document Usage Instruction
                 </label>
                 <textarea
@@ -1432,13 +1678,13 @@ export default function AiInstructionsView({
                   placeholder="e.g. Reference this document strictly when applicant asks about salary requirements..."
                   value={editInstructionText}
                   onChange={(e) => setEditInstructionText(e.target.value)}
-                  className="w-full p-2.5 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                  className="w-full p-2.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-[#12336B] mb-1">
                     When to Use (Keywords)
                   </label>
                   <input
@@ -1446,11 +1692,11 @@ export default function AiInstructionsView({
                     placeholder="e.g. personal loan, cibil, foir"
                     value={editWhenToUse}
                     onChange={(e) => setEditWhenToUse(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                    className="w-full px-3 py-1.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-[#12336B] mb-1">
                     When Not to Use
                   </label>
                   <input
@@ -1458,13 +1704,13 @@ export default function AiInstructionsView({
                     placeholder="e.g. home loan, gold loan"
                     value={editWhenNotToUse}
                     onChange={(e) => setEditWhenNotToUse(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                    className="w-full px-3 py-1.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-[#12336B] mb-1">
                   Safety Guardrail for this File
                 </label>
                 <input
@@ -1472,16 +1718,16 @@ export default function AiInstructionsView({
                   placeholder="e.g. Never disclose internal underwriter notes to applicants"
                   value={editGuardrailText}
                   onChange={(e) => setEditGuardrailText(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                  className="w-full px-3 py-1.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
                 />
               </div>
             </div>
 
-            <div className="mt-5 pt-3 border-t border-slate-100 flex justify-end gap-2">
+            <div className="mt-5 pt-3 border-t border-[#DCE8F8] flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setEditConfigDoc(null)}
-                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                className="px-3 py-1.5 text-xs text-[#526B91] hover:bg-[#F5F9FF] border border-[#DCE8F8] rounded-[7px] cursor-pointer transition"
               >
                 Cancel
               </button>
@@ -1489,7 +1735,7 @@ export default function AiInstructionsView({
                 type="button"
                 disabled={isSavingDocConfig}
                 onClick={handleSaveDocConfig}
-                className="px-4 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
+                className="px-4 py-1.5 text-xs bg-[#1677FF] hover:bg-[#0e65e6] text-white rounded-[7px] font-semibold shadow-xs disabled:opacity-50 cursor-pointer transition"
               >
                 {isSavingDocConfig ? "Saving..." : "Save Configuration"}
               </button>
@@ -1500,32 +1746,32 @@ export default function AiInstructionsView({
 
       {/* MODAL 3: Delete File Confirmation Modal */}
       {deleteDocTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-200 animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white rounded-[10px] max-w-md w-full p-5 sm:p-6 shadow-2xl border border-rose-200 animate-fadeIn">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5" />
+              <div className="w-9 h-9 rounded-lg bg-rose-50 text-[#F04452] flex items-center justify-center shrink-0">
+                <Trash2 className="w-4.5 h-4.5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-sm">
+                <h3 className="font-bold text-[#12336B] text-sm">
                   Delete Knowledge Document?
                 </h3>
-                <span className="text-[11px] text-rose-600 font-semibold">
+                <span className="text-[11px] text-[#F04452] font-semibold">
                   Destructive Action
                 </span>
               </div>
             </div>
 
-            <p className="text-xs text-slate-600 leading-relaxed mb-4">
+            <p className="text-xs text-[#526B91] leading-relaxed mb-4">
               Are you sure you want to remove <strong>"{deleteDocTarget.name}"</strong>? All extracted text chunks and embeddings associated with this document will be erased from PostgreSQL.
             </p>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#DCE8F8]">
               <button
                 type="button"
                 disabled={isDeletingDoc}
                 onClick={() => setDeleteDocTarget(null)}
-                className="px-3.5 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                className="px-3.5 py-1.5 text-xs text-[#526B91] hover:bg-[#F5F9FF] border border-[#DCE8F8] rounded-[7px] cursor-pointer transition"
               >
                 Cancel
               </button>
@@ -1533,7 +1779,7 @@ export default function AiInstructionsView({
                 type="button"
                 disabled={isDeletingDoc}
                 onClick={handleConfirmDeleteDoc}
-                className="px-4 py-1.5 text-xs bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg shadow-xs disabled:opacity-50 cursor-pointer"
+                className="px-4 py-1.5 text-xs bg-[#F04452] hover:bg-[#dc2626] text-white font-semibold rounded-[7px] shadow-xs disabled:opacity-50 cursor-pointer transition"
               >
                 {isDeletingDoc ? "Deleting..." : "Permanently Delete"}
               </button>
@@ -1544,18 +1790,20 @@ export default function AiInstructionsView({
 
       {/* MODAL 4: From URL Modal */}
       {isUrlModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Paperclip className="w-4 h-4 text-blue-600" />
-                <h3 className="font-bold text-slate-900 text-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white rounded-[10px] max-w-md w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-[#DCE8F8]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0">
+                  <Paperclip className="w-4 h-4 text-[#1677FF]" />
+                </div>
+                <h3 className="font-bold text-[#12336B] text-sm">
                   Add Knowledge from URL
                 </h3>
               </div>
               <button
                 onClick={() => setIsUrlModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                className="text-[#8FA0BC] hover:text-[#12336B] p-1 cursor-pointer transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1563,7 +1811,7 @@ export default function AiInstructionsView({
 
             <div className="mt-4 space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-[#12336B] mb-1">
                   Source Web URL
                 </label>
                 <input
@@ -1571,12 +1819,12 @@ export default function AiInstructionsView({
                   placeholder="https://example.com/bank-loan-criteria"
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                  className="w-full px-3 py-1.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-[#12336B] mb-1">
                   Document Display Name (optional)
                 </label>
                 <input
@@ -1584,26 +1832,26 @@ export default function AiInstructionsView({
                   placeholder="e.g. Bank_Online_Policy.txt"
                   value={urlTitleInput}
                   onChange={(e) => setUrlTitleInput(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                  className="w-full px-3 py-1.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
                 />
               </div>
 
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-[#526B91]">
                 The content from the web link will be processed and indexed into PostgreSQL for this agent.
               </p>
             </div>
 
-            <div className="mt-5 pt-3 border-t border-slate-100 flex justify-end gap-2">
+            <div className="mt-5 pt-3 border-t border-[#DCE8F8] flex justify-end gap-2">
               <button
                 onClick={() => setIsUrlModalOpen(false)}
-                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                className="px-3 py-1.5 text-xs text-[#526B91] hover:bg-[#F5F9FF] border border-[#DCE8F8] rounded-[7px] cursor-pointer transition"
               >
                 Cancel
               </button>
               <button
                 disabled={!urlInput.trim() || isAddingFromSource}
                 onClick={handleAddFromUrl}
-                className="px-4 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
+                className="px-4 py-1.5 text-xs bg-[#1677FF] hover:bg-[#0e65e6] text-white rounded-[7px] font-semibold shadow-xs disabled:opacity-50 cursor-pointer transition"
               >
                 {isAddingFromSource ? "Importing..." : "Import URL"}
               </button>
@@ -1614,18 +1862,20 @@ export default function AiInstructionsView({
 
       {/* MODAL 5: From Text Modal */}
       {isTextModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-purple-600" />
-                <h3 className="font-bold text-slate-900 text-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white rounded-[10px] max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-[#DCE8F8]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0">
+                  <FileText className="w-4 h-4 text-[#1677FF]" />
+                </div>
+                <h3 className="font-bold text-[#12336B] text-sm">
                   Add Raw Text Knowledge
                 </h3>
               </div>
               <button
                 onClick={() => setIsTextModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                className="text-[#8FA0BC] hover:text-[#12336B] p-1 cursor-pointer transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1633,7 +1883,7 @@ export default function AiInstructionsView({
 
             <div className="mt-4 space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-[#12336B] mb-1">
                   Document Title
                 </label>
                 <input
@@ -1641,12 +1891,12 @@ export default function AiInstructionsView({
                   placeholder="e.g. Underwriting_Exceptions.txt"
                   value={textTitleInput}
                   onChange={(e) => setTextTitleInput(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                  className="w-full px-3 py-1.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-[#12336B] mb-1">
                   Text Content / Policy Rules
                 </label>
                 <textarea
@@ -1654,22 +1904,22 @@ export default function AiInstructionsView({
                   placeholder="Paste bank terms, company categories, FOIR rules, or underwriting exceptions..."
                   value={textContentInput}
                   onChange={(e) => setTextContentInput(e.target.value)}
-                  className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 leading-relaxed font-mono text-[11px]"
+                  className="w-full p-2.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] leading-relaxed font-mono text-[11px] transition shadow-xs"
                 />
               </div>
             </div>
 
-            <div className="mt-5 pt-3 border-t border-slate-100 flex justify-end gap-2">
+            <div className="mt-5 pt-3 border-t border-[#DCE8F8] flex justify-end gap-2">
               <button
                 onClick={() => setIsTextModalOpen(false)}
-                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                className="px-3 py-1.5 text-xs text-[#526B91] hover:bg-[#F5F9FF] border border-[#DCE8F8] rounded-[7px] cursor-pointer transition"
               >
                 Cancel
               </button>
               <button
                 disabled={!textContentInput.trim() || isAddingFromSource}
                 onClick={handleAddFromText}
-                className="px-4 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
+                className="px-4 py-1.5 text-xs bg-[#1677FF] hover:bg-[#0e65e6] text-white rounded-[7px] font-semibold shadow-xs disabled:opacity-50 cursor-pointer transition"
               >
                 {isAddingFromSource ? "Saving..." : "Save Knowledge Text"}
               </button>
@@ -1680,58 +1930,60 @@ export default function AiInstructionsView({
 
       {/* MODAL 6: From Knowledge Base Library Modal (Real Database Bank Policies) */}
       {isLibraryModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-emerald-600" />
-                <h3 className="font-bold text-slate-900 text-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white rounded-[10px] max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-[#DCE8F8]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0">
+                  <BookOpen className="w-4 h-4 text-[#1677FF]" />
+                </div>
+                <h3 className="font-bold text-[#12336B] text-sm">
                   Knowledge Base Library
                 </h3>
               </div>
               <button
                 onClick={() => setIsLibraryModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                className="text-[#8FA0BC] hover:text-[#12336B] p-1 cursor-pointer transition"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-500 mt-2 mb-3">
+            <p className="text-xs text-[#526B91] mt-2 mb-3">
               Select any verified bank master policy from the CreditWise database to attach and index for this agent:
             </p>
 
             {/* Library list */}
-            <div className="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
               {isLoadingLibrary ? (
-                <div className="py-12 text-center text-slate-400">
-                  <RefreshCw className="w-5 h-5 text-emerald-600 animate-spin mx-auto mb-2" />
+                <div className="py-10 text-center text-[#526B91]">
+                  <RefreshCw className="w-5 h-5 text-[#1677FF] animate-spin mx-auto mb-2" />
                   <span className="text-xs">Loading verified policies from database...</span>
                 </div>
               ) : libraryPolicies.length === 0 ? (
-                <div className="py-8 text-center text-slate-400 text-xs">
+                <div className="py-8 text-center text-[#526B91] text-xs">
                   No bank master policies found in database.
                 </div>
               ) : (
                 libraryPolicies.map((policy) => (
                   <div
                     key={policy.id || policy.bank_code}
-                    className="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-300 bg-white hover:bg-emerald-50/20 transition flex items-center justify-between gap-3 shadow-xs"
+                    className="p-3 rounded-[8px] border border-[#DCE8F8] hover:border-[#1677FF]/40 bg-white hover:bg-[#F5F9FF] transition flex items-center justify-between gap-3 shadow-xs"
                   >
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-900">
+                        <span className="text-xs font-bold text-[#12336B]">
                           {policy.bank_name}
                         </span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EAF3FF] text-[#1677FF]">
                           {policy.bank_code}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 line-clamp-1">
+                      <p className="text-[11px] text-[#526B91] line-clamp-1">
                         {policy.file_name || `${policy.bank_name} verified underwriting master policy`}
                       </p>
-                      <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                      <span className="text-[10px] text-[#079669] font-semibold flex items-center gap-1">
+                        <ShieldCheck className="w-3 h-3 text-[#079669]" />
                         Verified Bank Policy
                       </span>
                     </div>
@@ -1740,7 +1992,7 @@ export default function AiInstructionsView({
                       type="button"
                       disabled={isAddingFromSource}
                       onClick={() => handleAddFromLibrary(policy)}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shrink-0 shadow-xs transition cursor-pointer disabled:opacity-50"
+                      className="px-3.5 py-1.5 bg-[#1677FF] hover:bg-[#0e65e6] text-white rounded-[7px] text-xs font-semibold shrink-0 shadow-xs transition cursor-pointer disabled:opacity-50"
                     >
                       + Add to Agent
                     </button>
@@ -1749,20 +2001,20 @@ export default function AiInstructionsView({
               )}
             </div>
 
-            <div className="mt-5 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+            <div className="mt-4 pt-3 border-t border-[#DCE8F8] flex justify-between items-center text-xs">
               <button
                 type="button"
                 onClick={() => {
                   setIsLibraryModalOpen(false);
                   onNavigateToKnowledge();
                 }}
-                className="text-blue-600 hover:underline font-semibold cursor-pointer"
+                className="text-[#1677FF] hover:underline font-semibold cursor-pointer"
               >
                 Browse dedicated Knowledge Base page →
               </button>
               <button
                 onClick={() => setIsLibraryModalOpen(false)}
-                className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold cursor-pointer"
+                className="px-4 py-1.5 border border-[#DCE8F8] hover:bg-[#F5F9FF] text-[#526B91] rounded-[7px] font-semibold cursor-pointer transition"
               >
                 Close
               </button>

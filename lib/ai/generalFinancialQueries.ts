@@ -337,34 +337,15 @@ export async function answerGeneralFinancialQuery(
         }
       }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
-
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "http://localhost:3001",
-          "X-Title": "CreditWise AI",
-        },
-        body: JSON.stringify({
-          model: modelOverride || getModel(),
-          max_tokens: 500,
-          temperature: 0.1,
-          reasoning: { max_tokens: 0 },
-          messages,
-        }),
+      const { generateLangChainChatResponse } = await import("@/lib/ai/langchainResponse");
+      const content = await generateLangChainChatResponse(messages, {
+        model: modelOverride || getModel(),
+        signal: options?.signal,
+        maxTokens: 500,
+        temperature: 0.1,
       });
-
-      clearTimeout(timeoutId);
-      if (response.ok) {
-        const data = await response.json();
-        const content = data.choices?.[0]?.message?.content?.trim();
-        if (content && content.length > 50) {
-          return content;
-        }
+      if (content && content.length > 50) {
+        return content;
       }
     } catch (err) {
       console.warn("[GeneralFinancialQuery] LLM call failed or timed out:", err);

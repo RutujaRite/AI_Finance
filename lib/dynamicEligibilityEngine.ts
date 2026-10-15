@@ -473,7 +473,7 @@ export function detectLoanIntent(
   // Inquiries about obtaining loans while unemployed/jobless or without income/job are informational policy questions,
   // NOT loan application flows, and must NOT trigger loan intent or the eligibility wizard.
   const isJoblessPolicyInquiry =
-    /(?:jobless|unemployed|without\s*(?:a\s*)?job|no\s*job|not\s*working|zero\s*salary|without\s*income|no\s*income)/i.test(norm);
+    UNEMPLOYED_REGEX.test(norm);
   if (isJoblessPolicyInquiry) {
     return { isLoanIntent: false, loanType };
   }
@@ -576,7 +576,14 @@ export function parseFinancialAmount(valStr: string): number | null {
   const m = clean.match(/^(\d+(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?)?$/i) ||
             clean.match(/(\d+(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?)/i);
   if (!m) {
-    const rawNum = parseFloat(clean.replace(/[^\d.]/g, ""));
+    const numbers = clean.match(/\d+(?:\.\d+)?/g);
+    if (!numbers || numbers.length === 0) return null;
+    if (numbers.length > 1) {
+      // Multiple disjoint numbers present without units (e.g. "age 27 emi 10000")
+      // Do NOT concatenate them into a single giant number!
+      return null;
+    }
+    const rawNum = parseFloat(numbers[0]);
     return isNaN(rawNum) ? null : Math.round(rawNum);
   }
   let num = parseFloat(m[1]);
@@ -2752,6 +2759,30 @@ export function stripGreetingPrefix(text: string): string {
   return clean || text.trim();
 }
 
+export const UNEMPLOYED_REGEX = /\b(?:un[\s-]*empl(?:oy(?:ed)?|ye[de]?|ye|yed)|jobless|without\s*(?:a\s*)?job|no\s*job|lost\s*(?:my\s*)?job|laid\s*off|not\s*working(?:\s*anywhere)?|have\s*no\s*employment|no\s*employment|no\s*income|zero\s*income)\b/i;
+
+export function isPersonalNameOrIntroduction(text: string): boolean {
+  if (!text) return false;
+  const raw = text.trim();
+  const clean = raw.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+
+  // Explicit work/employer statements are NOT personal name introductions
+  if (/(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in)|comp(?:any|anies)?|employer)\b/i.test(clean)) {
+    return false;
+  }
+
+  // Self introductions like "i am rutuja", "i am rutuja is my name", "my name is rutuja", "rutuja is my name", "this is rahul", "myself amit"
+  if (
+    /\b(?:my\s*name\s*is|name\s*is|is\s*my\s*name|my\s*name|call\s*me\b|myself\s+[a-z]+)\b/i.test(clean) ||
+    /^(?:i\s*am|i['’]?m|this\s*is)\s+[a-z]+(?:\s+[a-z]+)?$/i.test(clean) ||
+    /^(?:i\s*am|i['’]?m)\s+[a-z]+(?:\s+[a-z]+)?\s+(?:is\s+my\s+name|here)$/i.test(clean)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Validates whether a candidate string is NOT a valid company name.
  * Recognizes structural validation, numbers, and non-company status answers (jobless, unemployed, student, freelancer).
@@ -2762,10 +2793,14 @@ export function isInvalidCompanyName(text: string): boolean {
   if (isKnownBankName(raw)) return true;
   if (isLocationInput(raw)) return true;
   if (isPureGreeting(raw) || isGreetingOrPleasantry(raw) || isGeneralAssistanceQuery(raw)) return true;
+  if (isPersonalNameOrIntroduction(raw)) return true;
+  if (UNEMPLOYED_REGEX.test(raw)) return true;
   const clean = raw.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
   if (clean.length < 2) return true;
   if (/^\d+$/.test(clean)) return true;
   if (!/[a-zA-Z]/.test(clean)) return true;
+  if (isPersonalNameOrIntroduction(clean)) return true;
+  if (UNEMPLOYED_REGEX.test(clean)) return true;
 
   // Known bank names must never enter company search
   if (isKnownBankName(clean)) return true;
@@ -2925,7 +2960,7 @@ export function isInvalidCompanyName(text: string): boolean {
 export function detectCompanyDisavowal(text: string): { isDisavowal: boolean; replacementCompany?: string } {
   if (!text) return { isDisavowal: false };
   const clean = text.trim();
-  const disavowalRegex = /\b(?:this\s+is\s+not\s+(?:my\s+)?(?:company|employer)|that'?s\s+not\s+(?:where\s+i\s+work|my\s+company|my\s+employer)|not\s+my\s+(?:company|employer)|wrong\s+(?:company|employer)|i\s+don'?t\s+work\s+(?:at|in|there|for)|i\s+do\s+not\s+work\s+(?:at|in|there|for)|i\s*don'?t\s*have\s*(?:a\s*)?company|no\s*company|without\s*company|remove\s+(?:my\s+)?company|change\s+(?:my\s+)?company|different\s+company|neither|none\s+of\s+these)\b/i;
+  const disavowalRegex = /\b(?:this\s+is\s+not\s+(?:my\s+)?(?:company|employer)|that'?s\s+not\s+(?:where\s+i\s+work|my\s+company|my\s+employer)|not\s+my\s+(?:company|employer)|wrong\s+(?:company|employer)|i\s+don'?t\s+work\s+(?:at|in|there|for)|i\s+do\s+not\s+work\s+(?:at|in|there|for)|i\s*don'?t\s*have\s*(?:a\s*)?company|no\s*company|without\s*company|remove\s+(?:my\s+)?company|change\s+(?:my\s+)?company|different\s+company|neither|none\s+of\s+these|is\s*my\s*name|my\s*name\s*is|that'?s\s*my\s*name|this\s*is\s*my\s*name|not\s*a\s*company|not\s*an\s*employer)\b/i;
 
   if (!disavowalRegex.test(clean)) {
     return { isDisavowal: false };
@@ -2954,6 +2989,21 @@ export function isFinancialOrProfileInput(text: string): boolean {
   if (!text) return false;
   const clean = text.trim().toLowerCase();
   const stripped = clean.replace(/^(?:(?:actually|wait|no|update|change|please|hey|hi|hello|my)\s*[,:]?\s*)+/i, "").trim();
+
+  // Personal name statements or self introductions
+  if (isPersonalNameOrIntroduction(clean) || isPersonalNameOrIntroduction(stripped)) {
+    return true;
+  }
+
+  // Employment status / non-corporate profile tokens
+  if (
+    UNEMPLOYED_REGEX.test(clean) ||
+    UNEMPLOYED_REGEX.test(stripped) ||
+    /^(?:student|in\s*college|studying|house[\s-]*wife|home[\s-]*maker|pensioner|retired|senior\s*citizen|freelancer?|self[t\s-]*employed|self[\s-]*employd|own\s*business|business\s*owner)$/i.test(clean) ||
+    /^(?:student|in\s*college|studying|house[\s-]*wife|home[\s-]*maker|pensioner|retired|senior\s*citizen|freelancer?|self[t\s-]*employed|self[\s-]*employd|own\s*business|business\s*owner)$/i.test(stripped)
+  ) {
+    return true;
+  }
 
   // Phrases with take-home, in-hand, per month, or direct salary/income statements
   if (
@@ -3321,17 +3371,19 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
   if (isKnownBankName(raw)) return undefined;
   if (isPureGreeting(raw) || isGreetingOrPleasantry(raw)) return undefined;
   if (detectCompanyDisavowal(raw).isDisavowal) return undefined;
+  if (isPersonalNameOrIntroduction(raw)) return undefined;
+  if (UNEMPLOYED_REGEX.test(raw) && !/(?:works?\s+at|employed\s+at|working\s+at)/i.test(raw)) return undefined;
   if (/(?:i\s*don'?t\s*have\s*(?:a\s*)?company|no\s*company|without\s*(?:a\s*)?company|don'?t\s*work\s*in\s*a\s*company|not\s*working\s*in\s*any\s*company|not\s*working\s*in\s*a\s*company)\b/i.test(raw)) return undefined;
   if (/\b(?:house[\s-]*wife|home[\s-]*maker|pensioner|retired|student|in\s*college|studying|selft?[\s-]*employed|own\s*business)\b/i.test(raw) && !/(?:works?\s+at|employed\s+at|working\s+at)/i.test(raw)) return undefined;
 
   // 1. Explicit key-value labels or employment phrases anywhere in text (e.g. "I work at Infosys", "I changed my job. I work at Infosys now", "my working company is tech mhindra")
   const explicitMatch = raw.match(
-    /(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*)|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for))|(?:(?:my\s+)?(?:company|employer)\s+is)|(?:(?:i\s*am|i'?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by))|(?:(?:switch(?:ed)?|moved?|joined)\s+(?:to\s+)?))\s+([A-Za-z0-9\s&'-]+?)(?=\s*[.,;!?|\n]|\s+(?:and|but|now|currently|recently|salary|cibil|age|loan|emi|tenure|earning)|$)/i
+    /(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*)|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for))|(?:(?:my\s+)?(?:company|employer)\s+is)|(?:(?:switch(?:ed)?|moved?|joined)\s+(?:to\s+)?))\s+([A-Za-z0-9\s&'-]+?)(?=\s*[.,;!?|\n]|\s+(?:and|but|now|currently|recently|salary|cibil|age|loan|emi|tenure|earning)|$)/i
   );
   if (explicitMatch) {
     let candidate = explicitMatch[1].trim().replace(/[.,;!?]+$/, "").trim();
     candidate = extractCleanCompanyName(candidate) || candidate;
-    if (candidate.length >= 2 && !isInvalidCompanyName(candidate) && !isFinancialOrProfileInput(candidate) && !isLocationInput(candidate)) {
+    if (candidate.length >= 2 && !isInvalidCompanyName(candidate) && !isFinancialOrProfileInput(candidate) && !isPersonalNameOrIntroduction(candidate) && !isLocationInput(candidate)) {
       return candidate;
     }
   }
@@ -3344,6 +3396,7 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
     directClean.toLowerCase() !== raw.toLowerCase() &&
     !isInvalidCompanyName(directClean) &&
     !isFinancialOrProfileInput(directClean) &&
+    !isPersonalNameOrIntroduction(directClean) &&
     !isLocationInput(directClean) &&
     !isKnownBankName(directClean)
   ) {
@@ -3367,6 +3420,7 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
         cleanSeg.length >= 2 &&
         !isInvalidCompanyName(cleanSeg) &&
         !isFinancialOrProfileInput(cleanSeg) &&
+        !isPersonalNameOrIntroduction(cleanSeg) &&
         !isLocationInput(cleanSeg) &&
         !/^(?:i\s+need|i\s+want|can\s+i|please|hello|hi|hey|personal\s+loan|loan)\b/i.test(cleanSeg) &&
         !/^(?:i\s*don'?t\s*know|don'?t\s*know|tell\s*me|explain|process|procedure|steps?)\b/i.test(cleanSeg) &&
@@ -3387,6 +3441,8 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
     expectedField !== "area" &&
     !isFinancialOrProfileInput(raw) &&
     !isInvalidCompanyName(raw) &&
+    !isPersonalNameOrIntroduction(raw) &&
+    !UNEMPLOYED_REGEX.test(raw) &&
     !isLocationInput(raw) &&
     !/^(?:i\s+need|i\s+want|can\s+i|personal\s+loan|home\s*loan|loan|a\s+home)\b/i.test(raw)
   ) {
@@ -3404,7 +3460,7 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
     if (!/^(?:at|in|with|for)\s+(?:a\s+)?(?:home|house|flat|property|plot|car|bike|personal|wedding|medical|travel|business|loan)\b/i.test(clean)) {
       clean = clean.replace(/^(?:at|in|with)\s+/i, "");
     }
-    if (!isFinancialOrProfileInput(clean) && !isInvalidCompanyName(clean) && !isLocationInput(clean) && clean.length >= 2) {
+    if (!isFinancialOrProfileInput(clean) && !isInvalidCompanyName(clean) && !isPersonalNameOrIntroduction(clean) && !UNEMPLOYED_REGEX.test(clean) && !isLocationInput(clean) && clean.length >= 2) {
       return clean;
     }
   }
@@ -3608,8 +3664,8 @@ function mapAnswerToTargetField(
     // 1. Check if user is jobless / unemployed
     if (
       llmExtracted?.employmentType === "Unemployed" ||
-      /^(?:i\s+am\s+|i\s*m\s+)?(?:jobless|unemployed|no\s*job|without\s*(?:a\s*)?job|laid\s*off|not\s*working(?:\s*anywhere)?|lost\s*(?:my\s*)?job)\b/i.test(lower) ||
-      /(?:not\s*working(?:\s*anywhere)?|don['’]?t\s*work|have\s*no\s*job|without\s*a?\s*job|jobless|unemployed|un-employed|lost\s*my\s*job|laid\s*off|no\s*employment)/i.test(lower)
+      UNEMPLOYED_REGEX.test(lower) ||
+      UNEMPLOYED_REGEX.test(text)
     ) {
       applicant.employmentType = "Unemployed";
       applicant.companyName = undefined;
@@ -3718,7 +3774,7 @@ export function messageMentionsField(field: string, text: string): boolean {
     case "existingEmi":
     case "emi":
       return (
-        /(?:existing|current|other|ongoing)?\s*emi(?:s)?/i.test(lower) ||
+        /(?:existing|current|other|ongoing|monthly)?\s*emi(?:s)?/i.test(lower) ||
         /(?:no|zero|nil|0)\s*(?:existing\s*)?emi(?:s)?/i.test(lower) ||
         /(?:no|zero|nil|0)\s*(?:existing\s*|ongoing\s*|current\s*)?loans?/i.test(lower) ||
         /(?:no|zero|nil|0)\s*(?:obligations?|debt)/i.test(lower) ||
@@ -3873,7 +3929,7 @@ export function extractSecondaryParameters(
       applicant.existingEmi = llmExtracted.existingEmi;
     } else {
       const emiMatch =
-        text.match(/(?:existing|current|other|ongoing)?\s*emi(?:s)?(?::|\s*is|\s*of|\s*=)?\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k)?/i) ||
+        text.match(/(?:existing|current|other|ongoing|monthly)?\s*emi(?:s)?(?::|\s*is|\s*are|\s*of|\s*around|\s*approx|\s*=)?\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k)?/i) ||
         text.match(/paying\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*)\s*(?:as)?\s*emi/i);
       if (emiMatch) {
         const amt = parseFinancialAmount(emiMatch[1] + (emiMatch[2] || ""));
@@ -3894,8 +3950,8 @@ export function extractSecondaryParameters(
       applicant.age = llmExtracted.age;
     } else {
       const ageMatch =
-        text.match(/(?:age|aged|i'?m|i\s*am)(?::|\s*is|\s*=)?\s*(\d{2})\b/i) ||
-        text.match(/\b(\d{2})\s*(?:years?\s*old|yr\s*old)\b/i);
+        text.match(/(?:age|aged|i'?m|i\s*am)(?::|\s*is|\s*are|\s*=)?\s*(\d{2})\b/i) ||
+        text.match(/\b(\d{2})\s*(?:years?\s*old|yr\s*old|years?)\b/i);
       if (ageMatch) {
         const ageVal = parseInt(ageMatch[1], 10);
         if (ageVal >= 18 && ageVal <= 85) {
@@ -3912,7 +3968,7 @@ export function extractSecondaryParameters(
       if (applicant.employmentType === "Unemployed" && applicant.monthlyIncome === undefined) {
         applicant.monthlyIncome = 0;
       }
-    } else if (/jobless|unemployed|no\s*job|without\s*(?:a\s*)?job|not\s*working|laid\s*off/i.test(lower)) {
+    } else if (UNEMPLOYED_REGEX.test(lower) || UNEMPLOYED_REGEX.test(text)) {
       applicant.employmentType = "Unemployed";
       if (applicant.monthlyIncome === undefined) applicant.monthlyIncome = 0;
     } else if (/student|in\s*college|studying/i.test(lower)) {
@@ -4041,7 +4097,8 @@ export function extractApplicantDetails(
   const isUnemployedCheck =
     llmExtracted?.employmentStatus === "unemployed" ||
     llmExtracted?.employmentType === "Unemployed" ||
-    /(?:not\s*working(?:\s*anywhere)?|don['’]?t\s*work|have\s*no\s*job|without\s*a?\s*job|jobless|unemployed|un-employed|lost\s*(?:my\s*)?job|laid\s*off|no\s*employment|no\s*job\s*right\s*now)/i.test(lower);
+    UNEMPLOYED_REGEX.test(lower) ||
+    UNEMPLOYED_REGEX.test(text);
 
   if (isUnemployedCheck) {
     applicant.employmentStatus = "unemployed";
@@ -4289,9 +4346,15 @@ export function consolidateApplicantProfileFromHistory(
     const extractedForTurn = isLatest ? currentExtracted : undefined;
     const lower = msg.toLowerCase().trim();
 
+    // 0. Disavowal check (e.g. "is my name", "not my company")
+    const disavowCheck = detectCompanyDisavowal(msg);
+    if (disavowCheck.isDisavowal) {
+      applicant.companyName = disavowCheck.replacementCompany || undefined;
+    }
+
     // 1. Employment type checks
     if (
-      /(?:not\s*working|no\s*job|without\s*a?\s*job|jobless|unemployed|un-employed|lost\s*my\s*job|laid\s*off|no\s*employment|don['’]?t\s*work)/i.test(lower) ||
+      UNEMPLOYED_REGEX.test(lower) ||
       extractedForTurn?.employmentStatus === "unemployed" ||
       extractedForTurn?.employmentType === "Unemployed"
     ) {
@@ -4338,12 +4401,24 @@ export function consolidateApplicantProfileFromHistory(
     );
 
     if ((!applicant.companyName || (hasExplicitCompanyInTurn && !hasEstablishedCanonicalCompany)) && !isCorrectionMsg) {
-      if (applicant.employmentType !== "Unemployed" && applicant.employmentType !== "Student" && applicant.employmentType !== "Homemaker" && applicant.employmentType !== "Retired" && applicant.employmentType !== "Self-Employed") {
+      const isBlockedNonCorporate =
+        !hasExplicitCompanyInTurn &&
+        (applicant.employmentType === "Student" ||
+          applicant.employmentType === "Homemaker" ||
+          applicant.employmentType === "Retired" ||
+          applicant.employmentType === "Self-Employed" ||
+          applicant.employmentType === "Unemployed");
+
+      if (!isBlockedNonCorporate && !isPersonalNameOrIntroduction(msg) && !UNEMPLOYED_REGEX.test(msg)) {
         const compCandidate = extractCompanyCandidateFromText(msg);
-        if (compCandidate && !isInvalidCompanyName(compCandidate) && !isFinancialOrProfileInput(compCandidate) && !isFinancialOrProfileInput(msg)) {
-          applicant.companyName = compCandidate;
-          if (!applicant.employmentType) applicant.employmentType = "Salaried";
-          lastAnsweredField = "companyName";
+        if (compCandidate && !isInvalidCompanyName(compCandidate) && !isFinancialOrProfileInput(compCandidate) && !isFinancialOrProfileInput(msg) && !isPersonalNameOrIntroduction(compCandidate) && !UNEMPLOYED_REGEX.test(compCandidate)) {
+          if (applicant.employmentType === "Unemployed" && hasExplicitCompanyInTurn) {
+            (applicant as any).candidateCompanyForConfirmation = compCandidate;
+          } else {
+            applicant.companyName = compCandidate;
+            if (!applicant.employmentType) applicant.employmentType = "Salaried";
+            lastAnsweredField = "companyName";
+          }
         }
       }
     }
@@ -4651,31 +4726,18 @@ export async function generateDefinitiveIneligibilityExplanationWithLLM(
           `Respond naturally and conversationally explaining the outcome based on the policies.`,
       });
 
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
+      const { generateLangChainChatResponse } = await import("@/lib/ai/langchainResponse");
+      const content = await generateLangChainChatResponse(messages as any, {
+        model,
         signal: controller.signal,
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "http://localhost:3001",
-          "X-Title": "CreditWise AI",
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 300,
-          temperature: 0.3,
-          messages,
-        }),
+        maxTokens: 300,
+        temperature: 0.3,
       });
 
       clearTimeout(timeoutId);
 
-      if (response.ok) {
-        const json = await response.json();
-        const content = json.choices?.[0]?.message?.content;
-        if (content && typeof content === "string" && content.trim().length > 15) {
-          return stripReasoningPreamble(content.trim());
-        }
+      if (content && typeof content === "string" && content.trim().length > 15) {
+        return stripReasoningPreamble(content.trim());
       }
     } catch (e) {
       // Fall through to fallback
@@ -4791,31 +4853,18 @@ export async function generateDynamicSingleQuestionWithLLM(
           content: userPromptContent,
         });
 
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
+        const { generateLangChainChatResponse } = await import("@/lib/ai/langchainResponse");
+        const content = await generateLangChainChatResponse(messages as any, {
+          model,
           signal: controller.signal,
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost:3001",
-            "X-Title": "CreditWise AI",
-          },
-          body: JSON.stringify({
-            model,
-            max_tokens: 220,
-            temperature: 0.7,
-            messages,
-          }),
+          maxTokens: 220,
+          temperature: 0.7,
         });
 
         clearTimeout(timeoutId);
 
-        if (response.ok) {
-          const json = await response.json();
-          const content = json.choices?.[0]?.message?.content;
-          if (content && typeof content === "string" && content.trim().length > 10) {
-            return stripReasoningPreamble(content.trim());
-          }
+        if (content && typeof content === "string" && content.trim().length > 10) {
+          return stripReasoningPreamble(content.trim());
         }
       } catch (e) {
         // Try fallback model
@@ -5416,7 +5465,15 @@ export function buildMultiBankIntakePrompt(applicant: Partial<ApplicantProfile>)
   if (applicant.existingEmi === undefined || applicant.existingEmi === null) missing.push("Existing Monthly EMI (or enter 0 if none)");
 
   const collected: string[] = [];
-  if (applicant.companyName && !isNonCorporate) collected.push(`employer as **${applicant.companyName}**`);
+  const safeComp =
+    applicant.companyName &&
+    !isNonCorporate &&
+    !isInvalidCompanyName(applicant.companyName) &&
+    !isPersonalNameOrIntroduction(applicant.companyName) &&
+    !UNEMPLOYED_REGEX.test(applicant.companyName)
+      ? applicant.companyName
+      : undefined;
+  if (safeComp) collected.push(`employer as **${safeComp}**`);
   if (salaryVal > 0) collected.push(`monthly income (**₹${salaryVal.toLocaleString("en-IN")}**)`);
   if (cibilVal >= 300) collected.push(`CIBIL score (**${cibilVal}**)`);
   if (applicant.employmentType) collected.push(`employment type (**${applicant.employmentType}**)`);
@@ -5993,6 +6050,130 @@ export function extractProfileUpdates(
   }
 
   return { updates, updatedFieldLabels, isScenario };
+}
+
+/**
+ * Extracts multiple profile parameters provided as comma- or semicolon-separated values
+ * (e.g., "760,34,0" meaning CIBIL=760, age=34, EMI=0).
+ * Maps bare values to missing fields using value-type heuristics:
+ * - 3-digit integer (300-900) or "not sure" -> cibil
+ * - 2-digit integer (18-85) -> age
+ * - Large number (>= 10000) -> monthlyIncome (or loanAmount if monthlyIncome already set)
+ * - 0 or "none" / "nil" / small amount -> existingEmi
+ * - 1-360 -> tenureMonths (if not consumed by age/emi)
+ * 
+ * Only populates fields currently missing from existingApplicant.
+ * Never overwrites values already present in existingApplicant.
+ */
+export function extractCommaSeparatedProfileParameters(
+  message: string,
+  existingApplicant: ApplicantProfile = {}
+): Partial<ApplicantProfile> {
+  const result: Partial<ApplicantProfile> = {};
+  if (!message || typeof message !== "string") return result;
+
+  // Only trigger if message contains comma or semicolon
+  if (!message.includes(",") && !message.includes(";")) {
+    return result;
+  }
+
+  const parts = message
+    .split(/[,;]+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+
+  if (parts.length < 2) return result;
+
+  const unassignedParts: string[] = [];
+
+  for (const part of parts) {
+    const lower = part.toLowerCase();
+
+    // 1. Check for CIBIL "not sure" / "dont know"
+    if (/^(?:not\s*sure|dont\s*know|don't\s*know|na|nil|none|unknown)$/i.test(lower)) {
+      if (existingApplicant.cibil === undefined && result.cibil === undefined) {
+        result.cibil = "Not provided";
+        continue;
+      }
+    }
+
+    // 2. Check for explicit 0 / zero / none for existingEmi
+    if (/^(?:0\s*(?:rs|inr|₹)?|rs\.?\s*0|zero|nil|none|no\s*emi|0\s*emi)$/i.test(lower)) {
+      if (existingApplicant.existingEmi === undefined && result.existingEmi === undefined) {
+        result.existingEmi = 0;
+        continue;
+      }
+    }
+
+    unassignedParts.push(part);
+  }
+
+  const numericTokens: { original: string; val: number }[] = [];
+  for (const p of unassignedParts) {
+    const amt = parseFinancialAmount(p);
+    if (amt !== null && amt >= 0) {
+      numericTokens.push({ original: p, val: amt });
+    }
+  }
+
+  // Heuristic mapping:
+  // A. CIBIL score: 300 to 900
+  if (existingApplicant.cibil === undefined && result.cibil === undefined) {
+    const cibilIdx = numericTokens.findIndex(
+      (t) => t.val >= 300 && t.val <= 900 && Number.isInteger(t.val)
+    );
+    if (cibilIdx !== -1) {
+      result.cibil = numericTokens[cibilIdx].val;
+      numericTokens.splice(cibilIdx, 1);
+    }
+  }
+
+  // B. Age: 18 to 85
+  if (existingApplicant.age === undefined && result.age === undefined) {
+    const ageIdx = numericTokens.findIndex(
+      (t) => t.val >= 18 && t.val <= 85 && Number.isInteger(t.val)
+    );
+    if (ageIdx !== -1) {
+      result.age = numericTokens[ageIdx].val;
+      numericTokens.splice(ageIdx, 1);
+    }
+  }
+
+  // C. Large numbers (>= 10,000): monthlyIncome or loanAmount
+  if (existingApplicant.monthlyIncome === undefined && result.monthlyIncome === undefined) {
+    const incIdx = numericTokens.findIndex((t) => t.val >= 10000 && t.val <= 1000000);
+    if (incIdx !== -1) {
+      result.monthlyIncome = numericTokens[incIdx].val;
+      numericTokens.splice(incIdx, 1);
+    }
+  } else if (existingApplicant.loanAmount === undefined && result.loanAmount === undefined) {
+    const loanIdx = numericTokens.findIndex((t) => t.val >= 50000);
+    if (loanIdx !== -1) {
+      result.loanAmount = numericTokens[loanIdx].val;
+      numericTokens.splice(loanIdx, 1);
+    }
+  }
+
+  // D. Existing EMI: 0 or remaining non-negative amount (<= 50,000)
+  if (existingApplicant.existingEmi === undefined && result.existingEmi === undefined) {
+    const emiIdx = numericTokens.findIndex((t) => t.val === 0 || t.val <= 50000);
+    if (emiIdx !== -1) {
+      result.existingEmi = numericTokens[emiIdx].val;
+      numericTokens.splice(emiIdx, 1);
+    }
+  }
+
+  // E. Tenure: 12 to 84 (months) or 1 to 7 (years)
+  if (existingApplicant.tenureMonths === undefined && result.tenureMonths === undefined) {
+    const tenureIdx = numericTokens.findIndex((t) => (t.val >= 1 && t.val <= 7) || (t.val >= 12 && t.val <= 84));
+    if (tenureIdx !== -1) {
+      const v = numericTokens[tenureIdx].val;
+      result.tenureMonths = v <= 7 ? v * 12 : v;
+      numericTokens.splice(tenureIdx, 1);
+    }
+  }
+
+  return result;
 }
 
 /**

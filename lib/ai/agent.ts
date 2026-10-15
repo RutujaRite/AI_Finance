@@ -45,11 +45,16 @@ import {
   formatMultiBankEligibilityReport,
   buildMultiBankIntakePrompt,
   isMultiBankEligibilityQuery,
+  checkDefinitiveIneligibility,
+  generateDefinitiveIneligibilityExplanationWithLLM,
+  isPersonalNameOrIntroduction,
+  UNEMPLOYED_REGEX,
   generateDynamicSingleQuestionWithLLM,
   parseFinancialAmount,
   ApplicantProfile,
   applyProfileUpdateAndRecalculate,
   extractProfileUpdates,
+  extractCommaSeparatedProfileParameters,
   extractCompanyCandidateFromText,
   extractCompoundLoanCompanyIntent,
   isCompanyInfoOrSearchIntent,
@@ -1645,34 +1650,24 @@ async function generateGreetingWithLLM(
           }
         }
 
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          signal: controller.signal,
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost:3001",
-            "X-Title": "CreditWise AI",
-          },
-          body: JSON.stringify({
+        const { generateLangChainChatResponse } = await import("@/lib/ai/langchainResponse");
+        const content = await generateLangChainChatResponse(
+          [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: message },
+          ],
+          {
             model,
-            max_tokens: 500,
+            signal: controller.signal,
+            maxTokens: 500,
             temperature: 0.6,
-            reasoning: { max_tokens: 0 },
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: message },
-            ],
-          }),
-        });
+          }
+        );
 
         clearTimeout(timeoutId);
 
-        if (response.ok) {
-          const content = (await response.json()).choices?.[0]?.message?.content;
-          if (typeof content === "string" && content.trim().length > 0) {
-            return stripReasoningPreamble(content.trim());
-          }
+        if (typeof content === "string" && content.trim().length > 0) {
+          return stripReasoningPreamble(content.trim());
         }
       } catch (err: any) {
         console.warn(`[Greeting LLM] Failed with model ${model}:`, err?.message || err);
@@ -1734,41 +1729,31 @@ async function summarizeToolResult(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
   try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:3001",
-        "X-Title": "CreditWise AI",
-      },
-      body: JSON.stringify({
+    const { generateLangChainChatResponse } = await import("@/lib/ai/langchainResponse");
+    const content = await generateLangChainChatResponse(
+      [
+        {
+          role: "system",
+          content:
+            "You are CreditWise AI, a friendly personal loan advisor. " +
+            "A tool returned verified data below. Summarize it warmly, clearly, and in natural everyday conversational language for the user. " +
+            "Avoid stiff, robotic, or overly technical banking jargon. " +
+            "Never invent data not present in the tool result. " +
+            "Output ONLY the summary. Do not include any thinking, analysis, preamble, or numbering of your own steps.",
+        },
+        { role: "user", content: userMessage },
+        { role: "assistant", content: `I used the ${toolName || "tool"} tool and received this data.` },
+        { role: "user", content: `Tool result:\n${toolResult}\n\nPlease summarize this for the user.` },
+      ],
+      {
         model: getModel(),
-        max_tokens: 250,
+        maxTokens: 250,
         temperature: 0.2,
-        reasoning: { max_tokens: 0 },
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are CreditWise AI, a friendly personal loan advisor. " +
-              "A tool returned verified data below. Summarize it warmly, clearly, and in natural everyday conversational language for the user. " +
-              "Avoid stiff, robotic, or overly technical banking jargon. " +
-              "Never invent data not present in the tool result. " +
-              "Output ONLY the summary. Do not include any thinking, analysis, preamble, or numbering of your own steps.",
-          },
-          { role: "user", content: userMessage },
-          { role: "assistant", content: `I used the ${toolName || "tool"} tool and received this data.` },
-          { role: "user", content: `Tool result:\n${toolResult}\n\nPlease summarize this for the user.` },
-        ],
-      }),
-    });
-    if (!response.ok) return toolResult;
-    const content = (await response.json()).choices?.[0]?.message?.content;
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeoutId);
     if (typeof content === "string" && content.trim().length > 0) {
-      // The free model sometimes echoes its internal reasoning. Strip any
-      // "thinking process" preamble so only the final summary reaches the user.
       const cleaned = stripReasoningPreamble(content);
       return cleaned || toolResult;
     }
@@ -1833,34 +1818,24 @@ async function runToolCallingAgent(
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
       try {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          signal: controller.signal,
-          headers: {
-            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost:3001",
-            "X-Title": "CreditWise AI",
-          },
-          body: JSON.stringify({
+        const { generateLangChainChatResponse } = await import("@/lib/ai/langchainResponse");
+        const content = await generateLangChainChatResponse(
+          [
+            {
+              role: "system",
+              content: customSystemPrompt || "You are Loan Assistant Financial Assistant. Base your report strictly on the provided deterministic policy data.",
+            },
+            { role: "user", content: contextData },
+          ],
+          {
             model,
-            max_tokens: 500,
+            maxTokens: 500,
             temperature: 0.2,
-            reasoning: { max_tokens: 0 },
-            messages: [
-              {
-                role: "system",
-                content: customSystemPrompt || "You are Loan Assistant Financial Assistant. Base your report strictly on the provided deterministic policy data.",
-              },
-              { role: "user", content: contextData },
-            ],
-          }),
-        });
-        if (response.ok) {
-          const content = (await response.json()).choices?.[0]?.message?.content;
-          if (typeof content === "string" && content.trim().length > 0) {
-            return { reply: stripReasoningPreamble(content) };
+            signal: controller.signal,
           }
+        );
+        if (typeof content === "string" && content.trim().length > 0) {
+          return { reply: stripReasoningPreamble(content) };
         }
       } finally {
         clearTimeout(timeoutId);
@@ -2286,29 +2261,16 @@ async function handleCasualMessage(
 
         messages.push({ role: "user", content: message });
 
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
+        const { generateLangChainChatResponse } = await import("@/lib/ai/langchainResponse");
+        const content = await generateLangChainChatResponse(messages as any, {
+          model,
           signal: controller.signal,
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost:3001",
-            "X-Title": "CreditWise AI",
-          },
-          body: JSON.stringify({
-            model,
-            max_tokens: 250,
-            temperature: 0.4,
-            reasoning: { max_tokens: 0 },
-            messages,
-          }),
+          maxTokens: 250,
+          temperature: 0.4,
         });
         clearTimeout(timeoutId);
-        if (response.ok) {
-          const content = (await response.json()).choices?.[0]?.message?.content;
-          if (typeof content === "string" && content.trim().length > 0) {
-            return stripReasoningPreamble(content.trim());
-          }
+        if (typeof content === "string" && content.trim().length > 0) {
+          return stripReasoningPreamble(content.trim());
         }
       } catch (err: any) {
         console.warn(`[Casual Message LLM] Failed with model ${model}:`, err?.message || err);
@@ -2500,31 +2462,18 @@ async function answerGeneralQuestionWithLLM(
           }
         }
 
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
+        const { generateLangChainChatResponse } = await import("@/lib/ai/langchainResponse");
+        const content = await generateLangChainChatResponse(messages as any, {
+          model,
           signal: controller.signal,
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost:3001",
-            "X-Title": "CreditWise AI",
-          },
-          body: JSON.stringify({
-            model,
-            max_tokens: 500,
-            temperature: 0.2,
-            reasoning: { max_tokens: 0 },
-            messages,
-          }),
+          maxTokens: 500,
+          temperature: 0.2,
         });
 
         clearTimeout(timeoutId);
 
-        if (response.ok) {
-          const content = (await response.json()).choices?.[0]?.message?.content;
-          if (typeof content === "string" && content.trim().length > 0) {
-            return stripReasoningPreamble(content.trim());
-          }
+        if (typeof content === "string" && content.trim().length > 0) {
+          return stripReasoningPreamble(content.trim());
         }
       } catch (err: any) {
         console.warn(`[General QA LLM] Failed with model ${model}:`, err?.message || err);
@@ -2884,6 +2833,12 @@ async function handleMultiBankEligibilityCheck(
         if (detectCompanyDisavowal(msg.content).isDisavowal) {
           delete currentApplicant.companyName;
         }
+        if (UNEMPLOYED_REGEX.test(msg.content)) {
+          delete currentApplicant.companyName;
+          currentApplicant.employmentType = "Unemployed";
+          currentApplicant.employmentStatus = "unemployed";
+          currentApplicant.monthlyIncome = 0;
+        }
         const histUpdates = extractApplicantDetails(msg.content);
         const histRaw = extractEntitiesFromText(msg.content);
         Object.assign(currentApplicant, histUpdates);
@@ -2892,7 +2847,16 @@ async function handleMultiBankEligibilityCheck(
         if (histRaw.age && !currentApplicant.age) currentApplicant.age = histRaw.age;
         if (histRaw.existingEmi !== undefined && currentApplicant.existingEmi === undefined) currentApplicant.existingEmi = histRaw.existingEmi;
         if (histRaw.employmentType && !currentApplicant.employmentType) currentApplicant.employmentType = histRaw.employmentType;
-        if (histRaw.companyName && !currentApplicant.companyName) currentApplicant.companyName = histRaw.companyName;
+        if (
+          histRaw.companyName &&
+          !currentApplicant.companyName &&
+          !isInvalidCompanyName(histRaw.companyName) &&
+          !isPersonalNameOrIntroduction(histRaw.companyName) &&
+          !UNEMPLOYED_REGEX.test(histRaw.companyName) &&
+          currentApplicant.employmentType !== "Unemployed"
+        ) {
+          currentApplicant.companyName = histRaw.companyName;
+        }
       }
     }
   }
@@ -2902,6 +2866,60 @@ async function handleMultiBankEligibilityCheck(
   const profileUpdates = extractProfileUpdates(userMessage, rawEntities).updates;
 
   Object.assign(currentApplicant, textUpdates, profileUpdates);
+
+  // Contradiction Confirmation Flow: Check if applicant was Unemployed and is correcting with an employer
+  const pendingStatus = (eligibilitySession as any)?.pendingStatusConfirmation;
+  const normUser = userMessage.toLowerCase().trim();
+  const explicitWorkCompany =
+    (currentApplicant as any).candidateCompanyForConfirmation ||
+    extractCompanyCandidateFromText(userMessage) ||
+    (rawEntities.companyName && !isInvalidCompanyName(rawEntities.companyName) ? rawEntities.companyName : undefined);
+
+  if (pendingStatus?.proposedCompany) {
+    const isConfirming =
+      /^(?:yes|yep|yeah|sure|ok|okay|confirm|proceed|update|please\s*update)\b/i.test(normUser) ||
+      normUser.includes(pendingStatus.proposedCompany.toLowerCase()) ||
+      Boolean(explicitWorkCompany);
+
+    if (isConfirming) {
+      const confirmedCompany = explicitWorkCompany || pendingStatus.proposedCompany;
+      currentApplicant.employmentType = "Salaried";
+      currentApplicant.employmentStatus = "salaried";
+      currentApplicant.companyName = confirmedCompany;
+      if (eligibilitySession) {
+        delete (eligibilitySession as any).pendingStatusConfirmation;
+      }
+    } else if (/^(?:no|nope|don'?t|leave|keep)\b/i.test(normUser)) {
+      if (eligibilitySession) {
+        delete (eligibilitySession as any).pendingStatusConfirmation;
+      }
+      return {
+        reply: "Understood, I will keep your profile as Unemployed. As noted earlier, personal loans require active verifiable income.",
+      };
+    }
+  } else if (
+    currentApplicant.employmentType === "Unemployed" &&
+    explicitWorkCompany &&
+    !isInvalidCompanyName(explicitWorkCompany)
+  ) {
+    const updatedSession = {
+      ...(eligibilitySession || {}),
+      pendingStatusConfirmation: {
+        proposedEmploymentType: "Salaried",
+        proposedCompany: explicitWorkCompany,
+      },
+      applicant: currentApplicant,
+      in_eligibility_flow: true,
+      updatedAt: Date.now(),
+    };
+    if (conversationId) {
+      await saveEligibilityState(conversationId, updatedSession as any);
+    }
+    return {
+      reply: `You previously mentioned being unemployed. Would you like to update your status to Salaried at **${explicitWorkCompany}**?`,
+      customState: updatedSession,
+    };
+  }
 
   if (rawEntities.monthlyIncome && !currentApplicant.monthlyIncome) currentApplicant.monthlyIncome = rawEntities.monthlyIncome;
   if (rawEntities.cibil && !currentApplicant.cibil) currentApplicant.cibil = rawEntities.cibil;
@@ -2925,9 +2943,22 @@ async function handleMultiBankEligibilityCheck(
     currentApplicant.companyName = currentApplicant.companyName
       .replace(/^(?:salaried\s+at|working\s+(?:at|in)|employed\s+at|at)\s+/i, "")
       .trim();
-    if (isInvalidCompanyName(currentApplicant.companyName) || detectCompanyDisavowal(currentApplicant.companyName).isDisavowal) {
+    if (
+      isInvalidCompanyName(currentApplicant.companyName) ||
+      isPersonalNameOrIntroduction(currentApplicant.companyName) ||
+      UNEMPLOYED_REGEX.test(currentApplicant.companyName) ||
+      detectCompanyDisavowal(currentApplicant.companyName).isDisavowal
+    ) {
       delete currentApplicant.companyName;
     }
+  }
+
+  if (
+    currentApplicant.employmentType === "Unemployed" ||
+    currentApplicant.employmentType === "Student" ||
+    currentApplicant.employmentType === "Homemaker"
+  ) {
+    delete currentApplicant.companyName;
   }
 
   // Defaults for evaluation
@@ -2950,6 +2981,38 @@ async function handleMultiBankEligibilityCheck(
     } else if (currentApplicant.monthlyIncome && Number(currentApplicant.monthlyIncome) > 0) {
       currentApplicant.employmentType = "Salaried";
     }
+  }
+
+  // Early check for definitive policy ineligibility (unemployed/jobless, zero income, underage) before collecting details
+  const definitiveIneligibilityCheck = checkDefinitiveIneligibility(currentApplicant);
+  if (definitiveIneligibilityCheck.isIneligible) {
+    let explanation = definitiveIneligibilityCheck.explanationSnippet || "";
+    try {
+      explanation = await generateDefinitiveIneligibilityExplanationWithLLM(
+        currentApplicant,
+        definitiveIneligibilityCheck,
+        userMessage,
+        modelOverride,
+        conversationHistory
+      );
+    } catch (e) {
+      // fallback to explanationSnippet
+    }
+
+    if (conversationId) {
+      await clearEligibilityState(conversationId);
+    }
+
+    return {
+      reply: explanation,
+      customState: {
+        ...(eligibilitySession || {}),
+        in_eligibility_flow: false,
+        activeFlow: "IDLE",
+        applicant: currentApplicant,
+        evaluationCompleted: true,
+      } as any,
+    };
   }
 
   // Step 2: Identify missing information
@@ -3098,7 +3161,12 @@ async function executeLookupMasterPolicy(
         eligibilitySession.selectedBank = resolvedTarget.bankName;
         eligibilitySession.chosenBank = resolvedTarget.bankName;
       }
-      return { reply: policyResult };
+      let finalReply = policyResult;
+      const isHowToGetLoanAsk = /\b(?:how\s+(?:can\s+i|to)\s+(?:get|avail|take|apply|obtain)|can\s+i\s+(?:get|avail|take|apply\s+for))\s+(?:a\s+)?(?:personal\s*)?loan\b/i.test(query);
+      if (isHowToGetLoanAsk && !finalReply.includes("Would you like me to evaluate your loan eligibility specifically for")) {
+        finalReply += `\n\n---\n💡 **Would you like me to evaluate your loan eligibility specifically for ${resolvedTarget.bankName}?**\nIf so, simply share your **monthly salary**, **employment type** (or employer name), **CIBIL score**, **age**, and **existing monthly EMI**.`;
+      }
+      return { reply: finalReply };
     }
   }
 
@@ -6129,7 +6197,13 @@ async function runCentralAgentInternal(opts: {
   if (historyParams.age && !currentApplicant.age) {
     currentApplicant.age = historyParams.age;
   }
-  if (historyParams.employer && !currentApplicant.companyName) {
+  if (
+    historyParams.employer &&
+    !currentApplicant.companyName &&
+    !isInvalidCompanyName(historyParams.employer) &&
+    !isPersonalNameOrIntroduction(historyParams.employer) &&
+    !UNEMPLOYED_REGEX.test(historyParams.employer)
+  ) {
     currentApplicant.companyName = historyParams.employer;
   }
   if (!currentApplicant.companyName) {
@@ -6141,9 +6215,35 @@ async function runCentralAgentInternal(opts: {
       eligibilitySession?.companyFlow?.originalInput ||
       eligibilitySession?.sessionVariables?.employer ||
       eligibilitySession?.sessionVariables?.Employer_Name;
-    if (sessionComp && !isMissingOrPlaceholderCompany(sessionComp)) {
+    if (
+      sessionComp &&
+      !isMissingOrPlaceholderCompany(sessionComp) &&
+      !isInvalidCompanyName(sessionComp) &&
+      !isPersonalNameOrIntroduction(sessionComp) &&
+      !UNEMPLOYED_REGEX.test(sessionComp)
+    ) {
       currentApplicant.companyName = sessionComp;
     }
+  }
+
+  // Clear company if applicant is unemployed/student/homemaker or if company is personal name or invalid
+  if (
+    currentApplicant.employmentType === "Unemployed" ||
+    currentApplicant.employmentType === "Student" ||
+    currentApplicant.employmentType === "Homemaker"
+  ) {
+    delete currentApplicant.companyName;
+    delete currentApplicant.companyCategory;
+  }
+  if (
+    currentApplicant.companyName &&
+    (isInvalidCompanyName(currentApplicant.companyName) ||
+      isPersonalNameOrIntroduction(currentApplicant.companyName) ||
+      UNEMPLOYED_REGEX.test(currentApplicant.companyName) ||
+      detectCompanyDisavowal(currentApplicant.companyName).isDisavowal)
+  ) {
+    delete currentApplicant.companyName;
+    delete currentApplicant.companyCategory;
   }
   if (historyParams.existingEmi !== undefined && currentApplicant.existingEmi === undefined) {
     currentApplicant.existingEmi = historyParams.existingEmi;
@@ -6213,13 +6313,31 @@ async function runCentralAgentInternal(opts: {
       eligibilitySession?.companyFlow?.selectedCompanyName ||
       currentApplicant.companyName;
 
-    if (isMissingOrPlaceholderCompany(canonicalCompany)) {
+    if (
+      isMissingOrPlaceholderCompany(canonicalCompany) ||
+      (canonicalCompany &&
+        (isInvalidCompanyName(canonicalCompany) ||
+          isPersonalNameOrIntroduction(canonicalCompany) ||
+          UNEMPLOYED_REGEX.test(canonicalCompany) ||
+          detectCompanyDisavowal(canonicalCompany).isDisavowal))
+    ) {
       canonicalCompany = undefined;
     }
 
     const mergedApplicant = customState?.applicant
       ? safeMergeApplicantProfile(currentApplicant, customState.applicant)
       : currentApplicant;
+
+    if (
+      currentApplicant.employmentType === "Unemployed" ||
+      currentApplicant.employmentType === "Student" ||
+      currentApplicant.employmentType === "Homemaker" ||
+      mergedApplicant.employmentType === "Unemployed" ||
+      mergedApplicant.employmentType === "Student" ||
+      mergedApplicant.employmentType === "Homemaker"
+    ) {
+      canonicalCompany = undefined;
+    }
 
     if (canonicalCompany && !isExplicitCompanyChangeInMsg) {
       currentApplicant.companyName = canonicalCompany;
@@ -8087,6 +8205,35 @@ async function runCentralAgentInternal(opts: {
       ...(eligibilitySession?.sessionVariables || {}),
     };
 
+    // If applicant is definitively ineligible (e.g. unemployed/jobless, zero income, underage), explain policies conversationally
+    const definitiveLoanCheck = checkDefinitiveIneligibility(currentApplicant);
+    if (definitiveLoanCheck.isIneligible) {
+      let explanation = definitiveLoanCheck.explanationSnippet || "";
+      try {
+        explanation = await generateDefinitiveIneligibilityExplanationWithLLM(
+          currentApplicant,
+          definitiveLoanCheck,
+          userMessage,
+          requestedModel,
+          conversationHistory
+        );
+      } catch (e) {
+        // fallback to explanationSnippet
+      }
+      if (conversationId) {
+        await clearEligibilityState(conversationId);
+      }
+      return await finalizeAndReturn(
+        { reply: explanation },
+        {
+          in_eligibility_flow: false,
+          activeFlow: "IDLE",
+          applicant: currentApplicant,
+          evaluationCompleted: true,
+        }
+      );
+    }
+
     let existingComp =
       eligibilitySession?.company ||
       eligibilitySession?.selectedCompanyName ||
@@ -8094,7 +8241,17 @@ async function runCentralAgentInternal(opts: {
       storedSessionVars.employer ||
       storedSessionVars.Employer_Name;
 
-    if (isMissingOrPlaceholderCompany(existingComp)) {
+    if (
+      isMissingOrPlaceholderCompany(existingComp) ||
+      (existingComp &&
+        (isInvalidCompanyName(existingComp) ||
+          isPersonalNameOrIntroduction(existingComp) ||
+          UNEMPLOYED_REGEX.test(existingComp) ||
+          detectCompanyDisavowal(existingComp).isDisavowal)) ||
+      currentApplicant.employmentType === "Unemployed" ||
+      currentApplicant.employmentType === "Student" ||
+      currentApplicant.employmentType === "Homemaker"
+    ) {
       existingComp = undefined;
       delete storedSessionVars.employer;
       delete storedSessionVars.Employer_Name;
@@ -10609,6 +10766,9 @@ async function runCentralAgentInternal(opts: {
           extractedResult.field
         );
 
+        const commaUpdates = extractCommaSeparatedProfileParameters(userMessage, updatedApplicant);
+        Object.assign(updatedApplicant, commaUpdates);
+
         const remainingMissing = getRequiredPolicyFields(updatedApplicant);
 
         if (remainingMissing.length > 0) {
@@ -10719,6 +10879,9 @@ async function runCentralAgentInternal(opts: {
         extractedResult.field
       );
 
+      const commaUpdates = extractCommaSeparatedProfileParameters(userMessage, updatedApplicant);
+      Object.assign(updatedApplicant, commaUpdates);
+
       const remainingMissing = getRequiredPolicyFields(updatedApplicant);
 
       if (remainingMissing.length > 0) {
@@ -10752,6 +10915,12 @@ async function runCentralAgentInternal(opts: {
         const ackTokens: string[] = [];
         if (updatedApplicant.age && (sessionApp.age !== updatedApplicant.age || /\b(?:age|years?\s*old|i'?m\s*\d{2})\b/i.test(userMessage))) {
           ackTokens.push(`age as ${updatedApplicant.age}`);
+        }
+        if (updatedApplicant.cibil && sessionApp.cibil !== updatedApplicant.cibil) {
+          ackTokens.push(`CIBIL score as ${updatedApplicant.cibil}`);
+        }
+        if (updatedApplicant.existingEmi !== undefined && sessionApp.existingEmi !== updatedApplicant.existingEmi) {
+          ackTokens.push(`existing EMI as ₹${Number(updatedApplicant.existingEmi).toLocaleString("en-IN")}`);
         }
         if (updatedApplicant.loanAmount && (sessionApp.loanAmount !== updatedApplicant.loanAmount || extractedResult.field === "loanAmount" || /\b(?:lakhs?|lacs?|k|\d+,\d+)\b/i.test(userMessage))) {
           const amtStr = Number(updatedApplicant.loanAmount) >= 100000 ? `₹${(Number(updatedApplicant.loanAmount) / 100000).toFixed(0)} Lakhs` : `₹${Number(updatedApplicant.loanAmount).toLocaleString("en-IN")}`;

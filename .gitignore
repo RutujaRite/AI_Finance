@@ -48,6 +48,14 @@ coverage/
 ICICI_old_db_policy_backup.txt
 REVISED_IMPLEMENTATION_PLAN.md
 
+# Database Migration & Backup Dumps (Never commit database dumps or secrets)
+*.dump
+*.dump.*
+database-migration/*.dump
+database-migration/*.dump.*
+database-migration/*.tar
+database-migration/full_database_backup.dump
+
 # Uploads & User Generated Files
 uploads/
 public/uploads/

@@ -396,14 +396,20 @@ export default function CompanySearchPage() {
         <div
           style={{
             background: isDragOver ? "#eff6ff" : "#ffffff",
-            border: isDragOver ? "2px dashed #2563eb" : "2px dashed #cbd5e1",
+            border: isDragOver ? "1.5px solid #2563eb" : "1px solid #e2e8f0",
             borderRadius: "14px",
             padding: "36px 24px",
             textAlign: "center",
             marginBottom: "24px",
             cursor: "pointer",
             transition: "all 0.18s ease",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+            boxShadow: isDragOver ? "0 4px 12px rgba(37, 99, 235, 0.08)" : "0 1px 3px rgba(0,0,0,0.02)",
+          }}
+          onMouseEnter={(e) => {
+            if (!isDragOver) e.currentTarget.style.borderColor = "#cbd5e1";
+          }}
+          onMouseLeave={(e) => {
+            if (!isDragOver) e.currentTarget.style.borderColor = "#e2e8f0";
           }}
           onDragOver={(e) => {
             e.preventDefault();

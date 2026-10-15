@@ -1001,7 +1001,7 @@ export async function generatePolicyRagResponse(
     throw new Error("OPENROUTER_API_KEY is not configured.");
   }
 
-  const modelName = process.env.OPENROUTER_MODEL || "deepseek/deepseek-v4.1-flash";
+  const modelName = process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free";
 
   const model = new ChatOpenAI({
     apiKey,
@@ -1048,10 +1048,10 @@ export async function generatePolicyRagResponse(
       });
     }
   } catch (error: any) {
-    // If the primary model failed with 403, 429, or key limit exceeded, fallback to open-access model
+    // If the primary model failed with 502, 503, 403, 429, or provider error, fallback to resilient model
     const errMsg = String(error?.message || "");
-    if (errMsg.includes("403") || errMsg.includes("429") || errMsg.includes("limit") || errMsg.includes("Key limit") || errMsg.includes("Provider returned error")) {
-      console.warn("[PolicyRAG] Primary model hit limit or 429, falling back to openrouter/free:", errMsg);
+    if (modelName !== "nvidia/nemotron-3-super-120b-a12b:free") {
+      console.warn("[PolicyRAG] Primary model failed, falling back to nvidia/nemotron-3-super-120b-a12b:free:", errMsg);
       try {
         const fallbackModel = new ChatOpenAI({
           apiKey,
@@ -1062,9 +1062,12 @@ export async function generatePolicyRagResponse(
               "X-Title": "CreditWise Policy RAG",
             },
           },
-          model: "openrouter/free",
+          model: "nvidia/nemotron-3-super-120b-a12b:free",
           temperature: 0.1,
           maxTokens: 800,
+          modelKwargs: {
+            reasoning: { max_tokens: 0 },
+          },
         });
         const fallbackChain = prompt.pipe(fallbackModel).pipe(new StringOutputParser());
         if (onToken) {

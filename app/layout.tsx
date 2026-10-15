@@ -6,6 +6,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
+import RouteLoaderWrapper from "@/components/RouteLoaderWrapper";
 
 export const metadata: Metadata = {
   title: "CreditWise AI - Financial & Loan Intelligence Platform",
@@ -38,6 +39,7 @@ export default function RootLayout({
       </head>
       <body>
         {children}
+        <RouteLoaderWrapper />
         <Script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js" strategy="beforeInteractive" />
         <Script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/highlight.min.js" strategy="beforeInteractive" />
       </body>

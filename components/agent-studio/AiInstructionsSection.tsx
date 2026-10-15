@@ -907,7 +907,7 @@ export default function AiInstructionsSection({
               ) : documents.length === 0 ? (
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-6 rounded-xl border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 text-center cursor-pointer transition space-y-1.5"
+                  className="p-6 rounded-xl border border-solid border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 text-center cursor-pointer transition space-y-1.5"
                 >
                   <div className="text-2xl">📄</div>
                   <div className="text-xs font-bold text-slate-700">No knowledge documents uploaded yet</div>

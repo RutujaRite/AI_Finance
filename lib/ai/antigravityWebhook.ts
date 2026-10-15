@@ -1,4 +1,4 @@
-import { evaluateApplicantAgainstAllBanks, BankEvaluationResult, isInvalidCompanyName, isLocationInput, detectFieldPromptedInAssistantMessage } from "@/lib/dynamicEligibilityEngine";
+import { evaluateApplicantAgainstAllBanks, BankEvaluationResult, isInvalidCompanyName, isLocationInput, detectFieldPromptedInAssistantMessage, isPersonalNameOrIntroduction, UNEMPLOYED_REGEX, detectCompanyDisavowal } from "@/lib/dynamicEligibilityEngine";
 import pool from "@/lib/db";
 
 export interface SessionVariables {
@@ -481,6 +481,15 @@ export function extractParametersFromConversationHistory(
     }
     if ((turn.role === "user" || turn.role === "human") && turn.content) {
       const text = turn.content;
+      if (detectCompanyDisavowal(text).isDisavowal) {
+        delete result.employer;
+        delete result.Employer_Name;
+      }
+      if (UNEMPLOYED_REGEX.test(text)) {
+        delete result.employer;
+        delete result.Employer_Name;
+        result.monthlyIncome = 0;
+      }
       const promptedField = lastAssistantMsg ? detectFieldPromptedInAssistantMessage(lastAssistantMsg) : undefined;
 
       // Handle user's direct answer to assistant's prompted question
@@ -591,7 +600,14 @@ export function extractParametersFromConversationHistory(
         const empMatch = text.match(/(?:work\s*(?:at|in|for)|company\s*(?:is)?)\s+([A-Za-z0-9&'.-]+(?:\s+[A-Za-z0-9&'.-]+)*)/i);
         if (empMatch) {
           const emp = normalizeEmployer(empMatch[1]);
-          if (emp && !isInvalidCompanyName(emp) && !isLocationInput(emp) && !/^(?:a\s+home|home|open\s*market|unknown|not\s*provided|unlisted)$/i.test(emp.trim())) {
+          if (
+            emp &&
+            !isInvalidCompanyName(emp) &&
+            !isLocationInput(emp) &&
+            !isPersonalNameOrIntroduction(emp) &&
+            !UNEMPLOYED_REGEX.test(emp) &&
+            !/^(?:a\s+home|home|open\s*market|unknown|not\s*provided|unlisted)$/i.test(emp.trim())
+          ) {
             result.employer = emp;
           }
         }

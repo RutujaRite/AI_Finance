@@ -353,12 +353,11 @@ export default function AllUsersAdminPage() {
 
   return (
     <div className="home-body admin-fullpage-layout" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg, #f8fafc)", width: "100%" }}>
-      <AdminHeader
-        user={currentUser}
-        title="User Management"
-        description="Complete CRUD operations, account provisioning, administrator roles, and access activity."
-        breadcrumbs={[{ label: "User Management" }]}
-      />
+<AdminHeader
+  user={currentUser}
+  title="User Management"
+  breadcrumbs={[{ label: "User Management" }]}
+/>
 
       <main
         className="admin-workspace-fullwidth animate-fade-in"
@@ -387,39 +386,26 @@ export default function AllUsersAdminPage() {
 
         {/* Page Header Bar */}
         <div className="page-header" style={{ marginBottom: "24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: "10px",
-                  background: "linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(59, 130, 246, 0.18) 100%)",
-                  border: "1px solid rgba(37, 99, 235, 0.25)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "var(--accent, #2563eb)",
-                  fontSize: "1.25rem",
-                }}
-              >
-                <i className="bi bi-people" />
-              </div>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <h1 className="page-title" style={{ margin: 0, fontSize: "1.45rem", fontWeight: 700, color: "var(--ink, #0f172a)" }}>
-                    Admin User Management
-                  </h1>
-                  <span className="badge badge-primary" style={{ fontSize: "0.7rem", padding: "2px 8px" }}>
-                    RBAC Directory
-                  </span>
-                </div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+                 <div
+                   style={{
+                     width: 40,
+                     height: 40,
+                     borderRadius: "10px",
+                     background: "linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(59, 130, 246, 0.18) 100%)",
+                     border: "1px solid rgba(37, 99, 235, 0.25)",
+                     display: "flex",
+                     alignItems: "center",
+                     justifyContent: "center",
+                     color: "var(--accent, #2563eb)",
+                     fontSize: "1.25rem",
+                   }}
+                 >
+                   <i className="bi bi-people" />
+                 </div>
               </div>
             </div>
-            <p className="page-subtitle" style={{ margin: "4px 0 0 0", color: "var(--ink-soft, #64748b)", fontSize: "0.85rem" }}>
-              Complete CRUD operations, account provisioning, administrator roles, and access activity
-            </p>
-          </div>
 
           <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
             <button
@@ -669,9 +655,9 @@ export default function AllUsersAdminPage() {
             </div>
           </div>
 
-          {/* Table */}
-          <div className="table-responsive" style={{ overflowX: "auto" }}>
-            <table className="table table-hover" style={{ width: "100%", margin: 0, fontSize: "0.8125rem", borderCollapse: "collapse" }}>
+           {/* Table */}
+           <div className="table-responsive" style={{ overflowX: "auto", overflowY: "auto", maxHeight: "500px" }}>
+             <table className="table table-hover" style={{ width: "100%", margin: 0, fontSize: "0.8125rem", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#f8fafc", borderBottom: "1px solid var(--border, #e2e8f0)" }}>
                   <th style={{ width: "65px", textAlign: "center", padding: "12px 14px" }}>User ID</th>

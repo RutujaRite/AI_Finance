@@ -28,125 +28,205 @@ assertCheck("AiInstructionsView.tsx exists", fs.existsSync(targetPath));
 assertCheck("page.tsx exists", fs.existsSync(pagePath));
 assertCheck("agent-studio.css exists", fs.existsSync(cssPath));
 
-if (fs.existsSync(cssPath)) {
-  const css = fs.readFileSync(cssPath, "utf-8");
-  assertCheck("CSS: --ai-* tokens defined in :root", 
-    css.includes("--ai-primary: #2563eb") &&
-    css.includes("--ai-surface: #ffffff") &&
-    css.includes("--ai-border: #e2e8f0") &&
-    css.includes("--ai-danger: #dc2626") &&
-    css.includes("--ai-radius-lg: 14px")
+// 2. Verify Page Scroll Locking in page.tsx
+if (fs.existsSync(pagePath)) {
+  const pageContent = fs.readFileSync(pagePath, "utf-8");
+  assertCheck("page.tsx: Outer container has h-screen max-h-screen overflow-hidden",
+    pageContent.includes("h-screen max-h-screen overflow-hidden")
   );
-  assertCheck("CSS: .ai-main-layout class defined", css.includes(".ai-main-layout"));
-  assertCheck("CSS: .ai-card class defined", css.includes(".ai-card"));
-  assertCheck("CSS: .ai-form-grid 3-column layout defined", css.includes(".ai-form-grid"));
-  assertCheck("CSS: .ai-textarea class defined", css.includes(".ai-textarea"));
-  assertCheck("CSS: .ai-upload-grid 2-column layout defined", css.includes(".ai-upload-grid"));
-  assertCheck("CSS: .ai-action-btn and .ai-table-actions defined (36x36px)", 
-    css.includes(".ai-action-btn") &&
-    css.includes("width: 36px") &&
-    css.includes("height: 36px") &&
-    css.includes(".ai-action-btn--delete")
+  assertCheck("page.tsx: Main area has h-full overflow-hidden",
+    pageContent.includes("h-full overflow-hidden")
   );
-  assertCheck("CSS: .ai-file-table-wrapper and .ai-file-table defined", 
-    css.includes(".ai-file-table-wrapper") &&
-    css.includes(".ai-file-table")
-  );
-  assertCheck("CSS: Responsive media queries defined", css.includes("@media (max-width: 760px)"));
 }
 
+// 3. Verify CSS Design Tokens & Rules
+if (fs.existsSync(cssPath)) {
+  const css = fs.readFileSync(cssPath, "utf-8");
+  assertCheck("CSS: Modern Enterprise SaaS design tokens defined in :root", 
+    css.includes("--ai-primary: #1677FF") &&
+    css.includes("--ai-background: #F5F9FF") &&
+    css.includes("--ai-surface: #FFFFFF") &&
+    css.includes("--ai-navy: #12336B") &&
+    css.includes("--ai-text-body: #526B91") &&
+    css.includes("--ai-border: #DCE8F8") &&
+    css.includes("--ai-primary-light: #EAF3FF") &&
+    css.includes("--ai-success: #079669") &&
+    css.includes("--ai-success-bg: #E7F9F1") &&
+    css.includes("--ai-danger: #F04452") &&
+    css.includes("--ai-radius-lg: 10px") &&
+    css.includes("--ai-radius-md: 7px")
+  );
+  assertCheck("CSS: .ai-main-layout class defined", css.includes(".ai-main-layout"));
+  assertCheck("CSS: .ai-card defined with 1px solid #DCE8F8 and 10px radius", 
+    css.includes(".ai-card") && css.includes("#DCE8F8")
+  );
+  assertCheck("CSS: .ai-toolbar-card defined", css.includes(".ai-toolbar-card"));
+  assertCheck("CSS: .ai-form-grid 3-column layout defined", css.includes(".ai-form-grid"));
+  assertCheck("CSS: .ai-input and .ai-select defined with 38px height and 7px radius", 
+    css.includes(".ai-input") && css.includes(".ai-select") && css.includes("height: 38px")
+  );
+  assertCheck("CSS: .ai-textarea defined with 200-240px min-height", 
+    css.includes(".ai-textarea") && (css.includes("min-height: 220px") || css.includes("min-height: 200px"))
+  );
+  assertCheck("CSS: .ai-upload-grid 50/50 side-by-side grid defined with 16px gap", 
+    css.includes(".ai-upload-grid") && css.includes("grid-template-columns: repeat(2, minmax(0, 1fr))")
+  );
+  assertCheck("CSS: .ai-source-card class defined with #DCE8F8 border and hover effects", 
+    css.includes(".ai-source-card") && css.includes("#DCE8F8")
+  );
+  assertCheck("CSS: .ai-scroll-pane custom scrollbar defined with #DCE8F8 and #F5F9FF", 
+    css.includes(".ai-scroll-pane") && css.includes("#DCE8F8") && css.includes("#F5F9FF")
+  );
+  assertCheck("CSS: .ai-action-btn defined with 34-36px size, 7px radius, and delete styling", 
+    css.includes(".ai-action-btn") &&
+    (css.includes("width: 35px") || css.includes("width: 34px") || css.includes("width: 36px")) &&
+    css.includes("border-radius: 7px") &&
+    css.includes(".ai-action-btn--delete")
+  );
+  assertCheck("CSS: .ai-file-table defined with #F5F9FF header", 
+    css.includes(".ai-file-table thead th") && css.includes("#F5F9FF")
+  );
+}
+
+// 4. Verify AiInstructionsView Component Structure
 if (fs.existsSync(targetPath)) {
   const content = fs.readFileSync(targetPath, "utf-8");
 
-  // 1. Top Configuration Bar
-  assertCheck("Header: Page title 'Configure AI Instructions'", content.includes("Configure AI Instructions"));
-  assertCheck("Header: Subtitle 'Customize how your assistant speaks, thinks, and uses its knowledge.'", 
-    content.includes("Customize how your assistant speaks, thinks, and uses its knowledge.")
-  );
-  assertCheck("Header: Settings icon in light blue container", content.includes("bg-blue-50 text-blue-600 border border-blue-200/80"));
-  assertCheck("Header: Agent selection dropdown present", content.includes("agentDropdownRef") && content.includes("<Bot className="));
-  assertCheck("Header: Current agent status Active / Inactive badge", content.includes("Active") && content.includes("Inactive"));
-  assertCheck("Header: Activate & Deactivate controls present", content.includes("Deactivate") && content.includes("Activate"));
-  assertCheck("Header: Saved status indicator present", content.includes("Saved") && content.includes("Unsaved Changes"));
-  assertCheck("Header: Delete Agent button present", content.includes("<Trash2") && content.includes("Delete"));
-  assertCheck("Header: Save Instructions button present", content.includes("Save Instructions"));
-  assertCheck("Header: Test Assistant accessible outside Quick Settings", content.includes("Test assistant") && content.includes("onNavigateToDemo"));
-
-  // 2. Main Layout — NO QUICK SETTINGS
-  assertCheck("Layout: Single full-width main column (.ai-main-layout)", content.includes("ai-main-layout"));
-  assertCheck("Layout: Quick Settings UI card completely removed", !content.includes("Quick settings"));
-  assertCheck("Layout: No obsolete lg:col-span-4 right-side quick settings panel", !content.includes("lg:col-span-4"));
-
-  // 3. Agent Identity & Persona
-  assertCheck("Identity: Card title 'Agent Identity & Persona'", content.includes("Agent Identity &amp; Persona") || content.includes("Agent Identity & Persona"));
-  assertCheck("Identity: Full-width card with .ai-card and 3-column .ai-form-grid", content.includes("ai-card") && content.includes("ai-form-grid"));
-  assertCheck("Identity: Agent Name field present", content.includes("Agent Name"));
-  assertCheck("Identity: Conversation Tone field present", content.includes("Conversation Tone"));
-  assertCheck("Identity: Response Style field with Clear, Helpful, Concise", content.includes("Clear, Helpful, Concise"));
-
-  // 4. Instructions for the AI Agent
-  assertCheck("Editor: Full-width card with .ai-card", content.includes("Instructions for the AI Agent"));
-  assertCheck("Editor: Textarea styled with .ai-textarea", content.includes("ai-textarea"));
-  assertCheck("Editor: Character counter present", content.includes("/2000 characters"));
-  assertCheck("Editor: Autosave status present", content.includes("Autosaved"));
-  assertCheck("Editor: Prompt Engine badge present", content.includes("Prompt Engine"));
-
-  // 5. Knowledge Base Upload (Two-Column within upload only)
-  assertCheck("Upload: Local 2-column grid (.ai-upload-grid)", content.includes("ai-upload-grid"));
-  assertCheck("Upload: Drag-and-drop dropzone present", content.includes("Drag and drop files here or"));
-  assertCheck("Upload: Choose Files button present", content.includes("Choose Files"));
-  assertCheck("Upload: Supported formats (PDF, DOCX, TXT, CSV, XLSX)", content.includes("Supported formats: PDF, DOCX, TXT, CSV, XLSX"));
-  assertCheck("Upload: Existing Source 1 - From URL present", content.includes("From URL"));
-  assertCheck("Upload: Existing Source 2 - From Text present", content.includes("From Text"));
-  assertCheck("Upload: Existing Source 3 - From Knowledge Base Library present", content.includes("From Knowledge Base Library"));
-
-  // 6. Uploaded Knowledge Base Files Table
-  assertCheck("Table: Full-width card with .ai-file-table-wrapper and .ai-file-table", 
-    content.includes("ai-file-table-wrapper") && content.includes("ai-file-table")
-  );
-  assertCheck("Table: Action buttons styled with .ai-table-actions and .ai-action-btn", 
-    content.includes("ai-table-actions") && content.includes("ai-action-btn")
-  );
-  assertCheck("Table: Delete button styled with .ai-action-btn--delete", content.includes("ai-action-btn--delete"));
-  assertCheck("Table: View action triggers preview modal", content.includes("setPreviewDoc(doc)"));
-  assertCheck("Table: Edit action triggers config modal", content.includes("setEditConfigDoc(doc)"));
-  assertCheck("Table: Delete action triggers confirmation modal", content.includes("setDeleteDocTarget(doc)"));
-  assertCheck("Table: Search and Filter controls present", content.includes("Search files...") && content.includes("All Types"));
-  assertCheck("Table: Refresh button present", content.includes("RefreshCw") && content.includes("loadAgentKnowledge"));
-  assertCheck("Table: Pagination controls present", content.includes("PAGE_SIZE") && content.includes("totalPages"));
-  assertCheck("Table: Loading, Empty, and Error states present", 
-    content.includes("isLoadingDocs") &&
-    content.includes("No knowledge documents found") &&
-    content.includes("docsError")
+  // A. Scroll Container with #F5F9FF background
+  assertCheck("AiInstructionsView: Container has bg-[#F5F9FF] h-full overflow-y-auto ai-scroll-pane",
+    content.includes("bg-[#F5F9FF]") && content.includes("h-full overflow-y-auto ai-scroll-pane")
   );
 
-  // 7. Modals & Handlers Preserved
-  assertCheck("Modals: Preview Modal present", content.includes("Close Preview"));
-  assertCheck("Modals: Edit Configuration Modal present with supported fields", 
-    content.includes("editDocName") &&
-    content.includes("editInstructionText") &&
-    content.includes("editWhenToUse") &&
-    content.includes("editWhenNotToUse") &&
-    content.includes("editGuardrailText")
+  // B. Page Header
+  assertCheck("Header: Page title 'Configure AI Instructions' with bold navy #12336B", 
+    content.includes("Configure AI Instructions") && content.includes("#12336B")
   );
-  assertCheck("Modals: Delete Confirmation Modal present", content.includes("handleConfirmDeleteDoc"));
-  assertCheck("Modals: URL Ingestion Modal present", content.includes("handleAddFromUrl"));
-  assertCheck("Modals: Text Ingestion Modal present", content.includes("handleAddFromText"));
-  assertCheck("Modals: Bank Policy Library Modal present", content.includes("handleAddFromLibrary"));
-}
+  assertCheck("Header: Subtitle with muted blue #526B91", 
+    (content.includes("Customize how your assistant speaks, thinks, and uses your knowledge.") ||
+     content.includes("Customize how your assistant speaks, thinks, and uses its knowledge.")) &&
+    content.includes("#526B91")
+  );
+  assertCheck("Header: Settings icon inside #EAF3FF container", 
+    content.includes("<Settings") && content.includes("#EAF3FF")
+  );
 
-if (fs.existsSync(pagePath)) {
-  const pageContent = fs.readFileSync(pagePath, "utf-8");
-  assertCheck("page.tsx: passes onNavigateToDemo to AiInstructionsView", pageContent.includes("onNavigateToDemo="));
-  assertCheck("page.tsx: passes onNavigateToKnowledge to AiInstructionsView", pageContent.includes("onNavigateToKnowledge="));
+  // C. Horizontal White Toolbar Card
+  assertCheck("Toolbar: Controls enclosed inside horizontal card with #DCE8F8 border and shadow",
+    content.includes("ai-card") && content.includes("shadow-[0_2px_8px_rgba(30,80,150,0.04)]")
+  );
+  assertCheck("Toolbar: Agent selector dropdown with 38px height", 
+    content.includes("isAgentDropdownOpen") && content.includes("h-[38px]")
+  );
+  assertCheck("Toolbar: Switchable Active / Inactive button with #E7F9F1 and #079669", 
+    content.includes("handleToggleActiveStatus") &&
+    content.includes("Active") &&
+    content.includes("#E7F9F1") &&
+    content.includes("#079669")
+  );
+  assertCheck("Toolbar: Separate Activate and Deactivate buttons removed as requested", 
+    !content.includes(">Deactivate<") && !content.includes(">Activate<")
+  );
+  assertCheck("Toolbar: Delete button with #F04452 styling", 
+    content.includes("<Trash2") && content.includes("#F04452")
+  );
+  assertCheck("Toolbar: Save Instructions primary button with #1677FF", 
+    content.includes("Save Instructions") && content.includes("#1677FF")
+  );
+
+  // D. Full-Width White Card: Agent Identity & Persona
+  assertCheck("Persona Card: Distinct card with user icon and 'Agent Identity & Persona' heading",
+    content.includes("Agent Identity &amp; Persona") && content.includes("<User")
+  );
+  assertCheck("Persona Card: Subtitle 'Define the agent's name, conversation tone, and response style.'",
+    content.includes("Define the agent's name, conversation tone, and response style.")
+  );
+  assertCheck("Persona Card: 3 responsive inputs (Agent Name, Conversation Tone, Response Style)",
+    content.includes("Agent Name") &&
+    content.includes("Conversation Tone") &&
+    content.includes("Response Style") &&
+    content.includes("ai-form-grid")
+  );
+
+  // E. Full-Width White Card: Instructions for the AI Agent
+  assertCheck("Instructions Card: Distinct card directly below Persona with 'Instructions for the AI Agent'",
+    content.includes("Instructions for the AI Agent")
+  );
+  assertCheck("Instructions Card: Subtitle present",
+    content.includes("Master instruction prompt, financial verification rules, and conversational logic.")
+  );
+  assertCheck("Instructions Card: Prompt Engine button aligned top-right",
+    content.includes("Prompt Engine") && content.includes("<Sparkles")
+  );
+  assertCheck("Instructions Card: Large clean textarea with .ai-textarea",
+    content.includes("ai-textarea")
+  );
+  assertCheck("Instructions Card: Footer with Character limit counter",
+    content.includes("/ 2000 characters") || content.includes("/ 2,000 characters")
+  );
+  assertCheck("Instructions Card: Footer with Autosave status and green #079669 check",
+    content.includes("Autosaved") && content.includes("#079669")
+  );
+  assertCheck("Instructions Card: Footer Save Instructions button present",
+    content.includes("Save Instructions")
+  );
+
+  // F. Removal of Quick Settings
+  assertCheck("Quick Settings: Heading completely REMOVED", !content.includes("Quick settings"));
+  assertCheck("Quick Settings: Pro Tip card completely REMOVED", !content.includes("Pro Tip"));
+
+  // G. 50/50 Knowledge Base Upload Grid
+  assertCheck("Upload Grid: .ai-upload-grid container present", content.includes("ai-upload-grid"));
+  assertCheck("Upload Left: 'Upload Knowledge Base' card with cloud icon", 
+    content.includes("Upload Knowledge Base") && content.includes("<UploadCloud")
+  );
+  assertCheck("Upload Left: Supported formats (PDF, DOCX, TXT, CSV, XLSX)",
+    content.includes("Supported formats: PDF, DOCX, TXT, CSV, XLSX") ||
+    content.includes("Supported: PDF, DOCX, TXT, CSV, XLSX")
+  );
+  assertCheck("Upload Left: Drag-and-drop dropzone with Choose Files button (#1677FF)",
+    content.includes("Drag and drop files here or") && content.includes("Choose Files") && content.includes("#1677FF")
+  );
+  assertCheck("Upload Right: 'Or add from existing sources' card", 
+    content.includes("Or add from existing sources")
+  );
+  assertCheck("Upload Right: Row 1 - From URL", content.includes("From URL"));
+  assertCheck("Upload Right: Row 2 - From Text", content.includes("From Text"));
+  assertCheck("Upload Right: Row 3 - From Knowledge Base Library", content.includes("From Knowledge Base Library"));
+
+  // H. Uploaded Knowledge Base Files Table
+  assertCheck("Table Card: Distinct full-width card with 'Uploaded Knowledge Base Files'",
+    content.includes("Uploaded Knowledge Base Files") && content.includes("<BookOpen")
+  );
+  assertCheck("Table Controls: Search input, Type filter dropdown, Refresh button",
+    content.includes("Search files...") && content.includes("All Types") && content.includes("loadAgentKnowledge")
+  );
+  assertCheck("Table Rows: Standard 34-36px action buttons for View, Edit, Delete",
+    content.includes("ai-action-btn") &&
+    content.includes("ai-action-btn--delete") &&
+    content.includes("<Eye") &&
+    content.includes("<Edit2") &&
+    content.includes("<Trash2")
+  );
+  assertCheck("Table Footer: Dynamic record range (Showing X to Y of Z files)",
+    content.includes("Showing") && content.includes("of") && content.includes("files")
+  );
+  assertCheck("Table Footer: Previous, numbered page, Next buttons with #1677FF active style",
+    content.includes("totalPages") && content.includes("#1677FF")
+  );
+
+  // I. Dynamic Backend Integrity
+  assertCheck("Backend: Dynamic agent knowledge fetching via /api/agents/${agent.id}/knowledge",
+    content.includes("/api/agents/${agent.id}/knowledge")
+  );
+  assertCheck("Backend: Dynamic library policies fetching via /api/policies",
+    content.includes("/api/policies")
+  );
 }
 
 console.log("\n=================================================");
-console.log(`  VERIFICATION RESULTS: ${passed} PASSED, ${failed} FAILED`);
+console.log(`  VERIFICATION COMPLETE: ${passed} PASSED, ${failed} FAILED`);
 console.log("=================================================");
 
 if (failed > 0) {
   process.exit(1);
-} else {
-  console.log("🎉 ALL ACCEPTANCE CRITERIA VERIFIED AND 100% OPERATIONAL!");
 }

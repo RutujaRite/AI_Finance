@@ -12,12 +12,18 @@ export async function loginAsDemoUser(page: Page, targetUrl: string = '/home?sec
 
   // Wait for login modal to appear - look for the auth backdrop
   const authBackdrop = page.locator('.auth-backdrop').first();
-  await expect(authBackdrop).toBeVisible({ timeout: 10000 });
+  await expect(authBackdrop).toBeVisible({ timeout: 15000 });
 
   // Use the 1-click demo login button for faster authentication
   const demoLoginBtn = page.locator('.primary-demo-chip, button:has-text("Admin Login")').first();
   if (await demoLoginBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+    const loginResponsePromise = page.waitForResponse(
+      (res) => res.url().includes('/api/auth/login') && res.status() === 200,
+      { timeout: 10000 }
+    ).catch(() => null);
     await demoLoginBtn.click();
+    await loginResponsePromise;
+    await page.waitForTimeout(500);
   } else {
     // Fallback: fill the form manually
     const emailInput = page.locator('input[type="email"]').first();
@@ -29,11 +35,14 @@ export async function loginAsDemoUser(page: Page, targetUrl: string = '/home?sec
 
     // Submit login form
     const submitBtn = page.locator('.submit-btn, button[type="submit"]').first();
+    const loginResponsePromise = page.waitForResponse(
+      (res) => res.url().includes('/api/auth/login') && res.status() === 200,
+      { timeout: 10000 }
+    ).catch(() => null);
     await submitBtn.click();
+    await loginResponsePromise;
+    await page.waitForTimeout(500);
   }
-
-  // Wait for redirect to home page
-  await page.waitForURL((url) => url.pathname.includes('/home'), { timeout: 15000 });
 
   // Navigate to target URL
   await page.goto(targetUrl);

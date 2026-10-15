@@ -363,15 +363,12 @@ export default function AgentTestDemoView({
                     setIsChatSearchOpen(!isChatSearchOpen);
                     if (isChatSearchOpen) setChatSearchQuery("");
                   }}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer active:scale-95 ${
-                    isChatSearchOpen
-                      ? "bg-blue-600 text-white shadow-xs"
-                      : "bg-white hover:bg-blue-50/80 text-blue-700 border border-blue-200 shadow-xs"
-                  }`}
-                  title="Search messages in conversation"
+                  className={`ai-search-toggle-btn ${isChatSearchOpen ? "active" : ""}`}
+                  title="Search messages in conversation (Ctrl+F)"
+                  aria-label="Search conversation"
                 >
                   <Search className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Search</span>
+                  <span>Search</span>
                 </button>
 
                 <span
@@ -396,32 +393,46 @@ export default function AgentTestDemoView({
 
             {/* In-Chat Message Search Bar (Collapsible) */}
             {isChatSearchOpen && (
-              <div className="px-4 py-2.5 bg-blue-50/70 border-b border-blue-100 flex items-center justify-between gap-3 animate-fadeIn shrink-0">
-                <div className="relative flex-1">
-                  <Search className="w-3.5 h-3.5 text-blue-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <div className="ai-chat-search-panel">
+                <div className="ai-chat-search-wrapper">
+                  <Search className="ai-chat-search-icon" />
                   <input
                     type="text"
                     value={chatSearchQuery}
                     onChange={(e) => setChatSearchQuery(e.target.value)}
                     placeholder="Search messages in this conversation..."
-                    className="w-full pl-8.5 pr-8 py-1.5 bg-white border border-blue-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 shadow-xs"
+                    className="ai-chat-search-input"
                     autoFocus
                   />
                   {chatSearchQuery && (
                     <button
                       type="button"
                       onClick={() => setChatSearchQuery("")}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+                      className="ai-sandbox-search-clear"
+                      title="Clear search"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
-                <span className="text-[11px] font-semibold text-blue-700 shrink-0">
-                  {chatSearchQuery
-                    ? `${messages.filter((m) => m.text.toLowerCase().includes(chatSearchQuery.toLowerCase())).length} found`
-                    : `${messages.length} messages`}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="ai-chat-search-badge">
+                    {chatSearchQuery
+                      ? `${messages.filter((m) => m.text.toLowerCase().includes(chatSearchQuery.toLowerCase())).length} found`
+                      : `${messages.length} messages`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsChatSearchOpen(false);
+                      setChatSearchQuery("");
+                    }}
+                    className="ai-chat-search-close"
+                    title="Close search (Esc)"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             )}
 
@@ -700,30 +711,32 @@ export default function AgentTestDemoView({
                   e.preventDefault();
                   handleSendMessage();
                 }}
-                className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-xs focus-within:border-blue-500"
+                className="ai-chat-input-container"
               >
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="text-slate-400 hover:text-slate-600 p-1 rounded-md transition cursor-pointer"
-                  title="Attach file"
+                  className="ai-chat-action-btn"
+                  title="Attach loan document or policy file"
+                  aria-label="Attach file"
                 >
                   <Paperclip className="w-4 h-4" />
                 </button>
 
                 <input
                   type="text"
-                  placeholder="Type your message here..."
+                  placeholder="Ask a loan policy question, test eligibility, or type a message..."
                   value={inputVal}
                   onChange={(e) => setInputVal(e.target.value)}
-                  className="flex-1 text-xs text-slate-800 bg-transparent border-none focus:outline-none placeholder-slate-400"
+                  className="ai-chat-input-field"
                 />
 
                 <button
                   type="button"
                   onClick={() => setInputVal((prev) => prev + " 👋")}
-                  className="text-slate-400 hover:text-slate-600 p-1 rounded-md transition cursor-pointer"
-                  title="Emoji"
+                  className="ai-chat-action-btn"
+                  title="Insert emoji"
+                  aria-label="Insert emoji"
                 >
                   <Smile className="w-4 h-4" />
                 </button>
@@ -731,8 +744,9 @@ export default function AgentTestDemoView({
                 <button
                   type="submit"
                   disabled={!inputVal.trim() || isSending}
-                  style={{ backgroundColor: "#2563EB" }}
-                  className="w-8 h-8 rounded-lg text-white flex items-center justify-center shadow-xs transition cursor-pointer disabled:opacity-40 hover:bg-blue-700"
+                  className="ai-chat-send-btn"
+                  title="Send message (Enter)"
+                  aria-label="Send message"
                 >
                   <Send className="w-3.5 h-3.5 text-white" />
                 </button>
@@ -743,24 +757,27 @@ export default function AgentTestDemoView({
           {/* RIGHT COLUMN: Quick Test / Scenarios / History Panels - Anchored & Sticky */}
           <div className="lg:col-span-4 space-y-3.5 lg:sticky lg:top-6 lg:self-start">
             {/* Integrated Professional Search Bar */}
-            <div className="bg-white p-2.5 rounded-2xl border border-slate-200/80 shadow-xs">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <div className="ai-sandbox-search-container">
+              <div className="ai-sandbox-search-inner">
+                <Search className="ai-sandbox-search-icon" />
                 <input
                   type="text"
                   value={panelSearchQuery}
                   onChange={(e) => setPanelSearchQuery(e.target.value)}
                   placeholder="Search scenarios, policies & prompts..."
-                  className="w-full pl-8.5 pr-8 py-2 bg-slate-50 hover:bg-slate-50/80 focus:bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 shadow-xs transition"
+                  className="ai-sandbox-search-input"
                 />
-                {panelSearchQuery && (
+                {panelSearchQuery ? (
                   <button
                     type="button"
                     onClick={() => setPanelSearchQuery("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full cursor-pointer"
+                    className="ai-sandbox-search-clear"
+                    title="Clear search"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
+                ) : (
+                  <kbd className="ai-sandbox-search-kbd">⌘K</kbd>
                 )}
               </div>
             </div>
