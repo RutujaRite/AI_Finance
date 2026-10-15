@@ -1194,40 +1194,35 @@ export default function PoliciesView({
         }
       `}</style>
 
-       {/* Background container for embedded mode */}
-       {embedded && (
-         <div className="min-h-[calc(100vh-64px)] bg-slate-50 flex items-center justify-center px-6 py-8">
-           <div className="w-full max-w-7xl">
-             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-       )}
-       
-       {!embedded && <Topbar user={user} />}
-       {/* Hidden File Input for Replace in Documents Tab */}
-       <input
-         ref={fileInputRef}
-         type="file"
-         accept=".txt,.pdf,.csv,.docx,.doc"
-         style={{ display: "none" }}
-         onChange={handleFileReplace}
-       />
- 
-       {/* Hidden File Input for Edit Modal */}
-       <input
-         ref={editFileInputRef}
-         type="file"
-         accept=".pdf,.doc,.docx,.txt"
-         style={{ display: "none" }}
-         onChange={handleModalFileSelected}
-       />
- 
-       <div
-         className="policies-page animate-fade-in bp-container"
-         style={{
-           width: "100%",
-           padding: embedded ? "0" : "1.5rem 2rem",
-           boxSizing: "border-box",
-         }}
-       >
+      {!embedded && <Topbar user={user} />}
+      {/* Hidden File Input for Replace in Documents Tab */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,.pdf,.csv,.docx,.doc"
+        style={{ display: "none" }}
+        onChange={handleFileReplace}
+      />
+
+      {/* Hidden File Input for Edit Modal */}
+      <input
+        ref={editFileInputRef}
+        type="file"
+        accept=".pdf,.doc,.docx,.txt"
+        style={{ display: "none" }}
+        onChange={handleModalFileSelected}
+      />
+
+      <div
+        className="animate-fade-in bp-container"
+        style={{
+          width: "100%",
+          maxWidth: "100%",
+          margin: "0 auto",
+          padding: embedded ? "0 0 2rem 0" : "1.5rem 2rem",
+          boxSizing: "border-box",
+        }}
+      >
         {/* Replace / Action Toast Notification */}
         {actionToast && (
           <div
@@ -2941,198 +2936,194 @@ export default function PoliciesView({
         </div>
       )}
 
-       {/* =========================================================================
-           UPLOAD POLICY FILE MODAL
-           ========================================================================= */}
-       {uploadModalOpen && (
-         <div className="modal-backdrop" onClick={() => !isUploading && setUploadModalOpen(false)}>
-           <div className="edit-policy-modal" onClick={(e) => e.stopPropagation()}>
-             {/* Modal Header */}
-             <div className="edit-policy-header">
-               <div className="edit-policy-title-area">
-                 <div className="edit-policy-icon-badge">
-                   <i className="bi bi-upload" />
-                 </div>
-                 <div>
-                   <h2 className="edit-policy-title">Upload Policy File</h2>
-                   <p className="edit-policy-subtitle">
-                     Upload a new bank policy document with loan type classification.
-                   </p>
-                 </div>
-               </div>
+      {/* =========================================================================
+          UPLOAD POLICY FILE MODAL
+          ========================================================================= */}
+      {uploadModalOpen && (
+        <div className="modal-backdrop" onClick={() => !isUploading && setUploadModalOpen(false)}>
+          <div className="edit-policy-modal" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="edit-policy-header">
+              <div className="edit-policy-title-area">
+                <div className="edit-policy-icon-badge">
+                  <i className="bi bi-upload" />
+                </div>
+                <div>
+                  <h2 className="edit-policy-title">Upload Policy File</h2>
+                  <p className="edit-policy-subtitle">
+                    Upload a new bank policy document with loan type classification.
+                  </p>
+                </div>
+              </div>
 
-               <button
-                 type="button"
-                 className="btn btn-ghost btn-sm"
-                 onClick={() => !isUploading && setUploadModalOpen(false)}
-                 aria-label="Close"
-               >
-                 <i className="bi bi-x-lg" style={{ fontSize: "1.1rem" }} />
-               </button>
-             </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => !isUploading && setUploadModalOpen(false)}
+                aria-label="Close"
+              >
+                <i className="bi bi-x-lg" style={{ fontSize: "1.1rem" }} />
+              </button>
+            </div>
 
-             {/* Modal Form Body */}
-             <form onSubmit={handleUploadPolicy} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-               <div className="edit-policy-body" style={{ padding: "1.5rem" }}>
-                 <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+            {/* Modal Form Body */}
+            <form onSubmit={handleUploadPolicy} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+              <div className="edit-policy-body" style={{ padding: "1.5rem" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
 
-                   {/* Bank Selection */}
-                   <div className="policy-field-group">
-                     <label className="policy-field-label">Bank <span style={{ color: "var(--danger)" }}>*</span></label>
-                     <div className="policy-select-wrap">
-                       <i className="bi bi-bank policy-select-icon" />
-                       <select
-                         className="form-select policy-select-has-icon"
-                         value={uploadBankName}
-                         onChange={(e) => {
-                           const selectedName = e.target.value
-                           setUploadBankName(selectedName)
-                           const matched = allBankOptions.find((b) => b.name === selectedName)
-                           if (matched) setUploadBankId(matched.id)
-                         }}
-                         required
-                       >
-                         <option value="">Select a bank...</option>
-                         {allBankOptions.length > 0 ? (
-                           allBankOptions.map((b) => (
-                             <option key={b.name} value={b.name}>
-                               {b.name}
-                             </option>
-                           ))
-                         ) : (
-                           <option value={uploadBankName}>{uploadBankName}</option>
-                         )}
-                       </select>
-                     </div>
-                   </div>
+                  {/* Bank Selection */}
+                  <div className="policy-field-group">
+                    <label className="policy-field-label">Bank <span style={{ color: "var(--danger)" }}>*</span></label>
+                    <div className="policy-select-wrap">
+                      <i className="bi bi-bank policy-select-icon" />
+                      <select
+                        className="form-select policy-select-has-icon"
+                        value={uploadBankName}
+                        onChange={(e) => {
+                          const selectedName = e.target.value
+                          setUploadBankName(selectedName)
+                          const matched = allBankOptions.find((b) => b.name === selectedName)
+                          if (matched) setUploadBankId(matched.id)
+                        }}
+                        required
+                      >
+                        <option value="">Select a bank...</option>
+                        {allBankOptions.length > 0 ? (
+                          allBankOptions.map((b) => (
+                            <option key={b.name} value={b.name}>
+                              {b.name}
+                            </option>
+                          ))
+                        ) : (
+                          <option value={uploadBankName}>{uploadBankName}</option>
+                        )}
+                      </select>
+                    </div>
+                  </div>
 
-                   {/* Loan Type */}
-                   <div className="policy-field-group">
-                     <label className="policy-field-label">Loan Type <span style={{ color: "var(--danger)" }}>*</span></label>
-                     <select
-                       className="form-select"
-                       value={uploadLoanType}
-                       onChange={(e) => setUploadLoanType(e.target.value)}
-                       required
-                     >
-                       <option value="Personal Loan">Personal Loan</option>
-                       <option value="Home Loan">Home Loan</option>
-                       <option value="Auto Loan">Auto Loan</option>
-                       <option value="Business Loan">Business Loan</option>
-                       <option value="Education Loan">Education Loan</option>
-                     </select>
-                   </div>
+                  {/* Loan Type */}
+                  <div className="policy-field-group">
+                    <label className="policy-field-label">Loan Type <span style={{ color: "var(--danger)" }}>*</span></label>
+                    <select
+                      className="form-select"
+                      value={uploadLoanType}
+                      onChange={(e) => setUploadLoanType(e.target.value)}
+                      required
+                    >
+                      <option value="Personal Loan">Personal Loan</option>
+                      <option value="Home Loan">Home Loan</option>
+                      <option value="Auto Loan">Auto Loan</option>
+                      <option value="Business Loan">Business Loan</option>
+                      <option value="Education Loan">Education Loan</option>
+                    </select>
+                  </div>
 
-                   {/* Policy Version */}
-                   <div className="policy-field-group">
-                     <label className="policy-field-label">Policy Version</label>
-                     <select
-                       className="form-select"
-                       value={uploadPolicyVersion}
-                       onChange={(e) => setUploadPolicyVersion(e.target.value)}
-                     >
-                       <option value="V1">V1 (Initial)</option>
-                       <option value="V2">V2 (Updated)</option>
-                       <option value="V3">V3 (Latest)</option>
-                     </select>
-                   </div>
+                  {/* Policy Version */}
+                  <div className="policy-field-group">
+                    <label className="policy-field-label">Policy Version</label>
+                    <select
+                      className="form-select"
+                      value={uploadPolicyVersion}
+                      onChange={(e) => setUploadPolicyVersion(e.target.value)}
+                    >
+                      <option value="V1">V1 (Initial)</option>
+                      <option value="V2">V2 (Updated)</option>
+                      <option value="V3">V3 (Latest)</option>
+                    </select>
+                  </div>
 
-                   {/* Employment Type */}
-                   <div className="policy-field-group">
-                     <label className="policy-field-label">Employment Type</label>
-                     <select
-                       className="form-select"
-                       value={uploadEmployment}
-                       onChange={(e) => setUploadEmployment(e.target.value)}
-                     >
-                       <option value="Salaried">Salaried</option>
-                       <option value="Self-Employed">Self-Employed</option>
-                       <option value="Business Owner">Business Owner</option>
-                       <option value="Professional">Professional</option>
-                     </select>
-                   </div>
+                  {/* Employment Type */}
+                  <div className="policy-field-group">
+                    <label className="policy-field-label">Employment Type</label>
+                    <select
+                      className="form-select"
+                      value={uploadEmployment}
+                      onChange={(e) => setUploadEmployment(e.target.value)}
+                    >
+                      <option value="Salaried">Salaried</option>
+                      <option value="Self-Employed">Self-Employed</option>
+                      <option value="Business Owner">Business Owner</option>
+                      <option value="Professional">Professional</option>
+                    </select>
+                  </div>
 
-                   {/* File Upload */}
-                   <div className="policy-field-group">
-                     <label className="policy-field-label">Policy File <span style={{ color: "var(--danger)" }}>*</span></label>
-                     <div className="file-upload-area" style={{ border: "2px dashed var(--border)", borderRadius: "var(--radius-md)", padding: "1.5rem", textAlign: "center", background: "var(--surface-2)" }}>
-                       <input
-                         ref={uploadFileInputRef}
-                         type="file"
-                         accept=".txt,.pdf,.docx,.csv"
-                         style={{ display: "none" }}
-                         onChange={handleUploadFileSelected}
-                       />
-                       <button
-                         type="button"
-                         className="btn btn-outline-primary"
-                         onClick={() => uploadFileInputRef.current?.click()}
-                         disabled={isUploading}
-                       >
-                         <i className="bi bi-file-earmark-arrow-up" style={{ marginRight: "0.5rem" }} />
-                         {uploadFile ? `Selected: ${uploadFile.name}` : "Choose File (.txt, .pdf, .docx, .csv)"}
-                       </button>
-                       {uploadFile && (
-                         <p style={{ marginTop: "0.75rem", fontSize: "0.8125rem", color: "var(--ink-soft)" }}>
-                           Size: {(uploadFile.size / 1024).toFixed(1)} KB
-                         </p>
-                       )}
-                     </div>
-                   </div>
+                  {/* File Upload */}
+                  <div className="policy-field-group">
+                    <label className="policy-field-label">Policy File <span style={{ color: "var(--danger)" }}>*</span></label>
+                    <div className="file-upload-area" style={{ border: "2px dashed var(--border)", borderRadius: "var(--radius-md)", padding: "1.5rem", textAlign: "center", background: "var(--surface-2)" }}>
+                      <input
+                        ref={uploadFileInputRef}
+                        type="file"
+                        accept=".txt,.pdf,.docx,.csv"
+                        style={{ display: "none" }}
+                        onChange={handleUploadFileSelected}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary"
+                        onClick={() => uploadFileInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        <i className="bi bi-file-earmark-arrow-up" style={{ marginRight: "0.5rem" }} />
+                        {uploadFile ? `Selected: ${uploadFile.name}` : "Choose File (.txt, .pdf, .docx, .csv)"}
+                      </button>
+                      {uploadFile && (
+                        <p style={{ marginTop: "0.75rem", fontSize: "0.8125rem", color: "var(--ink-soft)" }}>
+                          Size: {(uploadFile.size / 1024).toFixed(1)} KB
+                        </p>
+                      )}
+                    </div>
+                  </div>
 
-                   {/* Description */}
-                   <div className="policy-field-group">
-                     <label className="policy-field-label">Description (Optional)</label>
-                     <textarea
-                       className="form-control"
-                       value={uploadDescription}
-                       onChange={(e) => setUploadDescription(e.target.value)}
-                       placeholder="Add any notes about this policy file..."
-                       rows={3}
-                     />
-                   </div>
+                  {/* Description */}
+                  <div className="policy-field-group">
+                    <label className="policy-field-label">Description (Optional)</label>
+                    <textarea
+                      className="form-control"
+                      value={uploadDescription}
+                      onChange={(e) => setUploadDescription(e.target.value)}
+                      placeholder="Add any notes about this policy file..."
+                      rows={3}
+                    />
+                  </div>
 
-                 </div>
-               </div>
+                </div>
+              </div>
 
-               {/* Modal Footer */}
-               <div className="edit-policy-footer">
-                 <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", justifyContent: "flex-end", width: "100%" }}>
-                   <button
-                     type="button"
-                     className="btn btn-secondary"
-                     onClick={() => !isUploading && setUploadModalOpen(false)}
-                     disabled={isUploading}
-                   >
-                     Cancel
-                   </button>
+              {/* Modal Footer */}
+              <div className="edit-policy-footer">
+                <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", justifyContent: "flex-end", width: "100%" }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => !isUploading && setUploadModalOpen(false)}
+                    disabled={isUploading}
+                  >
+                    Cancel
+                  </button>
 
-                   <button
-                     type="submit"
-                     className="btn btn-success"
-                     disabled={isUploading || !uploadFile || !uploadBankId || !uploadLoanType}
-                     style={{ background: "var(--success)", color: "#ffffff", border: "none", minWidth: 150 }}
-                   >
-                     {isUploading ? (
-                       <>
-                         <span className="spinner-inline" /> Uploading...
-                       </>
-                     ) : (
-                       <>
-                         <i className="bi bi-upload" style={{ marginRight: "0.25rem" }} /> Upload Policy
-                       </>
-                     )}
-                   </button>
-                 </div>
-               </div>
-             </form>
-           </div>
-         </div>
-       )}
-       {embedded && (
-         </div>
-         </div>
-       )}
-     </>
-   )
- }
+                  <button
+                    type="submit"
+                    className="btn btn-success"
+                    disabled={isUploading || !uploadFile || !uploadBankId || !uploadLoanType}
+                    style={{ background: "var(--success)", color: "#ffffff", border: "none", minWidth: 150 }}
+                  >
+                    {isUploading ? (
+                      <>
+                        <span className="spinner-inline" /> Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-upload" style={{ marginRight: "0.25rem" }} /> Upload Policy
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
