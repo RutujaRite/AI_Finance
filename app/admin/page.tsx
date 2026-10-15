@@ -133,16 +133,16 @@ export default function AdminDashboardPage() {
 
   if (loading || !user) {
     return (
-      <main className="flex flex-col items-center justify-center min-h-screen gap-3 bg-[#090D16] text-slate-100 font-sans">
-        <div className="w-9 h-9 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-slate-400 font-medium text-sm">
+      <main className="flex flex-col items-center justify-center min-h-screen gap-3 bg-slate-50 text-slate-900 font-sans">
+        <div className="w-9 h-9 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-slate-600 font-medium text-sm">
           Verifying administrator access...
         </p>
       </main>
     );
   }
 
-  // 4 Focused Core Module Cards with Semantic Tint Colors
+  // 4 Focused Core Module Cards with Semantic Tint Colors (Enterprise Light)
   const moduleCards = [
     {
       id: "card-company-search",
@@ -152,8 +152,8 @@ export default function AdminDashboardPage() {
       action: "Manage employer database",
       href: "/admin/company-search",
       icon: Building2,
-      iconContainerClass: "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20",
-      badgeClass: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+      iconContainerClass: "bg-sky-50 text-sky-600 border border-sky-200",
+      badgeClass: "bg-sky-50 text-sky-700 border-sky-200",
     },
     {
       id: "card-bank-policy",
@@ -163,8 +163,8 @@ export default function AdminDashboardPage() {
       action: "Configure lending rules",
       href: "/admin/bank-policy",
       icon: ShieldCheck,
-      iconContainerClass: "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20",
-      badgeClass: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+      iconContainerClass: "bg-indigo-50 text-indigo-600 border border-indigo-200",
+      badgeClass: "bg-indigo-50 text-indigo-700 border-indigo-200",
     },
     {
       id: "card-bank-managers",
@@ -174,8 +174,8 @@ export default function AdminDashboardPage() {
       action: "View escalation contacts",
       href: "/admin/bank-managers",
       icon: Users,
-      iconContainerClass: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
-      badgeClass: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+      iconContainerClass: "bg-emerald-50 text-emerald-600 border border-emerald-200",
+      badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
     },
     {
       id: "card-total-users",
@@ -185,38 +185,90 @@ export default function AdminDashboardPage() {
       action: "Manage roles & permissions",
       href: "/admin/users",
       icon: UserCheck,
-      iconContainerClass: "bg-purple-500/10 text-purple-400 border border-purple-500/20",
-      badgeClass: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+      iconContainerClass: "bg-purple-50 text-purple-600 border border-purple-200",
+      badgeClass: "bg-purple-50 text-purple-700 border-purple-200",
     },
   ];
 
   return (
-    <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col font-sans selection:bg-blue-500/20 selection:text-blue-200">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-blue-500/20 selection:text-blue-700">
       {/* 1. TOP NAVIGATION */}
       <AdminHeader user={user} showBreadcrumbs={false} showBackToWorkspace={false} />
 
-      {/* 2. HERO HEADING SECTION */}
-      <section className="max-w-6xl mx-auto px-6 pt-10 pb-2 w-full">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight text-white m-0">
-                Admin Overview
-              </h1>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                Central Control
-              </span>
+      {/* 2. PAGE CONTAINER */}
+      <div className="max-w-7xl mx-auto px-6 py-10 w-full flex-1 flex flex-col">
+        {/* Header Section */}
+        <section className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 m-0">
+                  Admin Overview
+                </h1>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                  Central Control
+                </span>
+              </div>
+              <p className="text-sm text-slate-600 mt-1.5 m-0 leading-relaxed">
+                Manage platform lender policies, company database, managers, and system users.
+              </p>
             </div>
-            <p className="text-sm text-slate-300 mt-1.5 m-0 leading-relaxed">
-              Manage platform lender policies, company database, managers, and system users.
-            </p>
+          </div>
+        </section>
+
+        {/* 3. 4-COLUMN KPI SUMMARY STRIP */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-lg bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center shrink-0">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-medium text-slate-500 truncate">Total Records</div>
+              <div className="text-lg font-bold text-slate-900 tracking-tight tabular-nums mt-0.5">
+                {stats.companyRecords > 0 ? stats.companyRecords.toLocaleString() : "533,000+"}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-medium text-slate-500 truncate">Active Lenders</div>
+              <div className="text-lg font-bold text-slate-900 tracking-tight tabular-nums mt-0.5">
+                {stats.lendersCount ? `${stats.lendersCount} Lenders` : "23 Lenders"}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-medium text-slate-500 truncate">Directory Status</div>
+              <div className="text-lg font-bold text-slate-900 tracking-tight tabular-nums mt-0.5">
+                {stats.bankManagersCount > 0 ? `${stats.bankManagersCount} Contacts` : "Verified"}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-lg bg-purple-50 border border-purple-200 text-purple-600 flex items-center justify-center shrink-0">
+              <UserCheck className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-medium text-slate-500 truncate">Platform Users</div>
+              <div className="text-lg font-bold text-slate-900 tracking-tight tabular-nums mt-0.5">
+                {stats.totalUsers > 0 ? `${stats.totalUsers.toLocaleString()} Users` : "2 Users"}
+              </div>
+            </div>
           </div>
         </div>
-      </section>
 
-      {/* 3. DASHBOARD CARDS (4 MODULES IN 2x2 BALANCED GRID) */}
-      <main className="max-w-6xl mx-auto px-6 py-6 pb-14 w-full space-y-10 flex-1">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* 4. MODULE CARDS (4 MODULES IN 2x2 BALANCED GRID) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
           {moduleCards.map((card) => {
             const Icon = card.icon;
             return (
@@ -224,10 +276,10 @@ export default function AdminDashboardPage() {
                 key={card.id}
                 id={card.id}
                 href={card.href}
-                className="group relative flex flex-col justify-between rounded-2xl p-6 transition-all duration-200 hover:-translate-y-0.5 bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-slate-700 shadow-lg no-underline text-left cursor-pointer"
+                className="bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md hover:border-blue-300 transition-all duration-200 p-6 flex flex-col justify-between group no-underline text-left cursor-pointer"
               >
                 <div>
-                  {/* Card Top Row: 48x48px tinted icon container + metric pill badge */}
+                  {/* Card Header: 48x48px tinted icon container + metric pill badge */}
                   <div className="flex items-start justify-between">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${card.iconContainerClass}`}>
                       <Icon className="w-6 h-6" />
@@ -239,116 +291,116 @@ export default function AdminDashboardPage() {
 
                   {/* Card Body */}
                   <div className="mt-5">
-                    <h2 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors m-0">
+                    <h2 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors m-0">
                       {card.title}
                     </h2>
-                    <p className="mt-1.5 text-sm text-slate-300 leading-relaxed m-0">
+                    <p className="mt-1.5 text-sm text-slate-600 leading-relaxed m-0">
                       {card.desc}
                     </p>
                   </div>
                 </div>
 
                 {/* Card Footer: specific module action label + animated arrow */}
-                <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-400 group-hover:text-slate-300 transition-colors">
+                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors">
                     {card.action}
                   </span>
-                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-transform" />
                 </div>
               </Link>
             );
           })}
         </div>
 
-        {/* 4. RECENT ACTIVITY TABLE (HIGH-CRAFT DARK SURFACE) */}
+        {/* 5. RECENT ACTIVITY TABLE (ENTERPRISE LIGHT) */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-white flex items-center gap-2 m-0">
-              <Activity className="w-4 h-4 text-blue-400" />
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 m-0">
+              <Activity className="w-4 h-4 text-blue-600" />
               <span>Platform Core Modules</span>
             </h2>
-            <span className="text-xs text-slate-400 font-medium">Live operational status</span>
+            <span className="text-xs text-slate-500 font-medium">Live operational status</span>
           </div>
 
-          <div className="rounded-2xl bg-slate-900/90 border border-slate-800/80 overflow-hidden shadow-lg">
+          <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
-                  <tr className="bg-slate-950/70 border-b border-slate-800/80 text-slate-400 text-xs uppercase tracking-wider font-semibold">
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs uppercase tracking-wider font-semibold">
                     <th className="py-3.5 px-6 font-semibold" style={{ width: "42%" }}>Module Section</th>
                     <th className="py-3.5 px-6 font-semibold" style={{ width: "33%" }}>Last Synchronized</th>
                     <th className="py-3.5 px-6 font-semibold text-center" style={{ width: "25%" }}>Operational Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-slate-100">
                   {/* Row 1: Company data */}
-                  <tr className="hover:bg-slate-800/40 transition-colors">
+                  <tr className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 border border-sky-200 flex items-center justify-center shrink-0">
                           <Building2 className="w-5 h-5" />
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-100 text-sm">Company Master Data</div>
-                          <div className="text-xs text-slate-400">Employer categorization directory</div>
+                          <div className="font-semibold text-slate-900 text-sm">Company Master Data</div>
+                          <div className="text-xs text-slate-500">Employer categorization directory</div>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-6 text-sm text-slate-300 font-mono">
+                    <td className="py-4 px-6 text-sm text-slate-600 font-mono">
                       {formatRelativeDate(activities.companyData?.lastUpdated, "Today")}
                     </td>
                     <td className="py-4 px-6 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        Live & Active
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Live &amp; Active
                       </span>
                     </td>
                   </tr>
 
                   {/* Row 2: Bank policies */}
-                  <tr className="hover:bg-slate-800/40 transition-colors">
+                  <tr className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center shrink-0">
                           <ShieldCheck className="w-5 h-5" />
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-100 text-sm">Bank Policies & Matrices</div>
-                          <div className="text-xs text-slate-400">Multi-bank credit guidelines</div>
+                          <div className="font-semibold text-slate-900 text-sm">Bank Policies &amp; Matrices</div>
+                          <div className="text-xs text-slate-500">Multi-bank credit guidelines</div>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-6 text-sm text-slate-300 font-mono">
+                    <td className="py-4 px-6 text-sm text-slate-600 font-mono">
                       {formatRelativeDate(activities.bankPolicies?.lastUpdated, "Yesterday")}
                     </td>
                     <td className="py-4 px-6 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        Live & Active
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Live &amp; Active
                       </span>
                     </td>
                   </tr>
 
                   {/* Row 3: User accounts */}
-                  <tr className="hover:bg-slate-800/40 transition-colors">
+                  <tr className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 border border-purple-200 flex items-center justify-center shrink-0">
                           <UserCheck className="w-5 h-5" />
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-100 text-sm">User Authentication & Roles</div>
-                          <div className="text-xs text-slate-400">Client logins and privileges</div>
+                          <div className="font-semibold text-slate-900 text-sm">User Authentication &amp; Roles</div>
+                          <div className="text-xs text-slate-500">Client logins and privileges</div>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-6 text-sm text-slate-300 font-mono">
+                    <td className="py-4 px-6 text-sm text-slate-600 font-mono">
                       {formatRelativeDate(activities.userAccounts?.lastUpdated, "Today")}
                     </td>
                     <td className="py-4 px-6 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        Live & Active
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Live &amp; Active
                       </span>
                     </td>
                   </tr>
@@ -357,7 +409,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

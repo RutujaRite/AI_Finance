@@ -29,15 +29,16 @@ export default function RootLayout({
               (function() {
                 try {
                   var saved = localStorage.getItem('theme');
-                  var theme = saved ? saved : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                  var theme = saved === 'dark' ? 'dark' : 'light';
                   document.documentElement.setAttribute('data-bs-theme', theme);
+                  document.documentElement.setAttribute('data-theme', theme);
                 } catch(e) {}
               })();
             `,
           }}
         />
       </head>
-      <body>
+      <body className="bg-slate-50 text-slate-900 min-h-screen antialiased font-sans">
         {children}
         <RouteLoaderWrapper />
         <Script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js" strategy="beforeInteractive" />

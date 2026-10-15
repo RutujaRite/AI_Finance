@@ -93,11 +93,11 @@ export default function StudioSidebar({
               onSelectTab(item.id);
               if (onCloseMobile) onCloseMobile();
             }}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer active:scale-[0.99] ${
-              isActive
-                ? "bg-blue-50 text-blue-600 border border-blue-200/90 shadow-xs font-semibold"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent"
-            }`}
+className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer active:scale-[0.99] ${
+    isActive
+      ? "bg-blue-50 text-blue-700 border border-blue-200 font-semibold"
+      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg"
+  }`}
           >
             <div className="flex items-center gap-2.5">
               <Icon
@@ -107,17 +107,17 @@ export default function StudioSidebar({
               />
               <span className="truncate">{item.label}</span>
             </div>
-            {item.badge && (
-              <span
-                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-colors ${
-                  isActive
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-slate-100 text-slate-500"
-                }`}
-              >
-                {item.badge}
-              </span>
-            )}
+{item.badge && (
+    <span
+      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-colors ${
+        isActive
+          ? "bg-blue-100 text-blue-700"
+          : "bg-slate-100 text-slate-600 border border-slate-200"
+      }`}
+    >
+      {item.badge}
+    </span>
+  )}
           </button>
         );
       })}
@@ -157,13 +157,13 @@ export default function StudioSidebar({
 
         {/* Section 1: Studio Workspace */}
         <div className="mt-4">
-          <div className="cn-sidebar-section-label">STUDIO WORKSPACE</div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-2">STUDIO WORKSPACE</div>
           {renderNavGroup(workspaceNav)}
         </div>
 
         {/* Section 2: Configuration & Metrics */}
         <div className="mt-4">
-          <div className="cn-sidebar-section-label">CONFIGURATION &amp; METRICS</div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-2">CONFIGURATION &amp; METRICS</div>
           {renderNavGroup(configNav)}
         </div>
       </div>
@@ -199,7 +199,7 @@ export default function StudioSidebar({
   return (
     <>
       {/* Desktop Sidebar: 240px wide */}
-      <aside className="as-sidebar-desktop shrink-0 select-none">
+      <aside className="as-sidebar-desktop shrink-0 select-none bg-white border-r border-slate-200 w-64">
         {content}
       </aside>
 

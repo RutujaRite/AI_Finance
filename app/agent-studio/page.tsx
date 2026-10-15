@@ -348,7 +348,7 @@ export default function AgentStudioPage() {
           </div>
 
           {/* Dynamic View rendering based on active tab */}
-          <main className="flex-1 h-full overflow-hidden bg-[#F8FAFC]">
+          <main className="flex-1 h-full overflow-hidden bg-slate-50/80 p-6 space-y-6">
           {activeTab === "instructions" && (
             <AiInstructionsView
               agent={currentAgent}

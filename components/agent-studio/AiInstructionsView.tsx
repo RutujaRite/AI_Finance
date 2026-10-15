@@ -741,7 +741,7 @@ export default function AiInstructionsView({
     <div className="flex-1 bg-[#F5F9FF] h-full overflow-y-auto ai-scroll-pane p-3.5 sm:p-6 md:p-8">
       <div className="ai-main-layout w-full max-w-7xl mx-auto space-y-4">
         {/* 1. PAGE HEADER BANNER (GRADIENT CARD WITH AI MASCOT ILLUSTRATION) */}
-        <div className="ai-header-banner relative overflow-hidden p-4 sm:p-6 flex items-center justify-between">
+        <div className="ai-header-banner relative overflow-hidden flex items-center justify-between bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-white border border-blue-200/80 rounded-xl p-5">
           <div className="flex items-center gap-3 sm:gap-4 relative z-10">
             {/* AI Chip Icon Badge */}
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[11px] bg-[#1677FF] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/25">
@@ -817,7 +817,7 @@ export default function AiInstructionsView({
         </div>
 
         {/* 2. AGENT CONTROL TOOLBAR (HORIZONTAL WHITE CARD) */}
-        <div className="ai-card p-3 sm:p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-[0_2px_8px_rgba(30,80,150,0.04)]">
+        <div className="ai-card bg-white border border-slate-200 shadow-xs rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Agent Selector Dropdown Button (Professional UI, 38px) */}
             <div className="relative" ref={agentDropdownRef}>
@@ -918,38 +918,38 @@ export default function AiInstructionsView({
 
           <div className="flex items-center gap-2 ml-auto">
             {/* Professional Delete Agent Button (Small Rectangular with Micro-Animation) */}
-            <button
-              type="button"
-              onClick={() => {
-                if (onDeleteAgentClick) onDeleteAgentClick(agent.id);
-                else onToast("Cannot delete default agent", "warning");
-              }}
-              className="h-[32px] flex items-center gap-1.5 px-3 bg-[#FEF2F2] hover:bg-[#FEE2E2] active:bg-[#FECDD3] text-[#F04452] hover:text-[#DC2626] border border-[#FECDD3] hover:border-[#FCA5A5] rounded-[6px] text-xs font-semibold shadow-xs transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] cursor-pointer"
-              title="Delete this agent"
-              aria-label="Delete"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-[#F04452]" />
-              <span>Delete</span>
-            </button>
+<button
+  type="button"
+  onClick={() => {
+    if (onDeleteAgentClick) onDeleteAgentClick(agent.id);
+    else onToast("Cannot delete default agent", "warning");
+  }}
+  className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-medium px-4 py-2 rounded-lg"
+  title="Delete this agent"
+  aria-label="Delete"
+>
+  <Trash2 className="w-3.5 h-3.5 text-[#F04452]" />
+  <span>Delete</span>
+</button>
 
             {/* Professional Save Instructions Button (Small Rectangular, Primary Blue with Micro-Animation) */}
-            <button
-              type="button"
-              onClick={handleSaveClick}
-              disabled={saving}
-              className="h-[32px] px-3.5 bg-[#1677FF] hover:bg-[#0E65E6] active:bg-[#0958D9] text-white text-xs font-semibold rounded-[6px] shadow-xs transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] hover:shadow-md inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:hover:translate-y-0"
-              title="Save instructions"
-              aria-label="Save instructions"
-            >
-              <Save className="w-3.5 h-3.5 text-white" />
-              <span>{saving ? "Saving..." : "Save Instructions"}</span>
-            </button>
+<button
+  type="button"
+  onClick={handleSaveClick}
+  disabled={saving}
+  className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg shadow-xs"
+  title="Save instructions"
+  aria-label="Save instructions"
+>
+  <Save className="w-3.5 h-3.5 text-white" />
+  <span>{saving ? "Saving..." : "Save Instructions"}</span>
+</button>
           </div>
         </div>
 
         {/* 3. AGENT IDENTITY & PERSONA (FULL WIDTH WHITE CARD WITH LIGHT COLOR SHADOW) */}
-        <div className="ai-card p-6 md:p-7 shadow-[0_10px_35px_-4px_rgba(22,119,255,0.08),0_2px_10px_rgba(18,51,107,0.03)] border border-[#E2EDFA] rounded-[18px] bg-white transition-all">
-          <div className="flex items-center justify-between">
+        <div className="ai-card bg-white border border-slate-200 shadow-xs rounded-xl p-6 transition-all">
+          <div className="flex items-center justify-between pb-4">
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-[12px] bg-[#EAF2FF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
                 <User className="w-5 h-5 text-[#1677FF]" />
@@ -964,71 +964,73 @@ export default function AiInstructionsView({
               </div>
             </div>
 
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#EAF8F1] text-[#079669] border border-[#079669]/20 shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-[#079669] animate-pulse" />
-              Active
-            </span>
-          </div>
+<span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${isAgentActive ? 'bg-[#EAF8F1] text-[#079669] border border-[#079669]/20' : 'bg-slate-50 text-slate-600 border border-slate-200'} shadow-xs`}>
+      <span className={`w-2 h-2 rounded-full ${isAgentActive ? 'bg-[#079669] animate-pulse' : 'bg-slate-400'}`} />
+      {isAgentActive ? 'Active' : 'Inactive'}
+    </span>
+           </div>
 
-          {/* 3-Column Responsive Inputs with Icons in Labels */}
+           <div className="mb-5 border-b border-slate-100"></div>
+
+           {/* 3-Column Responsive Inputs with Icons in Labels */}
           <div className="ai-form-grid pt-5 md:pt-6">
             <div>
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-[#102A56] mb-2">
-                <User className="w-3.5 h-3.5 text-[#1677FF]" />
-                <span>Agent Name</span>
-              </label>
-              <input
-                type="text"
-                value={agentName}
-                onChange={(e) => handleNameChange(e.target.value)}
-                placeholder="Loan Assistant"
-                className="ai-input h-[44px] px-4 bg-white border border-[#DCE8F8] hover:border-[#1677FF]/60 focus:border-[#1677FF] focus:ring-3 focus:ring-[#1677FF]/10 rounded-[10px] text-xs md:text-[13px] font-medium text-[#102A56] placeholder-[#8FA0BC] transition outline-none shadow-[0_1px_3px_rgba(22,119,255,0.03)]"
-              />
+<label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-1.5">
+      <User className="w-3.5 h-3.5 text-[#1677FF]" />
+      <span>Agent Name</span>
+    </label>
+    <input
+      type="text"
+      value={agentName}
+      onChange={(e) => handleNameChange(e.target.value)}
+      placeholder="Loan Assistant"
+      className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3.5 py-2.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
+    />
             </div>
 
             <div>
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-[#102A56] mb-2">
-                <MessageSquare className="w-3.5 h-3.5 text-[#1677FF]" />
-                <span>Conversation Tone</span>
-              </label>
-              <div className="relative">
-                <select
-                  value={conversationTone}
-                  onChange={(e) => handleToneChange(e.target.value)}
-                  className="ai-select h-[44px] px-4 pr-10 bg-white border border-[#DCE8F8] hover:border-[#1677FF]/60 focus:border-[#1677FF] focus:ring-3 focus:ring-[#1677FF]/10 rounded-[10px] text-xs md:text-[13px] font-medium text-[#102A56] transition outline-none appearance-none cursor-pointer shadow-[0_1px_3px_rgba(22,119,255,0.03)]"
-                >
-                  <option value="Professional and Friendly">Professional and friendly</option>
-                  <option value="Formal">Formal</option>
-                  <option value="Conversational">Conversational</option>
-                  <option value="Empathetic">Empathetic</option>
-                </select>
-                <ChevronDown className="w-4 h-4 text-[#526B91] pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2" />
-              </div>
+<label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-1.5">
+      <MessageSquare className="w-3.5 h-3.5 text-[#1677FF]" />
+      <span>Conversation Tone</span>
+    </label>
+    <div className="relative">
+      <select
+        value={conversationTone}
+        onChange={(e) => handleToneChange(e.target.value)}
+        className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3.5 py-2.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
+      >
+        <option value="Professional and Friendly">Professional and friendly</option>
+        <option value="Formal">Formal</option>
+        <option value="Conversational">Conversational</option>
+        <option value="Empathetic">Empathetic</option>
+      </select>
+      <ChevronDown className="w-4 h-4 text-[#526B91] pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2" />
+    </div>
             </div>
 
             <div>
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-[#102A56] mb-2">
-                <Sliders className="w-3.5 h-3.5 text-[#1677FF]" />
-                <span>Response Style</span>
-              </label>
-              <div className="relative">
-                <select
-                  value={responseStyle}
-                  onChange={(e) => handleStyleChange(e.target.value)}
-                  className="ai-select h-[44px] px-4 pr-10 bg-white border border-[#DCE8F8] hover:border-[#1677FF]/60 focus:border-[#1677FF] focus:ring-3 focus:ring-[#1677FF]/10 rounded-[10px] text-xs md:text-[13px] font-medium text-[#102A56] transition outline-none appearance-none cursor-pointer shadow-[0_1px_3px_rgba(22,119,255,0.03)]"
-                >
-                  <option value="Clear, Helpful, Concise">Clear, helpful, concise</option>
-                  <option value="Detailed">Detailed</option>
-                  <option value="Step-by-Step">Step-by-step</option>
-                </select>
-                <ChevronDown className="w-4 h-4 text-[#526B91] pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2" />
-              </div>
+<label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-1.5">
+      <Sliders className="w-3.5 h-3.5 text-[#1677FF]" />
+      <span>Response Style</span>
+    </label>
+    <div className="relative">
+      <select
+        value={responseStyle}
+        onChange={(e) => handleStyleChange(e.target.value)}
+        className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3.5 py-2.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
+      >
+        <option value="Clear, Helpful, Concise">Clear, helpful, concise</option>
+        <option value="Detailed">Detailed</option>
+        <option value="Step-by-Step">Step-by-step</option>
+      </select>
+      <ChevronDown className="w-4 h-4 text-[#526B91] pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2" />
+    </div>
             </div>
           </div>
         </div>
 
         {/* 4. INSTRUCTIONS FOR THE AI AGENT (FULL WIDTH WHITE CARD DIRECTLY BELOW PERSONA) */}
-        <div className="ai-card p-5 md:p-6 shadow-[0_2px_10px_rgba(30,80,150,0.03)] border border-[#DCE8F8] rounded-[14px]">
+        <div className="ai-card bg-white border border-slate-200 shadow-xs rounded-xl p-6">
           <div className="flex items-center justify-between pb-3.5 border-b border-[#DCE8F8]">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-[10px] bg-[#E6EEFF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
@@ -1042,17 +1044,18 @@ export default function AiInstructionsView({
                   Master instruction prompt, financial verification rules, and conversational logic.
                  </p>
                </div>
-             </div>
-           </div>
-           {/* Clean Instructions Container Box */}
+              </div>
+            </div>
+            <div className="mb-5 border-b border-slate-100"></div>
+            {/* Clean Instructions Container Box */}
           <div className="pt-4">
             <div className="border border-[#DCE8F8] focus-within:border-[#1677FF] focus-within:ring-2 focus-within:ring-[#1677FF]/10 rounded-[12px] bg-white p-4 transition shadow-xs">
-              <textarea
-                value={instructionsText}
-                onChange={(e) => handleInstructionsChange(e.target.value)}
-                placeholder="Write your custom instructions here..."
-                className="ai-textarea !min-h-[85px] w-full border-0 p-0 text-xs text-[#12336B] placeholder-[#8FA0BC] resize-y focus:outline-none focus:ring-0 bg-transparent leading-relaxed"
-              />
+<textarea
+  value={instructionsText}
+  onChange={(e) => handleInstructionsChange(e.target.value)}
+  placeholder="Write your custom instructions here..."
+  className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3.5 py-2.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
+/>
 
               {/* Reference Checklist Guidelines */}
               <div className="pt-3.5 border-t border-[#F0F5FA] space-y-2 text-xs text-[#526B91]">
@@ -1557,7 +1560,7 @@ export default function AiInstructionsView({
       {previewDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
           <div className="bg-white rounded-[10px] max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] animate-fadeIn">
-            <div className="flex items-center justify-between pb-3.5 border-b border-[#DCE8F8]">
+<div className="flex items-center justify-between pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0">
                   <FileText className="w-4 h-4 text-[#1677FF]" />
