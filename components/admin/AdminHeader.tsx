@@ -30,6 +30,7 @@ interface AdminHeaderProps {
   breadcrumbs?: BreadcrumbItem[];
   actions?: React.ReactNode;
   showBreadcrumbs?: boolean;
+  showBackToWorkspace?: boolean;
 }
 
 export default function AdminHeader({
@@ -39,6 +40,7 @@ export default function AdminHeader({
   breadcrumbs = [],
   actions,
   showBreadcrumbs = true,
+  showBackToWorkspace = false,
 }: AdminHeaderProps) {
   const router = useRouter();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -77,7 +79,7 @@ export default function AdminHeader({
   return (
     <>
       {/* 1. TOP NAVIGATION BAR */}
-      <header className="flex items-center justify-between h-16 px-6 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md sticky top-0 z-30 font-sans">
+      <header className="flex items-center justify-between h-16 px-6 border-b border-slate-800/80 bg-[#090D16]/90 backdrop-blur-md sticky top-0 z-30 font-sans">
         {/* Left: Brand Group */}
         <div className="flex items-center gap-3">
           <Link href="/admin" className="flex items-center gap-3 no-underline group">
@@ -104,17 +106,19 @@ export default function AdminHeader({
         </div>
 
         {/* Right: Actions Group */}
-        <div className="flex items-center gap-3">
-          {/* Back to Workspace button */}
-          <button
-            type="button"
-            onClick={() => router.push("/home?section=assistant")}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded-lg transition-colors cursor-pointer"
-            title="Return to AI Assistant"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
-            <span className="hidden xs:inline">Back to Workspace</span>
-          </button>
+        <div className="flex items-center gap-2.5">
+          {/* Back to Workspace button (hidden on root /admin overview page) */}
+          {showBackToWorkspace && (
+            <button
+              type="button"
+              onClick={() => router.push("/home?section=assistant")}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded-lg transition-colors cursor-pointer"
+              title="Return to AI Assistant"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
+              <span className="hidden xs:inline">Back to Workspace</span>
+            </button>
+          )}
 
           {/* Quick Return to Dashboard if on a sub-page */}
           {title && (
@@ -127,38 +131,38 @@ export default function AdminHeader({
             </Link>
           )}
 
-          {/* Search Icon button */}
+          {/* Search Icon button - 40x40px hit target */}
           <button
             type="button"
             onClick={() => router.push("/admin/company-search")}
             title="Company Search"
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer border-0 bg-transparent flex items-center justify-center"
+            className="h-10 w-10 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer border-0 bg-transparent flex items-center justify-center focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <Search className="w-4 h-4" />
           </button>
 
-          {/* Notification Bell with indicator dot */}
+          {/* Notification Bell - 40x40px hit target with indicator dot */}
           <div className="relative">
             <button
               type="button"
               title="Notifications"
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer border-0 bg-transparent flex items-center justify-center"
+              className="h-10 w-10 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer border-0 bg-transparent flex items-center justify-center focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               <Bell className="w-4 h-4" />
             </button>
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-slate-950" />
+            <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-[#090D16]" />
           </div>
 
-          {/* Admin Profile Dropdown */}
+          {/* Admin Profile Dropdown - 40px height hit target */}
           <div className="relative" ref={dropdownRef}>
             <button
               type="button"
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center gap-2.5 p-1.5 pr-2.5 rounded-lg hover:bg-slate-800/80 transition-colors cursor-pointer border-0 bg-transparent"
+              className="h-10 rounded-xl flex items-center gap-2.5 px-2 hover:bg-slate-800/80 transition-colors cursor-pointer border-0 bg-transparent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
               aria-label="User profile menu"
             >
               {/* Circular Avatar */}
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
                 {userInitial}
               </div>
 
@@ -221,6 +225,15 @@ export default function AdminHeader({
                   >
                     <Users className="w-4 h-4 text-purple-400" />
                     <span>User Accounts</span>
+                  </Link>
+
+                  <Link
+                    href="/agent-studio"
+                    onClick={() => setProfileDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800/70 text-xs font-medium no-underline transition-colors"
+                  >
+                    <Bot className="w-4 h-4 text-sky-400" />
+                    <span>AI Agent Studio</span>
                   </Link>
                 </div>
 

@@ -14,6 +14,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import AdminHeader from "@/components/admin/AdminHeader";
 import ModernStatusBadge from "@/components/ui/ModernStatusBadge";
 import {
@@ -21,13 +22,10 @@ import {
   ShieldCheck,
   Users,
   UserCheck,
-  Bot,
   ArrowRight,
-  ArrowLeft,
   Activity,
   Layers,
   Sparkles,
-  ChevronRight,
 } from "lucide-react";
 
 interface DashboardStats {
@@ -135,7 +133,7 @@ export default function AdminDashboardPage() {
 
   if (loading || !user) {
     return (
-      <main className="flex flex-col items-center justify-center min-h-screen gap-3 bg-slate-950 text-slate-100 font-sans">
+      <main className="flex flex-col items-center justify-center min-h-screen gap-3 bg-[#090D16] text-slate-100 font-sans">
         <div className="w-9 h-9 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
         <p className="text-slate-400 font-medium text-sm">
           Verifying administrator access...
@@ -144,71 +142,61 @@ export default function AdminDashboardPage() {
     );
   }
 
+  // 4 Focused Core Module Cards with Semantic Tint Colors
   const moduleCards = [
     {
       id: "card-company-search",
       title: "Company Search",
-      subtitle: stats.companyRecords > 0 ? `${stats.companyRecords.toLocaleString()} records` : "533,000+ records",
+      metric: stats.companyRecords > 0 ? `${stats.companyRecords.toLocaleString()} records` : "533,000+ records",
       desc: "Company employer categorization & database",
+      action: "Manage employer database",
       href: "/admin/company-search",
       icon: Building2,
-      iconContainerClass: "bg-sky-500/10 text-sky-400 border border-sky-500/20",
-      metricClass: "text-sky-400",
-      hoverTextClass: "group-hover:text-sky-400",
+      iconContainerClass: "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20",
+      badgeClass: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
     },
     {
       id: "card-bank-policy",
       title: "Bank Policy",
-      subtitle: stats.lendersCount ? `${stats.lendersCount} lenders` : "23 lenders",
+      metric: stats.lendersCount ? `${stats.lendersCount} lenders` : "23 lenders",
       desc: "Lender criteria, matrix rules & knowledge base",
+      action: "Configure lending rules",
       href: "/admin/bank-policy",
       icon: ShieldCheck,
-      iconContainerClass: "bg-violet-500/10 text-violet-400 border border-violet-500/20",
-      metricClass: "text-violet-400",
-      hoverTextClass: "group-hover:text-violet-400",
+      iconContainerClass: "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20",
+      badgeClass: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
     },
     {
       id: "card-bank-managers",
       title: "Bank Managers",
-      subtitle: stats.bankManagersCount > 0 ? `${stats.bankManagersCount} contacts` : "Manager directory",
+      metric: stats.bankManagersCount > 0 ? `${stats.bankManagersCount} contacts` : "Manager directory",
       desc: "Branch escalation contacts & city directory",
+      action: "View escalation contacts",
       href: "/admin/bank-managers",
       icon: Users,
       iconContainerClass: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
-      metricClass: "text-emerald-400",
-      hoverTextClass: "group-hover:text-emerald-400",
+      badgeClass: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
     },
     {
       id: "card-total-users",
       title: "User Accounts",
-      subtitle: stats.totalUsers > 0 ? `${stats.totalUsers.toLocaleString()} users` : "Active users",
+      metric: stats.totalUsers > 0 ? `${stats.totalUsers.toLocaleString()} users` : "2 users",
       desc: "Manage customer access, roles and verification",
+      action: "Manage roles & permissions",
       href: "/admin/users",
       icon: UserCheck,
-      iconContainerClass: "bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20",
-      metricClass: "text-fuchsia-400",
-      hoverTextClass: "group-hover:text-fuchsia-400",
-    },
-    {
-      id: "card-ai-agent-studio",
-      title: "AI Agent Studio",
-      subtitle: "Multi-agent studio",
-      desc: "Configure RAG models, prompts and parameters",
-      href: "/agent-studio",
-      icon: Bot,
-      iconContainerClass: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-      metricClass: "text-blue-400",
-      hoverTextClass: "group-hover:text-blue-400",
+      iconContainerClass: "bg-purple-500/10 text-purple-400 border border-purple-500/20",
+      badgeClass: "bg-purple-500/10 text-purple-400 border-purple-500/20",
     },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-blue-500/20 selection:text-blue-200">
+    <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col font-sans selection:bg-blue-500/20 selection:text-blue-200">
       {/* 1. TOP NAVIGATION */}
-      <AdminHeader user={user} showBreadcrumbs={false} />
+      <AdminHeader user={user} showBreadcrumbs={false} showBackToWorkspace={false} />
 
       {/* 2. HERO HEADING SECTION */}
-      <section className="max-w-7xl mx-auto px-6 pt-8 pb-6 w-full">
+      <section className="max-w-6xl mx-auto px-6 pt-10 pb-2 w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -219,58 +207,55 @@ export default function AdminDashboardPage() {
                 Central Control
               </span>
             </div>
-            <p className="text-sm text-slate-400 mt-1 m-0">
-              Manage platform lender policies, company database, managers, and AI configurations.
+            <p className="text-sm text-slate-300 mt-1.5 m-0 leading-relaxed">
+              Manage platform lender policies, company database, managers, and system users.
             </p>
           </div>
         </div>
       </section>
 
-      {/* 3. DASHBOARD CARDS GRID */}
-      <main className="max-w-7xl mx-auto px-6 pb-8 w-full space-y-10 flex-1">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* 3. DASHBOARD CARDS (4 MODULES IN 2x2 BALANCED GRID) */}
+      <main className="max-w-6xl mx-auto px-6 py-6 pb-14 w-full space-y-10 flex-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {moduleCards.map((card) => {
             const Icon = card.icon;
             return (
-              <div
+              <Link
                 key={card.id}
                 id={card.id}
-                onClick={() => router.push(card.href)}
-                className="group relative rounded-xl bg-slate-900/90 border border-slate-800 p-6 hover:border-slate-700 hover:bg-slate-900 transition-all duration-200 flex flex-col justify-between cursor-pointer shadow-sm hover:shadow-md"
+                href={card.href}
+                className="group relative flex flex-col justify-between rounded-2xl p-6 transition-all duration-200 hover:-translate-y-0.5 bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-slate-700 shadow-lg no-underline text-left cursor-pointer"
               >
                 <div>
-                  {/* Card Header & Icon Container */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${card.iconContainerClass}`}>
-                      <Icon className="w-5 h-5" />
+                  {/* Card Top Row: 48x48px tinted icon container + metric pill badge */}
+                  <div className="flex items-start justify-between">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${card.iconContainerClass}`}>
+                      <Icon className="w-6 h-6" />
                     </div>
-                    <div className="flex items-center gap-1 text-slate-500 group-hover:text-slate-300 transition-colors">
-                      <span className="text-xs font-medium">Open</span>
-                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold tabular-nums border ${card.badgeClass}`}>
+                      {card.metric}
+                    </span>
                   </div>
 
-                  {/* Card Title */}
-                  <h2 className={`text-lg font-semibold text-white ${card.hoverTextClass} transition-colors m-0`}>
-                    {card.title}
-                  </h2>
-
-                  {/* Metric Badge */}
-                  <div className={`text-sm font-mono font-medium tabular-nums mt-1.5 ${card.metricClass}`}>
-                    {card.subtitle}
+                  {/* Card Body */}
+                  <div className="mt-5">
+                    <h2 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors m-0">
+                      {card.title}
+                    </h2>
+                    <p className="mt-1.5 text-sm text-slate-300 leading-relaxed m-0">
+                      {card.desc}
+                    </p>
                   </div>
-
-                  {/* Description */}
-                  <p className="text-sm text-slate-400 mt-2 m-0 line-clamp-2 leading-relaxed">
-                    {card.desc}
-                  </p>
                 </div>
 
-                <div className="mt-5 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-500 group-hover:text-slate-400 transition-colors">
-                  <span>Direct Workspace Access</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
+                {/* Card Footer: specific module action label + animated arrow */}
+                <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-400 group-hover:text-slate-300 transition-colors">
+                    {card.action}
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-1 transition-all" />
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -285,23 +270,23 @@ export default function AdminDashboardPage() {
             <span className="text-xs text-slate-400 font-medium">Live operational status</span>
           </div>
 
-          <div className="rounded-xl bg-slate-900/90 border border-slate-800 overflow-hidden shadow-sm">
+          <div className="rounded-2xl bg-slate-900/90 border border-slate-800/80 overflow-hidden shadow-lg">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
-                  <tr className="bg-slate-950/60 border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-semibold">
-                    <th className="py-3 px-6 font-semibold" style={{ width: "42%" }}>Module Section</th>
-                    <th className="py-3 px-6 font-semibold" style={{ width: "33%" }}>Last Synchronized</th>
-                    <th className="py-3 px-6 font-semibold text-center" style={{ width: "25%" }}>Operational Status</th>
+                  <tr className="bg-slate-950/70 border-b border-slate-800/80 text-slate-400 text-xs uppercase tracking-wider font-semibold">
+                    <th className="py-3.5 px-6 font-semibold" style={{ width: "42%" }}>Module Section</th>
+                    <th className="py-3.5 px-6 font-semibold" style={{ width: "33%" }}>Last Synchronized</th>
+                    <th className="py-3.5 px-6 font-semibold text-center" style={{ width: "25%" }}>Operational Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80">
+                <tbody className="divide-y divide-slate-800/60">
                   {/* Row 1: Company data */}
                   <tr className="hover:bg-slate-800/40 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center justify-center shrink-0">
-                          <Building2 className="w-4 h-4" />
+                        <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                          <Building2 className="w-5 h-5" />
                         </div>
                         <div>
                           <div className="font-semibold text-slate-100 text-sm">Company Master Data</div>
@@ -324,8 +309,8 @@ export default function AdminDashboardPage() {
                   <tr className="hover:bg-slate-800/40 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 flex items-center justify-center shrink-0">
-                          <ShieldCheck className="w-4 h-4" />
+                        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                          <ShieldCheck className="w-5 h-5" />
                         </div>
                         <div>
                           <div className="font-semibold text-slate-100 text-sm">Bank Policies & Matrices</div>
@@ -348,8 +333,8 @@ export default function AdminDashboardPage() {
                   <tr className="hover:bg-slate-800/40 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20 flex items-center justify-center shrink-0">
-                          <UserCheck className="w-4 h-4" />
+                        <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0">
+                          <UserCheck className="w-5 h-5" />
                         </div>
                         <div>
                           <div className="font-semibold text-slate-100 text-sm">User Authentication & Roles</div>
