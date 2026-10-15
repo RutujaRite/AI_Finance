@@ -20,9 +20,14 @@ export default function RouteLoader() {
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const maxSafetyTimerRef = useRef<NodeJS.Timeout | null>(null);
   const finishTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingStartTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Clears all timers safely
   const clearAllTimers = useCallback(() => {
+    if (pendingStartTimerRef.current) {
+      clearTimeout(pendingStartTimerRef.current);
+      pendingStartTimerRef.current = null;
+    }
     if (modalTimerRef.current) {
       clearTimeout(modalTimerRef.current);
       modalTimerRef.current = null;
@@ -41,38 +46,12 @@ export default function RouteLoader() {
     }
   }, []);
 
-  // Starts the loading animation
-  const startLoading = useCallback((hint?: string) => {
-    clearAllTimers();
-    setIsNavigating(true);
-    setProgress(18);
-    if (hint) {
-      setDestinationHint(hint);
-    }
-
-    // Step 1: Smoothly advance top progress bar while waiting
-    progressIntervalRef.current = setInterval(() => {
-      setProgress((prev) => {
-        if (prev < 40) return prev + 12;
-        if (prev < 75) return prev + 6;
-        if (prev < 90) return prev + 1.5;
-        return prev;
-      });
-    }, 180);
-
-    // Step 2: If page switching takes more than 120ms, reveal the centered loading badge/icon
-    modalTimerRef.current = setTimeout(() => {
-      setShowModal(true);
-    }, 120);
-
-    // Step 3: Absolute safety timeout — auto dismiss after 7 seconds
-    maxSafetyTimerRef.current = setTimeout(() => {
-      stopLoading();
-    }, 7000);
-  }, [clearAllTimers]);
-
   // Completes and smoothly dismisses the loader
   const stopLoading = useCallback(() => {
+    if (pendingStartTimerRef.current) {
+      clearTimeout(pendingStartTimerRef.current);
+      pendingStartTimerRef.current = null;
+    }
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
@@ -82,8 +61,8 @@ export default function RouteLoader() {
       modalTimerRef.current = null;
     }
 
-    // Complete top bar to 100%
-    setProgress(100);
+    // Complete top bar to 100% only if it was navigating
+    setProgress((prev) => (prev > 0 ? 100 : 0));
 
     // Smooth fade-out transition
     finishTimeoutRef.current = setTimeout(() => {
@@ -94,6 +73,44 @@ export default function RouteLoader() {
       clearAllTimers();
     }, 240);
   }, [clearAllTimers]);
+
+  // Starts the loading animation safely outside of React's useInsertionEffect
+  const startLoading = useCallback((hint?: string) => {
+    clearAllTimers();
+
+    // In Next.js 15 / React 19, pushState / replaceState runs inside useInsertionEffect.
+    // Scheduling state updates synchronously inside useInsertionEffect throws:
+    // "useInsertionEffect must not schedule updates."
+    // We defer state updates to the next macrotask via setTimeout so React is never in an effect phase.
+    pendingStartTimerRef.current = setTimeout(() => {
+      pendingStartTimerRef.current = null;
+      setIsNavigating(true);
+      setProgress(18);
+      if (hint) {
+        setDestinationHint(hint);
+      }
+
+      // Step 1: Smoothly advance top progress bar while waiting
+      progressIntervalRef.current = setInterval(() => {
+        setProgress((prev) => {
+          if (prev < 40) return prev + 12;
+          if (prev < 75) return prev + 6;
+          if (prev < 90) return prev + 1.5;
+          return prev;
+        });
+      }, 180);
+
+      // Step 2: If page switching takes more than 120ms, reveal the centered loading badge/icon
+      modalTimerRef.current = setTimeout(() => {
+        setShowModal(true);
+      }, 120);
+
+      // Step 3: Absolute safety timeout — auto dismiss after 7 seconds
+      maxSafetyTimerRef.current = setTimeout(() => {
+        stopLoading();
+      }, 7000);
+    }, 0);
+  }, [clearAllTimers, stopLoading]);
 
   // Route change completion listener (when pathname or searchParams change)
   useEffect(() => {
@@ -154,6 +171,7 @@ export default function RouteLoader() {
     const originalReplaceState = window.history.replaceState;
 
     window.history.pushState = function (data: any, unused: string, url?: string | URL | null) {
+      const result = originalPushState.apply(this, arguments as any);
       if (url) {
         try {
           const targetUrl = new URL(url.toString(), window.location.origin);
@@ -165,10 +183,11 @@ export default function RouteLoader() {
           }
         } catch {}
       }
-      return originalPushState.apply(this, arguments as any);
+      return result;
     };
 
     window.history.replaceState = function (data: any, unused: string, url?: string | URL | null) {
+      const result = originalReplaceState.apply(this, arguments as any);
       if (url) {
         try {
           const targetUrl = new URL(url.toString(), window.location.origin);
@@ -180,7 +199,7 @@ export default function RouteLoader() {
           }
         } catch {}
       }
-      return originalReplaceState.apply(this, arguments as any);
+      return result;
     };
 
     // 3. Browser Back / Forward navigation
