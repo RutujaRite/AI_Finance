@@ -38,7 +38,29 @@ export default function Topbar({
   const [theme, setTheme] = useState<"light" | "dark">("light")
   const [profileOpen, setProfileOpen] = useState(false)
   const [adminMenuOpen, setAdminMenuOpen] = useState(false)
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   const [activeAdminToolId, setActiveAdminToolId] = useState<string | null>(null)
+
+  // Prevent background scrolling when mobile drawer is open
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      if (mobileDrawerOpen) {
+        document.body.style.overflow = "hidden"
+      } else {
+        document.body.style.overflow = ""
+      }
+    }
+    return () => {
+      if (typeof document !== "undefined") {
+        document.body.style.overflow = ""
+      }
+    }
+  }, [mobileDrawerOpen])
+
+  // Close drawer on route change
+  useEffect(() => {
+    setMobileDrawerOpen(false)
+  }, [effectivePath])
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -53,8 +75,21 @@ export default function Topbar({
       setProfileOpen(false)
       setAdminMenuOpen(false)
     }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMobileDrawerOpen(false)
+        setProfileOpen(false)
+        setAdminMenuOpen(false)
+      }
+    }
+
     window.addEventListener("click", closeDropdown)
-    return () => window.removeEventListener("click", closeDropdown)
+    window.addEventListener("keydown", handleKeyDown)
+    return () => {
+      window.removeEventListener("click", closeDropdown)
+      window.removeEventListener("keydown", handleKeyDown)
+    }
   }, [])
 
   function toggleTheme() {
@@ -430,7 +465,7 @@ export default function Topbar({
         )}
       </nav>
 
-      {/* Topbar Right Controls: Theme + Profile */}
+      {/* Topbar Right Controls: Theme + Profile + Mobile Hamburger */}
       <div className="topbar-actions">
         {/* Dark / Light theme toggle */}
         <button
@@ -441,6 +476,17 @@ export default function Topbar({
           title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         >
           <i className={theme === "dark" ? "bi bi-sun-fill" : "bi bi-moon-stars-fill"} />
+        </button>
+
+        {/* Mobile Hamburger Drawer Toggle (visible on screens <= 900px) */}
+        <button
+          type="button"
+          className="topbar-mobile-hamburger cw-touch-target"
+          onClick={() => setMobileDrawerOpen(true)}
+          aria-label="Open mobile navigation menu"
+          title="Open menu"
+        >
+          <i className="bi bi-list" style={{ fontSize: "1.35rem" }} />
         </button>
 
         {/* Profile menu */}
@@ -574,6 +620,261 @@ export default function Topbar({
         </div>
       </div>
     </header>
+
+    {/* Off-canvas mobile navigation drawer backdrop */}
+    <div
+      className={`cw-drawer-backdrop ${mobileDrawerOpen ? "open" : ""}`}
+      onClick={() => setMobileDrawerOpen(false)}
+      aria-hidden={!mobileDrawerOpen}
+    />
+
+    {/* Off-canvas mobile navigation drawer */}
+    <aside
+      className={`cw-mobile-drawer ${mobileDrawerOpen ? "open" : ""}`}
+      aria-label="Mobile Navigation Menu"
+      aria-hidden={!mobileDrawerOpen}
+    >
+      {/* Drawer Header */}
+      <div className="cw-drawer-header">
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span className="brand-mark">
+            <i className="bi bi-shield-check" />
+          </span>
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span className="brand-text">CreditWise<span style={{ color: "var(--accent)" }}>AI</span></span>
+              {isAdmin && (
+                <span
+                  style={{
+                    fontSize: "0.5625rem",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    padding: "1px 5px",
+                    borderRadius: "4px",
+                    background: "rgba(139, 92, 246, 0.15)",
+                    color: "#8b5cf6",
+                  }}
+                >
+                  Admin
+                </span>
+              )}
+            </div>
+            <span style={{ fontSize: "0.6875rem", color: "var(--ink-muted)" }}>
+              Financial Intelligence
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="cw-drawer-close-btn cw-touch-target"
+          onClick={() => setMobileDrawerOpen(false)}
+          aria-label="Close menu"
+        >
+          <i className="bi bi-x-lg" />
+        </button>
+      </div>
+
+      {/* Drawer Body Links */}
+      <div style={{ flex: 1, padding: "0.5rem 0", overflowY: "auto" }}>
+        <div className="cw-drawer-section-title">Workspace</div>
+        {coreNavItems.map((item) => {
+          const isSectionActive =
+            !isAdminRouteActive &&
+            (onSectionChange && item.section
+              ? activeSection === item.section
+              : effectivePath === "/home" || effectivePath === "/"
+                ? (item.id === "assistant" && (!activeSection || activeSection === "assistant")) ||
+                  activeSection === item.section
+                : false)
+
+          const handleMobileItemClick = (e: React.MouseEvent) => {
+            e.preventDefault()
+            setMobileDrawerOpen(false)
+            if (item.onClick) {
+              item.onClick(e)
+            } else if (onSectionChange && item.section && (effectivePath === "/home" || effectivePath === "/")) {
+              onSectionChange(item.section)
+              try {
+                window.history.pushState(null, "", item.href)
+              } catch {}
+            } else {
+              router.push(item.href)
+            }
+          }
+
+          return (
+            <a
+              key={`mobile-${item.id}`}
+              href={item.href}
+              className={`cw-drawer-link ${isSectionActive ? "active" : ""}`}
+              onClick={handleMobileItemClick}
+            >
+              <i className={item.iconClass} />
+              <span style={{ flex: 1 }}>{item.label}</span>
+              {item.badge && (
+                <span
+                  style={{
+                    fontSize: "0.625rem",
+                    fontWeight: 700,
+                    padding: "2px 6px",
+                    borderRadius: "4px",
+                    background: isSectionActive ? "var(--accent)" : "var(--surface-2)",
+                    color: isSectionActive ? "#ffffff" : "var(--ink-muted)",
+                  }}
+                >
+                  {item.badge}
+                </span>
+              )}
+            </a>
+          )
+        })}
+
+        {isAdmin && (
+          <>
+            <div className="cw-drawer-section-title" style={{ marginTop: "0.75rem" }}>
+              Admin Suite
+            </div>
+            {ADMIN_TOOL_LIST.map((tool) => {
+              const isActive =
+                tool.href === "/admin"
+                  ? effectivePath === "/admin"
+                  : effectivePath === tool.href || effectivePath.startsWith(tool.href)
+
+              const handleMobileAdminClick = (e: React.MouseEvent) => {
+                e.preventDefault()
+                setMobileDrawerOpen(false)
+                setActiveAdminToolId(tool.id)
+                try {
+                  localStorage.setItem("creditwise_active_admin_tool", tool.id)
+                } catch {}
+                router.push(tool.href)
+              }
+
+              return (
+                <a
+                  key={`mobile-admin-${tool.id}`}
+                  href={tool.href}
+                  className={`cw-drawer-link ${isActive ? "active" : ""}`}
+                  onClick={handleMobileAdminClick}
+                >
+                  <i className={tool.iconClass} style={{ color: isActive ? "#8b5cf6" : undefined }} />
+                  <span style={{ flex: 1 }}>{tool.label}</span>
+                  {tool.badge && (
+                    <span
+                      style={{
+                        fontSize: "0.625rem",
+                        fontWeight: 700,
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                        background: isActive ? "rgba(139, 92, 246, 0.2)" : "var(--surface-2)",
+                        color: isActive ? "#8b5cf6" : "var(--ink-muted)",
+                      }}
+                    >
+                      {tool.badge}
+                    </span>
+                  )}
+                </a>
+              )
+            })}
+          </>
+        )}
+      </div>
+
+      {/* Drawer Footer */}
+      <div className="cw-drawer-footer">
+        {/* Theme switch in drawer */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="cw-drawer-link"
+          style={{
+            width: "100%",
+            borderRadius: "8px",
+            padding: "0.6rem 0.85rem",
+            background: "var(--surface-2)",
+            border: "1px solid var(--border)",
+            marginBottom: "0.75rem",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <i className={theme === "dark" ? "bi bi-sun-fill" : "bi bi-moon-stars-fill"} style={{ color: "var(--accent)" }} />
+            <span style={{ fontSize: "0.8125rem", fontWeight: 600 }}>
+              {theme === "dark" ? "Light Mode" : "Dark Mode"}
+            </span>
+          </div>
+          <span style={{ fontSize: "0.6875rem", color: "var(--ink-muted)", textTransform: "uppercase", fontWeight: 700 }}>
+            {theme}
+          </span>
+        </button>
+
+        {/* User profile card in drawer */}
+        <div
+          style={{
+            padding: "10px",
+            background: "var(--surface-2)",
+            border: "1px solid var(--border)",
+            borderRadius: "10px",
+            marginBottom: "0.75rem",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div className="profile-avatar" style={{ width: "34px", height: "34px", fontSize: "0.875rem" }}>
+              {userInitial}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
+              <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {displayName}
+              </span>
+              <span style={{ fontSize: "0.6875rem", color: "var(--ink-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {activeUser?.email || "user@creditwise.ai"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button
+            type="button"
+            onClick={() => {
+              setMobileDrawerOpen(false)
+              router.push("/profile")
+            }}
+            className="cw-touch-target"
+            style={{
+              flex: 1,
+              padding: "8px 12px",
+              borderRadius: "8px",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              color: "var(--ink)",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              cursor: "pointer",
+            }}
+          >
+            <i className="bi bi-person-gear" style={{ marginRight: "6px" }} /> Settings
+          </button>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="cw-touch-target"
+            style={{
+              padding: "8px 12px",
+              borderRadius: "8px",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              color: "#dc2626",
+              background: "rgba(220, 38, 38, 0.08)",
+              border: "1px solid rgba(220, 38, 38, 0.2)",
+              cursor: "pointer",
+            }}
+          >
+            <i className="bi bi-box-arrow-right" style={{ marginRight: "6px" }} /> Logout
+          </button>
+        </div>
+      </div>
+    </aside>
 
     {/* Top Navigation Section of all admin tools (Rendered across all admin pages) */}
     {isAdmin && isAdminRouteActive && (

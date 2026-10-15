@@ -9,6 +9,26 @@
 import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Topbar from "@/components/Topbar"
+import {
+  Compass,
+  Cpu,
+  Building2,
+  Bot,
+  MessageSquare,
+  Calculator,
+  ShieldCheck,
+  FileText,
+  Users,
+  FileDown,
+  UserCheck,
+  Home,
+  Sliders,
+  Search,
+  ExternalLink,
+  ChevronRight,
+  ShieldAlert,
+  Layers,
+} from "lucide-react"
 
 interface NavRouteItem {
   id: string
@@ -16,7 +36,7 @@ interface NavRouteItem {
   label: string
   category: "Admin Suite" | "Financial Calculators" | "AI Intelligence" | "Banking Policies" | "User Portals"
   roles: string[]
-  icon: string
+  iconType: string
   status: "Active" | "Protected" | "Public"
   description: string
   badge?: string
@@ -29,7 +49,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
     label: "AI Agent Studio (Model Config)",
     category: "Admin Suite",
     roles: ["Admin"],
-    icon: "bi bi-gear-wide-connected",
+    iconType: "sliders",
     status: "Protected",
     description: "Environment model configuration, provider routing, temperature, max tokens & connected feature usage",
     badge: "Config",
@@ -40,7 +60,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
     label: "AI Agent Studio Workspace",
     category: "Admin Suite",
     roles: ["Admin"],
-    icon: "bi bi-robot",
+    iconType: "bot",
     status: "Protected",
     description: "Multi-agent persona builder, business instructions, live demo & RAG knowledge manager",
     badge: "Studio",
@@ -51,7 +71,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
     label: "AI Models Routing",
     category: "Admin Suite",
     roles: ["Admin"],
-    icon: "bi bi-cpu",
+    iconType: "cpu",
     status: "Protected",
     description: "Speech-to-Text, LLM Reasoning, and Voice Synthesis dynamic provider engine configurations",
   },
@@ -61,7 +81,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
     label: "Company Data",
     category: "Admin Suite",
     roles: ["Admin"],
-    icon: "bi bi-building-gear",
+    iconType: "building",
     status: "Protected",
     description: "Employer categorization master file, upload bank documents & registered user management",
   },
@@ -71,7 +91,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
     label: "Admin Navigation",
     category: "Admin Suite",
     roles: ["Admin"],
-    icon: "bi bi-compass",
+    iconType: "compass",
     status: "Protected",
     description: "Centralized route management, access permissions directory & application navigation topology",
   },
@@ -81,7 +101,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
     label: "AI Assistant Workspace",
     category: "AI Intelligence",
     roles: ["Admin", "DSA Agent"],
-    icon: "bi bi-chat-dots",
+    iconType: "message",
     status: "Active",
     description: "Interactive conversational underwriting assistant with multi-bank policy evaluation",
     badge: "AI",
@@ -92,7 +112,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
     label: "EMI Calculator",
     category: "Financial Calculators",
     roles: ["Admin", "DSA Agent", "Public"],
-    icon: "bi bi-calculator",
+    iconType: "calculator",
     status: "Active",
     description: "Loan parameters, monthly EMI hero banner, payment distribution ratio & amortization schedule",
   },
@@ -102,7 +122,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
     label: "Eligibility Calculator",
     category: "Financial Calculators",
     roles: ["Admin", "DSA Agent", "Public"],
-    icon: "bi bi-shield-check",
+    iconType: "shield-check",
     status: "Active",
     description: "Banking FOIR present value underwriting model, existing loan portfolio & amortization breakdown",
     badge: "New",
@@ -113,7 +133,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
     label: "Bank Policy",
     category: "Banking Policies",
     roles: ["Admin", "DSA Agent"],
-    icon: "bi bi-file-earmark-text",
+    iconType: "file-text",
     status: "Active",
     description: "Comprehensive partner bank lending guidelines, salary cutoffs, and policy document queries",
   },
@@ -123,7 +143,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
     label: "Contact and Location Bank Manager",
     category: "Banking Policies",
     roles: ["Admin", "DSA Agent"],
-    icon: "bi bi-people",
+    iconType: "users",
     status: "Active",
     description: "Branch locations & official manager contacts, escalation points & partner bank relationship managers",
   },
@@ -133,7 +153,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
     label: "EMI PDF Generator",
     category: "Financial Calculators",
     roles: ["Admin", "DSA Agent", "Public"],
-    icon: "bi bi-file-earmark-pdf",
+    iconType: "file-down",
     status: "Active",
     description: "Standalone high-resolution client EMI proposal export and amortization schedule previewer",
   },
@@ -143,7 +163,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
     label: "Profile & Account Settings",
     category: "User Portals",
     roles: ["Admin", "DSA Agent"],
-    icon: "bi bi-person-gear",
+    iconType: "user-check",
     status: "Active",
     description: "Manage personal account profile, password, preferences and active workspace settings",
   },
@@ -153,11 +173,45 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
     label: "Public Landing Platform",
     category: "User Portals",
     roles: ["Public"],
-    icon: "bi bi-house",
+    iconType: "home",
     status: "Public",
     description: "CreditWise AI public marketing landing, feature showcases, customer testimonials & calculator preview",
   },
 ]
+
+function RouteIcon({ type }: { type: string }) {
+  const size = 16
+  switch (type) {
+    case "sliders":
+      return <Sliders size={size} />
+    case "bot":
+      return <Bot size={size} />
+    case "cpu":
+      return <Cpu size={size} />
+    case "building":
+      return <Building2 size={size} />
+    case "compass":
+      return <Compass size={size} />
+    case "message":
+      return <MessageSquare size={size} />
+    case "calculator":
+      return <Calculator size={size} />
+    case "shield-check":
+      return <ShieldCheck size={size} />
+    case "file-text":
+      return <FileText size={size} />
+    case "users":
+      return <Users size={size} />
+    case "file-down":
+      return <FileDown size={size} />
+    case "user-check":
+      return <UserCheck size={size} />
+    case "home":
+      return <Home size={size} />
+    default:
+      return <Compass size={size} />
+  }
+}
 
 export default function AdminNavigationPage() {
   const router = useRouter()
@@ -247,40 +301,40 @@ export default function AdminNavigationPage() {
       <main style={{ maxWidth: 1380, margin: "0 auto", padding: "1.5rem" }}>
         {/* Header Suite Banner */}
         <div
+          className="cw-card"
           style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 16,
-            padding: "1.25rem 1.75rem",
+            background: "#ffffff",
+            border: "1px solid var(--border, #e2e8f0)",
+            borderRadius: 14,
+            padding: "1.25rem 1.5rem",
             marginBottom: "1.5rem",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             flexWrap: "wrap",
             gap: "1rem",
-            boxShadow: "var(--shadow-sm)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div
               style={{
-                width: 48,
-                height: 48,
-                borderRadius: 12,
-                background: "linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(2, 132, 199, 0.18) 100%)",
-                border: "1px solid rgba(14, 165, 233, 0.25)",
+                width: 44,
+                height: 44,
+                borderRadius: 10,
+                background: "#eff6ff",
+                color: "#2563eb",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#0284c7",
-                fontSize: "1.4rem",
+                flexShrink: 0,
               }}
             >
-              <i className="bi bi-compass" />
+              <Compass size={22} />
             </div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <h1 style={{ fontSize: "1.35rem", fontWeight: 700, color: "var(--ink)", margin: 0 }}>
+                <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--ink, #0f172a)", margin: 0 }}>
                   Admin Navigation Suite
                 </h1>
                 <span
@@ -289,15 +343,15 @@ export default function AdminNavigationPage() {
                     fontWeight: 700,
                     padding: "2px 8px",
                     borderRadius: 999,
-                    background: "rgba(14, 165, 233, 0.1)",
-                    color: "#0284c7",
-                    border: "1px solid rgba(14, 165, 233, 0.25)",
+                    background: "#eff6ff",
+                    color: "#2563eb",
+                    border: "1px solid #bfdbfe",
                   }}
                 >
                   Topology &amp; RBAC Directory
                 </span>
               </div>
-              <p style={{ fontSize: "0.8125rem", color: "var(--ink-muted)", margin: "4px 0 0" }}>
+              <p style={{ fontSize: "0.8125rem", color: "var(--ink-soft, #64748b)", margin: "4px 0 0" }}>
                 Comprehensive route catalog, role-based access permissions, and application navigation architecture.
               </p>
             </div>
@@ -308,18 +362,26 @@ export default function AdminNavigationPage() {
               type="button"
               className="btn btn-secondary btn-sm"
               onClick={() => router.push("/admin")}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, height: "34px", fontSize: "0.8125rem" }}
             >
-              <i className="bi bi-building-gear" />
+              <Building2 size={14} />
               <span>Company Data</span>
             </button>
             <button
               type="button"
               className="btn btn-primary btn-sm"
               onClick={() => router.push("/agent-studio")}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                height: "34px",
+                fontSize: "0.8125rem",
+                background: "var(--color-primary-blue, #2563eb)",
+                borderColor: "var(--color-primary-blue, #2563eb)",
+              }}
             >
-              <i className="bi bi-robot" />
+              <Bot size={14} />
               <span>Agent Studio</span>
             </button>
           </div>
@@ -327,50 +389,50 @@ export default function AdminNavigationPage() {
 
         {/* Stats Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
-          <div className="card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1.15rem" }}>
-            <div style={{ fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", color: "var(--ink-muted)" }}>
+          <div className="cw-card" style={{ background: "#ffffff", border: "1px solid var(--border, #e2e8f0)", borderRadius: 14, padding: "1.15rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+            <div style={{ fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", color: "var(--ink-soft, #64748b)" }}>
               Registered Routes
             </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--ink)", marginTop: 4 }}>
+            <div style={{ fontSize: "1.6rem", fontWeight: 700, color: "var(--ink, #0f172a)", marginTop: 4 }}>
               {stats.total}
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--ink-muted)", marginTop: 2 }}>
+            <div style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", marginTop: 2 }}>
               Active Next.js endpoints &amp; sections
             </div>
           </div>
 
-          <div className="card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1.15rem" }}>
-            <div style={{ fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", color: "var(--ink-muted)" }}>
+          <div className="cw-card" style={{ background: "#ffffff", border: "1px solid var(--border, #e2e8f0)", borderRadius: 14, padding: "1.15rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+            <div style={{ fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", color: "var(--ink-soft, #64748b)" }}>
               Admin-Only Modules
             </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--accent)", marginTop: 4 }}>
+            <div style={{ fontSize: "1.6rem", fontWeight: 700, color: "#2563eb", marginTop: 4 }}>
               {stats.adminOnly}
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--ink-muted)", marginTop: 2 }}>
+            <div style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", marginTop: 2 }}>
               Restricted to authorized admins
             </div>
           </div>
 
-          <div className="card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1.15rem" }}>
-            <div style={{ fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", color: "var(--ink-muted)" }}>
+          <div className="cw-card" style={{ background: "#ffffff", border: "1px solid var(--border, #e2e8f0)", borderRadius: 14, padding: "1.15rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+            <div style={{ fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", color: "var(--ink-soft, #64748b)" }}>
               Financial Calculators
             </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "#10b981", marginTop: 4 }}>
+            <div style={{ fontSize: "1.6rem", fontWeight: 700, color: "#10b981", marginTop: 4 }}>
               {stats.calculators}
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--ink-muted)", marginTop: 2 }}>
+            <div style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", marginTop: 2 }}>
               EMI, Eligibility &amp; PDF engines
             </div>
           </div>
 
-          <div className="card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1.15rem" }}>
-            <div style={{ fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", color: "var(--ink-muted)" }}>
+          <div className="cw-card" style={{ background: "#ffffff", border: "1px solid var(--border, #e2e8f0)", borderRadius: 14, padding: "1.15rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+            <div style={{ fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", color: "var(--ink-soft, #64748b)" }}>
               Public &amp; DSA Access
             </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "#f59e0b", marginTop: 4 }}>
+            <div style={{ fontSize: "1.6rem", fontWeight: 700, color: "#f59e0b", marginTop: 4 }}>
               {stats.publicAccessible}
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--ink-muted)", marginTop: 2 }}>
+            <div style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", marginTop: 2 }}>
               Available without full admin privileges
             </div>
           </div>
@@ -378,18 +440,19 @@ export default function AdminNavigationPage() {
 
         {/* Filter & Search Bar */}
         <div
-          className="card"
+          className="cw-card"
           style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
+            background: "#ffffff",
+            border: "1px solid var(--border, #e2e8f0)",
             borderRadius: 14,
-            padding: "1rem 1.25rem",
+            padding: "0.875rem 1.25rem",
             marginBottom: "1.5rem",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             flexWrap: "wrap",
             gap: "0.75rem",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
           }}
         >
           {/* Category Chips */}
@@ -402,12 +465,12 @@ export default function AdminNavigationPage() {
                 style={{
                   fontSize: "0.75rem",
                   fontWeight: 600,
-                  padding: "6px 12px",
+                  padding: "5px 12px",
                   borderRadius: 8,
                   border: "1px solid",
-                  borderColor: categoryFilter === cat ? "var(--accent)" : "var(--border)",
-                  background: categoryFilter === cat ? "var(--surface-2)" : "transparent",
-                  color: categoryFilter === cat ? "var(--accent)" : "var(--ink-muted)",
+                  borderColor: categoryFilter === cat ? "var(--color-primary-blue, #2563eb)" : "var(--border, #e2e8f0)",
+                  background: categoryFilter === cat ? "#eff6ff" : "transparent",
+                  color: categoryFilter === cat ? "var(--color-primary-blue, #2563eb)" : "var(--ink-soft, #64748b)",
                   cursor: "pointer",
                   transition: "all 0.15s ease",
                 }}
@@ -419,9 +482,9 @@ export default function AdminNavigationPage() {
 
           {/* Search Input */}
           <div style={{ position: "relative", minWidth: 260 }}>
-            <i
-              className="bi bi-search"
-              style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ink-muted)", fontSize: "0.8125rem" }}
+            <Search
+              size={14}
+              style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ink-soft, #64748b)" }}
             />
             <input
               type="text"
@@ -429,45 +492,45 @@ export default function AdminNavigationPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="form-control"
-              style={{ paddingLeft: 34, fontSize: "0.8125rem", borderRadius: 8 }}
+              style={{ paddingLeft: 34, fontSize: "0.8125rem", borderRadius: 8, height: "34px", borderColor: "var(--border, #e2e8f0)" }}
             />
           </div>
         </div>
 
         {/* Route Directory Table */}
-        <div className="card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1.25rem" }}>
+        <div className="cw-card" style={{ background: "#ffffff", border: "1px solid var(--border, #e2e8f0)", borderRadius: 14, padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-            <div style={{ fontWeight: 600, fontSize: "0.9375rem", color: "var(--ink)", display: "flex", alignItems: "center", gap: 8 }}>
-              <i className="bi bi-diagram-3" style={{ color: "var(--accent)" }} />
+            <div style={{ fontWeight: 600, fontSize: "0.9375rem", color: "var(--ink, #0f172a)", display: "flex", alignItems: "center", gap: 8 }}>
+              <Layers size={16} style={{ color: "var(--color-primary-blue, #2563eb)" }} />
               Route &amp; Permission Access Directory ({filteredRoutes.length})
             </div>
-            <span style={{ fontSize: "0.75rem", color: "var(--ink-muted)" }}>
-              Click any route to launch
+            <span style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)" }}>
+              Click Open to launch module
             </span>
           </div>
 
           <div className="table-wrapper" style={{ overflowX: "auto" }}>
             <table className="table table-hover" style={{ width: "100%", fontSize: "0.8125rem", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "var(--surface-2)", borderBottom: "2px solid var(--border)" }}>
-                  <th style={{ padding: "10px 14px", width: "220px" }}>Navigation Module</th>
-                  <th style={{ padding: "10px 14px", width: "190px" }}>Route Path</th>
-                  <th style={{ padding: "10px 14px", width: "150px" }}>Category</th>
-                  <th style={{ padding: "10px 14px", width: "160px" }}>Allowed Roles</th>
-                  <th style={{ padding: "10px 14px" }}>Description</th>
-                  <th style={{ padding: "10px 14px", width: "100px", textAlign: "right" }}>Action</th>
+                <tr style={{ background: "#f8fafc", borderBottom: "1px solid var(--border, #e2e8f0)", color: "var(--ink-soft, #64748b)" }}>
+                  <th style={{ padding: "10px 14px", width: "220px", fontWeight: 600 }}>Navigation Module</th>
+                  <th style={{ padding: "10px 14px", width: "190px", fontWeight: 600 }}>Route Path</th>
+                  <th style={{ padding: "10px 14px", width: "150px", fontWeight: 600 }}>Category</th>
+                  <th style={{ padding: "10px 14px", width: "160px", fontWeight: 600 }}>Allowed Roles</th>
+                  <th style={{ padding: "10px 14px", fontWeight: 600 }}>Description</th>
+                  <th style={{ padding: "10px 14px", width: "100px", textAlign: "right", fontWeight: 600 }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRoutes.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: "center", padding: "2.5rem", color: "var(--ink-muted)" }}>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "2.5rem", color: "var(--ink-soft, #64748b)" }}>
                       No routes match the selected search query or category filter.
                     </td>
                   </tr>
                 ) : (
                   filteredRoutes.map((route) => (
-                    <tr key={route.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                    <tr key={route.id} style={{ borderBottom: "1px solid var(--border, #e2e8f0)" }}>
                       <td style={{ padding: "10px 14px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div
@@ -475,19 +538,19 @@ export default function AdminNavigationPage() {
                               width: 32,
                               height: 32,
                               borderRadius: 8,
-                              background: "var(--surface-2)",
+                              background: "#f1f5f9",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
                               fontSize: "0.95rem",
-                              color: "var(--accent)",
+                              color: "var(--color-primary-blue, #2563eb)",
                               flexShrink: 0,
                             }}
                           >
-                            <i className={route.icon} />
+                            <RouteIcon type={route.iconType} />
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, color: "var(--ink)" }}>{route.label}</div>
+                            <div style={{ fontWeight: 600, color: "var(--ink, #0f172a)" }}>{route.label}</div>
                             {route.badge && (
                               <span
                                 style={{
@@ -495,8 +558,8 @@ export default function AdminNavigationPage() {
                                   fontWeight: 700,
                                   padding: "1px 6px",
                                   borderRadius: 4,
-                                  background: "rgba(37, 99, 235, 0.12)",
-                                  color: "var(--accent)",
+                                  background: "#eff6ff",
+                                  color: "var(--color-primary-blue, #2563eb)",
                                 }}
                               >
                                 {route.badge}
@@ -512,9 +575,9 @@ export default function AdminNavigationPage() {
                             fontSize: "0.75rem",
                             padding: "3px 8px",
                             borderRadius: 6,
-                            background: "var(--surface-2)",
-                            color: "var(--ink)",
-                            border: "1px solid var(--border)",
+                            background: "#f8fafc",
+                            color: "var(--ink, #0f172a)",
+                            border: "1px solid var(--border, #e2e8f0)",
                           }}
                         >
                           {route.path}
@@ -539,7 +602,7 @@ export default function AdminNavigationPage() {
                                 ? "#7c3aed"
                                 : route.category === "Financial Calculators"
                                 ? "#059669"
-                                : "var(--accent)",
+                                : "var(--color-primary-blue, #2563eb)",
                           }}
                         >
                           {route.category}
@@ -556,9 +619,9 @@ export default function AdminNavigationPage() {
                                 fontWeight: 600,
                                 padding: "2px 6px",
                                 borderRadius: 4,
-                                background: role === "Admin" ? "rgba(239, 68, 68, 0.1)" : "var(--surface-2)",
-                                color: role === "Admin" ? "#dc2626" : "var(--ink)",
-                                border: "1px solid var(--border)",
+                                background: role === "Admin" ? "rgba(239, 68, 68, 0.08)" : "#f1f5f9",
+                                color: role === "Admin" ? "#dc2626" : "var(--ink, #0f172a)",
+                                border: "1px solid var(--border, #e2e8f0)",
                               }}
                             >
                               {role}
@@ -567,7 +630,7 @@ export default function AdminNavigationPage() {
                         </div>
                       </td>
 
-                      <td style={{ padding: "10px 14px", color: "var(--ink-muted)", fontSize: "0.75rem" }}>
+                      <td style={{ padding: "10px 14px", color: "var(--ink-soft, #64748b)", fontSize: "0.75rem" }}>
                         {route.description}
                       </td>
 
@@ -576,9 +639,10 @@ export default function AdminNavigationPage() {
                           type="button"
                           className="btn btn-secondary btn-sm"
                           onClick={() => router.push(route.path)}
-                          style={{ fontSize: "0.75rem", padding: "4px 10px" }}
+                          style={{ fontSize: "0.75rem", padding: "4px 10px", display: "inline-flex", alignItems: "center", gap: 4 }}
                         >
-                          Open <i className="bi bi-arrow-up-right" style={{ fontSize: "0.65rem", marginLeft: 2 }} />
+                          <span>Open</span>
+                          <ExternalLink size={12} />
                         </button>
                       </td>
                     </tr>

@@ -3,6 +3,20 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  ShieldCheck,
+  LayoutGrid,
+  Search,
+  Bell,
+  ChevronDown,
+  ChevronRight,
+  Home,
+  ArrowLeft,
+  LogOut,
+  Bot,
+  Users,
+  MessageSquare,
+} from "lucide-react";
 
 interface BreadcrumbItem {
   label: string;
@@ -62,89 +76,27 @@ export default function AdminHeader({
 
   return (
     <>
-      {/* =============================================================== */}
       {/* 1. TOP NAVIGATION BAR */}
-      {/* =============================================================== */}
-      <header
-        style={{
-          height: "64px",
-          background: "#ffffff",
-          borderBottom: "1px solid #eef2f6",
-          padding: "0 28px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-          boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
-        }}
-      >
+      <header className="h-16 bg-white border-b border-slate-200 px-3.5 sm:px-8 flex items-center justify-between sticky top-0 z-40 shadow-xs font-sans">
         {/* Left: CreditWise AI Brand Logo & Admin Badge */}
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <Link
-            href="/admin"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              textDecoration: "none",
-            }}
-          >
+        <div className="flex items-center gap-3 sm:gap-4">
+          <Link href="/admin" className="flex items-center gap-2 sm:gap-2.5 no-underline group">
             {/* Logo Icon */}
-            <div
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "10px",
-                background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#ffffff",
-                boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)",
-                flexShrink: 0,
-              }}
-            >
-              <i className="bi bi-shield-check" style={{ fontSize: "1.15rem" }} />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-blue-500 flex items-center justify-center text-white shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+              <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
 
             {/* Brand text */}
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span
-                  style={{
-                    fontSize: "1.1rem",
-                    fontWeight: 700,
-                    color: "#0f172a",
-                    letterSpacing: "-0.01em",
-                  }}
-                >
-                  CreditWise <span style={{ color: "#2563eb" }}>AI</span>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                  CreditWise <span className="text-blue-600">AI</span>
                 </span>
-                <span
-                  style={{
-                    fontSize: "0.68rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                    padding: "2px 7px",
-                    borderRadius: "6px",
-                    background: "rgba(37, 99, 235, 0.1)",
-                    color: "#2563eb",
-                    border: "1px solid rgba(37, 99, 235, 0.25)",
-                  }}
-                >
+                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 border border-blue-200">
                   Admin
                 </span>
               </div>
-              <span
-                style={{
-                  fontSize: "0.7rem",
-                  color: "#64748b",
-                  fontWeight: 500,
-                }}
-              >
+              <span className="text-[11px] text-slate-500 font-medium hidden md:inline">
                 Financial SaaS Management Suite
               </span>
             </div>
@@ -152,35 +104,15 @@ export default function AdminHeader({
         </div>
 
         {/* Right: Search, Notifications, Profile Dropdown */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div className="flex items-center gap-1.5 sm:gap-3">
           {/* Quick Return to Dashboard if on a sub-page */}
           {title && (
             <Link
               href="/admin"
-              className="btn btn-sm"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                background: "#f1f5f9",
-                color: "#334155",
-                border: "1px solid #e2e8f0",
-                borderRadius: "8px",
-                padding: "6px 12px",
-                fontSize: "0.8rem",
-                fontWeight: 600,
-                textDecoration: "none",
-                transition: "all 0.15s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#e2e8f0";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#f1f5f9";
-              }}
+              className="inline-flex items-center gap-1 sm:gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-semibold no-underline transition-colors"
             >
-              <i className="bi bi-grid-fill" style={{ fontSize: "0.85rem", color: "#2563eb" }} />
-              <span>Dashboard</span>
+              <LayoutGrid className="w-3.5 h-3.5 text-blue-600" />
+              <span className="hidden xs:inline">Overview</span>
             </Link>
           )}
 
@@ -189,269 +121,103 @@ export default function AdminHeader({
             type="button"
             onClick={() => router.push("/admin/company-search")}
             title="Company Search"
-            style={{
-              background: "#ffffff",
-              border: "1px solid #e2e8f0",
-              borderRadius: "8px",
-              color: "#475569",
-              fontSize: "0.95rem",
-              cursor: "pointer",
-              padding: "7px 10px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#cbd5e1";
-              e.currentTarget.style.color = "#0f172a";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "#e2e8f0";
-              e.currentTarget.style.color = "#475569";
-            }}
+            className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
           >
-            <i className="bi bi-search" />
+            <Search className="w-4 h-4" />
           </button>
 
           {/* Notification Bell with red dot */}
-          <div style={{ position: "relative" }}>
+          <div className="relative">
             <button
               type="button"
               title="Notifications"
-              style={{
-                background: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: "8px",
-                color: "#475569",
-                fontSize: "1rem",
-                cursor: "pointer",
-                padding: "7px 10px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all 0.15s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#cbd5e1";
-                e.currentTarget.style.color = "#0f172a";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "#e2e8f0";
-                e.currentTarget.style.color = "#475569";
-              }}
+              className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
             >
-              <i className="bi bi-bell" />
+              <Bell className="w-4 h-4" />
             </button>
-            <span
-              style={{
-                position: "absolute",
-                top: "4px",
-                right: "4px",
-                width: "7px",
-                height: "7px",
-                borderRadius: "50%",
-                background: "#ef4444",
-                border: "1.5px solid #ffffff",
-              }}
-            />
+            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
           </div>
 
           {/* Admin Profile Dropdown Capsule */}
-          <div style={{ position: "relative" }} ref={dropdownRef}>
+          <div className="relative" ref={dropdownRef}>
             <button
               type="button"
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                background: "#ffffff",
-                border: "1px solid #e2e8f0",
-                cursor: "pointer",
-                padding: "4px 10px 4px 6px",
-                borderRadius: "20px",
-                transition: "all 0.15s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#cbd5e1";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "#e2e8f0";
-              }}
+              className="flex items-center gap-1.5 sm:gap-2 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-full py-1 pl-1 pr-1.5 sm:pr-2.5 transition-colors cursor-pointer"
             >
               {/* Circular Avatar */}
-              <div
-                style={{
-                  width: "30px",
-                  height: "30px",
-                  borderRadius: "50%",
-                  background: "#1e293b",
-                  color: "#ffffff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.82rem",
-                  fontWeight: 700,
-                }}
-              >
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold">
                 {userInitial}
               </div>
 
               {/* Text label */}
-              <div style={{ display: "flex", flexDirection: "column", textAlign: "left" }}>
-                <span
-                  style={{
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    color: "#0f172a",
-                    lineHeight: 1.1,
-                  }}
-                >
+              <div className="hidden sm:flex flex-col text-left">
+                <span className="text-xs font-semibold text-slate-900 leading-tight">
                   {userName}
                 </span>
-                <span style={{ fontSize: "0.68rem", color: "#64748b" }}>Admin</span>
+                <span className="text-[10px] text-slate-500">Administrator</span>
               </div>
 
-              <i
-                className={`bi bi-chevron-down ${profileDropdownOpen ? "rotate-180" : ""}`}
-                style={{
-                  fontSize: "0.75rem",
-                  color: "#64748b",
-                  marginLeft: "2px",
-                  transition: "transform 0.18s ease",
-                }}
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
+                  profileDropdownOpen ? "rotate-180" : ""
+                }`}
               />
             </button>
 
             {/* Dropdown Menu */}
             {profileDropdownOpen && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "100%",
-                  right: 0,
-                  marginTop: "8px",
-                  width: "240px",
-                  background: "#ffffff",
-                  borderRadius: "12px",
-                  border: "1px solid #e2e8f0",
-                  boxShadow: "0 10px 25px rgba(0, 0, 0, 0.08)",
-                  padding: "6px 0",
-                  zIndex: 200,
-                  fontSize: "0.85rem",
-                }}
-              >
-                <div style={{ padding: "10px 16px", borderBottom: "1px solid #f1f5f9" }}>
-                  <div style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.88rem" }}>
+              <div className="absolute top-full right-0 mt-2 w-60 bg-white rounded-xl border border-slate-200 shadow-xl py-1.5 z-50 text-xs font-sans animate-fade-in">
+                <div className="px-4 py-2.5 border-b border-slate-100">
+                  <div className="font-semibold text-slate-900 text-sm">
                     {userName}
                   </div>
-                  <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
-                    {user?.email || "admin@gmail.com"}
+                  <div className="text-slate-500 text-[11px] truncate mt-0.5">
+                    {user?.email || "admin@creditwise.ai"}
                   </div>
-                  <div
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      marginTop: "6px",
-                      padding: "2px 8px",
-                      borderRadius: "6px",
-                      background: "rgba(37, 99, 235, 0.1)",
-                      color: "#2563eb",
-                      fontSize: "0.7rem",
-                      fontWeight: 600,
-                    }}
-                  >
-                    <i className="bi bi-shield-check" />
-                    Admin Workspace
+                  <div className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[10px] font-semibold">
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>Admin Workspace</span>
                   </div>
                 </div>
 
-                <div style={{ padding: "4px 0" }}>
+                <div className="py-1">
                   <Link
                     href="/admin"
                     onClick={() => setProfileDropdownOpen(false)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      padding: "8px 16px",
-                      color: "#334155",
-                      textDecoration: "none",
-                      fontSize: "0.83rem",
-                      fontWeight: 500,
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                    className="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 text-xs font-medium no-underline"
                   >
-                    <i className="bi bi-grid-fill" style={{ color: "#2563eb" }} />
-                    Admin Dashboard
+                    <LayoutGrid className="w-4 h-4 text-blue-600" />
+                    <span>Admin Dashboard</span>
                   </Link>
 
                   <Link
                     href="/home?section=assistant"
                     onClick={() => setProfileDropdownOpen(false)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      padding: "8px 16px",
-                      color: "#334155",
-                      textDecoration: "none",
-                      fontSize: "0.83rem",
-                      fontWeight: 500,
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                    className="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 text-xs font-medium no-underline"
                   >
-                    <i className="bi bi-chat-dots" style={{ color: "#10b981" }} />
-                    AI Assistant Workspace
+                    <MessageSquare className="w-4 h-4 text-emerald-600" />
+                    <span>AI Assistant Workspace</span>
                   </Link>
 
                   <Link
                     href="/admin/users"
                     onClick={() => setProfileDropdownOpen(false)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      padding: "8px 16px",
-                      color: "#334155",
-                      textDecoration: "none",
-                      fontSize: "0.83rem",
-                      fontWeight: 500,
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                    className="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:bg-slate-50 text-xs font-medium no-underline"
                   >
-                    <i className="bi bi-people" style={{ color: "#8b5cf6" }} />
-                    User Accounts
+                    <Users className="w-4 h-4 text-purple-600" />
+                    <span>User Accounts</span>
                   </Link>
                 </div>
 
-                <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "4px" }}>
+                <div className="border-t border-slate-100 pt-1">
                   <button
                     type="button"
                     onClick={handleLogout}
-                    style={{
-                      width: "100%",
-                      padding: "8px 16px",
-                      background: "none",
-                      border: "none",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      fontSize: "0.83rem",
-                      color: "#dc2626",
-                      cursor: "pointer",
-                      textAlign: "left",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#fef2f2")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                    className="w-full px-4 py-2 flex items-center gap-2.5 text-xs text-red-600 hover:bg-red-50 font-semibold cursor-pointer text-left"
                   >
-                    <i className="bi bi-box-arrow-right" />
-                    Sign Out
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
                   </button>
                 </div>
               </div>
@@ -460,148 +226,69 @@ export default function AdminHeader({
         </div>
       </header>
 
-      {/* =============================================================== */}
       {/* 2. BREADCRUMBS & PAGE HEADER SECTION (Optional / Sub-pages) */}
-      {/* =============================================================== */}
       {showBreadcrumbs && (title || breadcrumbs.length > 0) && (
-        <section
-          style={{
-            background: "#ffffff",
-            borderBottom: "1px solid #e2e8f0",
-            padding: "16px 28px",
-          }}
-        >
-          <div
-            style={{
-              maxWidth: "1400px",
-              margin: "0 auto",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "12px",
-            }}
-          >
+        <section className="bg-white border-b border-slate-200 px-4 sm:px-8 py-3.5 sm:py-4 font-sans">
+          <div className="max-w-[1400px] mx-auto flex items-center justify-between flex-wrap gap-3">
             {/* Left: Breadcrumb Navigation & Title */}
-            <div>
+            <div className="min-w-0 flex-1">
               {/* Breadcrumb links */}
-              <nav
-                aria-label="Breadcrumb"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontSize: "0.8125rem",
-                  color: "#64748b",
-                  marginBottom: "6px",
-                }}
-              >
+              <nav aria-label="Breadcrumb" className="flex items-center flex-wrap gap-1.5 text-xs text-slate-500 mb-1.5">
                 <Link
                   href="/admin"
-                  style={{
-                    color: "#2563eb",
-                    textDecoration: "none",
-                    fontWeight: 600,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
+                  className="text-blue-600 font-semibold inline-flex items-center gap-1 hover:underline no-underline"
                 >
-                  <i className="bi bi-house-door-fill" style={{ fontSize: "0.8rem" }} />
-                  <span>Admin Dashboard</span>
+                  <Home className="w-3.5 h-3.5" />
+                  <span>Admin</span>
                 </Link>
 
-                <i className="bi bi-chevron-right" style={{ fontSize: "0.68rem", color: "#94a3b8" }} />
+                <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
 
                 {breadcrumbs.map((crumb, idx) => (
                   <React.Fragment key={idx}>
                     {crumb.href ? (
                       <Link
                         href={crumb.href}
-                        style={{
-                          color: "#2563eb",
-                          textDecoration: "none",
-                          fontWeight: 500,
-                        }}
+                        className="text-blue-600 font-medium hover:underline no-underline truncate max-w-[160px]"
                       >
                         {crumb.label}
                       </Link>
                     ) : (
-                      <span style={{ color: "#334155", fontWeight: 600 }}>{crumb.label}</span>
+                      <span className="text-slate-800 font-semibold truncate max-w-[180px]">{crumb.label}</span>
                     )}
                     {idx < breadcrumbs.length - 1 && (
-                      <i className="bi bi-chevron-right" style={{ fontSize: "0.68rem", color: "#94a3b8" }} />
+                      <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
                     )}
                   </React.Fragment>
                 ))}
 
                 {breadcrumbs.length === 0 && title && (
-                  <span style={{ color: "#334155", fontWeight: 600 }}>{title}</span>
+                  <span className="text-slate-800 font-semibold truncate max-w-[200px]">{title}</span>
                 )}
               </nav>
 
               {/* Title & Subtitle */}
               {title && (
-                <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
-                  <h1
-                    style={{
-                      fontSize: "1.45rem",
-                      fontWeight: 700,
-                      color: "#0f172a",
-                      margin: 0,
-                      letterSpacing: "-0.015em",
-                    }}
-                  >
-                    {title}
-                  </h1>
-                </div>
+                <h1 className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight m-0">
+                  {title}
+                </h1>
               )}
               {description && (
-                <p
-                  style={{
-                    fontSize: "0.85rem",
-                    color: "#64748b",
-                    margin: "3px 0 0 0",
-                  }}
-                >
+                <p className="text-xs sm:text-sm text-slate-500 mt-1 m-0">
                   {description}
                 </p>
               )}
             </div>
 
             {/* Right: Actions / Back to Dashboard */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div className="flex items-center flex-wrap gap-2 w-full sm:w-auto mt-1 sm:mt-0 justify-between sm:justify-end">
               <button
                 type="button"
                 onClick={() => router.push("/admin")}
-                className="btn btn-sm"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  background: "#ffffff",
-                  color: "#475569",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "8px",
-                  padding: "6px 14px",
-                  fontSize: "0.8125rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#f8fafc";
-                  e.currentTarget.style.borderColor = "#94a3b8";
-                  e.currentTarget.style.color = "#0f172a";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#ffffff";
-                  e.currentTarget.style.borderColor = "#cbd5e1";
-                  e.currentTarget.style.color = "#475569";
-                }}
+                className="cw-btn-secondary text-xs py-1.5 sm:py-2 px-2.5 sm:px-3 inline-flex items-center gap-1.5"
               >
-                <i className="bi bi-arrow-left" />
-                <span>Back to Dashboard</span>
+                <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+                <span>Back to Overview</span>
               </button>
 
               {actions}

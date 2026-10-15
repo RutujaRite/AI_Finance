@@ -8,6 +8,28 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import AdminHeader from "@/components/admin/AdminHeader";
+import {
+  Mic,
+  Cpu,
+  Volume2,
+  Key,
+  Power,
+  Pencil,
+  Trash2,
+  Plus,
+  Search,
+  RotateCcw,
+  CheckCircle2,
+  AlertTriangle,
+  Info,
+  ShieldCheck,
+  Sliders,
+  X,
+  XCircle,
+  Eye,
+  EyeOff,
+  LayoutGrid,
+} from "lucide-react";
 
 export type ModelCategory = "STT" | "LLM" | "TTS";
 
@@ -388,10 +410,10 @@ export default function AiModelsManagementPage() {
             top: 72,
             right: 24,
             zIndex: 9999,
-            padding: "12px 20px",
-            borderRadius: 8,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
-            background: toast.type === "success" ? "#10b981" : toast.type === "danger" ? "#ef4444" : "#3b82f6",
+            padding: "10px 18px",
+            borderRadius: 10,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+            background: toast.type === "success" ? "#10b981" : toast.type === "danger" ? "#ef4444" : "#2563eb",
             color: "#ffffff",
             fontWeight: 500,
             fontSize: "0.875rem",
@@ -401,47 +423,43 @@ export default function AiModelsManagementPage() {
             animation: "fadeIn 0.2s ease-in-out",
           }}
         >
-          <i className={`bi ${toast.type === "success" ? "bi-check-circle-fill" : toast.type === "danger" ? "bi-exclamation-octagon-fill" : "bi-info-circle-fill"}`} />
+          {toast.type === "success" ? (
+            <CheckCircle2 size={16} />
+          ) : toast.type === "danger" ? (
+            <AlertTriangle size={16} />
+          ) : (
+            <Info size={16} />
+          )}
           <span>{toast.message}</span>
         </div>
       )}
 
-      <main
-        className="admin-workspace-fullwidth animate-fade-in"
-        style={{
-          flex: 1,
-          width: "100%",
-          maxWidth: "1400px",
-          margin: "0 auto",
-          padding: "28px 32px 64px 32px",
-          boxSizing: "border-box",
-        }}
-      >
+      <main className="cw-admin-container admin-workspace-fullwidth animate-fade-in" style={{ flex: 1 }}>
         {/* Header / Navigation */}
-        <div className="page-header" style={{ marginBottom: "28px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
+        <div className="page-header" style={{ marginBottom: "24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
-              <h1 className="page-title" style={{ margin: 0, fontSize: "1.6rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "10px" }}>
-                <i className="bi bi-cpu" style={{ color: "var(--accent)" }} />
+              <h1 className="page-title" style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "10px", color: "var(--ink, #0f172a)" }}>
+                <Cpu size={24} style={{ color: "var(--color-primary-blue, #2563eb)" }} />
                 AI Models Management
               </h1>
               <span className="badge badge-primary" style={{ fontSize: "0.75rem", padding: "4px 8px" }}>Dynamic Routing</span>
             </div>
-            <p className="page-subtitle" style={{ margin: 0, color: "var(--ink-soft)", fontSize: "0.9rem" }}>
+            <p className="page-subtitle" style={{ margin: 0, color: "var(--ink-soft, #64748b)", fontSize: "0.875rem" }}>
               Configure, deploy, and dynamically route Speech-to-Text, LLM Reasoning, and Voice Synthesis engines
             </p>
           </div>
 
           {/* Action buttons */}
-          <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
             <button
               type="button"
               className="btn btn-secondary btn-sm"
               onClick={() => router.push("/admin")}
               title="Return to Admin Dashboard"
-              style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", height: "38px", fontWeight: 600 }}
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", height: "36px", fontWeight: 500 }}
             >
-              <i className="bi bi-grid-fill" />
+              <LayoutGrid size={15} />
               Dashboard
             </button>
 
@@ -451,9 +469,9 @@ export default function AiModelsManagementPage() {
               onClick={fetchModels}
               disabled={loading || actionLoading}
               title="Refresh models from database"
-              style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", height: "38px" }}
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", height: "36px", fontWeight: 500 }}
             >
-              <i className={`bi bi-arrow-clockwise ${loading ? "spin" : ""}`} />
+              <RotateCcw size={15} className={loading ? "spin" : ""} />
               Refresh
             </button>
 
@@ -463,9 +481,9 @@ export default function AiModelsManagementPage() {
               onClick={() => setShowRestoreModal(true)}
               disabled={loading || actionLoading}
               title="Restore system defaults"
-              style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", height: "38px" }}
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", height: "36px", fontWeight: 500 }}
             >
-              <i className="bi bi-arrow-counterclockwise" />
+              <RotateCcw size={15} />
               Restore Defaults
             </button>
 
@@ -486,7 +504,7 @@ export default function AiModelsManagementPage() {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "0.45rem",
-                height: "38px",
+                height: "36px",
                 background: "var(--color-primary-blue, #2563eb)",
                 borderColor: "var(--color-primary-blue, #2563eb)",
                 color: "#ffffff",
@@ -494,7 +512,7 @@ export default function AiModelsManagementPage() {
                 padding: "0 16px",
               }}
             >
-              <i className="bi bi-plus-lg" />
+              <Plus size={16} />
               Add New Model
             </button>
           </div>
@@ -506,10 +524,10 @@ export default function AiModelsManagementPage() {
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
             gap: "20px",
-            marginBottom: "32px",
+            marginBottom: "28px",
           }}
         >
-          {/* 1. STT ENGINE (Blue Accent) */}
+          {/* 1. STT ENGINE */}
           {(() => {
             const active = activeModels.STT;
             const catModels = models.filter((m) => m.category === "STT");
@@ -519,47 +537,47 @@ export default function AiModelsManagementPage() {
 
             return (
               <div
+                className="cw-card"
                 style={{
-                  background: "var(--surface)",
-                  borderRadius: "16px",
-                  border: "1px solid #bfdbfe",
-                  boxShadow: "0 4px 20px -2px rgba(59, 130, 246, 0.08)",
+                  background: "#ffffff",
+                  borderRadius: "14px",
+                  border: "1px solid var(--border, #e2e8f0)",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                   overflow: "hidden",
                   display: "flex",
                   flexDirection: "column",
-                  transition: "all 0.2s ease",
                 }}
               >
                 {/* Header ribbon */}
                 <div
                   style={{
-                    background: "linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(37, 99, 235, 0.04) 100%)",
                     padding: "16px 20px",
-                    borderBottom: "1px solid #dbeafe",
+                    borderBottom: "1px solid var(--border, #e2e8f0)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
+                    background: "#f8fafc",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <div
                       style={{
-                        width: 36,
-                        height: 36,
+                        width: 38,
+                        height: 38,
                         borderRadius: "10px",
-                        background: "#2563eb",
-                        color: "#fff",
+                        background: "#eff6ff",
+                        color: "#2563eb",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: "1.1rem",
+                        flexShrink: 0,
                       }}
                     >
-                      <i className="bi bi-mic" />
+                      <Mic size={18} />
                     </div>
                     <div>
-                      <h2 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#1e3a8a" }}>STT Engine</h2>
-                      <span style={{ fontSize: "0.75rem", color: "#60a5fa", fontWeight: 500 }}>Speech-to-Text Transcriber</span>
+                      <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "var(--ink, #0f172a)" }}>STT Engine</h2>
+                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", fontWeight: 500 }}>Speech-to-Text Transcriber</span>
                     </div>
                   </div>
 
@@ -578,7 +596,7 @@ export default function AiModelsManagementPage() {
                         border: "1px solid #bbf7d0",
                       }}
                     >
-                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e" }}></span>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }}></span>
                       Active
                     </span>
                   ) : (
@@ -590,7 +608,7 @@ export default function AiModelsManagementPage() {
                         padding: "4px 10px",
                         borderRadius: "20px",
                         fontSize: "0.75rem",
-                        fontWeight: 600,
+                        fontWeight: 500,
                         background: "#fef2f2",
                         color: "#b91c1c",
                         border: "1px solid #fecaca",
@@ -602,32 +620,32 @@ export default function AiModelsManagementPage() {
                 </div>
 
                 {/* Body info */}
-                <div style={{ padding: "20px", flex: 1, display: "flex", flexDirection: "column", gap: "16px" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", background: "#f8fafc", padding: "14px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                <div style={{ padding: "18px 20px", flex: 1, display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", background: "#f8fafc", padding: "12px 14px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
                     <div style={{ gridColumn: "span 2" }}>
-                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft)", fontWeight: 500, display: "block", marginBottom: "2px" }}>Active Model:</span>
-                      <strong style={{ fontSize: "0.95rem", color: "var(--ink)", wordBreak: "break-all" }}>
-                        {active ? active.model_name : <span style={{ color: "var(--ink-soft)" }}>None configured</span>}
+                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", fontWeight: 500, display: "block", marginBottom: "2px" }}>Active Model:</span>
+                      <strong style={{ fontSize: "0.875rem", color: "var(--ink, #0f172a)", wordBreak: "break-all" }}>
+                        {active ? active.model_name : <span style={{ color: "var(--ink-soft, #64748b)" }}>None configured</span>}
                       </strong>
                     </div>
                     <div>
-                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft)", fontWeight: 500, display: "block", marginBottom: "2px" }}>ID:</span>
-                      <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--ink)" }}>{active ? `#${active.id}` : "--"}</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", fontWeight: 500, display: "block", marginBottom: "2px" }}>ID:</span>
+                      <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--ink, #0f172a)" }}>{active ? `#${active.id}` : "--"}</span>
                     </div>
                     <div>
-                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft)", fontWeight: 500, display: "block", marginBottom: "2px" }}>Provider:</span>
-                      <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#2563eb" }}>{active ? active.provider : "--"}</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", fontWeight: 500, display: "block", marginBottom: "2px" }}>Provider:</span>
+                      <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#2563eb" }}>{active ? active.provider : "--"}</span>
                     </div>
                   </div>
 
                   {/* Switch dropdown */}
                   <div>
-                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "6px", color: "var(--ink-soft)" }}>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "6px", color: "var(--ink-soft, #64748b)" }}>
                       Switch STT Model
                     </label>
                     <select
                       className="form-select"
-                      style={{ fontSize: "0.875rem", padding: "8px 12px", borderRadius: "8px", borderColor: "#cbd5e1" }}
+                      style={{ fontSize: "0.85rem", padding: "8px 12px", borderRadius: "8px", borderColor: "#cbd5e1" }}
                       value={targetModel?.id || ""}
                       onChange={(e) => {
                         const val = parseInt(e.target.value, 10);
@@ -644,49 +662,50 @@ export default function AiModelsManagementPage() {
                   </div>
 
                   {/* Action buttons */}
-                  <div style={{ display: "flex", gap: "8px", marginTop: "auto", paddingTop: "8px" }}>
+                  <div style={{ display: "flex", gap: "8px", marginTop: "auto", paddingTop: "6px" }}>
                     <button
                       type="button"
                       className="btn btn-sm"
                       style={{
                         flex: 1,
-                        background: isTargetActive ? "#e2e8f0" : "#2563eb",
+                        background: isTargetActive ? "#f1f5f9" : "var(--color-primary-blue, #2563eb)",
                         color: isTargetActive ? "#94a3b8" : "#ffffff",
-                        borderColor: isTargetActive ? "#e2e8f0" : "#2563eb",
+                        borderColor: isTargetActive ? "#e2e8f0" : "var(--color-primary-blue, #2563eb)",
                         fontWeight: 600,
                         cursor: isTargetActive ? "not-allowed" : "pointer",
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
                         gap: "6px",
+                        height: "36px",
                       }}
                       disabled={isTargetActive || !targetModel || actionLoading}
                       onClick={() => targetModel && handleActivateModel(targetModel.id)}
                     >
-                      <i className="bi bi-power" />
+                      <Power size={14} />
                       {isTargetActive ? "Active" : "Activate"}
                     </button>
 
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
-                      style={{ width: "38px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                      style={{ width: "36px", height: "36px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                       title="Edit selected model"
                       disabled={!targetModel || actionLoading}
                       onClick={() => targetModel && handleOpenEdit(targetModel)}
                     >
-                      <i className="bi bi-pencil" />
+                      <Pencil size={14} />
                     </button>
 
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
-                      style={{ width: "38px", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#ef4444" }}
+                      style={{ width: "36px", height: "36px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#ef4444" }}
                       title="Delete selected model"
                       disabled={!targetModel || actionLoading}
                       onClick={() => targetModel && handleOpenDelete(targetModel)}
                     >
-                      <i className="bi bi-trash" />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
@@ -694,7 +713,7 @@ export default function AiModelsManagementPage() {
             );
           })()}
 
-          {/* 2. LLM REASONING (Purple Accent) */}
+          {/* 2. LLM REASONING */}
           {(() => {
             const active = activeModels.LLM;
             const catModels = models.filter((m) => m.category === "LLM");
@@ -704,47 +723,47 @@ export default function AiModelsManagementPage() {
 
             return (
               <div
+                className="cw-card"
                 style={{
-                  background: "var(--surface)",
-                  borderRadius: "16px",
-                  border: "1px solid #ddd6fe",
-                  boxShadow: "0 4px 20px -2px rgba(139, 92, 246, 0.08)",
+                  background: "#ffffff",
+                  borderRadius: "14px",
+                  border: "1px solid var(--border, #e2e8f0)",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                   overflow: "hidden",
                   display: "flex",
                   flexDirection: "column",
-                  transition: "all 0.2s ease",
                 }}
               >
                 {/* Header ribbon */}
                 <div
                   style={{
-                    background: "linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(124, 58, 237, 0.04) 100%)",
                     padding: "16px 20px",
-                    borderBottom: "1px solid #ede9fe",
+                    borderBottom: "1px solid var(--border, #e2e8f0)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
+                    background: "#f8fafc",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <div
                       style={{
-                        width: 36,
-                        height: 36,
+                        width: 38,
+                        height: 38,
                         borderRadius: "10px",
-                        background: "#7c3aed",
-                        color: "#fff",
+                        background: "#f5f3ff",
+                        color: "#7c3aed",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: "1.1rem",
+                        flexShrink: 0,
                       }}
                     >
-                      <i className="bi bi-robot" />
+                      <Cpu size={18} />
                     </div>
                     <div>
-                      <h2 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#5b21b6" }}>LLM Reasoning</h2>
-                      <span style={{ fontSize: "0.75rem", color: "#a78bfa", fontWeight: 500 }}>Central Intelligence Engine</span>
+                      <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "var(--ink, #0f172a)" }}>LLM Reasoning</h2>
+                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", fontWeight: 500 }}>Central Intelligence Engine</span>
                     </div>
                   </div>
 
@@ -763,7 +782,7 @@ export default function AiModelsManagementPage() {
                         border: "1px solid #bbf7d0",
                       }}
                     >
-                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e" }}></span>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }}></span>
                       Active
                     </span>
                   ) : (
@@ -775,7 +794,7 @@ export default function AiModelsManagementPage() {
                         padding: "4px 10px",
                         borderRadius: "20px",
                         fontSize: "0.75rem",
-                        fontWeight: 600,
+                        fontWeight: 500,
                         background: "#fef2f2",
                         color: "#b91c1c",
                         border: "1px solid #fecaca",
@@ -787,32 +806,32 @@ export default function AiModelsManagementPage() {
                 </div>
 
                 {/* Body info */}
-                <div style={{ padding: "20px", flex: 1, display: "flex", flexDirection: "column", gap: "16px" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", background: "#f8fafc", padding: "14px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                <div style={{ padding: "18px 20px", flex: 1, display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", background: "#f8fafc", padding: "12px 14px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
                     <div style={{ gridColumn: "span 2" }}>
-                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft)", fontWeight: 500, display: "block", marginBottom: "2px" }}>Active Model:</span>
-                      <strong style={{ fontSize: "0.95rem", color: "var(--ink)", wordBreak: "break-all" }}>
-                        {active ? active.model_name : <span style={{ color: "var(--ink-soft)" }}>None configured</span>}
+                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", fontWeight: 500, display: "block", marginBottom: "2px" }}>Active Model:</span>
+                      <strong style={{ fontSize: "0.875rem", color: "var(--ink, #0f172a)", wordBreak: "break-all" }}>
+                        {active ? active.model_name : <span style={{ color: "var(--ink-soft, #64748b)" }}>None configured</span>}
                       </strong>
                     </div>
                     <div>
-                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft)", fontWeight: 500, display: "block", marginBottom: "2px" }}>ID:</span>
-                      <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--ink)" }}>{active ? `#${active.id}` : "--"}</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", fontWeight: 500, display: "block", marginBottom: "2px" }}>ID:</span>
+                      <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--ink, #0f172a)" }}>{active ? `#${active.id}` : "--"}</span>
                     </div>
                     <div>
-                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft)", fontWeight: 500, display: "block", marginBottom: "2px" }}>Provider:</span>
-                      <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#7c3aed" }}>{active ? active.provider : "--"}</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", fontWeight: 500, display: "block", marginBottom: "2px" }}>Provider:</span>
+                      <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#7c3aed" }}>{active ? active.provider : "--"}</span>
                     </div>
                   </div>
 
                   {/* Switch dropdown */}
                   <div>
-                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "6px", color: "var(--ink-soft)" }}>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "6px", color: "var(--ink-soft, #64748b)" }}>
                       Switch LLM Model
                     </label>
                     <select
                       className="form-select"
-                      style={{ fontSize: "0.875rem", padding: "8px 12px", borderRadius: "8px", borderColor: "#cbd5e1" }}
+                      style={{ fontSize: "0.85rem", padding: "8px 12px", borderRadius: "8px", borderColor: "#cbd5e1" }}
                       value={targetModel?.id || ""}
                       onChange={(e) => {
                         const val = parseInt(e.target.value, 10);
@@ -829,13 +848,13 @@ export default function AiModelsManagementPage() {
                   </div>
 
                   {/* Action buttons */}
-                  <div style={{ display: "flex", gap: "8px", marginTop: "auto", paddingTop: "8px" }}>
+                  <div style={{ display: "flex", gap: "8px", marginTop: "auto", paddingTop: "6px" }}>
                     <button
                       type="button"
                       className="btn btn-sm"
                       style={{
                         flex: 1,
-                        background: isTargetActive ? "#e2e8f0" : "#7c3aed",
+                        background: isTargetActive ? "#f1f5f9" : "#7c3aed",
                         color: isTargetActive ? "#94a3b8" : "#ffffff",
                         borderColor: isTargetActive ? "#e2e8f0" : "#7c3aed",
                         fontWeight: 600,
@@ -844,34 +863,35 @@ export default function AiModelsManagementPage() {
                         alignItems: "center",
                         justifyContent: "center",
                         gap: "6px",
+                        height: "36px",
                       }}
                       disabled={isTargetActive || !targetModel || actionLoading}
                       onClick={() => targetModel && handleActivateModel(targetModel.id)}
                     >
-                      <i className="bi bi-power" />
+                      <Power size={14} />
                       {isTargetActive ? "Active" : "Activate"}
                     </button>
 
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
-                      style={{ width: "38px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                      style={{ width: "36px", height: "36px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                       title="Edit selected model"
                       disabled={!targetModel || actionLoading}
                       onClick={() => targetModel && handleOpenEdit(targetModel)}
                     >
-                      <i className="bi bi-pencil" />
+                      <Pencil size={14} />
                     </button>
 
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
-                      style={{ width: "38px", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#ef4444" }}
+                      style={{ width: "36px", height: "36px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#ef4444" }}
                       title="Delete selected model"
                       disabled={!targetModel || actionLoading}
                       onClick={() => targetModel && handleOpenDelete(targetModel)}
                     >
-                      <i className="bi bi-trash" />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
@@ -879,7 +899,7 @@ export default function AiModelsManagementPage() {
             );
           })()}
 
-          {/* 3. TTS VOICE ENGINE (Orange/Amber Accent) */}
+          {/* 3. TTS VOICE ENGINE */}
           {(() => {
             const active = activeModels.TTS;
             const catModels = models.filter((m) => m.category === "TTS");
@@ -889,47 +909,47 @@ export default function AiModelsManagementPage() {
 
             return (
               <div
+                className="cw-card"
                 style={{
-                  background: "var(--surface)",
-                  borderRadius: "16px",
-                  border: "1px solid #fed7aa",
-                  boxShadow: "0 4px 20px -2px rgba(249, 115, 22, 0.08)",
+                  background: "#ffffff",
+                  borderRadius: "14px",
+                  border: "1px solid var(--border, #e2e8f0)",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                   overflow: "hidden",
                   display: "flex",
                   flexDirection: "column",
-                  transition: "all 0.2s ease",
                 }}
               >
                 {/* Header ribbon */}
                 <div
                   style={{
-                    background: "linear-gradient(135deg, rgba(249, 115, 22, 0.12) 0%, rgba(234, 88, 12, 0.04) 100%)",
                     padding: "16px 20px",
-                    borderBottom: "1px solid #ffedd5",
+                    borderBottom: "1px solid var(--border, #e2e8f0)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
+                    background: "#f8fafc",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <div
                       style={{
-                        width: 36,
-                        height: 36,
+                        width: 38,
+                        height: 38,
                         borderRadius: "10px",
-                        background: "#ea580c",
-                        color: "#fff",
+                        background: "#fff7ed",
+                        color: "#ea580c",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: "1.1rem",
+                        flexShrink: 0,
                       }}
                     >
-                      <i className="bi bi-volume-up" />
+                      <Volume2 size={18} />
                     </div>
                     <div>
-                      <h2 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#9a3412" }}>TTS Voice Engine</h2>
-                      <span style={{ fontSize: "0.75rem", color: "#fb923c", fontWeight: 500 }}>Voice Synthesis &amp; Playback</span>
+                      <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "var(--ink, #0f172a)" }}>TTS Voice Engine</h2>
+                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", fontWeight: 500 }}>Voice Synthesis &amp; Playback</span>
                     </div>
                   </div>
 
@@ -948,7 +968,7 @@ export default function AiModelsManagementPage() {
                         border: "1px solid #bbf7d0",
                       }}
                     >
-                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e" }}></span>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }}></span>
                       Active
                     </span>
                   ) : (
@@ -960,7 +980,7 @@ export default function AiModelsManagementPage() {
                         padding: "4px 10px",
                         borderRadius: "20px",
                         fontSize: "0.75rem",
-                        fontWeight: 600,
+                        fontWeight: 500,
                         background: "#fef2f2",
                         color: "#b91c1c",
                         border: "1px solid #fecaca",
@@ -972,32 +992,32 @@ export default function AiModelsManagementPage() {
                 </div>
 
                 {/* Body info */}
-                <div style={{ padding: "20px", flex: 1, display: "flex", flexDirection: "column", gap: "16px" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", background: "#f8fafc", padding: "14px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                <div style={{ padding: "18px 20px", flex: 1, display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", background: "#f8fafc", padding: "12px 14px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
                     <div style={{ gridColumn: "span 2" }}>
-                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft)", fontWeight: 500, display: "block", marginBottom: "2px" }}>Active Model:</span>
-                      <strong style={{ fontSize: "0.95rem", color: "var(--ink)", wordBreak: "break-all" }}>
-                        {active ? active.model_name : <span style={{ color: "var(--ink-soft)" }}>None configured</span>}
+                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", fontWeight: 500, display: "block", marginBottom: "2px" }}>Active Model:</span>
+                      <strong style={{ fontSize: "0.875rem", color: "var(--ink, #0f172a)", wordBreak: "break-all" }}>
+                        {active ? active.model_name : <span style={{ color: "var(--ink-soft, #64748b)" }}>None configured</span>}
                       </strong>
                     </div>
                     <div>
-                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft)", fontWeight: 500, display: "block", marginBottom: "2px" }}>ID:</span>
-                      <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--ink)" }}>{active ? `#${active.id}` : "--"}</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", fontWeight: 500, display: "block", marginBottom: "2px" }}>ID:</span>
+                      <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--ink, #0f172a)" }}>{active ? `#${active.id}` : "--"}</span>
                     </div>
                     <div>
-                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft)", fontWeight: 500, display: "block", marginBottom: "2px" }}>Provider:</span>
-                      <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#ea580c" }}>{active ? active.provider : "--"}</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", fontWeight: 500, display: "block", marginBottom: "2px" }}>Provider:</span>
+                      <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#ea580c" }}>{active ? active.provider : "--"}</span>
                     </div>
                   </div>
 
                   {/* Switch dropdown */}
                   <div>
-                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "6px", color: "var(--ink-soft)" }}>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "6px", color: "var(--ink-soft, #64748b)" }}>
                       Switch TTS Model
                     </label>
                     <select
                       className="form-select"
-                      style={{ fontSize: "0.875rem", padding: "8px 12px", borderRadius: "8px", borderColor: "#cbd5e1" }}
+                      style={{ fontSize: "0.85rem", padding: "8px 12px", borderRadius: "8px", borderColor: "#cbd5e1" }}
                       value={targetModel?.id || ""}
                       onChange={(e) => {
                         const val = parseInt(e.target.value, 10);
@@ -1014,13 +1034,13 @@ export default function AiModelsManagementPage() {
                   </div>
 
                   {/* Action buttons */}
-                  <div style={{ display: "flex", gap: "8px", marginTop: "auto", paddingTop: "8px" }}>
+                  <div style={{ display: "flex", gap: "8px", marginTop: "auto", paddingTop: "6px" }}>
                     <button
                       type="button"
                       className="btn btn-sm"
                       style={{
                         flex: 1,
-                        background: isTargetActive ? "#e2e8f0" : "#ea580c",
+                        background: isTargetActive ? "#f1f5f9" : "#ea580c",
                         color: isTargetActive ? "#94a3b8" : "#ffffff",
                         borderColor: isTargetActive ? "#e2e8f0" : "#ea580c",
                         fontWeight: 600,
@@ -1029,34 +1049,35 @@ export default function AiModelsManagementPage() {
                         alignItems: "center",
                         justifyContent: "center",
                         gap: "6px",
+                        height: "36px",
                       }}
                       disabled={isTargetActive || !targetModel || actionLoading}
                       onClick={() => targetModel && handleActivateModel(targetModel.id)}
                     >
-                      <i className="bi bi-power" />
+                      <Power size={14} />
                       {isTargetActive ? "Active" : "Activate"}
                     </button>
 
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
-                      style={{ width: "38px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                      style={{ width: "36px", height: "36px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                       title="Edit selected model"
                       disabled={!targetModel || actionLoading}
                       onClick={() => targetModel && handleOpenEdit(targetModel)}
                     >
-                      <i className="bi bi-pencil" />
+                      <Pencil size={14} />
                     </button>
 
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
-                      style={{ width: "38px", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#ef4444" }}
+                      style={{ width: "36px", height: "36px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#ef4444" }}
                       title="Delete selected model"
                       disabled={!targetModel || actionLoading}
                       onClick={() => targetModel && handleOpenDelete(targetModel)}
                     >
-                      <i className="bi bi-trash" />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
@@ -1067,28 +1088,30 @@ export default function AiModelsManagementPage() {
 
         {/* ---------------- MODEL LISTING SECTION ---------------- */}
         <div
+          className="cw-card"
           style={{
-            background: "var(--surface)",
-            borderRadius: "16px",
-            border: "1px solid var(--border)",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.04)",
+            background: "#ffffff",
+            borderRadius: "14px",
+            border: "1px solid var(--border, #e2e8f0)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
             overflow: "hidden",
           }}
         >
           {/* Filter Bar Header */}
           <div
             style={{
-              padding: "18px 24px",
-              borderBottom: "1px solid var(--border)",
+              padding: "16px 20px",
+              borderBottom: "1px solid var(--border, #e2e8f0)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               flexWrap: "wrap",
-              gap: "16px",
+              gap: "14px",
+              background: "#ffffff",
             }}
           >
             {/* Category Tabs */}
-            <div style={{ display: "flex", gap: "6px", background: "var(--bg)", padding: "4px", borderRadius: "10px", border: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", gap: "4px", background: "var(--bg, #f8fafc)", padding: "4px", borderRadius: "10px", border: "1px solid var(--border, #e2e8f0)" }}>
               {(["ALL", "STT", "LLM", "TTS"] as const).map((tab) => {
                 const label = tab === "ALL" ? "All Models" : tab;
                 const count = tabCounts[tab];
@@ -1101,13 +1124,13 @@ export default function AiModelsManagementPage() {
                     onClick={() => setSelectedTab(tab)}
                     style={{
                       border: "none",
-                      background: isActive ? "var(--surface)" : "transparent",
-                      color: isActive ? "var(--ink)" : "var(--ink-soft)",
+                      background: isActive ? "#ffffff" : "transparent",
+                      color: isActive ? "var(--ink, #0f172a)" : "var(--ink-soft, #64748b)",
                       fontWeight: isActive ? 600 : 500,
-                      fontSize: "0.85rem",
-                      padding: "6px 14px",
+                      fontSize: "0.8125rem",
+                      padding: "6px 12px",
                       borderRadius: "7px",
-                      boxShadow: isActive ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
+                      boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
                       cursor: "pointer",
                       display: "inline-flex",
                       alignItems: "center",
@@ -1121,8 +1144,8 @@ export default function AiModelsManagementPage() {
                         fontSize: "0.75rem",
                         padding: "1px 6px",
                         borderRadius: "10px",
-                        background: isActive ? "rgba(13, 148, 136, 0.12)" : "rgba(0,0,0,0.05)",
-                        color: isActive ? "#0d9488" : "inherit",
+                        background: isActive ? "#eff6ff" : "rgba(0,0,0,0.05)",
+                        color: isActive ? "#2563eb" : "inherit",
                         fontWeight: 600,
                       }}
                     >
@@ -1134,16 +1157,16 @@ export default function AiModelsManagementPage() {
             </div>
 
             {/* Provider Filter & Search Input */}
-            <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
               {/* Provider Dropdown */}
               <select
                 className="form-select"
                 style={{
-                  fontSize: "0.85rem",
+                  fontSize: "0.8125rem",
                   padding: "7px 12px",
                   borderRadius: "8px",
-                  borderColor: "var(--border)",
-                  minWidth: "150px",
+                  borderColor: "var(--border, #e2e8f0)",
+                  minWidth: "140px",
                 }}
                 value={providerFilter}
                 onChange={(e) => setProviderFilter(e.target.value)}
@@ -1155,16 +1178,15 @@ export default function AiModelsManagementPage() {
               </select>
 
               {/* Search Bar */}
-              <div style={{ position: "relative", minWidth: "240px" }}>
-                <i
-                  className="bi bi-search"
+              <div style={{ position: "relative", minWidth: "220px" }}>
+                <Search
+                  size={15}
                   style={{
                     position: "absolute",
-                    left: "12px",
+                    left: "10px",
                     top: "50%",
                     transform: "translateY(-50%)",
-                    color: "var(--ink-soft)",
-                    fontSize: "0.85rem",
+                    color: "var(--ink-soft, #64748b)",
                   }}
                 />
                 <input
@@ -1174,10 +1196,10 @@ export default function AiModelsManagementPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
-                    fontSize: "0.85rem",
-                    padding: "7px 12px 7px 34px",
+                    fontSize: "0.8125rem",
+                    padding: "7px 12px 7px 32px",
                     borderRadius: "8px",
-                    borderColor: "var(--border)",
+                    borderColor: "var(--border, #e2e8f0)",
                     width: "100%",
                   }}
                 />
@@ -1192,12 +1214,14 @@ export default function AiModelsManagementPage() {
                       transform: "translateY(-50%)",
                       background: "transparent",
                       border: "none",
-                      color: "var(--ink-soft)",
+                      color: "var(--ink-soft, #64748b)",
                       cursor: "pointer",
                       padding: 0,
+                      display: "flex",
+                      alignItems: "center",
                     }}
                   >
-                    <i className="bi bi-x-circle-fill" />
+                    <XCircle size={15} />
                   </button>
                 )}
               </div>
@@ -1206,31 +1230,30 @@ export default function AiModelsManagementPage() {
 
           {/* Model Rows / Cards */}
           {loading ? (
-            <div style={{ padding: "64px 20px", textAlign: "center" }}>
+            <div style={{ padding: "56px 20px", textAlign: "center" }}>
               <div className="spinner-border text-primary" style={{ width: 32, height: 32, marginBottom: "12px" }}></div>
-              <p style={{ color: "var(--ink-soft)", fontSize: "0.875rem", margin: 0 }}>Loading models configuration...</p>
+              <p style={{ color: "var(--ink-soft, #64748b)", fontSize: "0.875rem", margin: 0 }}>Loading models configuration...</p>
             </div>
           ) : filteredModels.length === 0 ? (
             /* Empty State */
-            <div style={{ padding: "64px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ padding: "56px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div
                 style={{
-                  width: 56,
-                  height: 56,
+                  width: 52,
+                  height: 52,
                   borderRadius: "50%",
                   background: "#f1f5f9",
                   color: "#64748b",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "1.5rem",
-                  marginBottom: "16px",
+                  marginBottom: "14px",
                 }}
               >
-                <i className="bi bi-cpu" />
+                <Cpu size={24} />
               </div>
-              <h3 style={{ margin: "0 0 6px 0", fontSize: "1.1rem", fontWeight: 600 }}>No models found</h3>
-              <p style={{ margin: "0 0 16px 0", color: "var(--ink-soft)", fontSize: "0.875rem", maxWidth: "400px" }}>
+              <h3 style={{ margin: "0 0 6px 0", fontSize: "1.05rem", fontWeight: 600, color: "var(--ink, #0f172a)" }}>No models found</h3>
+              <p style={{ margin: "0 0 16px 0", color: "var(--ink-soft, #64748b)", fontSize: "0.875rem", maxWidth: "380px" }}>
                 {searchQuery || providerFilter !== "ALL" || selectedTab !== "ALL"
                   ? "No models match your current search and filter criteria."
                   : "No AI models have been added yet. Click Add New Model to register an engine."}
@@ -1244,6 +1267,7 @@ export default function AiModelsManagementPage() {
                     setProviderFilter("ALL");
                     setSelectedTab("ALL");
                   }}
+                  style={{ height: "34px" }}
                 >
                   Clear Filters
                 </button>
@@ -1255,9 +1279,9 @@ export default function AiModelsManagementPage() {
                     setAddForm({ category: "LLM", model_name: "", api_key: "", is_active: false });
                     setShowAddModal(true);
                   }}
-                  style={{ background: "#0d9488", borderColor: "#0d9488" }}
+                  style={{ background: "var(--color-primary-blue, #2563eb)", borderColor: "var(--color-primary-blue, #2563eb)", height: "34px", display: "inline-flex", alignItems: "center", gap: "6px" }}
                 >
-                  <i className="bi bi-plus-lg me-1" /> Add Model
+                  <Plus size={15} /> Add Model
                 </button>
               )}
             </div>
@@ -1265,13 +1289,13 @@ export default function AiModelsManagementPage() {
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                 <thead>
-                  <tr style={{ background: "#f8fafc", borderBottom: "1px solid var(--border)", fontSize: "0.78rem", color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                    <th style={{ padding: "14px 24px", fontWeight: 600 }}>Model Name &amp; ID</th>
-                    <th style={{ padding: "14px 16px", fontWeight: 600 }}>Category</th>
-                    <th style={{ padding: "14px 16px", fontWeight: 600 }}>Provider</th>
-                    <th style={{ padding: "14px 16px", fontWeight: 600 }}>API Key</th>
-                    <th style={{ padding: "14px 16px", fontWeight: 600 }}>Status</th>
-                    <th style={{ padding: "14px 24px", fontWeight: 600, textAlign: "right" }}>Actions</th>
+                  <tr style={{ background: "#f8fafc", borderBottom: "1px solid var(--border, #e2e8f0)", fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    <th style={{ padding: "12px 20px", fontWeight: 600 }}>Model Name &amp; ID</th>
+                    <th style={{ padding: "12px 16px", fontWeight: 600 }}>Category</th>
+                    <th style={{ padding: "12px 16px", fontWeight: 600 }}>Provider</th>
+                    <th style={{ padding: "12px 16px", fontWeight: 600 }}>API Key</th>
+                    <th style={{ padding: "12px 16px", fontWeight: 600 }}>Status</th>
+                    <th style={{ padding: "12px 20px", fontWeight: 600, textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1284,13 +1308,13 @@ export default function AiModelsManagementPage() {
                       <tr
                         key={m.id}
                         style={{
-                          borderBottom: "1px solid var(--border)",
-                          background: m.is_active ? "rgba(13, 148, 136, 0.02)" : "transparent",
+                          borderBottom: "1px solid var(--border, #e2e8f0)",
+                          background: m.is_active ? "rgba(37, 99, 235, 0.02)" : "transparent",
                           transition: "background 0.15s ease",
                         }}
                       >
                         {/* Model name & ID */}
-                        <td style={{ padding: "16px 24px" }}>
+                        <td style={{ padding: "14px 20px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                             <div
                               style={{
@@ -1302,20 +1326,19 @@ export default function AiModelsManagementPage() {
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                fontSize: "0.95rem",
                                 flexShrink: 0,
                               }}
                             >
-                              <i className={isSTT ? "bi bi-mic" : isLLM ? "bi bi-robot" : "bi bi-volume-up"} />
+                              {isSTT ? <Mic size={15} /> : isLLM ? <Cpu size={15} /> : <Volume2 size={15} />}
                             </div>
                             <div>
-                              <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--ink)", wordBreak: "break-all" }}>
+                              <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--ink, #0f172a)", wordBreak: "break-all" }}>
                                 {m.model_name}
                               </div>
-                              <div style={{ fontSize: "0.75rem", color: "var(--ink-soft)", display: "flex", gap: "8px", marginTop: "2px" }}>
+                              <div style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", display: "flex", gap: "8px", marginTop: "2px" }}>
                                 <span>ID: #{m.id}</span>
                                 {m.is_default && (
-                                  <span style={{ color: "#0d9488", fontWeight: 600 }}>• Baseline Default</span>
+                                  <span style={{ color: "#2563eb", fontWeight: 600 }}>• Baseline Default</span>
                                 )}
                               </div>
                             </div>
@@ -1323,11 +1346,11 @@ export default function AiModelsManagementPage() {
                         </td>
 
                         {/* Category */}
-                        <td style={{ padding: "16px 16px" }}>
+                        <td style={{ padding: "14px 16px" }}>
                           <span
                             style={{
                               display: "inline-block",
-                              padding: "4px 10px",
+                              padding: "3px 8px",
                               borderRadius: "6px",
                               fontSize: "0.75rem",
                               fontWeight: 700,
@@ -1341,14 +1364,14 @@ export default function AiModelsManagementPage() {
                         </td>
 
                         {/* Provider */}
-                        <td style={{ padding: "16px 16px" }}>
-                          <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--ink)" }}>
+                        <td style={{ padding: "14px 16px" }}>
+                          <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--ink, #0f172a)" }}>
                             {m.provider}
                           </span>
                         </td>
 
                         {/* API Key Status */}
-                        <td style={{ padding: "16px 16px" }}>
+                        <td style={{ padding: "14px 16px" }}>
                           {m.has_custom_api_key ? (
                             <span
                               style={{
@@ -1360,7 +1383,7 @@ export default function AiModelsManagementPage() {
                                 fontWeight: 500,
                               }}
                             >
-                              <i className="bi bi-shield-lock-fill" /> Custom Secret
+                              <ShieldCheck size={14} /> Custom Secret
                             </span>
                           ) : (
                             <span
@@ -1369,23 +1392,23 @@ export default function AiModelsManagementPage() {
                                 alignItems: "center",
                                 gap: "4px",
                                 fontSize: "0.75rem",
-                                color: "var(--ink-soft)",
+                                color: "var(--ink-soft, #64748b)",
                               }}
                             >
-                              <i className="bi bi-gear" /> Inherited Env
+                              <Sliders size={14} /> Inherited Env
                             </span>
                           )}
                         </td>
 
                         {/* Status */}
-                        <td style={{ padding: "16px 16px" }}>
+                        <td style={{ padding: "14px 16px" }}>
                           {m.is_active ? (
                             <span
                               style={{
                                 display: "inline-flex",
                                 alignItems: "center",
                                 gap: "6px",
-                                padding: "4px 10px",
+                                padding: "3px 9px",
                                 borderRadius: "20px",
                                 fontSize: "0.75rem",
                                 fontWeight: 600,
@@ -1403,7 +1426,7 @@ export default function AiModelsManagementPage() {
                                 display: "inline-flex",
                                 alignItems: "center",
                                 gap: "6px",
-                                padding: "4px 10px",
+                                padding: "3px 9px",
                                 borderRadius: "20px",
                                 fontSize: "0.75rem",
                                 fontWeight: 500,
@@ -1417,19 +1440,22 @@ export default function AiModelsManagementPage() {
                         </td>
 
                         {/* Actions */}
-                        <td style={{ padding: "16px 24px", textAlign: "right" }}>
+                        <td style={{ padding: "14px 20px", textAlign: "right" }}>
                           <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
                             <button
                               type="button"
                               className="btn btn-sm"
                               style={{
                                 padding: "4px 10px",
-                                fontSize: "0.78rem",
+                                fontSize: "0.75rem",
                                 fontWeight: 600,
-                                background: m.is_active ? "#f1f5f9" : "#0d9488",
+                                background: m.is_active ? "#f1f5f9" : "var(--color-primary-blue, #2563eb)",
                                 color: m.is_active ? "#94a3b8" : "#ffffff",
-                                borderColor: m.is_active ? "#e2e8f0" : "#0d9488",
+                                borderColor: m.is_active ? "#e2e8f0" : "var(--color-primary-blue, #2563eb)",
                                 cursor: m.is_active ? "default" : "pointer",
+                                height: "30px",
+                                display: "inline-flex",
+                                alignItems: "center",
                               }}
                               disabled={m.is_active || actionLoading}
                               onClick={() => !m.is_active && handleActivateModel(m.id)}
@@ -1440,23 +1466,23 @@ export default function AiModelsManagementPage() {
                             <button
                               type="button"
                               className="btn btn-secondary btn-sm"
-                              style={{ padding: "4px 8px", fontSize: "0.8rem" }}
+                              style={{ width: "30px", height: "30px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                               title="Edit model"
                               disabled={actionLoading}
                               onClick={() => handleOpenEdit(m)}
                             >
-                              <i className="bi bi-pencil" />
+                              <Pencil size={13} />
                             </button>
 
                             <button
                               type="button"
                               className="btn btn-secondary btn-sm"
-                              style={{ padding: "4px 8px", fontSize: "0.8rem", color: "#ef4444" }}
+                              style={{ width: "30px", height: "30px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#ef4444" }}
                               title="Delete model"
                               disabled={actionLoading}
                               onClick={() => handleOpenDelete(m)}
                             >
-                              <i className="bi bi-trash" />
+                              <Trash2 size={13} />
                             </button>
                           </div>
                         </td>
@@ -1501,10 +1527,10 @@ export default function AiModelsManagementPage() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
               <div>
-                <h2 style={{ margin: "0 0 4px 0", fontSize: "1.25rem", fontWeight: 700, color: "var(--ink)" }}>
+                <h2 style={{ margin: "0 0 4px 0", fontSize: "1.25rem", fontWeight: 700, color: "var(--ink, #0f172a)" }}>
                   Add Custom Model
                 </h2>
-                <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--ink-soft)" }}>
+                <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--ink-soft, #64748b)" }}>
                   Provide Category, Model Name, and API Key
                 </p>
               </div>
@@ -1515,11 +1541,13 @@ export default function AiModelsManagementPage() {
                   background: "transparent",
                   border: "none",
                   fontSize: "1.25rem",
-                  color: "var(--ink-soft)",
+                  color: "var(--ink-soft, #64748b)",
                   cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
                 }}
               >
-                <i className="bi bi-x-lg" />
+                <X size={20} />
               </button>
             </div>
 
@@ -1541,8 +1569,8 @@ export default function AiModelsManagementPage() {
                   <option value="TTS">TTS (Voice Synthesis)</option>
                 </select>
                 {addForm.category === "LLM" && (
-                  <p style={{ margin: "6px 0 0 0", fontSize: "0.75rem", color: "#7c3aed" }}>
-                    <i className="bi bi-info-circle me-1" /> LLM models handle intent routing, policy reasoning, and financial advisory chat.
+                  <p style={{ margin: "6px 0 0 0", fontSize: "0.75rem", color: "#7c3aed", display: "flex", alignItems: "center", gap: "5px" }}>
+                    <Info size={14} /> LLM models handle intent routing, policy reasoning, and financial advisory chat.
                   </p>
                 )}
               </div>
@@ -1576,7 +1604,7 @@ export default function AiModelsManagementPage() {
                       background: "none",
                       border: "none",
                       padding: 0,
-                      color: "var(--ink-soft)",
+                      color: "var(--ink-soft, #64748b)",
                       fontSize: "0.75rem",
                       cursor: "pointer",
                       display: "flex",
@@ -1584,7 +1612,7 @@ export default function AiModelsManagementPage() {
                       gap: 4,
                     }}
                   >
-                    <i className={`bi ${showAddKey ? "bi-eye-slash" : "bi-eye"}`} />
+                    {showAddKey ? <EyeOff size={14} /> : <Eye size={14} />}
                     {showAddKey ? "Hide" : "Show"}
                   </button>
                 </div>
@@ -1598,7 +1626,7 @@ export default function AiModelsManagementPage() {
                     style={{ fontSize: "0.875rem", padding: "8px 12px", fontFamily: "monospace" }}
                   />
                 </div>
-                <p style={{ margin: "6px 0 0 0", fontSize: "0.75rem", color: "var(--ink-soft)" }}>
+                <p style={{ margin: "6px 0 0 0", fontSize: "0.75rem", color: "var(--ink-soft, #64748b)" }}>
                   Leave blank to inherit your system default environment API key.
                 </p>
               </div>
@@ -1610,7 +1638,7 @@ export default function AiModelsManagementPage() {
                   id="activate_immediately"
                   checked={addForm.is_active}
                   onChange={(e) => setAddForm({ ...addForm, is_active: e.target.checked })}
-                  style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#0d9488" }}
+                  style={{ width: 16, height: 16, cursor: "pointer", accentColor: "var(--color-primary-blue, #2563eb)" }}
                 />
                 <label htmlFor="activate_immediately" style={{ fontSize: "0.8125rem", cursor: "pointer", margin: 0, fontWeight: 500 }}>
                   Activate this model immediately upon creation
@@ -1633,8 +1661,8 @@ export default function AiModelsManagementPage() {
                   className="btn btn-primary btn-sm"
                   disabled={actionLoading}
                   style={{
-                    background: "#0d9488",
-                    borderColor: "#0d9488",
+                    background: "var(--color-primary-blue, #2563eb)",
+                    borderColor: "var(--color-primary-blue, #2563eb)",
                     padding: "8px 20px",
                     fontWeight: 600,
                   }}
@@ -1692,11 +1720,13 @@ export default function AiModelsManagementPage() {
                   background: "transparent",
                   border: "none",
                   fontSize: "1.25rem",
-                  color: "var(--ink-soft)",
+                  color: "var(--ink-soft, #64748b)",
                   cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
                 }}
               >
-                <i className="bi bi-x-lg" />
+                <X size={20} />
               </button>
             </div>
 
@@ -1746,7 +1776,7 @@ export default function AiModelsManagementPage() {
                       background: "none",
                       border: "none",
                       padding: 0,
-                      color: "var(--ink-soft)",
+                      color: "var(--ink-soft, #64748b)",
                       fontSize: "0.75rem",
                       cursor: "pointer",
                       display: "flex",
@@ -1754,7 +1784,7 @@ export default function AiModelsManagementPage() {
                       gap: 4,
                     }}
                   >
-                    <i className={`bi ${showEditKey ? "bi-eye-slash" : "bi-eye"}`} />
+                    {showEditKey ? <EyeOff size={14} /> : <Eye size={14} />}
                     {showEditKey ? "Hide" : "Show"}
                   </button>
                 </div>
@@ -1766,7 +1796,7 @@ export default function AiModelsManagementPage() {
                   onChange={(e) => setEditForm({ ...editForm, api_key: e.target.value })}
                   style={{ fontSize: "0.875rem", padding: "8px 12px", fontFamily: "monospace" }}
                 />
-                <p style={{ margin: "6px 0 0 0", fontSize: "0.75rem", color: "var(--ink-soft)" }}>
+                <p style={{ margin: "6px 0 0 0", fontSize: "0.75rem", color: "var(--ink-soft, #64748b)" }}>
                   {editTarget.has_custom_api_key
                     ? "A custom secret key is currently configured. Enter a new key only if you wish to replace it."
                     : "No model-specific key is saved. This model currently inherits your environment API key."}
@@ -1789,8 +1819,8 @@ export default function AiModelsManagementPage() {
                   className="btn btn-primary btn-sm"
                   disabled={actionLoading}
                   style={{
-                    background: "#0d9488",
-                    borderColor: "#0d9488",
+                    background: "var(--color-primary-blue, #2563eb)",
+                    borderColor: "var(--color-primary-blue, #2563eb)",
                     padding: "8px 20px",
                     fontWeight: 600,
                   }}
@@ -1843,17 +1873,16 @@ export default function AiModelsManagementPage() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "1.25rem",
                   flexShrink: 0,
                 }}
               >
-                <i className="bi bi-exclamation-triangle" />
+                <AlertTriangle size={22} />
               </div>
               <div>
-                <h3 style={{ margin: "0 0 2px 0", fontSize: "1.15rem", fontWeight: 700, color: "var(--ink)" }}>
+                <h3 style={{ margin: "0 0 2px 0", fontSize: "1.15rem", fontWeight: 700, color: "var(--ink, #0f172a)" }}>
                   Delete this model?
                 </h3>
-                <span style={{ fontSize: "0.85rem", color: "var(--ink-soft)" }}>
+                <span style={{ fontSize: "0.85rem", color: "var(--ink-soft, #64748b)" }}>
                   {deleteTarget.model_name} (#{deleteTarget.id})
                 </span>
               </div>
@@ -1874,7 +1903,7 @@ export default function AiModelsManagementPage() {
                   alignItems: "flex-start",
                 }}
               >
-                <i className="bi bi-slash-circle-fill" style={{ fontSize: "1rem", marginTop: 2 }} />
+                <XCircle size={18} style={{ marginTop: 2, flexShrink: 0 }} />
                 <div>
                   <strong>Active Model Protection</strong>
                   <p style={{ margin: "4px 0 0 0" }}>
@@ -1883,7 +1912,7 @@ export default function AiModelsManagementPage() {
                 </div>
               </div>
             ) : (
-              <p style={{ margin: "0 0 20px 0", fontSize: "0.875rem", color: "var(--ink-soft)", lineHeight: 1.5 }}>
+              <p style={{ margin: "0 0 20px 0", fontSize: "0.875rem", color: "var(--ink-soft, #64748b)", lineHeight: 1.5 }}>
                 The model configuration will be permanently removed from the database. Any custom settings and credentials for this model will be erased.
               </p>
             )}
@@ -1951,28 +1980,27 @@ export default function AiModelsManagementPage() {
                   width: 44,
                   height: 44,
                   borderRadius: "50%",
-                  background: "#e0f2fe",
-                  color: "#0284c7",
+                  background: "#eff6ff",
+                  color: "#2563eb",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "1.25rem",
                   flexShrink: 0,
                 }}
               >
-                <i className="bi bi-arrow-counterclockwise" />
+                <RotateCcw size={22} />
               </div>
               <div>
-                <h3 style={{ margin: "0 0 2px 0", fontSize: "1.15rem", fontWeight: 700, color: "var(--ink)" }}>
+                <h3 style={{ margin: "0 0 2px 0", fontSize: "1.15rem", fontWeight: 700, color: "var(--ink, #0f172a)" }}>
                   Restore Default Models?
                 </h3>
-                <span style={{ fontSize: "0.85rem", color: "var(--ink-soft)" }}>
+                <span style={{ fontSize: "0.85rem", color: "var(--ink-soft, #64748b)" }}>
                   Reset active engines to platform baseline
                 </span>
               </div>
             </div>
 
-            <p style={{ margin: "0 0 20px 0", fontSize: "0.875rem", color: "var(--ink-soft)", lineHeight: 1.5 }}>
+            <p style={{ margin: "0 0 20px 0", fontSize: "0.875rem", color: "var(--ink-soft, #64748b)", lineHeight: 1.5 }}>
               This will reset the active engines to the system defaults: <strong>OpenRouter Auto</strong> for LLM, <strong>Whisper Large v3</strong> for STT, and <strong>TTS-1</strong> for TTS. Custom models will <strong>not</strong> be deleted.
             </p>
 
@@ -1992,8 +2020,8 @@ export default function AiModelsManagementPage() {
                 onClick={handleConfirmRestore}
                 disabled={actionLoading}
                 style={{
-                  background: "#0d9488",
-                  borderColor: "#0d9488",
+                  background: "var(--color-primary-blue, #2563eb)",
+                  borderColor: "var(--color-primary-blue, #2563eb)",
                   padding: "8px 20px",
                   fontWeight: 600,
                 }}

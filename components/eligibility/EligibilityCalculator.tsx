@@ -381,6 +381,13 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
           overflow-x: hidden;
         }
 
+        @media (max-width: 640px) {
+          .calculator-container {
+            padding: 16px 12px 32px 12px;
+            gap: 14px;
+          }
+        }
+
         .floating-toast {
           position: fixed;
           bottom: 24px;

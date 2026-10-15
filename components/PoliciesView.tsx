@@ -5,10 +5,27 @@
 
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Topbar from "./Topbar"
-import { Eye, Pencil, Download } from "lucide-react"
+import {
+  Eye,
+  Pencil,
+  Trash2,
+  Building2,
+  Landmark,
+  Search,
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Download,
+  FileSpreadsheet,
+  UploadCloud,
+  CheckCircle2,
+  FileText,
+} from "lucide-react"
+import ModernSearchBar from "@/components/ui/ModernSearchBar"
 import ModernConfirmDialog from "@/components/ui/ModernConfirmDialog"
 import ModernTableActionBtn, { ModernDeleteActionBtn } from "@/components/ui/ModernTableActionBtn"
 
@@ -37,6 +54,21 @@ export default function PoliciesView({
   const [filterLoanType, setFilterLoanType] = useState("all")
   const [filterStatus, setFilterStatus] = useState("all")
   const [searchFileQuery, setSearchFileQuery] = useState("")
+  const [selectedFileBank, setSelectedFileBank] = useState("all")
+  const [isFileDragOver, setIsFileDragOver] = useState(false)
+
+  // Pagination State (Step 6: 15 per page)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [filePage, setFilePage] = useState(1)
+  const PAGE_SIZE = 15
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchBank, filterLoanType, filterStatus])
+
+  useEffect(() => {
+    setFilePage(1)
+  }, [searchFileQuery, selectedFileBank])
 
   // Viewer Modal State
   const [activeViewerFile, setActiveViewerFile] = useState<any | null>(null)
@@ -660,15 +692,48 @@ export default function PoliciesView({
     return matchesBank && matchesType && matchesStatus
   })
 
+  // Dynamic pagination calculation (Step 6 - 15 items per page)
+  const totalFiltered = filteredPolicies.length
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE))
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
+  const startIndex = totalFiltered === 0 ? 0 : (validCurrentPage - 1) * PAGE_SIZE
+  const endIndex = Math.min(startIndex + PAGE_SIZE, totalFiltered)
+  const paginatedPolicies = filteredPolicies.slice(startIndex, endIndex)
+
+  // Unique bank options for Policy Files filter dropdown
+  const fileBankOptions = useMemo(() => {
+    const set = new Set<string>()
+    policyFiles.forEach((f) => {
+      const b = (f.bank_name || "").trim()
+      if (b) set.add(b)
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [policyFiles])
+
   // Filtered Policy Files
-  const filteredPolicyFiles = policyFiles.filter((file) => {
-    const q = searchFileQuery.toLowerCase().trim()
-    if (!q) return true
-    const bName = (file.bank_name || "").toLowerCase()
-    const fName = (file.file_name || "").toLowerCase()
-    const snippet = (file.snippet || "").toLowerCase()
-    return bName.includes(q) || fName.includes(q) || snippet.includes(q)
-  })
+  const filteredPolicyFiles = useMemo(() => {
+    return policyFiles.filter((file) => {
+      const matchesBank =
+        selectedFileBank === "all" ||
+        (file.bank_name || "").toLowerCase() === selectedFileBank.toLowerCase()
+
+      const q = searchFileQuery.toLowerCase().trim()
+      if (!q) return matchesBank
+
+      const bName = (file.bank_name || "").toLowerCase()
+      const fName = (file.file_name || "").toLowerCase()
+      const snippet = (file.snippet || "").toLowerCase()
+      return matchesBank && (bName.includes(q) || fName.includes(q) || snippet.includes(q))
+    })
+  }, [policyFiles, searchFileQuery, selectedFileBank])
+
+  // Document files pagination
+  const totalFilteredFiles = filteredPolicyFiles.length
+  const totalFilePages = Math.max(1, Math.ceil(totalFilteredFiles / PAGE_SIZE))
+  const validCurrentFilePage = Math.min(Math.max(1, filePage), totalFilePages)
+  const startFileIndex = totalFilteredFiles === 0 ? 0 : (validCurrentFilePage - 1) * PAGE_SIZE
+  const endFileIndex = Math.min(startFileIndex + PAGE_SIZE, totalFilteredFiles)
+  const paginatedFiles = filteredPolicyFiles.slice(startFileIndex, endFileIndex)
 
   // Unique bank options for edit modal
   const allBankOptions = Array.from(
@@ -677,10 +742,458 @@ export default function PoliciesView({
     ).values()
   ).sort((a, b) => a.name.localeCompare(b.name))
 
+  function renderCategoryBadge(category?: string) {
+    const cat = category || "General Policy"
+    const lower = cat.toLowerCase()
+    if (lower.includes("personal")) {
+      return <span className="bp-cat-badge bp-cat-personal">{cat}</span>
+    }
+    if (lower.includes("home")) {
+      return <span className="bp-cat-badge bp-cat-home">{cat}</span>
+    }
+    return <span className="bp-cat-badge bp-cat-default">{cat}</span>
+  }
+
+  function renderStatusBadge(status?: string) {
+    const st = (status || "active").toLowerCase()
+    const isActive = st === "active"
+    return (
+      <span className={`bp-status-badge ${isActive ? "bp-status-active" : "bp-status-inactive"}`}>
+        <span className={`bp-status-dot ${isActive ? "dot-active" : "dot-inactive"}`} />
+        {st === "review" ? "In Review" : st.charAt(0).toUpperCase() + st.slice(1)}
+      </span>
+    )
+  }
+
   if (!user) return <main style={{ padding: 24, textAlign: "center" }}>Loading policy workspace...</main>
 
   return (
     <>
+      <style>{`
+        .bp-container {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 auto;
+          box-sizing: border-box;
+          font-family: inherit;
+        }
+        .bp-header-card {
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+          padding: 12px 18px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        .bp-header-left {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+        .bp-icon-badge {
+          width: 42px;
+          height: 42px;
+          border-radius: 12px;
+          background: #eff6ff;
+          border: 1px solid #bfdbfe;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #2563eb;
+          flex-shrink: 0;
+          box-shadow: 0 1px 2px rgba(37, 99, 235, 0.08);
+        }
+        .bp-tab-pill-group {
+          display: flex;
+          background: #f1f5f9;
+          padding: 4px;
+          border-radius: 10px;
+          gap: 4px;
+        }
+        .bp-tab-pill {
+          padding: 6px 14px;
+          font-size: 0.8125rem;
+          font-weight: 500;
+          color: #64748b;
+          border-radius: 8px;
+          border: 1px solid transparent;
+          background: transparent;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .bp-tab-pill.active {
+          background: #ffffff;
+          color: #0f172a;
+          font-weight: 600;
+          border-color: #e2e8f0;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        .bp-tab-pill-count {
+          font-size: 0.75rem;
+          font-weight: 700;
+          padding: 1px 7px;
+          border-radius: 9999px;
+          background: #f1f5f9;
+          color: #475569;
+        }
+        .bp-tab-pill.active .bp-tab-pill-count {
+          background: #eff6ff;
+          color: #2563eb;
+        }
+        .bp-header-right {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .bp-refresh-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 9px;
+          color: #334155;
+          font-size: 0.8125rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+        }
+        .bp-refresh-btn:hover:not(:disabled) {
+          background: #f8fafc;
+          border-color: #cbd5e1;
+          color: #0f172a;
+        }
+        .bp-refresh-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        .bp-toolbar-card {
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 10px 18px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+          flex-wrap: wrap;
+          gap: 12px;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+        }
+        .bp-count-wrap {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.875rem;
+          color: #64748b;
+          font-weight: 500;
+        }
+        .bp-count-number {
+          font-weight: 700;
+          background: #eff6ff;
+          color: #1d4ed8;
+          padding: 2px 10px;
+          border-radius: 9999px;
+          border: 1px solid #dbeafe;
+          font-size: 0.8125rem;
+        }
+        .bp-toolbar-controls {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        .bp-search-box {
+          position: relative;
+          width: 240px;
+        }
+        .bp-search-icon {
+          position: absolute;
+          left: 10px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #94a3b8;
+          pointer-events: none;
+        }
+        .bp-search-input {
+          width: 100%;
+          height: 36px;
+          padding: 0 12px 0 32px;
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+          background: #ffffff;
+          font-size: 0.8125rem;
+          color: #0f172a;
+          outline: none;
+          transition: all 0.15s ease;
+          box-sizing: border-box;
+        }
+        .bp-search-input:focus {
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
+        .bp-filter-select {
+          height: 36px;
+          padding: 0 12px;
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+          background: #ffffff;
+          font-size: 0.8125rem;
+          color: #334155;
+          outline: none;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .bp-filter-select:focus {
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
+        .bp-table-card {
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          overflow: hidden;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+        .bp-table-scroll {
+          width: 100%;
+          overflow-x: auto;
+        }
+        .bp-table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+        }
+        .bp-table thead {
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
+        }
+        .bp-table th {
+          padding: 13px 18px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #64748b;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          white-space: nowrap;
+          vertical-align: middle;
+        }
+        .bp-table th.bp-th-center {
+          text-align: center;
+        }
+        .bp-table th.bp-th-left {
+          text-align: left;
+        }
+        .bp-table tbody tr {
+          border-bottom: 1px solid #f1f5f9;
+          transition: background-color 0.15s ease;
+          height: 56px;
+        }
+        .bp-table tbody tr:hover {
+          background-color: #f8fafc;
+        }
+        .bp-table tbody tr:last-child {
+          border-bottom: none;
+        }
+        .bp-table td {
+          padding: 12px 18px;
+          font-size: 0.875rem;
+          color: #334155;
+          vertical-align: middle;
+        }
+        .bp-td-center {
+          text-align: center;
+        }
+        .bp-td-left {
+          text-align: left;
+        }
+        .bp-index-cell {
+          color: #94a3b8;
+          font-weight: 600;
+          font-size: 0.8125rem;
+          text-align: center;
+        }
+        .bp-bank-cell {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
+        }
+        .bp-bank-logo-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 9px;
+          background: #eff6ff;
+          border: 1px solid #dbeafe;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #2563eb;
+          flex-shrink: 0;
+        }
+        .bp-bank-name {
+          font-weight: 600;
+          color: #0f172a;
+          font-size: 0.875rem;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .bp-cat-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 3px 12px;
+          border-radius: 9999px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          white-space: nowrap;
+        }
+        .bp-cat-personal {
+          background: #eff6ff;
+          color: #1d4ed8;
+          border: 1px solid #bfdbfe;
+        }
+        .bp-cat-home {
+          background: #faf5ff;
+          color: #7e22ce;
+          border: 1px solid #e9d5ff;
+        }
+        .bp-cat-default {
+          background: #f1f5f9;
+          color: #475569;
+          border: 1px solid #e2e8f0;
+        }
+        .bp-status-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 3px 12px;
+          border-radius: 9999px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          white-space: nowrap;
+        }
+        .bp-status-active {
+          background: #f0fdf4;
+          color: #15803d;
+          border: 1px solid #bbf7d0;
+        }
+        .bp-status-inactive {
+          background: #f8fafc;
+          color: #64748b;
+          border: 1px solid #e2e8f0;
+        }
+        .bp-status-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+        }
+        .dot-active {
+          background: #16a34a;
+        }
+        .dot-inactive {
+          background: #94a3b8;
+        }
+        .bp-actions-group {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          margin: 0 auto;
+        }
+        .bp-action-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+          background: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          color: #64748b;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+        }
+        .bp-btn-view:hover {
+          background: #eff6ff;
+          border-color: #bfdbfe;
+          color: #2563eb;
+        }
+        .bp-btn-edit:hover {
+          background: #eff6ff;
+          border-color: #bfdbfe;
+          color: #2563eb;
+        }
+        .bp-btn-delete:hover {
+          background: #fef2f2;
+          border-color: #fecaca;
+          color: #dc2626;
+        }
+        .bp-footer {
+          padding: 12px 20px;
+          border-top: 1px solid #e2e8f0;
+          background: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        .bp-footer-range {
+          font-size: 0.8125rem;
+          color: #64748b;
+          font-weight: 500;
+        }
+        .bp-pagination {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .bp-page-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          height: 32px;
+          padding: 0 10px;
+          border-radius: 7px;
+          border: 1px solid #e2e8f0;
+          background: #ffffff;
+          font-size: 0.75rem;
+          font-weight: 500;
+          color: #334155;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .bp-page-btn:hover:not(:disabled) {
+          background: #f8fafc;
+          border-color: #cbd5e1;
+          color: #0f172a;
+        }
+        .bp-page-btn:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
+        .bp-page-indicator {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #475569;
+          padding: 0 8px;
+        }
+      `}</style>
+
       {!embedded && <Topbar user={user} />}
       {/* Hidden File Input for Replace in Documents Tab */}
       <input
@@ -701,8 +1214,14 @@ export default function PoliciesView({
       />
 
       <div
-        className="policies-page animate-fade-in"
-        style={embedded ? { flex: 1, overflowY: "auto", height: "calc(100vh - var(--topbar-height))", width: "100%", padding: "1.5rem 2rem" } : undefined}
+        className="animate-fade-in bp-container"
+        style={{
+          width: "100%",
+          maxWidth: "100%",
+          margin: "0 auto",
+          padding: embedded ? "0 0 2rem 0" : "1.5rem 2rem",
+          boxSizing: "border-box",
+        }}
       >
         {/* Replace / Action Toast Notification */}
         {actionToast && (
@@ -731,233 +1250,814 @@ export default function PoliciesView({
           </div>
         )}
 
-        {/* Page Header */}
-        <div className="page-header">
-          <div>
-            <h1 className="page-header-title">
-              <i className="bi bi-file-earmark-text" style={{ color: "var(--accent)", marginRight: "0.5rem" }} />
-              Bank Policies
-            </h1>
+        {/* Compact Header (Step 3) */}
+        <div className="bp-header-card">
+          <div className="bp-header-left">
+            <div
+              className="bp-icon-badge"
+              title="Bank Policies"
+              aria-label="Bank Policies"
+            >
+              <Building2 className="w-5 h-5" />
+            </div>
+
+            {/* Sub-tab Pill Switcher */}
+            <div className="bp-tab-pill-group" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === "rules"}
+                  className={`bp-tab-pill ${activeTab === "rules" ? "active" : ""}`}
+                  onClick={() => {
+                    setActiveTab("rules")
+                    setCurrentPage(1)
+                  }}
+                >
+                  <Landmark className="w-4 h-4" />
+                  <span>Bank Policy Guidelines</span>
+                  <span className="bp-tab-pill-count">{policies.length}</span>
+                </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "files"}
+                className={`bp-tab-pill ${activeTab === "files" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("files")
+                  setFilePage(1)
+                }}
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Policy Master Files</span>
+                <span className="bp-tab-pill-count">{policyFiles.length}</span>
+              </button>
+            </div>
           </div>
 
-          <div className="page-header-actions">
-            <span className="badge bg-primary">{policies.length} Banks</span>
-            <span className="badge bg-purple">{policyFiles.length} Master Files</span>
+          <div className="bp-header-right">
+            <button
+              type="button"
+              className="bp-refresh-btn"
+              onClick={activeTab === "rules" ? loadPolicies : loadPolicyFiles}
+              disabled={loading || loadingFiles}
+              title="Refresh Bank Policies"
+              aria-label="Refresh Bank Policies"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 ${loading || loadingFiles ? "animate-spin text-blue-600" : ""}`} />
+              <span>Refresh</span>
+            </button>
           </div>
-        </div>
-
-        {/* View Switcher Tabs (CallNow Section 13) */}
-        <div className="nav-tabs" style={{ marginBottom: "1.5rem" }}>
-          <button
-            type="button"
-            className={`nav-link ${activeTab === "rules" ? "active" : ""}`}
-            onClick={() => setActiveTab("rules")}
-          >
-            <i className="bi bi-card-checklist" /> Bank Master Policies ({policies.length})
-          </button>
-          <button
-            type="button"
-            className={`nav-link ${activeTab === "files" ? "active" : ""}`}
-            onClick={() => setActiveTab("files")}
-          >
-            <i className="bi bi-file-earmark-pdf" /> Policy Master Files ({policyFiles.length})
-          </button>
         </div>
 
         {activeTab === "rules" ? (
-          <>
-            {/* Filter Card */}
-            <div className="card" style={{ padding: "1rem 1.25rem", marginBottom: "1.5rem" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr)) auto", gap: "1rem", alignItems: "flex-end" }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Search Bank</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="e.g. ICICI, HDFC, SBI..."
-                    value={searchBank}
-                    onChange={(e) => setSearchBank(e.target.value)}
-                  />
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
+            {/* Metric Cards Row matching Company Search */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gap: "16px",
+                marginBottom: "4px",
+              }}
+            >
+              {/* Card 1: Partner Banks */}
+              <div className="cw-card" style={{ padding: "18px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: "#eff6ff",
+                    border: "1px solid #dbeafe",
+                    color: "#2563eb",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Landmark style={{ width: 22, height: 22 }} />
                 </div>
+                <div>
+                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                    {policies.length}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Partner Lenders</div>
+                </div>
+              </div>
 
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Loan Type</label>
-                  <select
-                    className="form-select"
-                    value={filterLoanType}
-                    onChange={(e) => setFilterLoanType(e.target.value)}
-                  >
-                    <option value="all">All Loan Types</option>
-                    <option value="Personal Loan">Personal Loan</option>
-                    <option value="Home Loan">Home Loan</option>
-                    <option value="Auto Loan">Auto Loan</option>
-                    <option value="Business Loan">Business Loan</option>
-                    <option value="Education Loan">Education Loan</option>
-                  </select>
+              {/* Card 2: Active Policies */}
+              <div className="cw-card" style={{ padding: "18px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: "#ecfdf5",
+                    border: "1px solid #d1fae5",
+                    color: "#059669",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <CheckCircle2 style={{ width: 22, height: 22 }} />
                 </div>
+                <div>
+                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                    {policies.filter((p) => String(p.status || "active").toLowerCase() === "active").length}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Active Guidelines</div>
+                </div>
+              </div>
 
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Policy Status</label>
-                  <select
-                    className="form-select"
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                  >
-                    <option value="all">All Statuses</option>
-                    <option value="active">Active</option>
-                    <option value="review">In Review</option>
-                    <option value="draft">Draft</option>
-                  </select>
+              {/* Card 3: In Review / Draft */}
+              <div className="cw-card" style={{ padding: "18px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: "#fffbeb",
+                    border: "1px solid #fef3c7",
+                    color: "#d97706",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <FileSpreadsheet style={{ width: 22, height: 22 }} />
                 </div>
+                <div>
+                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                    {policies.filter((p) => {
+                      const s = String(p.status || "").toLowerCase();
+                      return s === "review" || s === "draft";
+                    }).length}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Review / Draft Rules</div>
+                </div>
+              </div>
+
+              {/* Card 4: Loan Categories */}
+              <div className="cw-card" style={{ padding: "18px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: "#f5f3ff",
+                    border: "1px solid #ede9fe",
+                    color: "#7c3aed",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Building2 style={{ width: 22, height: 22 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                    {Array.from(new Set(policies.map((p) => p.loan_type || "Personal Loan"))).length}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Loan Categories</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Search & Filter Toolbar Card matching Company Search */}
+            <div
+              className="cw-card"
+              style={{
+                padding: "14px 18px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "14px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                <span
+                  className="cw-badge cw-badge-info"
+                  style={{ fontSize: "0.8125rem", padding: "5px 12px" }}
+                >
+                  <span>Partner Banks:</span>
+                  <strong style={{ marginLeft: 4 }}>{filteredPolicies.length}</strong>
+                </span>
+
+                <ModernSearchBar
+                  value={searchBank}
+                  onChange={setSearchBank}
+                  placeholder="Search partner banks..."
+                  width={260}
+                />
+
+                <select
+                  className="cw-select"
+                  value={filterLoanType}
+                  onChange={(e) => setFilterLoanType(e.target.value)}
+                  style={{ height: 38 }}
+                >
+                  <option value="all">All Categories</option>
+                  <option value="Personal Loan">Personal Loan</option>
+                  <option value="Home Loan">Home Loan</option>
+                  <option value="Auto Loan">Auto Loan</option>
+                  <option value="Business Loan">Business Loan</option>
+                  <option value="Education Loan">Education Loan</option>
+                </select>
+
+                <select
+                  className="cw-select"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  style={{ height: 38 }}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="active">Active</option>
+                  <option value="review">In Review</option>
+                  <option value="draft">Draft</option>
+                </select>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                {(searchBank || filterLoanType !== "all" || filterStatus !== "all") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchBank("")
+                      setFilterLoanType("all")
+                      setFilterStatus("all")
+                    }}
+                    className="cw-btn-secondary"
+                  >
+                    Reset Filters
+                  </button>
+                )}
 
                 <button
-                  className="btn btn-primary"
+                  type="button"
+                  className="cw-btn-secondary"
                   onClick={loadPolicies}
                   disabled={loading}
-                  style={{ height: "35px" }}
                 >
-                  {loading ? <span className="spinner-inline" /> : <i className="bi bi-arrow-clockwise" />}
-                  Refresh
+                  <RotateCcw style={{ width: 14, height: 14 }} className={loading ? "animate-spin text-blue-600" : ""} />
+                  <span>Refresh</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="cw-btn-primary"
+                  onClick={() => setUploadModalOpen(true)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+                >
+                  <UploadCloud style={{ width: 15, height: 15 }} />
+                  <span>Upload / Add Policy</span>
                 </button>
               </div>
             </div>
 
-            {/* Table View: Exactly One Row Per Bank */}
-            {loading ? (
-              <div style={{ textAlign: "center", padding: 60, color: "var(--ink-muted)" }}>
-                Loading bank policy guidelines...
+            {/* Bank Policy Guidelines Table Container matching Image 3 */}
+            <div className="cw-card">
+              {/* Card Header matching Image 3 */}
+              <div
+                style={{
+                  padding: "16px 20px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  borderBottom: "1px solid #f1f5f9",
+                  flexWrap: "wrap",
+                  gap: "12px",
+                }}
+              >
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: "1rem",
+                    fontWeight: 700,
+                    color: "#0f172a",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span>Bank Master Policies</span>
+                  <span style={{ fontSize: "0.875rem", color: "#64748b", fontWeight: 500 }}>
+                    ({filteredPolicies.length})
+                  </span>
+                </h3>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <button
+                    type="button"
+                    className="cw-btn-secondary"
+                    onClick={loadPolicies}
+                    disabled={loading}
+                    title="Refresh Bank Policies"
+                  >
+                    <RotateCcw style={{ width: 14, height: 14 }} className={loading ? "animate-spin text-blue-600" : ""} />
+                    <span>Refresh</span>
+                  </button>
+                </div>
               </div>
-            ) : filteredPolicies.length === 0 ? (
-              <div className="card" style={{ padding: "3rem", textAlign: "center" }}>
-                <i className="bi bi-file-earmark-x" style={{ fontSize: "2.5rem", color: "var(--ink-muted)", marginBottom: "0.5rem" }} />
-                <h3 style={{ fontSize: "1.125rem", color: "var(--ink)", marginBottom: "0.25rem" }}>No Matching Policies Found</h3>
-                <p style={{ color: "var(--ink-soft)", fontSize: "0.8125rem" }}>
-                  Try adjusting your search criteria or bank name filter.
-                </p>
-              </div>
-            ) : (
-              <div className="saas-table-card">
-                <div className="saas-table-wrapper">
-                  <table className="saas-table">
-                    <thead>
+
+              <div className="cw-table-container">
+                <table className="cw-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 60, textAlign: "center" }}>#</th>
+                      <th style={{ minWidth: 260, textAlign: "left" }}>Bank Name</th>
+                      <th style={{ width: 180, textAlign: "center" }}>Category</th>
+                      <th style={{ width: 140, textAlign: "center" }}>Status</th>
+                      <th style={{ width: 140, textAlign: "center" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
                       <tr>
-                        <th style={{ width: 48, textAlign: "left", paddingLeft: "1rem" }}>#</th>
-                        <th style={{ width: 240, textAlign: "left" }}>Bank Name</th>
-                        <th style={{ width: 180, textAlign: "left" }}>Category</th>
-                        <th style={{ width: 140, textAlign: "left" }}>Status</th>
-                        <th style={{ width: 160, textAlign: "left", paddingLeft: "0.75rem" }}>Actions</th>
+                        <td colSpan={5} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
+                          <RotateCcw style={{ width: 24, height: 24, margin: "0 auto 8px" }} className="animate-spin text-blue-600" />
+                          <p style={{ margin: 0, fontSize: "0.875rem" }}>Loading bank policy guidelines...</p>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {filteredPolicies.map((policy: any, idx: number) => {
-                        const status = (policy.status || "active").toLowerCase()
+                    ) : filteredPolicies.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
+                          <Landmark style={{ width: 36, height: 36, color: "#94a3b8", margin: "0 auto 8px" }} />
+                          <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", color: "#1e293b", fontWeight: 600 }}>No Matching Policies Found</h4>
+                          <p style={{ margin: 0, fontSize: "0.8125rem" }}>
+                            {searchBank || filterLoanType !== "all" || filterStatus !== "all"
+                              ? "Try adjusting your search criteria or resetting filters."
+                              : "Upload or add a bank policy to get started."}
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedPolicies.map((policy: any, idx: number) => {
+                        const rowNumber = startIndex + idx + 1;
+                        const bankName = policy.bank_name || policy.bank_code || "Partner Bank";
+                        const isStatusActive = String(policy.status || "active").toLowerCase() === "active";
+                        const isStatusReview = String(policy.status || "").toLowerCase() === "review";
+
                         return (
                           <tr key={policy.bank_id || policy.id || idx}>
-                            <td style={{ color: "var(--ink-muted)", fontWeight: 500 }}>{idx + 1}</td>
-                            <td style={{ fontWeight: 600, color: "var(--ink)" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <i className="bi bi-bank" style={{ color: "var(--accent)" }} />
-                                {policy.bank_name || policy.bank_code || "Partner Bank"}
-                              </div>
-                            </td>
-                            <td style={{ color: "var(--accent)", fontWeight: 500 }}>
-                              {policy.loan_type || "General Policy"}
-                            </td>
-                            <td>
-                              <span className={`status-pill ${status === "active" ? "success" : "warning"}`}>
-                                {status === "review" ? "In Review" : status.charAt(0).toUpperCase() + status.slice(1)}
-                              </span>
+                            <td style={{ textAlign: "center", color: "#94a3b8", fontWeight: 600, fontSize: "0.8125rem" }}>
+                              {rowNumber}
                             </td>
                             <td style={{ textAlign: "left" }}>
-                              <div className="saas-actions-group" style={{ justifyContent: "flex-start", gap: "4px", padding: "2px", borderRadius: "12px", background: "rgba(255,255,255,0.08)", backdropFilter: "blur(8px) saturate(120%)", WebkitBackdropFilter: "blur(8px) saturate(120%)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15), 0 1px 4px rgba(0,0,0,0.05)" }}>
-                                <ModernTableActionBtn
-                                  icon={<Eye className="w-3.5 h-3.5" />}
-                                  variant="neutral"
-                                  tooltip="View File"
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <div
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                    background: "#f0f4ff",
+                                    border: "1px solid #dbeafe",
+                                    color: "#2563eb",
+                                    padding: "4px 12px",
+                                    borderRadius: "9999px",
+                                    fontSize: "0.8125rem",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  <Landmark style={{ width: 14, height: 14, color: "#2563eb", flexShrink: 0 }} />
+                                  <span>{bankName}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  padding: "3px 10px",
+                                  borderRadius: "9999px",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 600,
+                                  background: "#eff6ff",
+                                  color: "#1d4ed8",
+                                  border: "1px solid #bfdbfe",
+                                }}
+                              >
+                                {policy.loan_type || "Personal Loan"}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  padding: "3px 10px",
+                                  borderRadius: "9999px",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 600,
+                                  background: isStatusActive ? "#ecfdf5" : isStatusReview ? "#fffbeb" : "#f1f5f9",
+                                  color: isStatusActive ? "#059669" : isStatusReview ? "#d97706" : "#64748b",
+                                  border: `1px solid ${isStatusActive ? "#a7f3d0" : isStatusReview ? "#fde68a" : "#e2e8f0"}`,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: "50%",
+                                    background: isStatusActive ? "#10b981" : isStatusReview ? "#f59e0b" : "#94a3b8",
+                                  }}
+                                />
+                                <span style={{ textTransform: "capitalize" }}>{policy.status || "Active"}</span>
+                              </span>
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                                <button
+                                  type="button"
+                                  className="cw-action-btn"
+                                  title="View Bank Policy Document"
+                                  aria-label={`View Master Policy Document for ${bankName}`}
                                   onClick={() => handleOpenViewerFile(policy)}
-                                />
-                                <ModernTableActionBtn
-                                  icon={<Pencil className="w-3.5 h-3.5" />}
-                                  variant="primary"
-                                  tooltip="Edit File"
+                                >
+                                  <Eye style={{ width: 14, height: 14 }} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="cw-action-btn cw-action-primary"
+                                  title="Edit Bank Policy Document"
+                                  aria-label={`Edit Master Policy Document for ${bankName}`}
                                   onClick={() => handleOpenEditorFile(policy)}
-                                />
-                                <ModernDeleteActionBtn
-                                  tooltip="Delete File"
+                                >
+                                  <Pencil style={{ width: 14, height: 14 }} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="cw-action-btn cw-action-delete"
+                                  title="Delete Policy"
+                                  aria-label={`Delete Policy for ${bankName}`}
                                   onClick={() => handleOpenDelete(policy)}
-                                />
+                                >
+                                  <Trash2 style={{ width: 14, height: 14 }} />
+                                </button>
                               </div>
                             </td>
                           </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Table Footer with Pagination */}
+              {!loading && filteredPolicies.length > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "12px 20px",
+                    borderTop: "1px solid #e2e8f0",
+                    fontSize: "0.8125rem",
+                    color: "#64748b",
+                    flexWrap: "wrap",
+                    gap: "10px",
+                  }}
+                >
+                  <div>
+                    Showing <strong>{totalFiltered === 0 ? 0 : startIndex + 1}</strong> to{" "}
+                    <strong>{endIndex}</strong> of <strong>{totalFiltered}</strong> partner banks
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <button
+                      type="button"
+                      className="cw-btn-secondary"
+                      disabled={validCurrentPage <= 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      style={{ padding: "4px 10px", fontSize: "0.75rem", height: "auto" }}
+                    >
+                      <ChevronLeft style={{ width: 14, height: 14 }} />
+                      <span>Prev</span>
+                    </button>
+                    <span style={{ padding: "0 6px", fontWeight: 600, color: "#334155" }}>
+                      Page {validCurrentPage} of {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      className="cw-btn-secondary"
+                      disabled={validCurrentPage >= totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      style={{ padding: "4px 10px", fontSize: "0.75rem", height: "auto" }}
+                    >
+                      <span>Next</span>
+                      <ChevronRight style={{ width: 14, height: 14 }} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* POLICY MASTER FILES TAB - Modern Financial SaaS Layout matching Company Search */
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px", width: "100%" }}>
+            {/* Metric Cards Row */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: "16px",
+                marginBottom: "4px",
+              }}
+            >
+              <div className="cw-card" style={{ padding: "18px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: "#f5f3ff",
+                    border: "1px solid #ede9fe",
+                    color: "#7c3aed",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <FileSpreadsheet style={{ width: 22, height: 22 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                    {policyFiles.length}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Policy Files &amp; Spreadsheets</div>
                 </div>
               </div>
-            )}
-          </>
-        ) : (
-          /* POLICY DOCUMENTS TAB */
-          <>
-            <div className="card" style={{ padding: "1rem 1.25rem", marginBottom: "1.5rem" }}>
-              <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-                <div style={{ flex: 1 }}>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Search by Bank Name or File Name (e.g., HDFC, ICICI, Master_Policy)..."
-                    value={searchFileQuery}
-                    onChange={(e) => setSearchFileQuery(e.target.value)}
-                  />
-                </div>
-                <button
-                  className="btn btn-success"
-                  onClick={handleOpenUploadModal}
-                  disabled={isUploading}
-                  style={{ height: "35px" }}
+
+              <div className="cw-card" style={{ padding: "18px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: "#eff6ff",
+                    border: "1px solid #dbeafe",
+                    color: "#2563eb",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
                 >
-                  {isUploading ? <span className="spinner-inline" /> : <i className="bi bi-upload" />} Upload Policy File
-                </button>
+                  <Landmark style={{ width: 22, height: 22 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                    {fileBankOptions.length}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Covered Banks &amp; Lenders</div>
+                </div>
+              </div>
+
+              <div className="cw-card" style={{ padding: "18px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: "#ecfdf5",
+                    border: "1px solid #d1fae5",
+                    color: "#059669",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <CheckCircle2 style={{ width: 22, height: 22 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                    PDF / TXT / XLSX
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Supported Master Formats</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Drag & Drop Upload Card matching Company Search */}
+            <div
+              className="cw-card"
+              style={{
+                padding: "32px 24px",
+                textAlign: "center",
+                cursor: "pointer",
+                background: isFileDragOver ? "#eff6ff" : "#ffffff",
+                borderColor: isFileDragOver ? "#2563eb" : "#e2e8f0",
+                borderStyle: "dashed",
+                borderWidth: 2,
+                transition: "all 0.15s ease",
+              }}
+              onDragOver={(e) => {
+                e.preventDefault()
+                setIsFileDragOver(true)
+              }}
+              onDragLeave={() => setIsFileDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault()
+                setIsFileDragOver(false)
+                const dropped = e.dataTransfer.files[0]
+                if (dropped) {
+                  setUploadFile(dropped)
+                  setUploadModalOpen(true)
+                }
+              }}
+              onClick={handleOpenUploadModal}
+            >
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: "50%",
+                  background: "#eff6ff",
+                  border: "1px solid #dbeafe",
+                  color: "#2563eb",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 12px auto",
+                }}
+              >
+                <UploadCloud style={{ width: 24, height: 24 }} />
+              </div>
+
+              <h3 style={{ margin: "0 0 4px 0", fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
+                {isUploading ? "Uploading policy document..." : "Upload Bank Policy Document or Spreadsheet"}
+              </h3>
+              <p style={{ margin: 0, fontSize: "0.8125rem", color: "#64748b" }}>
+                Drag &amp; drop a policy file (.txt, .pdf, .docx, .xlsx, .csv) here, or click to browse. Max file size: 50 MB.
+              </p>
+            </div>
+
+            {/* Search & Filter Toolbar */}
+            <div
+              className="cw-card"
+              style={{
+                padding: "14px 18px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "14px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                <span
+                  className="cw-badge cw-badge-info"
+                  style={{ fontSize: "0.8125rem", padding: "5px 12px" }}
+                >
+                  <span>Policy Files:</span>
+                  <strong style={{ marginLeft: 4 }}>{filteredPolicyFiles.length}</strong>
+                </span>
+
+                <ModernSearchBar
+                  value={searchFileQuery}
+                  onChange={setSearchFileQuery}
+                  placeholder="Search policy files..."
+                  width={280}
+                />
+
+                <select
+                  className="cw-select"
+                  value={selectedFileBank}
+                  onChange={(e) => setSelectedFileBank(e.target.value)}
+                >
+                  <option value="all">All Lenders / Banks ({fileBankOptions.length})</option>
+                  {fileBankOptions.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                {(searchFileQuery || selectedFileBank !== "all") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchFileQuery("")
+                      setSelectedFileBank("all")
+                    }}
+                    className="cw-btn-secondary"
+                  >
+                    Reset Filters
+                  </button>
+                )}
+
                 <button
-                  className="btn btn-primary"
+                  type="button"
+                  className="cw-btn-secondary"
                   onClick={loadPolicyFiles}
                   disabled={loadingFiles}
-                  style={{ height: "35px" }}
                 >
-                  {loadingFiles ? <span className="spinner-inline" /> : <i className="bi bi-arrow-clockwise" />}
-                  Refresh
+                  <RotateCcw style={{ width: 14, height: 14 }} className={loadingFiles ? "animate-spin text-blue-600" : ""} />
+                  <span>Refresh</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="cw-btn-primary"
+                  onClick={handleOpenUploadModal}
+                  disabled={isUploading}
+                >
+                  <UploadCloud style={{ width: 14, height: 14 }} />
+                  <span>Upload Policy</span>
                 </button>
               </div>
             </div>
 
-            {loadingFiles ? (
-              <div style={{ textAlign: "center", padding: 60, color: "var(--ink-muted)" }}>
-                Fetching bank policy documents...
+            {/* Policy Master Files Table Container matching Image 3 */}
+            <div className="cw-card">
+              {/* Card Header matching Image 3 */}
+              <div
+                style={{
+                  padding: "16px 20px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  borderBottom: "1px solid #f1f5f9",
+                  flexWrap: "wrap",
+                  gap: "12px",
+                }}
+              >
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: "1rem",
+                    fontWeight: 700,
+                    color: "#0f172a",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span>Policy Master Files</span>
+                  <span style={{ fontSize: "0.875rem", color: "#64748b", fontWeight: 500 }}>
+                    ({filteredPolicyFiles.length})
+                  </span>
+                </h3>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <button
+                    type="button"
+                    className="cw-btn-secondary"
+                    onClick={loadPolicyFiles}
+                    disabled={loadingFiles}
+                    title="Refresh Policy Files"
+                  >
+                    <RotateCcw style={{ width: 14, height: 14 }} className={loadingFiles ? "animate-spin text-blue-600" : ""} />
+                    <span>Refresh</span>
+                  </button>
+                </div>
               </div>
-            ) : filteredPolicyFiles.length === 0 ? (
-              <div className="card" style={{ padding: "3rem", textAlign: "center" }}>
-                <i className="bi bi-folder-x" style={{ fontSize: "2.5rem", color: "var(--ink-muted)", marginBottom: "0.5rem" }} />
-                <h3 style={{ fontSize: "1.125rem", color: "var(--ink)", marginBottom: "0.25rem" }}>No Policy Documents Found</h3>
-                <p style={{ color: "var(--ink-soft)", fontSize: "0.8125rem" }}>
-                  Try searching for another bank name.
-                </p>
-              </div>
-            ) : (
-              <div className="saas-table-card">
-                <div className="saas-table-wrapper">
-                  <table className="saas-table">
-                    <thead>
+
+              <div className="cw-table-container">
+                <table className="cw-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 60, textAlign: "center" }}>#</th>
+                      <th style={{ width: 220, textAlign: "left" }}>Bank Name</th>
+                      <th style={{ minWidth: 260, textAlign: "left" }}>Master Policy File</th>
+                      <th style={{ width: 120, textAlign: "center" }}>Size</th>
+                      <th style={{ width: 160, textAlign: "center" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingFiles ? (
                       <tr>
-                        <th style={{ width: 50, textAlign: "left" }}>#</th>
-                        <th style={{ width: 240, textAlign: "left" }}>Bank Name</th>
-                        <th style={{ textAlign: "left" }}>Master Policy File</th>
-                        <th style={{ width: 120, textAlign: "left" }}>Size</th>
-                        <th style={{ width: 180, textAlign: "left" }}>Actions</th>
+                        <td colSpan={5} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
+                          <RotateCcw style={{ width: 24, height: 24, margin: "0 auto 8px" }} className="animate-spin text-blue-600" />
+                          <p style={{ margin: 0, fontSize: "0.875rem" }}>Loading policy spreadsheets &amp; documents...</p>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {filteredPolicyFiles.map((file: any, idx: number) => {
+                    ) : filteredPolicyFiles.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
+                          <FileSpreadsheet style={{ width: 36, height: 36, color: "#94a3b8", margin: "0 auto 8px" }} />
+                          <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", color: "#1e293b", fontWeight: 600 }}>No Policy Documents Found</h4>
+                          <p style={{ margin: 0, fontSize: "0.8125rem" }}>
+                            {searchFileQuery || selectedFileBank !== "all"
+                              ? "No policy files match your search criteria."
+                              : "Upload a bank policy spreadsheet or document to get started."}
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedFiles.map((file: any, idx: number) => {
+                        const rowNumber = startFileIndex + idx + 1
                         const kbSize = file.file_size_bytes
                           ? file.file_size_bytes > 1024 * 1024
                             ? (file.file_size_bytes / (1024 * 1024)).toFixed(1) + " MB"
@@ -965,89 +2065,167 @@ export default function PoliciesView({
                           : file.text_length
                           ? (file.text_length / 1024).toFixed(1) + " KB"
                           : "0 KB"
+
+                        const isSpreadsheet =
+                          (file.file_name || "").endsWith(".xlsx") ||
+                          (file.file_name || "").endsWith(".xls") ||
+                          (file.file_name || "").endsWith(".csv")
+
                         return (
                           <tr key={file.bank_id || file.id || idx}>
-                            <td style={{ color: "var(--ink-muted)", fontWeight: 500 }}>{idx + 1}</td>
-                            <td style={{ fontWeight: 600, color: "var(--ink)" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <i className="bi bi-bank" style={{ color: "var(--accent)" }} />
-                                {file.bank_name}
+                            <td style={{ textAlign: "center", color: "#94a3b8", fontWeight: 600, fontSize: "0.8125rem" }}>
+                              {rowNumber}
+                            </td>
+                            <td style={{ textAlign: "left" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <div
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                    background: "#f0f4ff",
+                                    border: "1px solid #dbeafe",
+                                    color: "#2563eb",
+                                    padding: "4px 12px",
+                                    borderRadius: "9999px",
+                                    fontSize: "0.8125rem",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  <Landmark style={{ width: 14, height: 14, color: "#2563eb", flexShrink: 0 }} />
+                                  <span>{file.bank_name || "Partner Lender"}</span>
+                                </div>
                               </div>
                             </td>
-                            <td>
-                              <div
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "0.4rem",
-                                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                                  fontSize: "0.8125rem",
-                                  color: "var(--ink)",
-                                  background: "var(--surface-2)",
-                                  padding: "0.25rem 0.6rem",
-                                  borderRadius: "var(--radius-sm)",
-                                  border: "1px solid var(--border)",
-                                  maxWidth: "340px",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                }}
-                                title={file.file_name}
-                              >
-                                <i className="bi bi-file-earmark-text" style={{ color: "var(--accent)", flexShrink: 0 }} />
-                                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                            <td style={{ textAlign: "left" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                <div
+                                  style={{
+                                    width: 30,
+                                    height: 30,
+                                    borderRadius: 8,
+                                    background: isSpreadsheet ? "#ecfdf5" : "#eff6ff",
+                                    border: `1px solid ${isSpreadsheet ? "#d1fae5" : "#dbeafe"}`,
+                                    color: isSpreadsheet ? "#059669" : "#2563eb",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {isSpreadsheet ? (
+                                    <FileSpreadsheet style={{ width: 16, height: 16 }} />
+                                  ) : (
+                                    <FileText style={{ width: 16, height: 16 }} />
+                                  )}
+                                </div>
+                                <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.875rem" }} title={file.file_name}>
                                   {file.file_name}
                                 </span>
                               </div>
                             </td>
-                            <td>
-                              <span className="badge">{kbSize}</span>
+                            <td style={{ textAlign: "center" }}>
+                              <span style={{ fontWeight: 700, color: "#2563eb", fontSize: "0.84rem" }}>
+                                {kbSize}
+                              </span>
                             </td>
-                            <td style={{ textAlign: "right" }}>
-                              <div className="saas-actions-group">
-                                <ModernTableActionBtn
-                                  icon={<Eye className="w-3.5 h-3.5" />}
-                                  variant="neutral"
-                                  tooltip="View Document"
+                            <td style={{ textAlign: "center" }}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                                <button
+                                  type="button"
+                                  className="cw-action-btn"
+                                  title="View Document"
+                                  aria-label={`View ${file.file_name}`}
                                   onClick={() => handleOpenViewer(file.id, file)}
-                                />
-                                <ModernTableActionBtn
-                                  icon={<Pencil className="w-3.5 h-3.5" />}
-                                  variant="primary"
-                                  tooltip="Edit Master Policy"
+                                >
+                                  <Eye style={{ width: 14, height: 14 }} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="cw-action-btn cw-action-primary"
+                                  title="Edit Master Policy"
+                                  aria-label={`Edit ${file.file_name}`}
                                   onClick={() => handleOpenEditorFile(file)}
-                                />
-                                <ModernTableActionBtn
-                                  icon={<Download className="w-3.5 h-3.5" />}
-                                  variant="neutral"
-                                  tooltip="Download .txt File"
+                                >
+                                  <Pencil style={{ width: 14, height: 14 }} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="cw-action-btn"
+                                  title="Download File"
+                                  aria-label={`Download ${file.file_name}`}
                                   onClick={async () => {
                                     if (file.extracted_text) {
                                       handleDownloadText(file.file_name, file.extracted_text)
                                     } else {
-                                      const res = await fetch(`/api/policies/extracted-files/${file.id}`)
-                                      const data = await res.json()
-                                      if (data.success && data.file?.extracted_text) {
-                                        handleDownloadText(file.file_name, data.file.extracted_text)
+                                      try {
+                                        const res = await fetch(`/api/policies/extracted-files/${file.id}`)
+                                        const data = await res.json()
+                                        if (data.success && data.file?.extracted_text) {
+                                          handleDownloadText(file.file_name, data.file.extracted_text)
+                                        } else {
+                                          showToast("Failed to download file content", "error")
+                                        }
+                                      } catch {
+                                        showToast("Error downloading policy file", "error")
                                       }
                                     }
                                   }}
-                                />
-                                <ModernDeleteActionBtn
-                                  tooltip="Delete Policy File"
+                                >
+                                  <Download style={{ width: 14, height: 14 }} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="cw-action-btn cw-action-delete"
+                                  title="Delete Policy File"
+                                  aria-label={`Delete ${file.file_name}`}
                                   onClick={() => handleOpenDelete(file)}
-                                />
+                                >
+                                  <Trash2 style={{ width: 14, height: 14 }} />
+                                </button>
                               </div>
                             </td>
                           </tr>
                         )
-                      })}
-                    </tbody>
-                  </table>
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Policy Files Footer & Pagination */}
+              <div className="bp-footer" style={{ borderTop: "1px solid #f1f5f9", padding: "12px 20px" }}>
+                <div className="bp-footer-range">
+                  Showing {totalFilteredFiles === 0 ? 0 : startFileIndex + 1}–{endFileIndex} of {totalFilteredFiles} files
+                </div>
+                <div className="bp-pagination">
+                  <button
+                    type="button"
+                    className="bp-page-btn"
+                    disabled={validCurrentFilePage <= 1}
+                    onClick={() => setFilePage((p) => Math.max(1, p - 1))}
+                    aria-label="Previous Page"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>Previous</span>
+                  </button>
+                  <span className="bp-page-indicator">
+                    Page {validCurrentFilePage} of {totalFilePages}
+                  </span>
+                  <button
+                    type="button"
+                    className="bp-page-btn"
+                    disabled={validCurrentFilePage >= totalFilePages}
+                    onClick={() => setFilePage((p) => Math.min(totalFilePages, p + 1))}
+                    aria-label="Next Page"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-            )}
-          </>
+            </div>
+          </div>
         )}
       </div>
 

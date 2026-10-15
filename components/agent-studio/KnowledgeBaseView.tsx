@@ -220,7 +220,7 @@ export default function KnowledgeBaseView({
   }
 
   return (
-    <div className="flex-1 bg-[#F8FAFC] min-h-screen p-6 md:p-8 overflow-y-auto">
+    <div className="flex-1 bg-[#F8FAFC] min-h-screen p-3.5 sm:p-6 md:p-8 overflow-y-auto">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Top Navigation Bar: Back to AI Agent Studio */}
         <div className="flex items-center justify-between pb-1">

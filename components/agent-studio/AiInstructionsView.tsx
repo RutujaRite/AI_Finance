@@ -738,15 +738,15 @@ export default function AiInstructionsView({
 
 
   return (
-    <div className="flex-1 bg-[#F5F9FF] h-full overflow-y-auto ai-scroll-pane p-6 md:p-8">
+    <div className="flex-1 bg-[#F5F9FF] h-full overflow-y-auto ai-scroll-pane p-3.5 sm:p-6 md:p-8">
       <div className="ai-main-layout w-full max-w-7xl mx-auto space-y-4">
         {/* 1. PAGE HEADER BANNER (GRADIENT CARD WITH AI MASCOT ILLUSTRATION) */}
-        <div className="ai-header-banner relative overflow-hidden p-5 md:p-6 flex items-center justify-between">
-          <div className="flex items-center gap-4 relative z-10">
+        <div className="ai-header-banner relative overflow-hidden p-4 sm:p-6 flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4 relative z-10">
             {/* AI Chip Icon Badge */}
-            <div className="w-12 h-12 rounded-[11px] bg-[#1677FF] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/25">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[11px] bg-[#1677FF] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/25">
               <div className="relative flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="4" y="4" width="16" height="16" rx="2" />
                   <rect x="9" y="9" width="6" height="6" />
                   <line x1="9" y1="1" x2="9" y2="4" />
@@ -763,7 +763,7 @@ export default function AiInstructionsView({
               <div className="hidden bg-[#EAF3FF]"><Settings className="w-5 h-5 text-[#1677FF]" /></div>
             </div>
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-[#12336B] tracking-tight">
+              <h1 className="text-lg sm:text-2xl font-bold text-[#12336B] tracking-tight">
                 Configure AI Instructions
               </h1>
               <p className="text-xs md:text-[13px] text-[#526B91] mt-0.5">
@@ -773,7 +773,7 @@ export default function AiInstructionsView({
           </div>
 
           {/* AI Robot Assistant & Speech Bubble Mascot Illustration */}
-          <div className="flex items-center relative pl-8 pr-2 select-none pointer-events-none shrink-0">
+          <div className="hidden sm:flex items-center relative pl-8 pr-2 select-none pointer-events-none shrink-0">
             {/* Ambient Background Glow */}
             <div className="absolute right-4 w-40 h-28 bg-[#1677FF]/10 rounded-full blur-2xl -z-10" />
 

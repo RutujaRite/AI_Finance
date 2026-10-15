@@ -50,6 +50,12 @@ export default function StudioSidebar({
       badge: "Core",
     },
     {
+      id: "knowledge" as StudioNavTab,
+      label: "Knowledge Base",
+      icon: BookOpen,
+      badge: "Docs",
+    },
+    {
       id: "demo" as StudioNavTab,
       label: "Agent Test / Demo",
       icon: MessageSquare,
@@ -87,23 +93,23 @@ export default function StudioSidebar({
               onSelectTab(item.id);
               if (onCloseMobile) onCloseMobile();
             }}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer active:scale-98 ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer active:scale-[0.99] ${
               isActive
-                ? "bg-blue-50 text-blue-600 border border-blue-200/80 shadow-xs"
+                ? "bg-blue-50 text-blue-600 border border-blue-200/90 shadow-xs font-semibold"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent"
             }`}
           >
             <div className="flex items-center gap-2.5">
               <Icon
-                className={`w-4 h-4 shrink-0 ${
+                className={`w-4 h-4 shrink-0 transition-colors ${
                   isActive ? "text-blue-600" : "text-slate-400"
                 }`}
               />
-              <span>{item.label}</span>
+              <span className="truncate">{item.label}</span>
             </div>
             {item.badge && (
               <span
-                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-colors ${
                   isActive
                     ? "bg-blue-100 text-blue-700"
                     : "bg-slate-100 text-slate-500"

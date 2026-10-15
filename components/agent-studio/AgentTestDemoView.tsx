@@ -285,15 +285,15 @@ export default function AgentTestDemoView({
   }
 
   return (
-    <div className="flex-1 bg-[#F8FAFC] p-6 md:p-8">
+    <div className="flex-1 bg-[#F8FAFC] p-3.5 sm:p-6 md:p-8 overflow-y-auto">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header matching Screenshot 1 */}
         <div className="flex items-start gap-4 shrink-0">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
-            <MessageSquare className="w-6 h-6" />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
+            <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               Agent Test / Demo
             </h1>
             <p className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
@@ -312,11 +312,8 @@ export default function AgentTestDemoView({
               border: "1px solid #bfdbfe",
               boxShadow: "0 4px 20px -2px rgba(59, 130, 246, 0.08)",
               overflow: "hidden",
-              height: "720px",
-              maxHeight: "720px",
-              minHeight: "720px",
             }}
-            className="lg:col-span-8 flex flex-col h-[720px] max-h-[720px] min-h-[720px] shrink-0"
+            className="lg:col-span-8 flex flex-col h-[580px] sm:h-[720px] max-h-[720px] shrink-0"
           >
             {/* AI Model Header Ribbon - Locked */}
             <div

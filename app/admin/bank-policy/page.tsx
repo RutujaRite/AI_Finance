@@ -83,14 +83,7 @@ export default function BankPolicyDedicatedPage() {
       />
 
       {/* 2. MAIN BANK POLICY MODULE CONTENT */}
-      <main
-        style={{
-          maxWidth: "1400px",
-          margin: "0 auto",
-          padding: "20px 28px 60px 28px",
-          boxSizing: "border-box",
-        }}
-      >
+      <main className="cw-admin-container">
         <PoliciesView embedded={true} user={user} />
       </main>
     </div>

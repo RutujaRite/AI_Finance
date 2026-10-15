@@ -9,6 +9,24 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AdminHeader from "@/components/admin/AdminHeader";
+import ModernSearchBar from "@/components/ui/ModernSearchBar";
+import ModernStatusBadge from "@/components/ui/ModernStatusBadge";
+import {
+  Users,
+  UserCheck,
+  UserX,
+  Shield,
+  Pencil,
+  Trash2,
+  Plus,
+  RotateCw,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  AlertCircle,
+  LayoutGrid,
+} from "lucide-react";
 
 interface UserAccount {
   id: number;
@@ -64,28 +82,11 @@ export default function AllUsersAdminPage() {
   });
   const [editError, setEditError] = useState<string | null>(null);
 
-  // User targeted for Deletion
+  // Delete modal state
   const [userToDelete, setUserToDelete] = useState<UserAccount | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const loadUsers = useCallback(async () => {
-    setLoading(true);
-    setErrorMsg(null);
-    try {
-      const res = await fetch("/api/admin/users", { credentials: "include" });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setUsers(data.users || []);
-      } else {
-        setErrorMsg(data.error || "Failed to load registered users");
-      }
-    } catch {
-      setErrorMsg("Network error connecting to user service");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  // Check Admin Authentication
   useEffect(() => {
     async function checkAdminAuth() {
       try {
@@ -108,7 +109,6 @@ export default function AllUsersAdminPage() {
             return;
           }
           setCurrentUser(data.user);
-          loadUsers();
         } else {
           router.replace("/?auth=login&from=/admin/users");
         }
@@ -116,32 +116,35 @@ export default function AllUsersAdminPage() {
         router.replace("/?auth=login&from=/admin/users");
       }
     }
-
     checkAdminAuth();
-  }, [router, loadUsers]);
+  }, [router]);
 
-  // Helpers
-  function formatDate(dateStr?: string | null) {
-    if (!dateStr) return "Never";
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return "Never";
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
+  // Load All Users
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/admin/users", { credentials: "include" });
+      const data = await res.json();
+      if (res.ok && data.success && Array.isArray(data.users)) {
+        setUsers(data.users);
+      } else {
+        setErrorMsg(data.error || "Failed to retrieve user directory");
+      }
+    } catch {
+      setErrorMsg("Network error connecting to user service");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  function getUserInitials(name?: string | null, email?: string) {
-    const text = (name || email || "U").trim();
-    const parts = text.split(" ");
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return text.slice(0, 2).toUpperCase();
-  }
+  useEffect(() => {
+    if (currentUser) {
+      loadUsers();
+    }
+  }, [currentUser, loadUsers]);
 
-  // Filtered Users
+  // Filtered users calculation
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
       const q = searchQuery.toLowerCase().trim();
@@ -190,9 +193,7 @@ export default function AllUsersAdminPage() {
     return { total, admins, standard, active, inactive };
   }, [users]);
 
-  // =========================================================================
-  // CREATE USER ACTION
-  // =========================================================================
+  // Create User
   function openAddModal() {
     setCreateForm({
       name: "",
@@ -242,15 +243,13 @@ export default function AllUsersAdminPage() {
     }
   }
 
-  // =========================================================================
-  // UPDATE USER ACTION
-  // =========================================================================
+  // Update User
   function openEditModal(target: UserAccount) {
     setEditUser(target);
     setEditForm({
       name: target.name || "",
       email: target.email,
-      password: "", // blank unless resetting
+      password: "",
       role: String(target.role || "").toLowerCase() === "admin" ? "admin" : "user",
       status: target.status === "inactive" ? "inactive" : "active",
     });
@@ -307,9 +306,7 @@ export default function AllUsersAdminPage() {
     }
   }
 
-  // =========================================================================
-  // DELETE USER ACTION
-  // =========================================================================
+  // Delete User
   function openDeleteModal(target: UserAccount) {
     setUserToDelete(target);
     setDeleteError(null);
@@ -342,449 +339,412 @@ export default function AllUsersAdminPage() {
     }
   }
 
+  function getUserInitials(name?: string | null, email?: string): string {
+    if (name && name.trim()) {
+      const parts = name.trim().split(" ");
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return name.trim().slice(0, 2).toUpperCase();
+    }
+    if (email) {
+      return email.slice(0, 2).toUpperCase();
+    }
+    return "US";
+  }
+
+  function formatDate(d?: string | null): string {
+    if (!d) return "—";
+    try {
+      return new Date(d).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return "—";
+    }
+  }
+
   if (!currentUser) {
     return (
-      <main style={{ padding: 48, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: "100vh", gap: 12 }}>
+      <main style={{ padding: 48, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: "100vh", gap: 12, background: "#f8fafc" }}>
         <div className="spinner-border text-primary" style={{ width: 36, height: 36 }} role="status"></div>
-        <p style={{ color: "var(--bs-secondary-color)", fontWeight: 500 }}>Verifying administrator access...</p>
+        <p style={{ color: "#64748b", fontWeight: 500, fontSize: "0.875rem" }}>Verifying administrator access...</p>
       </main>
     );
   }
 
   return (
-    <div className="home-body admin-fullpage-layout" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg, #f8fafc)", width: "100%" }}>
-<AdminHeader
-  user={currentUser}
-  title="User Management"
-  breadcrumbs={[{ label: "User Management" }]}
-/>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#f8fafc", width: "100%", fontFamily: "'Inter', sans-serif" }}>
+      {/* 1. TOP HEADER & BREADCRUMBS */}
+      <AdminHeader
+        user={currentUser}
+        title="User Management"
+        description="Manage administrator and agent user credentials, roles, and account access."
+        breadcrumbs={[{ label: "User Management" }]}
+      />
 
-      <main
-        className="admin-workspace-fullwidth animate-fade-in"
-        style={{
-          flex: 1,
-          width: "100%",
-          maxWidth: "1360px",
-          margin: "0 auto",
-          padding: "28px 24px 64px 24px",
-          boxSizing: "border-box",
-        }}
-      >
+      <main className="cw-admin-container" style={{ flex: 1 }}>
         {/* Alerts Banner */}
         {successMsg && (
-          <div className="alert alert-success animate-fade-in" style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px", padding: "12px 18px", borderRadius: "10px" }}>
-            <i className="bi bi-check-circle-fill" style={{ fontSize: "1.1rem" }} />
-            <span style={{ fontWeight: 500 }}>{successMsg}</span>
+          <div
+            style={{
+              padding: "12px 18px",
+              borderRadius: "10px",
+              marginBottom: "20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+              background: "#ecfdf5",
+              border: "1px solid #a7f3d0",
+              color: "#065f46",
+            }}
+          >
+            <CheckCircle2 style={{ width: 18, height: 18, flexShrink: 0 }} />
+            <span>{successMsg}</span>
           </div>
         )}
         {errorMsg && (
-          <div className="alert alert-danger animate-fade-in" style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px", padding: "12px 18px", borderRadius: "10px" }}>
-            <i className="bi bi-exclamation-triangle-fill" style={{ fontSize: "1.1rem" }} />
-            <span style={{ fontWeight: 500 }}>{errorMsg}</span>
+          <div
+            style={{
+              padding: "12px 18px",
+              borderRadius: "10px",
+              marginBottom: "20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              color: "#b91c1c",
+            }}
+          >
+            <AlertCircle style={{ width: 18, height: 18, flexShrink: 0 }} />
+            <span>{errorMsg}</span>
           </div>
         )}
 
-        {/* Page Header Bar */}
-        <div className="page-header" style={{ marginBottom: "24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
-                 <div
-                   style={{
-                     width: 40,
-                     height: 40,
-                     borderRadius: "10px",
-                     background: "linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(59, 130, 246, 0.18) 100%)",
-                     border: "1px solid rgba(37, 99, 235, 0.25)",
-                     display: "flex",
-                     alignItems: "center",
-                     justifyContent: "center",
-                     color: "var(--accent, #2563eb)",
-                     fontSize: "1.25rem",
-                   }}
-                 >
-                   <i className="bi bi-people" />
-                 </div>
-              </div>
-            </div>
-
-          <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => router.push("/admin")}
-              style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontWeight: 600 }}
-            >
-              <i className="bi bi-grid-fill" /> Dashboard
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={loadUsers}
-              disabled={loading}
-              title="Refresh directory"
-              style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
-            >
-              <i className={`bi bi-arrow-clockwise ${loading ? "spin" : ""}`} /> Refresh
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={openAddModal}
-              style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontWeight: 600, padding: "6px 14px" }}
-            >
-              <i className="bi bi-person-plus-fill" /> Add User
-            </button>
-          </div>
-        </div>
-
         {/* Overview Metric Cards */}
-        <div className="stats-row" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "24px" }}>
-          {/* Card 1: Total Users */}
-          <div className="card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "14px", background: "var(--surface, #ffffff)", border: "1px solid var(--border, #e2e8f0)", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
-            <div style={{ width: 44, height: 44, borderRadius: "10px", background: "rgba(37, 99, 235, 0.1)", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem" }}>
-              <i className="bi bi-people-fill" />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px", marginBottom: "24px" }}>
+          <div className="cw-card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#eff6ff", border: "1px solid #dbeafe", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Users style={{ width: 22, height: 22 }} />
             </div>
             <div>
-              <div style={{ fontSize: "0.75rem", color: "var(--ink-muted, #64748b)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                 Total Accounts
               </div>
-              <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--ink, #0f172a)", lineHeight: 1.2 }}>
-                {stats.total.toLocaleString()}
+              <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                {stats.total}
               </div>
             </div>
           </div>
 
-          {/* Card 2: Admins */}
-          <div className="card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "14px", background: "var(--surface, #ffffff)", border: "1px solid var(--border, #e2e8f0)", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
-            <div style={{ width: 44, height: 44, borderRadius: "10px", background: "rgba(139, 92, 246, 0.12)", color: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem" }}>
-              <i className="bi bi-shield-lock-fill" />
+          <div className="cw-card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f5f3ff", border: "1px solid #ede9fe", color: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Shield style={{ width: 22, height: 22 }} />
             </div>
             <div>
-              <div style={{ fontSize: "0.75rem", color: "var(--ink-muted, #64748b)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                 Administrators
               </div>
-              <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#7c3aed", lineHeight: 1.2 }}>
+              <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
                 {stats.admins}
               </div>
             </div>
           </div>
 
-          {/* Card 3: Standard DSA Agents */}
-          <div className="card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "14px", background: "var(--surface, #ffffff)", border: "1px solid var(--border, #e2e8f0)", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
-            <div style={{ width: 44, height: 44, borderRadius: "10px", background: "rgba(16, 185, 129, 0.1)", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem" }}>
-              <i className="bi bi-person-check-fill" />
+          <div className="cw-card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#ecfdf5", border: "1px solid #d1fae5", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <UserCheck style={{ width: 22, height: 22 }} />
             </div>
             <div>
-              <div style={{ fontSize: "0.75rem", color: "var(--ink-muted, #64748b)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.03em" }}>
-                Standard DSA Agents
+              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                Active Users
               </div>
-              <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#059669", lineHeight: 1.2 }}>
-                {stats.standard}
+              <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                {stats.active}
               </div>
             </div>
           </div>
 
-          {/* Card 4: Active Accounts */}
-          <div className="card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "14px", background: "var(--surface, #ffffff)", border: "1px solid var(--border, #e2e8f0)", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
-            <div style={{ width: 44, height: 44, borderRadius: "10px", background: "rgba(245, 158, 11, 0.1)", color: "#d97706", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.25rem" }}>
-              <i className="bi bi-activity" />
+          <div className="cw-card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <UserX style={{ width: 22, height: 22 }} />
             </div>
             <div>
-              <div style={{ fontSize: "0.75rem", color: "var(--ink-muted, #64748b)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.03em" }}>
-                Active Accounts
+              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                Inactive
               </div>
-              <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#d97706", lineHeight: 1.2 }}>
-                {stats.active}
+              <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                {stats.inactive}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Users Table Card */}
-        <div className="card" style={{ background: "var(--surface, #ffffff)", border: "1px solid var(--border, #e2e8f0)", borderRadius: "14px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)" }}>
-          {/* Controls Bar */}
-          <div
-            style={{
-              padding: "16px 20px",
-              borderBottom: "1px solid var(--border, #e2e8f0)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "12px",
-              background: "#ffffff",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-              <span style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--ink, #0f172a)" }}>
-                Registered Accounts ({filteredUsers.length})
-              </span>
+        {/* Toolbar & Filter Bar */}
+        <div
+          className="cw-card"
+          style={{
+            padding: "14px 18px",
+            marginBottom: "18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "14px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <ModernSearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search by name, email or ID..."
+              width={280}
+            />
 
-              {/* Role filter buttons */}
-              <div style={{ display: "inline-flex", background: "#f1f5f9", borderRadius: "8px", padding: "2px" }}>
-                <button
-                  type="button"
-                  onClick={() => setRoleFilter("ALL")}
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: "6px",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    border: "none",
-                    background: roleFilter === "ALL" ? "#ffffff" : "transparent",
-                    color: roleFilter === "ALL" ? "var(--accent, #2563eb)" : "#64748b",
-                    cursor: "pointer",
-                    boxShadow: roleFilter === "ALL" ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-                  }}
-                >
-                  All ({stats.total})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRoleFilter("ADMIN")}
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: "6px",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    border: "none",
-                    background: roleFilter === "ADMIN" ? "#ffffff" : "transparent",
-                    color: roleFilter === "ADMIN" ? "#7c3aed" : "#64748b",
-                    cursor: "pointer",
-                    boxShadow: roleFilter === "ADMIN" ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-                  }}
-                >
-                  Admins ({stats.admins})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRoleFilter("USER")}
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: "6px",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    border: "none",
-                    background: roleFilter === "USER" ? "#ffffff" : "transparent",
-                    color: roleFilter === "USER" ? "#059669" : "#64748b",
-                    cursor: "pointer",
-                    boxShadow: roleFilter === "USER" ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-                  }}
-                >
-                  DSA Agents ({stats.standard})
-                </button>
-              </div>
-
-              {/* Status filter buttons */}
-              <div style={{ display: "inline-flex", background: "#f1f5f9", borderRadius: "8px", padding: "2px" }}>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("ALL")}
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: "6px",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    border: "none",
-                    background: statusFilter === "ALL" ? "#ffffff" : "transparent",
-                    color: statusFilter === "ALL" ? "var(--ink, #0f172a)" : "#64748b",
-                    cursor: "pointer",
-                    boxShadow: statusFilter === "ALL" ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-                  }}
-                >
-                  Status: All
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("ACTIVE")}
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: "6px",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    border: "none",
-                    background: statusFilter === "ACTIVE" ? "#ffffff" : "transparent",
-                    color: statusFilter === "ACTIVE" ? "#16a34a" : "#64748b",
-                    cursor: "pointer",
-                    boxShadow: statusFilter === "ACTIVE" ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-                  }}
-                >
-                  Active ({stats.active})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("INACTIVE")}
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: "6px",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    border: "none",
-                    background: statusFilter === "INACTIVE" ? "#ffffff" : "transparent",
-                    color: statusFilter === "INACTIVE" ? "#dc2626" : "#64748b",
-                    cursor: "pointer",
-                    boxShadow: statusFilter === "INACTIVE" ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-                  }}
-                >
-                  Inactive ({stats.inactive})
-                </button>
-              </div>
+            {/* Role Filter Pills */}
+            <div style={{ display: "inline-flex", background: "#f1f5f9", borderRadius: 8, padding: 3, gap: 3 }}>
+              <button
+                type="button"
+                onClick={() => setRoleFilter("ALL")}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  border: "none",
+                  background: roleFilter === "ALL" ? "#ffffff" : "transparent",
+                  color: roleFilter === "ALL" ? "#2563eb" : "#64748b",
+                  cursor: "pointer",
+                  boxShadow: roleFilter === "ALL" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+                }}
+              >
+                All Roles
+              </button>
+              <button
+                type="button"
+                onClick={() => setRoleFilter("ADMIN")}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  border: "none",
+                  background: roleFilter === "ADMIN" ? "#ffffff" : "transparent",
+                  color: roleFilter === "ADMIN" ? "#7c3aed" : "#64748b",
+                  cursor: "pointer",
+                  boxShadow: roleFilter === "ADMIN" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+                }}
+              >
+                Admins ({stats.admins})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRoleFilter("USER")}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  border: "none",
+                  background: roleFilter === "USER" ? "#ffffff" : "transparent",
+                  color: roleFilter === "USER" ? "#059669" : "#64748b",
+                  cursor: "pointer",
+                  boxShadow: roleFilter === "USER" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+                }}
+              >
+                DSA Agents ({stats.standard})
+              </button>
             </div>
 
-            {/* Search Input */}
-            <div style={{ position: "relative", minWidth: "260px" }}>
-              <i
-                className="bi bi-search"
+            {/* Status Filter Pills */}
+            <div style={{ display: "inline-flex", background: "#f1f5f9", borderRadius: 8, padding: 3, gap: 3 }}>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("ALL")}
                 style={{
-                  position: "absolute",
-                  left: "12px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--ink-muted, #94a3b8)",
-                  fontSize: "0.85rem",
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  border: "none",
+                  background: statusFilter === "ALL" ? "#ffffff" : "transparent",
+                  color: statusFilter === "ALL" ? "#0f172a" : "#64748b",
+                  cursor: "pointer",
+                  boxShadow: statusFilter === "ALL" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
                 }}
-              />
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Search by name, email or ID..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ paddingLeft: "34px", fontSize: "0.82rem", borderRadius: "8px" }}
-              />
+              >
+                All Status
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("ACTIVE")}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  border: "none",
+                  background: statusFilter === "ACTIVE" ? "#ffffff" : "transparent",
+                  color: statusFilter === "ACTIVE" ? "#16a34a" : "#64748b",
+                  cursor: "pointer",
+                  boxShadow: statusFilter === "ACTIVE" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+                }}
+              >
+                Active
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("INACTIVE")}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  border: "none",
+                  background: statusFilter === "INACTIVE" ? "#ffffff" : "transparent",
+                  color: statusFilter === "INACTIVE" ? "#dc2626" : "#64748b",
+                  cursor: "pointer",
+                  boxShadow: statusFilter === "INACTIVE" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+                }}
+              >
+                Inactive
+              </button>
             </div>
           </div>
 
-           {/* Table */}
-           <div className="table-responsive" style={{ overflowX: "auto", overflowY: "auto", maxHeight: "500px" }}>
-             <table className="table table-hover" style={{ width: "100%", margin: 0, fontSize: "0.8125rem", borderCollapse: "collapse" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <button
+              type="button"
+              className="cw-btn-secondary"
+              onClick={loadUsers}
+              disabled={loading}
+              title="Refresh directory"
+            >
+              <RotateCw style={{ width: 14, height: 14 }} className={loading ? "animate-spin text-blue-600" : ""} />
+              <span>Refresh</span>
+            </button>
+            <button
+              type="button"
+              className="cw-btn-primary"
+              onClick={openAddModal}
+            >
+              <Plus style={{ width: 15, height: 15 }} />
+              <span>Add User</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Users Table Card */}
+        <div className="cw-card">
+          <div className="cw-table-container">
+            <table className="cw-table">
               <thead>
-                <tr style={{ background: "#f8fafc", borderBottom: "1px solid var(--border, #e2e8f0)" }}>
-                  <th style={{ width: "65px", textAlign: "center", padding: "12px 14px" }}>User ID</th>
-                  <th style={{ padding: "12px 14px" }}>Account Name</th>
-                  <th style={{ padding: "12px 14px" }}>Email Address</th>
-                  <th style={{ width: "120px", textAlign: "center", padding: "12px 14px" }}>Role</th>
-                  <th style={{ width: "110px", textAlign: "center", padding: "12px 14px" }}>Status</th>
-                  <th style={{ width: "150px", padding: "12px 14px" }}>Joined Date</th>
-                  <th style={{ width: "150px", padding: "12px 14px" }}>Last Login</th>
-                  <th style={{ width: "130px", textAlign: "center", padding: "12px 14px" }}>Actions</th>
+                <tr>
+                  <th style={{ width: 60, textAlign: "center" }}>ID</th>
+                  <th style={{ minWidth: 200, textAlign: "left" }}>Account Name</th>
+                  <th style={{ minWidth: 220, textAlign: "left" }}>Email Address</th>
+                  <th style={{ width: 130, textAlign: "center" }}>Role</th>
+                  <th style={{ width: 130, textAlign: "center" }}>Status</th>
+                  <th style={{ width: 130, textAlign: "center" }}>Joined Date</th>
+                  <th style={{ width: 130, textAlign: "center" }}>Last Login</th>
+                  <th style={{ width: 120, textAlign: "center" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={8} style={{ padding: "48px 20px", textAlign: "center" }}>
-                      <div className="spinner-border text-primary" style={{ width: 28, height: 28 }} role="status" />
-                      <p style={{ marginTop: 8, color: "var(--ink-muted)", fontSize: "0.82rem" }}>Loading user directory...</p>
+                    <td colSpan={8} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
+                      <RotateCw style={{ width: 24, height: 24, margin: "0 auto 8px" }} className="animate-spin text-blue-600" />
+                      <p style={{ margin: 0, fontSize: "0.875rem" }}>Loading user directory...</p>
                     </td>
                   </tr>
                 ) : paginatedUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ padding: "48px 20px", textAlign: "center" }}>
-                      <div style={{ color: "var(--ink-muted, #94a3b8)" }}>
-                        <i className="bi bi-person-x" style={{ fontSize: "2.4rem", opacity: 0.5, display: "block", marginBottom: "8px" }} />
-                        <p style={{ margin: "0 0 4px 0", fontWeight: 600, color: "var(--ink, #0f172a)" }}>No accounts match query</p>
-                        <small>Try clearing or adjusting search filter keywords</small>
-                      </div>
+                    <td colSpan={8} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
+                      <Users style={{ width: 36, height: 36, color: "#94a3b8", margin: "0 auto 8px" }} />
+                      <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", color: "#0f172a", fontWeight: 600 }}>No Accounts Match Query</h4>
+                      <p style={{ margin: 0, fontSize: "0.8125rem" }}>Try adjusting your search criteria or resetting filters.</p>
                     </td>
                   </tr>
                 ) : (
                   paginatedUsers.map((u) => {
                     const isAdmin = String(u.role || "").toLowerCase() === "admin";
-                    const isActive = (u.status || "active") === "active";
                     const initials = getUserInitials(u.name, u.email);
 
                     return (
-                      <tr key={u.id} style={{ borderBottom: "1px solid var(--border, #f1f5f9)" }}>
-                        <td style={{ textAlign: "center", fontWeight: 600, color: "var(--ink-muted)", padding: "12px 14px" }}>
+                      <tr key={u.id}>
+                        <td style={{ textAlign: "center", fontWeight: 600, color: "#94a3b8", fontSize: "0.8125rem" }}>
                           #{u.id}
                         </td>
-                        <td style={{ padding: "12px 14px" }}>
+                        <td style={{ textAlign: "left" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                             <div
                               style={{
-                                width: "32px",
-                                height: "32px",
+                                width: 32,
+                                height: 32,
                                 borderRadius: "50%",
-                                background: isAdmin ? "rgba(139, 92, 246, 0.15)" : "rgba(37, 99, 235, 0.12)",
+                                background: isAdmin ? "#f5f3ff" : "#eff6ff",
+                                border: `1px solid ${isAdmin ? "#ddd6fe" : "#bfdbfe"}`,
                                 color: isAdmin ? "#7c3aed" : "#2563eb",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 fontWeight: 700,
                                 fontSize: "0.75rem",
+                                flexShrink: 0,
                               }}
                             >
                               {initials}
                             </div>
-                            <div>
-                              <span style={{ fontWeight: 600, color: "var(--ink, #0f172a)", display: "block" }}>
-                                {u.name || "System User"}
-                              </span>
-                            </div>
+                            <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.875rem" }}>
+                              {u.name || "System User"}
+                            </span>
                           </div>
                         </td>
-                        <td style={{ color: "var(--ink-soft, #475569)", fontFamily: "monospace", padding: "12px 14px" }}>
+                        <td style={{ textAlign: "left", color: "#475569", fontFamily: "ui-monospace, monospace", fontSize: "0.8125rem" }}>
                           {u.email}
                         </td>
-                        <td style={{ textAlign: "center", padding: "12px 14px" }}>
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px",
-                              padding: "2px 8px",
-                              borderRadius: "9999px",
-                              fontSize: "0.7rem",
-                              fontWeight: 700,
-                              background: isAdmin ? "rgba(139, 92, 246, 0.12)" : "rgba(37, 99, 235, 0.08)",
-                              color: isAdmin ? "#7c3aed" : "#2563eb",
-                              border: isAdmin ? "1px solid rgba(139, 92, 246, 0.25)" : "1px solid rgba(37, 99, 235, 0.2)",
-                            }}
-                          >
-                            {isAdmin ? "👑 ADMIN" : "DSA AGENT"}
+                        <td style={{ textAlign: "center" }}>
+                          <span className={`cw-badge ${isAdmin ? "cw-badge-warning" : "cw-badge-info"}`}>
+                            {isAdmin ? "Admin" : "DSA Agent"}
                           </span>
                         </td>
-                        <td style={{ textAlign: "center", padding: "12px 14px" }}>
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "2px 8px",
-                              borderRadius: "9999px",
-                              fontSize: "0.7rem",
-                              fontWeight: 600,
-                              background: isActive ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)",
-                              color: isActive ? "#059669" : "#dc2626",
-                            }}
-                          >
-                            {isActive ? "ACTIVE" : "INACTIVE"}
-                          </span>
+                        <td style={{ textAlign: "center" }}>
+                          <ModernStatusBadge status={u.status} />
                         </td>
-                        <td style={{ color: "var(--ink-muted, #64748b)", fontSize: "0.8rem", padding: "12px 14px" }}>
+                        <td style={{ textAlign: "center", color: "#64748b", fontSize: "0.8125rem" }}>
                           {formatDate(u.created_at)}
                         </td>
-                        <td style={{ color: "var(--ink-muted, #64748b)", fontSize: "0.8rem", padding: "12px 14px" }}>
+                        <td style={{ textAlign: "center", color: "#64748b", fontSize: "0.8125rem" }}>
                           {formatDate(u.last_login)}
                         </td>
-                        <td style={{ textAlign: "center", padding: "12px 14px" }}>
-                          <div style={{ display: "inline-flex", gap: "6px" }}>
+                        <td style={{ textAlign: "center" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
                             <button
                               type="button"
-                              className="btn btn-sm btn-outline-primary"
+                              className="cw-action-btn"
                               onClick={() => openEditModal(u)}
-                              title="Edit User"
-                              style={{ padding: "4px 8px", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "3px" }}
+                              title="Edit user"
+                              aria-label={`Edit ${u.email}`}
                             >
-                              <i className="bi bi-pencil" /> Edit
+                              <Pencil style={{ width: 14, height: 14 }} />
                             </button>
                             <button
                               type="button"
-                              className="btn btn-sm btn-outline-danger"
+                              className="cw-action-btn"
                               onClick={() => openDeleteModal(u)}
-                              title="Delete User"
-                              style={{ padding: "4px 8px", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "3px" }}
+                              title="Delete user"
+                              aria-label={`Delete ${u.email}`}
+                              style={{ color: "#dc2626" }}
                             >
-                              <i className="bi bi-trash" />
+                              <Trash2 style={{ width: 14, height: 14 }} />
                             </button>
                           </div>
                         </td>
@@ -797,17 +757,18 @@ export default function AllUsersAdminPage() {
           </div>
 
           {/* Pagination Footer */}
-          {filteredUsers.length > pageSize && (
+          {filteredUsers.length > 0 && (
             <div
               style={{
-                padding: "12px 20px",
-                borderTop: "1px solid var(--border, #e2e8f0)",
+                padding: "14px 20px",
+                borderTop: "1px solid #f1f5f9",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                background: "#ffffff",
-                fontSize: "0.82rem",
-                color: "var(--ink-muted, #64748b)",
+                flexWrap: "wrap",
+                gap: "12px",
+                fontSize: "0.8125rem",
+                color: "#64748b",
               }}
             >
               <div>
@@ -818,26 +779,28 @@ export default function AllUsersAdminPage() {
               <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                 <button
                   type="button"
-                  className="btn btn-secondary btn-sm"
-                  disabled={currentPage === 1}
+                  className="cw-btn-secondary"
+                  disabled={currentPage <= 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  style={{ padding: "4px 10px", fontSize: "0.78rem" }}
+                  style={{ padding: "4px 10px", fontSize: "0.75rem" }}
                 >
-                  <i className="bi bi-chevron-left" /> Previous
+                  <ChevronLeft style={{ width: 14, height: 14 }} />
+                  <span>Previous</span>
                 </button>
 
-                <span style={{ fontWeight: 600, padding: "0 8px", color: "var(--ink, #0f172a)" }}>
-                  Page {currentPage} of {totalPages}
+                <span style={{ fontWeight: 600, padding: "0 8px", color: "#0f172a" }}>
+                  {currentPage} / {totalPages}
                 </span>
 
                 <button
                   type="button"
-                  className="btn btn-secondary btn-sm"
+                  className="cw-btn-secondary"
                   disabled={currentPage >= totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  style={{ padding: "4px 10px", fontSize: "0.78rem" }}
+                  style={{ padding: "4px 10px", fontSize: "0.75rem" }}
                 >
-                  Next <i className="bi bi-chevron-right" />
+                  <span>Next</span>
+                  <ChevronRight style={{ width: 14, height: 14 }} />
                 </button>
               </div>
             </div>
@@ -845,52 +808,31 @@ export default function AllUsersAdminPage() {
         </div>
       </main>
 
-      {/* =================================================================== */}
       {/* ADD USER MODAL */}
-      {/* =================================================================== */}
       {showAddModal && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.55)",
-            backdropFilter: "blur(4px)",
+            background: "rgba(15, 23, 42, 0.45)",
+            backdropFilter: "blur(3px)",
             zIndex: 1050,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "16px",
+            padding: 16,
           }}
           onClick={() => setShowAddModal(false)}
         >
           <div
-            className="card animate-fade-in"
-            style={{
-              width: "100%",
-              maxWidth: "500px",
-              background: "#ffffff",
-              borderRadius: "14px",
-              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.15)",
-              overflow: "hidden",
-            }}
+            className="cw-card"
+            style={{ width: "100%", maxWidth: 480, overflow: "hidden" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div
-              style={{
-                padding: "16px 20px",
-                borderBottom: "1px solid var(--border, #e2e8f0)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                background: "#f8fafc",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <i className="bi bi-person-plus-fill" style={{ color: "var(--accent, #2563eb)", fontSize: "1.2rem" }} />
-                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "var(--ink, #0f172a)" }}>
-                  Create New User Account
-                </h3>
-              </div>
+            <div className="cw-card-header">
+              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
+                Create New User Account
+              </h3>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
@@ -900,87 +842,80 @@ export default function AllUsersAdminPage() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} style={{ padding: "20px" }}>
+            <form onSubmit={handleCreateUser} style={{ padding: 22 }}>
               {createError && (
-                <div className="alert alert-danger" style={{ marginBottom: "16px", fontSize: "0.82rem", padding: "10px 14px" }}>
-                  <i className="bi bi-exclamation-triangle" style={{ marginRight: "6px" }} />
+                <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", fontSize: "0.8125rem" }}>
                   {createError}
                 </div>
               )}
 
-              <div style={{ marginBottom: "14px" }}>
-                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--ink, #0f172a)", marginBottom: "4px" }}>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
                   Full Name
                 </label>
                 <input
                   type="text"
-                  className="form-control"
+                  className="cw-input"
                   placeholder="e.g. Rahul Sharma"
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                  style={{ fontSize: "0.85rem", borderRadius: "8px" }}
                 />
               </div>
 
-              <div style={{ marginBottom: "14px" }}>
-                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--ink, #0f172a)", marginBottom: "4px" }}>
-                  Email Address <span style={{ color: "red" }}>*</span>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                  Email Address *
                 </label>
                 <input
                   type="email"
-                  className="form-control"
+                  className="cw-input"
                   placeholder="e.g. rahul@example.com"
                   required
                   value={createForm.email}
                   onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                  style={{ fontSize: "0.85rem", borderRadius: "8px" }}
                 />
               </div>
 
-              <div style={{ marginBottom: "14px" }}>
-                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--ink, #0f172a)", marginBottom: "4px" }}>
-                  Password <span style={{ color: "red" }}>*</span>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                  Password *
                 </label>
                 <input
                   type="password"
-                  className="form-control"
+                  className="cw-input"
                   placeholder="Minimum 6 characters"
                   required
                   minLength={6}
                   value={createForm.password}
                   onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                  style={{ fontSize: "0.85rem", borderRadius: "8px" }}
                 />
-                <small style={{ color: "var(--ink-muted, #64748b)", fontSize: "0.75rem" }}>
-                  Passwords are encrypted using bcrypt salt hashing before storage.
-                </small>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--ink, #0f172a)", marginBottom: "4px" }}>
+                  <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
                     Role
                   </label>
                   <select
-                    className="form-select"
+                    className="cw-select"
+                    style={{ width: "100%" }}
                     value={createForm.role}
                     onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
-                    style={{ fontSize: "0.85rem", borderRadius: "8px" }}
                   >
-                    <option value="user">DSA Agent (Standard)</option>
-                    <option value="admin">Administrator (Full Access)</option>
+                    <option value="user">DSA Agent (User)</option>
+                    <option value="admin">Administrator</option>
                   </select>
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--ink, #0f172a)", marginBottom: "4px" }}>
+                  <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
                     Status
                   </label>
                   <select
-                    className="form-select"
+                    className="cw-select"
+                    style={{ width: "100%" }}
                     value={createForm.status}
                     onChange={(e) => setCreateForm({ ...createForm, status: e.target.value })}
-                    style={{ fontSize: "0.85rem", borderRadius: "8px" }}
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
@@ -988,22 +923,20 @@ export default function AllUsersAdminPage() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button
                   type="button"
-                  className="btn btn-secondary btn-sm"
+                  className="cw-btn-secondary"
                   onClick={() => setShowAddModal(false)}
-                  disabled={submitting}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary btn-sm"
+                  className="cw-btn-primary"
                   disabled={submitting}
-                  style={{ minWidth: "100px", fontWeight: 600 }}
                 >
-                  {submitting ? "Creating..." : "Create User"}
+                  {submitting ? "Creating..." : "Create Account"}
                 </button>
               </div>
             </form>
@@ -1011,52 +944,31 @@ export default function AllUsersAdminPage() {
         </div>
       )}
 
-      {/* =================================================================== */}
       {/* EDIT USER MODAL */}
-      {/* =================================================================== */}
       {showEditModal && editUser && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.55)",
-            backdropFilter: "blur(4px)",
+            background: "rgba(15, 23, 42, 0.45)",
+            backdropFilter: "blur(3px)",
             zIndex: 1050,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "16px",
+            padding: 16,
           }}
           onClick={() => setShowEditModal(false)}
         >
           <div
-            className="card animate-fade-in"
-            style={{
-              width: "100%",
-              maxWidth: "500px",
-              background: "#ffffff",
-              borderRadius: "14px",
-              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.15)",
-              overflow: "hidden",
-            }}
+            className="cw-card"
+            style={{ width: "100%", maxWidth: 480, overflow: "hidden" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div
-              style={{
-                padding: "16px 20px",
-                borderBottom: "1px solid var(--border, #e2e8f0)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                background: "#f8fafc",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <i className="bi bi-pencil-square" style={{ color: "var(--accent, #2563eb)", fontSize: "1.2rem" }} />
-                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "var(--ink, #0f172a)" }}>
-                  Edit User #{editUser.id}
-                </h3>
-              </div>
+            <div className="cw-card-header">
+              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
+                Edit Account #{editUser.id}
+              </h3>
               <button
                 type="button"
                 onClick={() => setShowEditModal(false)}
@@ -1066,82 +978,77 @@ export default function AllUsersAdminPage() {
               </button>
             </div>
 
-            <form onSubmit={handleUpdateUser} style={{ padding: "20px" }}>
+            <form onSubmit={handleUpdateUser} style={{ padding: 22 }}>
               {editError && (
-                <div className="alert alert-danger" style={{ marginBottom: "16px", fontSize: "0.82rem", padding: "10px 14px" }}>
-                  <i className="bi bi-exclamation-triangle" style={{ marginRight: "6px" }} />
+                <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", fontSize: "0.8125rem" }}>
                   {editError}
                 </div>
               )}
 
-              <div style={{ marginBottom: "14px" }}>
-                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--ink, #0f172a)", marginBottom: "4px" }}>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
                   Full Name
                 </label>
                 <input
                   type="text"
-                  className="form-control"
-                  placeholder="Account name"
+                  className="cw-input"
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  style={{ fontSize: "0.85rem", borderRadius: "8px" }}
                 />
               </div>
 
-              <div style={{ marginBottom: "14px" }}>
-                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--ink, #0f172a)", marginBottom: "4px" }}>
-                  Email Address <span style={{ color: "red" }}>*</span>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                  Email Address *
                 </label>
                 <input
                   type="email"
-                  className="form-control"
+                  className="cw-input"
                   required
                   value={editForm.email}
                   onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                  style={{ fontSize: "0.85rem", borderRadius: "8px" }}
                 />
               </div>
 
-              <div style={{ marginBottom: "14px" }}>
-                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--ink, #0f172a)", marginBottom: "4px" }}>
-                  Reset Password <span style={{ fontWeight: 400, color: "var(--ink-muted)" }}>(Optional)</span>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                  Reset Password (leave blank to keep current)
                 </label>
                 <input
                   type="password"
-                  className="form-control"
-                  placeholder="Leave empty to keep existing password"
+                  className="cw-input"
+                  placeholder="Enter new password (optional)"
                   minLength={6}
                   value={editForm.password}
                   onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                  style={{ fontSize: "0.85rem", borderRadius: "8px" }}
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--ink, #0f172a)", marginBottom: "4px" }}>
+                  <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
                     Role
                   </label>
                   <select
-                    className="form-select"
+                    className="cw-select"
+                    style={{ width: "100%" }}
                     value={editForm.role}
                     onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                    style={{ fontSize: "0.85rem", borderRadius: "8px" }}
                   >
-                    <option value="user">DSA Agent</option>
+                    <option value="user">DSA Agent (User)</option>
                     <option value="admin">Administrator</option>
                   </select>
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--ink, #0f172a)", marginBottom: "4px" }}>
+                  <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
                     Status
                   </label>
                   <select
-                    className="form-select"
+                    className="cw-select"
+                    style={{ width: "100%" }}
                     value={editForm.status}
                     onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                    style={{ fontSize: "0.85rem", borderRadius: "8px" }}
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
@@ -1149,20 +1056,18 @@ export default function AllUsersAdminPage() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button
                   type="button"
-                  className="btn btn-secondary btn-sm"
+                  className="cw-btn-secondary"
                   onClick={() => setShowEditModal(false)}
-                  disabled={submitting}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary btn-sm"
+                  className="cw-btn-primary"
                   disabled={submitting}
-                  style={{ minWidth: "100px", fontWeight: 600 }}
                 >
                   {submitting ? "Saving..." : "Save Changes"}
                 </button>
@@ -1172,118 +1077,72 @@ export default function AllUsersAdminPage() {
         </div>
       )}
 
-      {/* =================================================================== */}
-      {/* DELETE CONFIRMATION MODAL */}
-      {/* =================================================================== */}
+      {/* DELETE USER CONFIRMATION MODAL */}
       {showDeleteModal && userToDelete && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.55)",
-            backdropFilter: "blur(4px)",
+            background: "rgba(15, 23, 42, 0.45)",
+            backdropFilter: "blur(3px)",
             zIndex: 1050,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "16px",
+            padding: 16,
           }}
           onClick={() => setShowDeleteModal(false)}
         >
           <div
-            className="card animate-fade-in"
-            style={{
-              width: "100%",
-              maxWidth: "460px",
-              background: "#ffffff",
-              borderRadius: "14px",
-              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.15)",
-              overflow: "hidden",
-            }}
+            className="cw-card"
+            style={{ width: "100%", maxWidth: 440, padding: 24, textAlign: "center" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div
               style={{
-                padding: "16px 20px",
-                borderBottom: "1px solid var(--border, #e2e8f0)",
+                width: 48,
+                height: 48,
+                borderRadius: "50%",
+                background: "#fef2f2",
+                color: "#dc2626",
                 display: "flex",
                 alignItems: "center",
-                gap: "10px",
-                background: "#fef2f2",
+                justifyContent: "center",
+                margin: "0 auto 14px auto",
               }}
             >
-              <div
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "50%",
-                  background: "#fee2e2",
-                  color: "#dc2626",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "1.1rem",
-                }}
-              >
-                <i className="bi bi-trash-fill" />
-              </div>
-              <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#991b1b" }}>
-                Confirm Account Deletion
-              </h3>
+              <Trash2 style={{ width: 22, height: 22 }} />
             </div>
 
-            <div style={{ padding: "20px" }}>
-              {deleteError && (
-                <div className="alert alert-danger" style={{ marginBottom: "16px", fontSize: "0.82rem", padding: "10px 14px" }}>
-                  <i className="bi bi-exclamation-triangle" style={{ marginRight: "6px" }} />
-                  {deleteError}
-                </div>
-              )}
+            <h3 style={{ margin: "0 0 6px 0", fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>
+              Delete Account?
+            </h3>
+            <p style={{ margin: "0 0 16px 0", fontSize: "0.875rem", color: "#64748b" }}>
+              Are you sure you want to delete user account <strong>{userToDelete.email}</strong>? This action cannot be undone.
+            </p>
 
-              <p style={{ margin: "0 0 14px 0", fontSize: "0.88rem", color: "var(--ink, #0f172a)" }}>
-                Are you sure you want to permanently delete this user account?
-              </p>
+            {deleteError && (
+              <div style={{ marginBottom: 14, padding: "8px 12px", borderRadius: 8, background: "#fef2f2", color: "#b91c1c", fontSize: "0.8125rem" }}>
+                {deleteError}
+              </div>
+            )}
 
-              <div
-                style={{
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "10px",
-                  padding: "12px 16px",
-                  marginBottom: "16px",
-                  fontSize: "0.82rem",
-                }}
+            <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
+              <button
+                type="button"
+                className="cw-btn-secondary"
+                onClick={() => setShowDeleteModal(false)}
               >
-                <div><strong>User ID:</strong> #{userToDelete.id}</div>
-                <div><strong>Name:</strong> {userToDelete.name || "N/A"}</div>
-                <div><strong>Email:</strong> {userToDelete.email}</div>
-                <div><strong>Role:</strong> {userToDelete.role.toUpperCase()}</div>
-              </div>
-
-              <p style={{ margin: "0 0 20px 0", fontSize: "0.78rem", color: "#dc2626" }}>
-                <i className="bi bi-info-circle-fill" style={{ marginRight: "4px" }} />
-                This action is permanent and cannot be undone. Associated foreign key references will be safely nullified.
-              </p>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setShowDeleteModal(false)}
-                  disabled={submitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger btn-sm"
-                  onClick={handleDeleteUser}
-                  disabled={submitting}
-                  style={{ fontWeight: 600, minWidth: "130px" }}
-                >
-                  {submitting ? "Deleting..." : "Confirm Deletion"}
-                </button>
-              </div>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="cw-btn-danger"
+                onClick={handleDeleteUser}
+                disabled={submitting}
+              >
+                {submitting ? "Deleting..." : "Confirm Delete"}
+              </button>
             </div>
           </div>
         </div>

@@ -9,6 +9,18 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import AdminHeader from "@/components/admin/AdminHeader";
+import ModernSearchBar from "@/components/ui/ModernSearchBar";
+import {
+  FileSpreadsheet,
+  UploadCloud,
+  Download,
+  Trash2,
+  RotateCw,
+  Building2,
+  CheckCircle2,
+  AlertCircle,
+  FileCheck,
+} from "lucide-react";
 
 export default function BankManagersDedicatedPage() {
   const router = useRouter();
@@ -98,13 +110,14 @@ export default function BankManagersDedicatedPage() {
       if (res.ok && data.success) {
         setUploadMsg({
           type: "success",
-          text: `✓ File "${selectedFile.name}" uploaded successfully! Added ${data.insertedCount || 0} managers.`,
+          text: `File "${selectedFile.name}" uploaded successfully! Added ${data.insertedCount || 0} managers.`,
         });
         setBankName("");
         setSelectedFile(null);
         const fileInput = document.getElementById("bmFileInput") as HTMLInputElement;
         if (fileInput) fileInput.value = "";
         fetchFiles();
+        setTimeout(() => setUploadMsg(null), 5000);
       } else {
         setUploadMsg({ type: "error", text: data.error || "Failed to upload file." });
       }
@@ -126,8 +139,9 @@ export default function BankManagersDedicatedPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setUploadMsg({ type: "success", text: `✓ File "${filename}" deleted successfully.` });
+        setUploadMsg({ type: "success", text: `File "${filename}" deleted successfully.` });
         fetchFiles();
+        setTimeout(() => setUploadMsg(null), 5000);
       } else {
         setUploadMsg({ type: "error", text: data.error || "Failed to delete file." });
       }
@@ -141,7 +155,7 @@ export default function BankManagersDedicatedPage() {
     const k = 1024;
     const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   }
 
   const filteredFiles = useMemo(() => {
@@ -156,323 +170,289 @@ export default function BankManagersDedicatedPage() {
 
   if (!user) {
     return (
-      <main style={{ padding: 48, textAlign: "center", minHeight: "100vh", background: "#f8fafc" }}>
+      <main style={{ padding: 48, textAlign: "center", minHeight: "100vh", background: "#f8fafc", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <div className="spinner-border text-primary" role="status" />
-        <p style={{ color: "#64748b", marginTop: 12 }}>Loading Contact and Location Bank Manager workspace...</p>
+        <p style={{ color: "#64748b", marginTop: 12, fontSize: "0.875rem" }}>Loading Contact and Location Bank Manager workspace...</p>
       </main>
     );
   }
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: "'Inter', sans-serif" }}>
-      {/* 1. TOP HEADER & BREADCRUMBS (NO SIDEBAR) */}
+      {/* 1. TOP HEADER & BREADCRUMBS */}
       <AdminHeader
         user={user}
         title="Contact and Location Bank Manager"
         description="Official contact spreadsheet uploads, branch manager directories, and verified lender contacts."
-        breadcrumbs={[{ label: "Contact and Location Bank Manager" }]}
+        breadcrumbs={[{ label: "Bank Managers" }]}
       />
 
       {/* 2. MAIN CONTAINER */}
-      <main
-        style={{
-          maxWidth: "1400px",
-          margin: "0 auto",
-          padding: "24px 28px 60px 28px",
-          boxSizing: "border-box",
-        }}
-      >
+      <main className="cw-admin-container">
         {/* Upload Message Toast */}
         {uploadMsg && (
           <div
-            className={`alert ${uploadMsg.type === "success" ? "alert-success" : "alert-danger"}`}
-            style={{ borderRadius: "10px", marginBottom: "20px" }}
+            style={{
+              padding: "12px 18px",
+              borderRadius: "10px",
+              marginBottom: "20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+              background: uploadMsg.type === "success" ? "#ecfdf5" : "#fef2f2",
+              border: `1px solid ${uploadMsg.type === "success" ? "#a7f3d0" : "#fecaca"}`,
+              color: uploadMsg.type === "success" ? "#065f46" : "#b91c1c",
+            }}
           >
-            {uploadMsg.text}
+            {uploadMsg.type === "success" ? <CheckCircle2 style={{ width: 18, height: 18, flexShrink: 0 }} /> : <AlertCircle style={{ width: 18, height: 18, flexShrink: 0 }} />}
+            <span>{uploadMsg.text}</span>
           </div>
         )}
 
         {/* Upload Form Card */}
-        <div
-          style={{
-            background: "#ffffff",
-            border: "1px solid #e2e8f0",
-            borderRadius: "14px",
-            padding: "20px 24px",
-            marginBottom: "24px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
-          }}
-        >
-          <form onSubmit={handleUploadSubmit}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                gap: "18px",
-                alignItems: "flex-end",
-              }}
-            >
-              <div>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: "0.85rem", color: "#334155", marginBottom: "6px" }}>
-                  Bank Name
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="e.g. HDFC Bank, Axis Bank, ICICI Bank"
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  style={{ height: "42px", borderRadius: "8px", border: "1px solid #cbd5e1" }}
-                />
+        <div className="cw-card" style={{ marginBottom: "24px" }}>
+          <div className="cw-card-header">
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: "#eff6ff",
+                  border: "1px solid #dbeafe",
+                  color: "#2563eb",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <UploadCloud style={{ width: 18, height: 18 }} />
               </div>
-
               <div>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: "0.85rem", color: "#334155", marginBottom: "6px" }}>
-                  Spreadsheet File (.xlsx, .xls, .csv)
-                </label>
-                <input
-                  id="bmFileInput"
-                  type="file"
-                  className="form-control"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                  style={{ height: "42px", borderRadius: "8px", border: "1px solid #cbd5e1" }}
-                />
-              </div>
-
-              <div>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={isUploading}
-                  style={{
-                    height: "42px",
-                    width: "100%",
-                    padding: "0 22px",
-                    borderRadius: "8px",
-                    fontWeight: 600,
-                    background: "#2563eb",
-                    borderColor: "#2563eb",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "8px",
-                  }}
-                >
-                  {isUploading ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <i className="bi bi-cloud-arrow-up-fill" />
-                      Upload &amp; Parse
-                    </>
-                  )}
-                </button>
+                <h2 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 700, color: "#0f172a" }}>
+                  Upload Manager Spreadsheet
+                </h2>
+                <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                  Upload official Excel or CSV spreadsheets containing bank manager branch listings.
+                </span>
               </div>
             </div>
-          </form>
+          </div>
+
+          <div className="cw-card-body">
+            <form onSubmit={handleUploadSubmit}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr auto",
+                  gap: "16px",
+                  alignItems: "flex-end",
+                }}
+              >
+                <div>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "0.8125rem", color: "#334155", marginBottom: "6px" }}>
+                    Bank Name
+                  </label>
+                  <input
+                    type="text"
+                    className="cw-input"
+                    placeholder="e.g. HDFC Bank, Axis Bank, ICICI Bank"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    style={{ height: 40 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "0.8125rem", color: "#334155", marginBottom: "6px" }}>
+                    Spreadsheet File (.xlsx, .xls, .csv)
+                  </label>
+                  <input
+                    id="bmFileInput"
+                    type="file"
+                    className="cw-input"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    style={{ height: 40, padding: "6px 10px" }}
+                  />
+                </div>
+
+                <div>
+                  <button
+                    type="submit"
+                    className="cw-btn-primary"
+                    disabled={isUploading}
+                    style={{ height: 40, padding: "0 22px" }}
+                  >
+                    {isUploading ? (
+                      <>
+                        <RotateCw style={{ width: 16, height: 16 }} className="animate-spin" />
+                        <span>Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud style={{ width: 16, height: 16 }} />
+                        <span>Upload &amp; Parse</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
 
-        {/* Filter Card */}
+        {/* Toolbar Card */}
         <div
+          className="cw-card"
           style={{
-            background: "#ffffff",
-            border: "1px solid #e2e8f0",
-            borderRadius: "14px",
-            padding: "16px 20px",
-            marginBottom: "20px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+            padding: "14px 18px",
+            marginBottom: "18px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             flexWrap: "wrap",
-            gap: "16px",
+            gap: "14px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1, minWidth: "280px" }}>
-            <div style={{ position: "relative", flex: 1, maxWidth: "420px" }}>
-              <i
-                className="bi bi-search"
-                style={{
-                  position: "absolute",
-                  left: "14px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "#94a3b8",
-                }}
-              />
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Search by filename or bank name..."
-                value={searchFileQuery}
-                onChange={(e) => setSearchFileQuery(e.target.value)}
-                style={{
-                  paddingLeft: "38px",
-                  height: "40px",
-                  borderRadius: "8px",
-                  border: "1px solid #cbd5e1",
-                  fontSize: "0.875rem",
-                }}
-              />
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
             <span
-              style={{
-                background: "#eff6ff",
-                color: "#2563eb",
-                padding: "6px 14px",
-                borderRadius: "20px",
-                fontSize: "0.8rem",
-                fontWeight: 600,
-                whiteSpace: "nowrap",
-                border: "1px solid #dbeafe",
-              }}
+              className="cw-badge cw-badge-info"
+              style={{ fontSize: "0.8125rem", padding: "5px 12px" }}
             >
-              {files.length} {files.length === 1 ? "File Available" : "Files Available"}
+              <span>Total Spreadsheets:</span>
+              <strong style={{ marginLeft: 4 }}>{files.length}</strong>
             </span>
+
+            <ModernSearchBar
+              value={searchFileQuery}
+              onChange={setSearchFileQuery}
+              placeholder="Search by bank or filename..."
+              width={300}
+            />
           </div>
 
           <button
             type="button"
-            className="btn btn-light"
+            className="cw-btn-secondary"
             onClick={fetchFiles}
             disabled={isLoadingFiles}
-            style={{
-              height: "40px",
-              padding: "0 16px",
-              borderRadius: "8px",
-              border: "1px solid #e2e8f0",
-              fontWeight: 500,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
           >
-            {isLoadingFiles ? <span className="spinner-border spinner-border-sm" /> : <i className="bi bi-arrow-clockwise" />}
-            Refresh
+            <RotateCw style={{ width: 14, height: 14 }} className={isLoadingFiles ? "animate-spin text-blue-600" : ""} />
+            <span>Refresh</span>
           </button>
         </div>
 
         {/* Files List Table */}
-        <div
-          style={{
-            background: "#ffffff",
-            border: "1px solid #e2e8f0",
-            borderRadius: "14px",
-            overflow: "hidden",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
-          }}
-        >
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
-            <thead>
-              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                <th style={{ textAlign: "left", padding: "14px 20px", fontWeight: 600, color: "#475569" }}>
-                  File Name
-                </th>
-                <th style={{ textAlign: "left", padding: "14px 20px", fontWeight: 600, color: "#475569" }}>
-                  Bank
-                </th>
-                <th style={{ textAlign: "left", padding: "14px 20px", fontWeight: 600, color: "#475569" }}>
-                  Records
-                </th>
-                <th style={{ textAlign: "left", padding: "14px 20px", fontWeight: 600, color: "#475569" }}>
-                  Size
-                </th>
-                <th style={{ textAlign: "right", padding: "14px 20px", fontWeight: 600, color: "#475569", minWidth: "180px" }}>
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoadingFiles ? (
+        <div className="cw-card">
+          <div className="cw-table-container">
+            <table className="cw-table">
+              <thead>
                 <tr>
-                  <td colSpan={5} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
-                    <div className="spinner-border text-primary" role="status" />
-                    <p style={{ marginTop: 8, fontSize: "0.85rem" }}>Loading manager spreadsheets...</p>
-                  </td>
+                  <th style={{ width: 60, textAlign: "center" }}>#</th>
+                  <th style={{ minWidth: 260, textAlign: "left" }}>File Name</th>
+                  <th style={{ width: 220, textAlign: "left" }}>Bank Name</th>
+                  <th style={{ width: 140, textAlign: "center" }}>Records</th>
+                  <th style={{ width: 120, textAlign: "center" }}>Size</th>
+                  <th style={{ width: 140, textAlign: "center" }}>Actions</th>
                 </tr>
-              ) : filteredFiles.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
-                    <i className="bi bi-folder-x" style={{ fontSize: "2rem", color: "#94a3b8", display: "block", marginBottom: 8 }} />
-                    <strong style={{ display: "block", color: "#1e293b", marginBottom: 4 }}>No Manager Spreadsheets Found</strong>
-                    {searchFileQuery ? "No files match your search query." : "No manager spreadsheets uploaded yet."}
-                  </td>
-                </tr>
-              ) : (
-                filteredFiles.map((f) => (
-                  <tr key={f.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "14px 20px", fontWeight: 600, color: "#0f172a" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <i className="bi bi-file-earmark-spreadsheet" style={{ color: "#2563eb", fontSize: "1.1rem" }} />
-                        <span>{f.file_name}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: "14px 20px", color: "#334155" }}>
-                      <span
-                        style={{
-                          background: "#f1f5f9",
-                          padding: "4px 10px",
-                          borderRadius: "6px",
-                          fontWeight: 500,
-                          fontSize: "0.82rem",
-                        }}
-                      >
-                        {f.bank_name}
-                      </span>
-                    </td>
-                    <td style={{ padding: "14px 20px", color: "#16a34a", fontWeight: 600 }}>
-                      {f.record_count || "—"}
-                    </td>
-                    <td style={{ padding: "14px 20px", color: "#64748b" }}>{formatFileSize(f.file_size)}</td>
-                    <td style={{ padding: "14px 20px", textAlign: "right" }}>
-                      <div style={{ display: "inline-flex", gap: "8px", alignItems: "center", justifyContent: "flex-end" }}>
-                        {f.file_path && (
-                          <a
-                            href={f.file_path}
-                            download={f.file_name}
-                            className="btn btn-sm btn-light"
-                            style={{
-                              color: "#2563eb",
-                              border: "1px solid #dbeafe",
-                              textDecoration: "none",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px",
-                              fontSize: "0.8rem",
-                              fontWeight: 500,
-                            }}
-                            title={`Download ${f.file_name}`}
-                          >
-                            <i className="bi bi-download" /> Download
-                          </a>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteFile(f.id, f.file_name)}
-                          className="btn btn-sm btn-light"
-                          style={{
-                            color: "#dc2626",
-                            border: "1px solid #fee2e2",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            fontSize: "0.8rem",
-                          }}
-                          title={`Delete ${f.file_name}`}
-                        >
-                          <i className="bi bi-trash" /> Delete
-                        </button>
-                      </div>
+              </thead>
+              <tbody>
+                {isLoadingFiles ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
+                      <RotateCw style={{ width: 24, height: 24, margin: "0 auto 8px" }} className="animate-spin text-blue-600" />
+                      <p style={{ margin: 0, fontSize: "0.875rem" }}>Loading manager spreadsheets...</p>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : filteredFiles.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
+                      <FileSpreadsheet style={{ width: 36, height: 36, color: "#94a3b8", margin: "0 auto 8px" }} />
+                      <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", color: "#1e293b", fontWeight: 600 }}>No Spreadsheets Found</h4>
+                      <p style={{ margin: 0, fontSize: "0.8125rem" }}>
+                        {searchFileQuery ? "No spreadsheets match your search." : "No bank manager spreadsheets uploaded yet."}
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredFiles.map((file, idx) => {
+                    const rowNumber = idx + 1;
+                    return (
+                      <tr key={file.id || idx}>
+                        <td style={{ textAlign: "center", color: "#94a3b8", fontWeight: 600, fontSize: "0.8125rem" }}>
+                          {rowNumber}
+                        </td>
+                        <td style={{ textAlign: "left" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <div
+                              style={{
+                                width: 30,
+                                height: 30,
+                                borderRadius: 8,
+                                background: "#ecfdf5",
+                                border: "1px solid #d1fae5",
+                                color: "#059669",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                            >
+                              <FileSpreadsheet style={{ width: 16, height: 16 }} />
+                            </div>
+                            <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.875rem" }} title={file.file_name}>
+                              {file.file_name}
+                            </span>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: "left" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <Building2 style={{ width: 15, height: 15, color: "#64748b" }} />
+                            <span style={{ fontWeight: 600, color: "#334155" }}>{file.bank_name || "Lender File"}</span>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <span className="cw-badge cw-badge-info">
+                            {file.record_count ? `${file.record_count.toLocaleString()} contacts` : "Ingested"}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: "center", color: "#64748b", fontSize: "0.8125rem", fontFamily: "ui-monospace, monospace" }}>
+                          {formatFileSize(file.file_size_bytes)}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                            <a
+                              href={`/api/bank-managers/files?id=${file.id}&download=true`}
+                              download={file.file_name}
+                              className="cw-action-btn"
+                              title="Download spreadsheet"
+                              aria-label={`Download ${file.file_name}`}
+                              style={{ textDecoration: "none" }}
+                            >
+                              <Download style={{ width: 14, height: 14 }} />
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteFile(file.id, file.file_name)}
+                              className="cw-action-btn"
+                              title="Delete file"
+                              aria-label={`Delete ${file.file_name}`}
+                              style={{ color: "#dc2626" }}
+                            >
+                              <Trash2 style={{ width: 14, height: 14 }} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </main>
     </div>
