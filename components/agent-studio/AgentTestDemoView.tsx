@@ -285,8 +285,8 @@ export default function AgentTestDemoView({
   }
 
   return (
-    <div className="flex-1 bg-[#F8FAFC] p-3.5 sm:p-6 md:p-8 overflow-y-auto">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="w-full min-h-full bg-slate-50 flex-1 overflow-y-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Header matching Screenshot 1 */}
         <div className="flex items-start gap-4 shrink-0">
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
@@ -305,16 +305,7 @@ export default function AgentTestDemoView({
         {/* 2-Column Layout with Rock-Solid Sizing */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* LEFT / CENTER COLUMN: Chat Interface (AI Model Blue Ribbon Style) - Stable fixed height */}
-          <div
-            style={{
-              background: "#ffffff",
-              borderRadius: "16px",
-              border: "1px solid #bfdbfe",
-              boxShadow: "0 4px 20px -2px rgba(59, 130, 246, 0.08)",
-              overflow: "hidden",
-            }}
-            className="lg:col-span-8 flex flex-col h-[580px] sm:h-[720px] max-h-[720px] shrink-0"
-          >
+          <div className="lg:col-span-8 flex flex-col h-[580px] sm:h-[720px] max-h-[720px] shrink-0 bg-white rounded-2xl border border-slate-300 shadow-xs overflow-hidden transition-all duration-200 hover:border-blue-500 hover:shadow-md">
             {/* AI Model Header Ribbon - Locked */}
             <div
               style={{

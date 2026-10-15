@@ -1268,17 +1268,17 @@
 /* --------------------------------------------------------------------------
    Borders & Radii
    -------------------------------------------------------------------------- */
-.border { border-width: 1px; border-style: solid; border-color: #e2e8f0; }
+.border { border-width: 1px; border-style: solid; border-color: #cbd5e1; }
 .border-2 { border-width: 2px; border-style: solid; }
 .border-dashed { border-style: dashed; }
 .border-transparent { border-color: transparent; }
-.border-t { border-top-width: 1px; border-top-style: solid; border-top-color: #e2e8f0; }
-.border-b { border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: #e2e8f0; }
+.border-t { border-top-width: 1px; border-top-style: solid; border-top-color: #cbd5e1; }
+.border-b { border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: #cbd5e1; }
 .border-b-2 { border-bottom-width: 2px; border-bottom-style: solid; }
-.border-r { border-right-width: 1px; border-right-style: solid; border-right-color: #e2e8f0; }
+.border-r { border-right-width: 1px; border-right-style: solid; border-right-color: #cbd5e1; }
 
 .border-slate-100 { border-color: #f1f5f9; }
-.border-slate-200 { border-color: #e2e8f0; }
+.border-slate-200 { border-color: #cbd5e1; }
 .border-slate-200\/50 { border-color: rgba(226, 232, 240, 0.5); }
 .border-slate-200\/60 { border-color: rgba(226, 232, 240, 0.6); }
 .border-slate-200\/70 { border-color: rgba(226, 232, 240, 0.7); }
@@ -1474,7 +1474,7 @@ input:focus, textarea:focus, select:focus {
   position: relative;
   z-index: 30;
   background-color: #ffffff;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid #cbd5e1;
   display: block;
 }
 
@@ -1488,7 +1488,7 @@ input:focus, textarea:focus, select:focus {
   height: 60px;
   min-height: 60px;
   background-color: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #cbd5e1;
   padding: 0 1.5rem;
   display: flex;
   align-items: center;
@@ -1526,31 +1526,33 @@ input:focus, textarea:focus, select:focus {
   border-radius: 0.65rem;
   font-size: 0.85rem;
   font-weight: 500;
-  color: #475569;
-  background: transparent;
-  border: 1px solid transparent;
+  color: #334155;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   width: 100%;
   cursor: pointer;
-  transition: all 0.15s ease-in-out;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: left;
 }
 
 .as-nav-btn:hover {
   color: #0f172a;
-  background-color: #f1f5f9;
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+  transform: translateX(2px);
 }
 
 .as-nav-btn.active {
   background-color: #eff6ff !important;
-  color: #2563eb !important;
-  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+  border-color: #93c5fd !important;
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(37, 99, 235, 0.08);
 }
 
 .as-sidebar-status-box {
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   border-radius: 0.75rem;
   padding: 0.8rem 0.9rem;
 }
@@ -1629,8 +1631,8 @@ input:focus, textarea:focus, select:focus {
 
 /* Chat Bubbles matching screenshot 1 */
 .as-chat-agent-bubble {
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
   color: #1e293b;
   border-radius: 1rem;
   border-top-left-radius: 0.25rem;
@@ -1659,16 +1661,19 @@ input:focus, textarea:focus, select:focus {
 
 /* Radio Selection Cards matching screenshot 1 & 3 */
 .as-runtime-card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   background-color: #ffffff;
   border-radius: 0.75rem;
   padding: 0.85rem 1rem;
   cursor: pointer;
-  transition: all 0.15s ease-in-out;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .as-runtime-card:hover {
-  border-color: #cbd5e1;
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+  transform: translateY(-2px);
 }
 
 .as-runtime-card.selected {
@@ -1733,21 +1738,21 @@ input:focus, textarea:focus, select:focus {
 /* CallNow Metric Card */
 .cn-metric-card {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   border-radius: 0.75rem;
   padding: 1rem 1.125rem;
   display: flex;
   align-items: flex-start;
   gap: 0.875rem;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
-  transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   height: 100%;
 }
 
 .cn-metric-card:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
-  transform: translateY(-1px);
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+  transform: translateY(-2px);
 }
 
 .cn-metric-card-icon {
@@ -1821,21 +1826,21 @@ input:focus, textarea:focus, select:focus {
 .cn-table-wrapper {
   overflow: auto;
   border-radius: 0.75rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   background: #ffffff;
 }
 
 /* CallNow Card Header & Body */
 .cn-card {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   border-radius: 0.75rem;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .cn-card-header {
   background: transparent;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #cbd5e1;
   padding: 0.875rem 1.25rem;
   font-weight: 600;
   font-size: 0.875rem;
@@ -1848,7 +1853,7 @@ input:focus, textarea:focus, select:focus {
 
 .cn-card-footer {
   background: transparent;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #cbd5e1;
   padding: 0.875rem 1.25rem;
 }
 

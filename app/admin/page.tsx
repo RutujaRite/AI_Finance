@@ -230,8 +230,8 @@ export default function AdminDashboardPage() {
 
         {/* 3. 4-COLUMN KPI SUMMARY STRIP */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-lg bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center shrink-0">
+          <div className="bg-white border border-slate-300 rounded-xl p-4 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-center gap-3.5 group cursor-default">
+            <div className="w-10 h-10 rounded-lg bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
               <Building2 className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -242,8 +242,8 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center shrink-0">
+          <div className="bg-white border border-slate-300 rounded-xl p-4 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-center gap-3.5 group cursor-default">
+            <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -254,8 +254,8 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0">
+          <div className="bg-white border border-slate-300 rounded-xl p-4 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-center gap-3.5 group cursor-default">
+            <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
               <Users className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -266,8 +266,8 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-lg bg-purple-50 border border-purple-200 text-purple-600 flex items-center justify-center shrink-0">
+          <div className="bg-white border border-slate-300 rounded-xl p-4 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-center gap-3.5 group cursor-default">
+            <div className="w-10 h-10 rounded-lg bg-purple-50 border border-purple-200 text-purple-600 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
               <UserCheck className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -288,7 +288,7 @@ export default function AdminDashboardPage() {
                 key={card.id}
                 id={card.id}
                 href={card.href}
-                className="bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md hover:border-blue-300 transition-all duration-200 p-6 flex flex-col justify-between group no-underline text-left cursor-pointer"
+                className="bg-white rounded-xl border border-slate-300 shadow-xs hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-6 flex flex-col justify-between group no-underline text-left cursor-pointer"
               >
                 <div>
                   {/* Card Header: 48x48px tinted icon container + metric pill badge */}
@@ -313,7 +313,7 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {/* Card Footer: specific module action label + animated arrow */}
-                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-between">
                   <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors">
                     {card.action}
                   </span>
@@ -334,19 +334,19 @@ export default function AdminDashboardPage() {
             <span className="text-xs text-slate-500 font-medium">Live operational status</span>
           </div>
 
-          <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-xs">
+          <div className="rounded-xl bg-white border border-slate-300 overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs uppercase tracking-wider font-semibold">
-                    <th className="py-3.5 px-6 font-semibold" style={{ width: "42%" }}>Module Section</th>
-                    <th className="py-3.5 px-6 font-semibold" style={{ width: "33%" }}>Last Synchronized</th>
-                    <th className="py-3.5 px-6 font-semibold text-center" style={{ width: "25%" }}>Operational Status</th>
+                  <tr className="bg-slate-100 border-b border-slate-300 text-slate-700 text-xs font-bold uppercase tracking-wider">
+                    <th className="py-3.5 px-6 font-bold" style={{ width: "42%" }}>Module Section</th>
+                    <th className="py-3.5 px-6 font-bold" style={{ width: "33%" }}>Last Synchronized</th>
+                    <th className="py-3.5 px-6 font-bold text-center" style={{ width: "25%" }}>Operational Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-200">
                   {/* Row 1: Company data */}
-                  <tr className="hover:bg-slate-50/70 transition-colors">
+                  <tr className="border-b border-slate-200 hover:bg-blue-50/50 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 border border-sky-200 flex items-center justify-center shrink-0">
@@ -370,7 +370,7 @@ export default function AdminDashboardPage() {
                   </tr>
 
                   {/* Row 2: Bank policies */}
-                  <tr className="hover:bg-slate-50/70 transition-colors">
+                  <tr className="border-b border-slate-200 hover:bg-blue-50/50 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center shrink-0">
@@ -394,7 +394,7 @@ export default function AdminDashboardPage() {
                   </tr>
 
                   {/* Row 3: AI Agent Studio */}
-                  <tr className="hover:bg-slate-50/70 transition-colors">
+                  <tr className="border-b border-slate-200 hover:bg-blue-50/50 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
@@ -418,7 +418,7 @@ export default function AdminDashboardPage() {
                   </tr>
 
                   {/* Row 4: User accounts */}
-                  <tr className="hover:bg-slate-50/70 transition-colors">
+                  <tr className="border-b border-slate-200 last:border-0 hover:bg-blue-50/50 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 border border-purple-200 flex items-center justify-center shrink-0">

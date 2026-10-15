@@ -380,7 +380,7 @@ export default function CompanySearchPage() {
             marginBottom: "24px",
             cursor: "pointer",
             background: isDragOver ? "#eff6ff" : "#ffffff",
-            borderColor: isDragOver ? "#2563eb" : "#e2e8f0",
+            borderColor: isDragOver ? "#2563eb" : "#cbd5e1",
             borderStyle: "dashed",
             borderWidth: 2,
           }}

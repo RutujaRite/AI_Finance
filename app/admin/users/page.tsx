@@ -509,7 +509,7 @@ export default function AllUsersAdminPage() {
             />
 
             {/* Role Filter Pills */}
-            <div style={{ display: "inline-flex", background: "#f1f5f9", borderRadius: 8, padding: 3, gap: 3 }}>
+            <div style={{ display: "inline-flex", background: "#f1f5f9", borderRadius: 8, padding: 3, gap: 3, border: "1px solid #cbd5e1" }}>
               <button
                 type="button"
                 onClick={() => setRoleFilter("ALL")}
@@ -518,7 +518,7 @@ export default function AllUsersAdminPage() {
                   borderRadius: 6,
                   fontSize: "0.75rem",
                   fontWeight: 600,
-                  border: "none",
+                  border: roleFilter === "ALL" ? "1px solid #cbd5e1" : "1px solid transparent",
                   background: roleFilter === "ALL" ? "#ffffff" : "transparent",
                   color: roleFilter === "ALL" ? "#2563eb" : "#64748b",
                   cursor: "pointer",
@@ -535,7 +535,7 @@ export default function AllUsersAdminPage() {
                   borderRadius: 6,
                   fontSize: "0.75rem",
                   fontWeight: 600,
-                  border: "none",
+                  border: roleFilter === "ADMIN" ? "1px solid #cbd5e1" : "1px solid transparent",
                   background: roleFilter === "ADMIN" ? "#ffffff" : "transparent",
                   color: roleFilter === "ADMIN" ? "#7c3aed" : "#64748b",
                   cursor: "pointer",
@@ -552,7 +552,7 @@ export default function AllUsersAdminPage() {
                   borderRadius: 6,
                   fontSize: "0.75rem",
                   fontWeight: 600,
-                  border: "none",
+                  border: roleFilter === "USER" ? "1px solid #cbd5e1" : "1px solid transparent",
                   background: roleFilter === "USER" ? "#ffffff" : "transparent",
                   color: roleFilter === "USER" ? "#059669" : "#64748b",
                   cursor: "pointer",
@@ -564,7 +564,7 @@ export default function AllUsersAdminPage() {
             </div>
 
             {/* Status Filter Pills */}
-            <div style={{ display: "inline-flex", background: "#f1f5f9", borderRadius: 8, padding: 3, gap: 3 }}>
+            <div style={{ display: "inline-flex", background: "#f1f5f9", borderRadius: 8, padding: 3, gap: 3, border: "1px solid #cbd5e1" }}>
               <button
                 type="button"
                 onClick={() => setStatusFilter("ALL")}
@@ -573,7 +573,7 @@ export default function AllUsersAdminPage() {
                   borderRadius: 6,
                   fontSize: "0.75rem",
                   fontWeight: 600,
-                  border: "none",
+                  border: statusFilter === "ALL" ? "1px solid #cbd5e1" : "1px solid transparent",
                   background: statusFilter === "ALL" ? "#ffffff" : "transparent",
                   color: statusFilter === "ALL" ? "#0f172a" : "#64748b",
                   cursor: "pointer",
@@ -590,7 +590,7 @@ export default function AllUsersAdminPage() {
                   borderRadius: 6,
                   fontSize: "0.75rem",
                   fontWeight: 600,
-                  border: "none",
+                  border: statusFilter === "ACTIVE" ? "1px solid #cbd5e1" : "1px solid transparent",
                   background: statusFilter === "ACTIVE" ? "#ffffff" : "transparent",
                   color: statusFilter === "ACTIVE" ? "#16a34a" : "#64748b",
                   cursor: "pointer",
@@ -607,7 +607,7 @@ export default function AllUsersAdminPage() {
                   borderRadius: 6,
                   fontSize: "0.75rem",
                   fontWeight: 600,
-                  border: "none",
+                  border: statusFilter === "INACTIVE" ? "1px solid #cbd5e1" : "1px solid transparent",
                   background: statusFilter === "INACTIVE" ? "#ffffff" : "transparent",
                   color: statusFilter === "INACTIVE" ? "#dc2626" : "#64748b",
                   cursor: "pointer",

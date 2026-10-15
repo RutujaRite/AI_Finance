@@ -93,31 +93,31 @@ export default function StudioSidebar({
               onSelectTab(item.id);
               if (onCloseMobile) onCloseMobile();
             }}
-className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer active:scale-[0.99] ${
-    isActive
-      ? "bg-blue-50 text-blue-700 border border-blue-200 font-semibold"
-      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg"
-  }`}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-[0.99] ${
+              isActive
+                ? "bg-blue-50 border border-blue-300 text-blue-700 font-semibold shadow-2xs"
+                : "bg-white border border-slate-200 text-slate-700 hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900 transition-all hover:translate-x-0.5"
+            }`}
           >
             <div className="flex items-center gap-2.5">
               <Icon
                 className={`w-4 h-4 shrink-0 transition-colors ${
-                  isActive ? "text-blue-600" : "text-slate-400"
+                  isActive ? "text-blue-600" : "text-slate-500"
                 }`}
               />
               <span className="truncate">{item.label}</span>
             </div>
-{item.badge && (
-    <span
-      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-colors ${
-        isActive
-          ? "bg-blue-100 text-blue-700"
-          : "bg-slate-100 text-slate-600 border border-slate-200"
-      }`}
-    >
-      {item.badge}
-    </span>
-  )}
+            {item.badge && (
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors ${
+                  isActive
+                    ? "bg-blue-100 text-blue-700 border border-blue-200"
+                    : "bg-slate-100 text-slate-600 border border-slate-200"
+                }`}
+              >
+                {item.badge}
+              </span>
+            )}
           </button>
         );
       })}
@@ -125,7 +125,7 @@ className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-x
   );
 
   const content = (
-    <div className="flex flex-col justify-between h-full bg-white as-soft-sidebar p-4 select-none border-r border-slate-200">
+    <div className="flex flex-col justify-between h-full bg-white as-soft-sidebar p-4 select-none border-r border-slate-300">
       <div>
         {/* CallNow Style Brand Header */}
         <div className="flex items-center justify-between pb-4 pt-1 border-b border-slate-100">
@@ -199,7 +199,7 @@ className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-x
   return (
     <>
       {/* Desktop Sidebar: 240px wide */}
-      <aside className="as-sidebar-desktop shrink-0 select-none bg-white border-r border-slate-200 w-64">
+      <aside className="as-sidebar-desktop shrink-0 select-none bg-white border-r border-slate-300 w-64 hidden lg:block">
         {content}
       </aside>
 

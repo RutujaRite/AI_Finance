@@ -779,9 +779,9 @@ export default function PoliciesView({
         }
         .bp-header-card {
           background: #ffffff;
-          border: 1px solid #e2e8f0;
-          border-radius: 14px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+          border: 1px solid #cbd5e1;
+          border-radius: 12px;
+          box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
           padding: 12px 18px;
           display: flex;
           align-items: center;
@@ -814,27 +814,33 @@ export default function PoliciesView({
           padding: 4px;
           border-radius: 10px;
           gap: 4px;
+          border: 1px solid #cbd5e1;
         }
         .bp-tab-pill {
           padding: 6px 14px;
           font-size: 0.8125rem;
           font-weight: 500;
-          color: #64748b;
+          color: #334155;
           border-radius: 8px;
-          border: 1px solid transparent;
-          background: transparent;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
           cursor: pointer;
-          transition: all 0.15s ease;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
           display: flex;
           align-items: center;
           gap: 6px;
         }
-        .bp-tab-pill.active {
-          background: #ffffff;
+        .bp-tab-pill:hover:not(.active) {
+          border-color: #94a3b8;
+          background: #f8fafc;
           color: #0f172a;
+        }
+        .bp-tab-pill.active {
+          background: #eff6ff;
+          color: #1d4ed8;
           font-weight: 600;
-          border-color: #e2e8f0;
-          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+          border-color: #93c5fd;
+          box-shadow: 0 1px 2px rgba(37, 99, 235, 0.08);
         }
         .bp-tab-pill-count {
           font-size: 0.75rem;
@@ -859,7 +865,7 @@ export default function PoliciesView({
           gap: 6px;
           padding: 8px 14px;
           background: #ffffff;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
           border-radius: 9px;
           color: #334155;
           font-size: 0.8125rem;
@@ -870,7 +876,7 @@ export default function PoliciesView({
         }
         .bp-refresh-btn:hover:not(:disabled) {
           background: #f8fafc;
-          border-color: #cbd5e1;
+          border-color: #94a3b8;
           color: #0f172a;
         }
         .bp-refresh-btn:disabled {
@@ -879,7 +885,7 @@ export default function PoliciesView({
         }
         .bp-toolbar-card {
           background: #ffffff;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
           border-radius: 12px;
           padding: 10px 18px;
           display: flex;
@@ -930,7 +936,7 @@ export default function PoliciesView({
           height: 36px;
           padding: 0 12px 0 32px;
           border-radius: 8px;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
           background: #ffffff;
           font-size: 0.8125rem;
           color: #0f172a;
@@ -938,15 +944,18 @@ export default function PoliciesView({
           transition: all 0.15s ease;
           box-sizing: border-box;
         }
+        .bp-search-input:hover {
+          border-color: #94a3b8;
+        }
         .bp-search-input:focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+          border-color: #2563eb;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
         }
         .bp-filter-select {
           height: 36px;
           padding: 0 12px;
           border-radius: 8px;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
           background: #ffffff;
           font-size: 0.8125rem;
           color: #334155;
@@ -954,14 +963,17 @@ export default function PoliciesView({
           cursor: pointer;
           transition: all 0.15s ease;
         }
+        .bp-filter-select:hover {
+          border-color: #94a3b8;
+        }
         .bp-filter-select:focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+          border-color: #2563eb;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
         }
         .bp-table-card {
           background: #ffffff;
-          border: 1px solid #e2e8f0;
-          border-radius: 14px;
+          border: 1px solid #cbd5e1;
+          border-radius: 12px;
           overflow: hidden;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
@@ -975,14 +987,14 @@ export default function PoliciesView({
           table-layout: fixed;
         }
         .bp-table thead {
-          background: #f8fafc;
-          border-bottom: 1px solid #e2e8f0;
+          background: #f1f5f9;
+          border-bottom: 1px solid #cbd5e1;
         }
         .bp-table th {
           padding: 13px 18px;
           font-size: 0.75rem;
-          font-weight: 600;
-          color: #64748b;
+          font-weight: 700;
+          color: #334155;
           text-transform: uppercase;
           letter-spacing: 0.04em;
           white-space: nowrap;
@@ -995,12 +1007,12 @@ export default function PoliciesView({
           text-align: left;
         }
         .bp-table tbody tr {
-          border-bottom: 1px solid #f1f5f9;
+          border-bottom: 1px solid #e2e8f0;
           transition: background-color 0.15s ease;
           height: 56px;
         }
         .bp-table tbody tr:hover {
-          background-color: #f8fafc;
+          background-color: rgba(239, 246, 255, 0.5);
         }
         .bp-table tbody tr:last-child {
           border-bottom: none;
@@ -1072,7 +1084,7 @@ export default function PoliciesView({
         .bp-cat-default {
           background: #f1f5f9;
           color: #475569;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
         }
         .bp-status-badge {
           display: inline-flex;
@@ -1093,7 +1105,7 @@ export default function PoliciesView({
         .bp-status-inactive {
           background: #f8fafc;
           color: #64748b;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
         }
         .bp-status-dot {
           width: 6px;
@@ -1117,7 +1129,7 @@ export default function PoliciesView({
           width: 32px;
           height: 32px;
           border-radius: 8px;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
           background: #ffffff;
           display: flex;
           align-items: center;
@@ -1126,6 +1138,9 @@ export default function PoliciesView({
           transition: all 0.15s ease;
           color: #64748b;
           box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+        }
+        .bp-action-btn:hover {
+          border-color: #94a3b8;
         }
         .bp-btn-view:hover {
           background: #eff6ff;
@@ -1144,7 +1159,7 @@ export default function PoliciesView({
         }
         .bp-footer {
           padding: 12px 20px;
-          border-top: 1px solid #e2e8f0;
+          border-top: 1px solid #cbd5e1;
           background: #ffffff;
           display: flex;
           align-items: center;
@@ -1169,7 +1184,7 @@ export default function PoliciesView({
           height: 32px;
           padding: 0 10px;
           border-radius: 7px;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
           background: #ffffff;
           font-size: 0.75rem;
           font-weight: 500;
@@ -1179,7 +1194,7 @@ export default function PoliciesView({
         }
         .bp-page-btn:hover:not(:disabled) {
           background: #f8fafc;
-          border-color: #cbd5e1;
+          border-color: #94a3b8;
           color: #0f172a;
         }
         .bp-page-btn:disabled {

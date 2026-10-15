@@ -320,19 +320,31 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
   };
 
   return (
-    <div className="mc-container">
+    <div className="w-full min-h-full bg-slate-50 flex-1 overflow-y-auto">
       <style>{`
         .mc-container {
           width: 100%;
           min-height: 100%;
           background: #f8fafc;
-          padding: 24px 32px 64px;
+          padding: 0;
           box-sizing: border-box;
           font-family: inherit;
         }
         .mc-wrapper {
-          max-width: 1160px;
+          max-width: 80rem;
           margin: 0 auto;
+          padding: 2rem 1rem;
+          box-sizing: border-box;
+        }
+        @media (min-width: 640px) {
+          .mc-wrapper {
+            padding: 2rem 1.5rem;
+          }
+        }
+        @media (min-width: 1024px) {
+          .mc-wrapper {
+            padding: 2rem;
+          }
         }
         .mc-page-header {
           display: flex;
@@ -400,11 +412,17 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
         }
         .mc-card {
           background: #ffffff;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
           border-radius: 16px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
           overflow: hidden;
           margin-bottom: 24px;
+          transition: all 0.2s ease;
+        }
+        .mc-card:hover {
+          border-color: #3b82f6;
+          box-shadow: 0 4px 14px -2px rgba(59, 130, 246, 0.12), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+          transform: translateY(-2px);
         }
         .mc-card-header {
           padding: 16px 22px;
@@ -439,26 +457,22 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
         }
         .mc-metrics-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
           gap: 16px;
           padding: 20px 24px;
         }
-        @media (max-width: 768px) {
-          .mc-metrics-grid {
-            grid-template-columns: 1fr;
-          }
-        }
         .mc-metric-card {
           background: #f8fafc;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
           border-radius: 12px;
           padding: 15px 18px;
-          transition: all 0.15s ease;
+          transition: all 0.2s ease;
         }
         .mc-metric-card:hover {
           background: #ffffff;
-          border-color: #cbd5e1;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+          border-color: #3b82f6;
+          box-shadow: 0 4px 10px rgba(59, 130, 246, 0.08);
+          transform: translateY(-1px);
         }
         .mc-metric-label {
           font-size: 0.6875rem;
@@ -487,15 +501,18 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
         .mc-active-engine-card {
           position: relative;
           background: #ffffff;
-          border: 1.5px solid #c7d2fe;
+          border: 1.5px solid #cbd5e1;
           border-radius: 16px;
           padding: 24px 26px;
-          box-shadow: 0 4px 20px -2px rgba(99, 102, 241, 0.09), 0 1px 3px rgba(0, 0, 0, 0.04);
+          box-shadow: 0 4px 14px -2px rgba(59, 130, 246, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
           display: flex;
           flex-direction: column;
           gap: 16px;
-          margin-top: 14px;
           overflow: hidden;
+          transition: all 0.2s ease;
+        }
+        .mc-active-engine-card:hover {
+          border-color: #3b82f6;
         }
         .mc-active-engine-card::before {
           content: "";
@@ -535,7 +552,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
           font-weight: 600;
           color: #475569;
           background: #f1f5f9;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
           padding: 3px 10px;
           border-radius: 8px;
         }
@@ -575,12 +592,12 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
           font-size: 0.8125rem;
           font-weight: 600;
           cursor: pointer;
-          transition: all 0.15s ease;
+          transition: all 0.2s ease;
           box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
         }
         .mc-change-engine-btn:hover {
           background: #f5f3ff;
-          border-color: #a5b4fc;
+          border-color: #3b82f6;
           color: #4338ca;
         }
 
@@ -599,11 +616,16 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
           gap: 6px;
           padding: 4px 10px;
           background: #f8fafc;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
           border-radius: 8px;
           font-size: 0.75rem;
           color: #334155;
           font-weight: 500;
+          transition: all 0.2s ease;
+        }
+        .mc-info-chip:hover {
+          border-color: #3b82f6;
+          background: #ffffff;
         }
         .mc-info-chip strong {
           color: #0f172a;
@@ -630,13 +652,13 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
         /* Alternative Preset Cards Grid */
         .mc-preset-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-          gap: 14px;
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+          gap: 16px;
           margin-top: 14px;
         }
         .mc-preset-card {
           background: #ffffff;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
           border-radius: 14px;
           padding: 18px;
           cursor: pointer;
@@ -647,13 +669,13 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
           position: relative;
         }
         .mc-preset-card:hover {
-          border-color: #818cf8;
-          box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12);
-          transform: translateY(-1px);
+          border-color: #3b82f6;
+          box-shadow: 0 4px 16px rgba(59, 130, 246, 0.12);
+          transform: translateY(-2px);
         }
         .mc-preset-card.active {
-          border: 1.5px solid #6366f1;
-          background: #faf5ff;
+          border: 1.5px solid #2563eb;
+          background: #eff6ff;
         }
 
         /* Slider Controls */
@@ -686,7 +708,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
           width: 100%;
           height: 6px;
           border-radius: 999px;
-          background: #e2e8f0;
+          background: #cbd5e1;
           outline: none;
           cursor: pointer;
           transition: background 0.15s ease;
@@ -697,9 +719,9 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
           width: 18px;
           height: 18px;
           border-radius: 50%;
-          background: #4f46e5;
+          background: #2563eb;
           border: 2px solid #ffffff;
-          box-shadow: 0 2px 6px rgba(79, 70, 229, 0.45);
+          box-shadow: 0 2px 6px rgba(37, 99, 235, 0.45);
           cursor: pointer;
           transition: transform 0.15s ease;
         }
@@ -710,16 +732,16 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
           width: 18px;
           height: 18px;
           border-radius: 50%;
-          background: #4f46e5;
+          background: #2563eb;
           border: 2px solid #ffffff;
-          box-shadow: 0 2px 6px rgba(79, 70, 229, 0.45);
+          box-shadow: 0 2px 6px rgba(37, 99, 235, 0.45);
           cursor: pointer;
         }
         .mc-slider-ticks {
           display: flex;
           justify-content: space-between;
           font-size: 0.6875rem;
-          color: #94a3b8;
+          color: #64748b;
         }
         .mc-input {
           width: 100%;
@@ -728,14 +750,14 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
           font-size: 0.8125rem;
           color: #0f172a;
           background: #ffffff;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
           border-radius: 8px;
           outline: none;
-          transition: all 0.15s ease;
+          transition: all 0.2s ease;
         }
         .mc-input:focus {
-          border-color: #6366f1;
-          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+          border-color: #2563eb;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
         }
       `}</style>
 
@@ -852,43 +874,28 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
         </div>
 
         {/* Module 2: Active Foundation AI Engine Showcase */}
-        <div className="mc-card" style={{ padding: "22px 24px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 10,
-                  background: "#eef2ff",
-                  border: "1px solid #c7d2fe",
-                  color: "#4f46e5",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
+        <div className="mc-card p-6">
+          <div className="border-b border-slate-100 pb-4 mb-6 flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center shrink-0 shadow-2xs">
                 <Cpu className="w-5 h-5" />
               </div>
               <div>
-                <h2 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>
-                  Foundation AI Engine
+                <h2 className="m-0 text-base font-extrabold text-slate-900 tracking-tight">
+                  Active Foundation AI Engine
                 </h2>
-                <p style={{ margin: "2px 0 0 0", fontSize: "0.8125rem", color: "#64748b" }}>
-                  Active reasoning intelligence powering agent evaluations and responses.
+                <p className="m-0 text-xs text-slate-500 mt-0.5">
+                  Currently engaged reasoning intelligence powering customer interactions, underwriting, and calculations.
                 </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowInactiveEngines(!showInactiveEngines)}
-              className="mc-btn-secondary"
-            >
-              <span>{showInactiveEngines ? "Hide Alternative Engines" : `Browse Alternative Engines (${PRESET_MODELS.filter((p) => !isCurrentActive(p.id)).length})`}</span>
-              {showInactiveEngines ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="mc-pill-in-use">
+                <span className="mc-dot-pulse" />
+                <span>Active Runtime</span>
+              </span>
+            </div>
           </div>
 
           {/* Featured Active Engine Card */}
@@ -908,9 +915,9 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
             return (
               <div className="mc-active-engine-card">
                 <div className="mc-active-engine-top">
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="mc-pill-active">
-                      ACTIVE IN PLATFORM
+                      CURRENT DEFAULT
                     </span>
                     <span className="mc-pill-provider">
                       <Sparkle className="w-3 h-3 text-indigo-500" />
@@ -918,34 +925,30 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                     </span>
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span className="mc-pill-in-use">
-                      <span className="mc-dot-pulse" />
-                      <span>In Use</span>
-                    </span>
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setShowInactiveEngines(!showInactiveEngines)}
                       className="mc-change-engine-btn"
                     >
-                      <span>{showInactiveEngines ? "Hide others" : "Change engine"}</span>
+                      <span>{showInactiveEngines ? "Collapse Catalog" : "Browse All Engines"}</span>
                       {showInactiveEngines ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <h3 style={{ margin: "0 0 6px 0", fontSize: "1.25rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.015em" }}>
+                  <h3 className="m-0 mb-1.5 text-lg font-extrabold text-slate-900 tracking-tight">
                     {currentPreset.name}
                   </h3>
-                  <p style={{ margin: 0, fontSize: "0.875rem", color: "#475569", lineHeight: 1.6, maxWidth: "780px" }}>
+                  <p className="m-0 text-xs text-slate-600 leading-relaxed max-w-2xl">
                     {currentPreset.description}
                   </p>
                 </div>
 
                 {/* Structured Metadata Chips Bar */}
                 <div className="mc-chips-bar">
-                  <div className="mc-info-chip" style={{ fontFamily: "ui-monospace, monospace" }}>
+                  <div className="mc-info-chip font-mono text-xs">
                     <Code className="w-3.5 h-3.5 text-indigo-600" />
                     <span>Slug: <strong>{effectiveSlug}</strong></span>
                     <button
@@ -977,76 +980,125 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
               </div>
             );
           })()}
+        </div>
 
-          {/* Collapsible Grid of Inactive Preset Engines */}
-          {showInactiveEngines && (
-            <div style={{ marginTop: "20px", paddingTop: "18px", borderTop: "1px solid #f1f5f9" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", fontSize: "0.8125rem", fontWeight: 700, color: "#334155" }}>
-                <span>Alternative Available Engines</span>
-                <span style={{ fontSize: "0.75rem", color: "#94a3b8", fontWeight: 500 }}>Click any card to select &amp; configure</span>
+        {/* Module 3: Foundation Engine Catalog & Model Selectors */}
+        <div className="mc-card p-6">
+          <div className="border-b border-slate-100 pb-4 mb-6 flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
+                <Bot className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="m-0 text-base font-extrabold text-slate-900 tracking-tight">
+                  Foundation Engine Catalog
+                </h2>
+                <p className="m-0 text-xs text-slate-500 mt-0.5">
+                  Select and switch between high-throughput financial reasoning engines and custom LLMs.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowInactiveEngines(!showInactiveEngines)}
+              className="mc-btn-secondary"
+            >
+              <span>{showInactiveEngines ? "Hide Catalog" : `View All Engines (${PRESET_MODELS.length})`}</span>
+              {showInactiveEngines ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+
+          {showInactiveEngines ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                <span>Available Foundation Models</span>
+                <span className="text-[11px] text-slate-400 font-normal">Click any card to select as active engine</span>
               </div>
               <div className="mc-preset-grid">
-                {PRESET_MODELS.filter((p) => !isCurrentActive(p.id)).map((preset) => (
-                  <div
-                    key={preset.id}
-                    onClick={() => {
-                      setActiveModelId(preset.id);
-                      if (preset.id !== "custom") {
-                        setTemperature(preset.defaultTemp);
-                        setMaxTokens(preset.defaultTokens);
-                      }
-                    }}
-                    className="mc-preset-card"
-                  >
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "10px" }}>
-                        <span style={{ fontSize: "0.6875rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", background: "#f1f5f9", color: "#475569", padding: "3px 8px", borderRadius: "6px" }}>
-                          {preset.provider}
-                        </span>
-                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                          {preset.recommended && (
-                            <span style={{ fontSize: "0.6875rem", fontWeight: 700, background: "#fef3c7", color: "#92400e", padding: "2px 8px", borderRadius: "9999px" }}>
-                              Recommended
-                            </span>
-                          )}
-                          {preset.isFree && (
-                            <span style={{ fontSize: "0.6875rem", fontWeight: 700, background: "#d1fae5", color: "#065f46", padding: "2px 8px", borderRadius: "9999px" }}>
-                              Free Tier
-                            </span>
-                          )}
+                {PRESET_MODELS.map((preset) => {
+                  const isSelected = isCurrentActive(preset.id);
+                  return (
+                    <div
+                      key={preset.id}
+                      onClick={() => {
+                        setActiveModelId(preset.id);
+                        if (preset.id !== "custom") {
+                          setTemperature(preset.defaultTemp);
+                          setMaxTokens(preset.defaultTokens);
+                        }
+                      }}
+                      className={`mc-preset-card ${isSelected ? "active" : ""}`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+                            {preset.provider}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {isSelected && (
+                              <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full border border-blue-200">
+                                Current Active
+                              </span>
+                            )}
+                            {preset.recommended && (
+                              <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">
+                                Recommended
+                              </span>
+                            )}
+                            {preset.isFree && (
+                              <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                                Free Tier
+                              </span>
+                            )}
+                          </div>
                         </div>
+
+                        <h4 className="m-0 mb-1.5 text-sm font-bold text-slate-900">
+                          {preset.name}
+                        </h4>
+                        <p className="m-0 text-xs text-slate-500 leading-relaxed">
+                          {preset.description}
+                        </p>
                       </div>
 
-                      <h4 style={{ margin: "0 0 6px 0", fontSize: "0.9375rem", fontWeight: 700, color: "#0f172a" }}>
-                        {preset.name}
-                      </h4>
-                      <p style={{ margin: 0, fontSize: "0.75rem", color: "#64748b", lineHeight: 1.5 }}>
-                        {preset.description}
-                      </p>
+                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                        <span className="font-mono text-slate-400 text-[11px]">
+                          T: {preset.defaultTemp} • {preset.defaultTokens} tok
+                        </span>
+                        <button
+                          type="button"
+                          className={isSelected ? "mc-btn-primary" : "mc-btn-secondary"}
+                          style={{ padding: "4px 10px", fontSize: "0.75rem" }}
+                        >
+                          <span>{isSelected ? "Active" : "Select"}</span>
+                          {!isSelected && <ArrowRight className="w-3 h-3" />}
+                        </button>
+                      </div>
                     </div>
-
-                    <div style={{ marginTop: "16px", paddingTop: "12px", borderTop: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "0.75rem" }}>
-                      <span style={{ fontFamily: "ui-monospace, monospace", color: "#94a3b8" }}>
-                        T: {preset.defaultTemp} • {preset.defaultTokens} tok
-                      </span>
-                      <button
-                        type="button"
-                        className="mc-btn-secondary"
-                        style={{ padding: "5px 12px", fontSize: "0.75rem", color: "#4f46e5" }}
-                      >
-                        <span>Select</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+            </div>
+          ) : (
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
+              <div className="text-xs text-slate-600">
+                Currently running <strong>{activeModelId}</strong>. Open the catalog to switch between NVIDIA Nemotron, DeepSeek V3, Gemini Flash, Claude 3.5, or a Custom Slug.
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInactiveEngines(true)}
+                className="mc-btn-secondary text-xs"
+              >
+                <span>Browse Catalog</span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
             </div>
           )}
 
           {activeModelId === "custom" && (
-            <div style={{ marginTop: "16px", padding: "18px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #cbd5e1" }}>
-              <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 700, color: "#1e293b", marginBottom: "6px" }}>
+            <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-300 space-y-2">
+              <label className="block text-xs font-bold text-slate-800">
                 Enter Custom Model Identifier (OpenRouter Slug)
               </label>
               <input
@@ -1054,99 +1106,127 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                 placeholder="e.g. meta-llama/llama-3.3-70b-instruct or mistralai/mistral-large"
                 value={customModelSlug}
                 onChange={(e) => setCustomModelSlug(e.target.value)}
-                className="mc-input"
-                style={{ fontFamily: "ui-monospace, monospace" }}
+                className="mc-input font-mono"
               />
-              <p style={{ margin: "6px 0 0 0", fontSize: "0.75rem", color: "#64748b" }}>
+              <p className="m-0 text-[11px] text-slate-500">
                 You can specify any valid model identifier available on OpenRouter.
               </p>
             </div>
           )}
         </div>
 
-        {/* Module 3: Generation Parameters & API Key Management */}
-        <div className="mc-card">
-          <div className="mc-card-header">
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <Sliders className="w-4 h-4 text-indigo-600" />
-              <h2 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 700, color: "#0f172a" }}>
-                Parameters &amp; API Key Management
-              </h2>
+        {/* Module 4: Provider API Key & Credentials Management */}
+        <div className="mc-card p-6">
+          <div className="border-b border-slate-100 pb-4 mb-6 flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
+                <Key className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="m-0 text-base font-extrabold text-slate-900 tracking-tight">
+                  Provider API Credentials
+                </h2>
+                <p className="m-0 text-xs text-slate-500 mt-0.5">
+                  Manage secret credentials for OpenRouter, OpenAI, and DeepSeek gateway proxies.
+                </p>
+              </div>
             </div>
-            <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
-              Global runtime environment variables
+
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+              {hasConfiguredKey ? "Key Configured & Active" : "No Key Set"}
             </span>
           </div>
 
-          <div style={{ padding: "22px 24px", display: "flex", flexDirection: "column", gap: "22px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-              {/* API Key */}
-              <div className="mc-slider-wrap">
-                <div className="mc-slider-header">
-                  <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Key className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>OpenRouter / Provider API Key</span>
-                  </span>
-                  <span style={{ fontSize: "0.6875rem", color: "#94a3b8" }}>
-                    Leave blank to retain active key
-                  </span>
-                </div>
-                <div style={{ position: "relative" }}>
-                  <input
-                    type={showApiKey ? "text" : "password"}
-                    placeholder={hasConfiguredKey ? "sk-or-v1-••••••••••••••••••••••••••••••••••••••••" : "Enter API key"}
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    className="mc-input"
-                    style={{ paddingRight: "40px", fontFamily: "ui-monospace, monospace" }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    style={{
-                      position: "absolute",
-                      right: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: "#94a3b8",
-                      padding: 0,
-                    }}
-                  >
-                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
+          <div className="space-y-4">
+            <div className="mc-slider-wrap">
+              <div className="mc-slider-header">
+                <span className="flex items-center gap-1.5 font-bold text-slate-800">
+                  <Key className="w-4 h-4 text-amber-600" />
+                  <span>OpenRouter / Provider API Key</span>
+                </span>
+                <span className="text-xs text-slate-400">
+                  Leave blank to retain active environment key
+                </span>
               </div>
-
-              {/* Max Output Tokens */}
-              <div className="mc-slider-wrap">
-                <div className="mc-slider-header">
-                  <span>Max Output Tokens</span>
-                  <span className="mc-badge-val">{maxTokens}</span>
-                </div>
+              <div className="relative">
                 <input
-                  type="range"
-                  min="256"
-                  max="4096"
-                  step="128"
-                  value={maxTokens}
-                  onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-                  className="mc-range"
+                  type={showApiKey ? "text" : "password"}
+                  placeholder={hasConfiguredKey ? "sk-or-v1-••••••••••••••••••••••••••••••••••••••••" : "Enter API key"}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="mc-input font-mono pr-10"
                 />
-                <div className="mc-slider-ticks">
-                  <span>256 (Concise)</span>
-                  <span>1024 (Standard)</span>
-                  <span>4096 (Extended Analysis)</span>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                  aria-label={showApiKey ? "Hide key" : "Show key"}
+                >
+                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-500 m-0">
+                Keys are stored securely with PostgreSQL encryption and never transmitted to the client in plain text.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Module 5: Generation & Inference Parameters */}
+        <div className="mc-card p-6">
+          <div className="border-b border-slate-100 pb-4 mb-6 flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
+                <Sliders className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="m-0 text-base font-extrabold text-slate-900 tracking-tight">
+                  Inference &amp; Generation Parameters
+                </h2>
+                <p className="m-0 text-xs text-slate-500 mt-0.5">
+                  Tune model creativity, response bounds, and output determinism for banking policies.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSaveConfig}
+              disabled={isSaving}
+              className="mc-btn-primary"
+            >
+              <Save className="w-4 h-4" />
+              <span>{isSaving ? "Saving Configuration..." : "Save & Apply Parameters"}</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Max Output Tokens */}
+            <div className="mc-slider-wrap bg-slate-50/60 p-4 rounded-xl border border-slate-200">
+              <div className="mc-slider-header">
+                <span className="font-bold text-slate-800">Max Output Tokens</span>
+                <span className="mc-badge-val">{maxTokens}</span>
+              </div>
+              <input
+                type="range"
+                min="256"
+                max="4096"
+                step="128"
+                value={maxTokens}
+                onChange={(e) => setMaxTokens(parseInt(e.target.value))}
+                className="mc-range"
+              />
+              <div className="mc-slider-ticks">
+                <span>256 (Concise)</span>
+                <span>1024 (Standard)</span>
+                <span>4096 (Extended Analysis)</span>
               </div>
             </div>
 
             {/* Temperature */}
-            <div className="mc-slider-wrap">
+            <div className="mc-slider-wrap bg-slate-50/60 p-4 rounded-xl border border-slate-200">
               <div className="mc-slider-header">
-                <span>Temperature (Creativity &amp; Determinism)</span>
+                <span className="font-bold text-slate-800">Temperature (Creativity &amp; Determinism)</span>
                 <span className="mc-badge-val">{temperature}</span>
               </div>
               <input
@@ -1159,23 +1239,10 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                 className="mc-range"
               />
               <div className="mc-slider-ticks">
-                <span>0.0 (Deterministic, Strict Calculations)</span>
-                <span>0.4 (Recommended for Financial Advisory)</span>
-                <span>1.0 (Creative, Brainstorming)</span>
+                <span>0.0 (Deterministic)</span>
+                <span>0.4 (Recommended)</span>
+                <span>1.0 (Creative)</span>
               </div>
-            </div>
-
-            <div style={{ paddingTop: "14px", borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                onClick={handleSaveConfig}
-                disabled={isSaving}
-                className="mc-btn-primary"
-                style={{ background: "#4f46e5", borderColor: "#4338ca", padding: "10px 22px" }}
-              >
-                <Save className="w-4 h-4" />
-                <span>{isSaving ? "Saving Configuration..." : "Save & Apply Configuration"}</span>
-              </button>
             </div>
           </div>
         </div>
@@ -1375,33 +1442,33 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
             </span>
           </div>
 
-          <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px" }}>
-            <div style={{ padding: "14px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8125rem", fontWeight: 700, color: "#0f172a" }}>
+          <div className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="p-4 bg-slate-50 hover:bg-white rounded-xl border border-slate-300 hover:border-blue-500 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 transition-all duration-200">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
                 <Bot className="w-4 h-4 text-blue-600" />
                 <span>AI Agent Studio Playground</span>
               </div>
-              <p style={{ margin: "6px 0 0 0", fontSize: "0.75rem", color: "#64748b", lineHeight: 1.5 }}>
+              <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
                 Executes prompt simulation turns and persona evaluations in real-time.
               </p>
             </div>
 
-            <div style={{ padding: "14px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8125rem", fontWeight: 700, color: "#0f172a" }}>
+            <div className="p-4 bg-slate-50 hover:bg-white rounded-xl border border-slate-300 hover:border-blue-500 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 transition-all duration-200">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
                 <Sparkles className="w-4 h-4 text-purple-600" />
                 <span>Customer AI Assistant (/home)</span>
               </div>
-              <p style={{ margin: "6px 0 0 0", fontSize: "0.75rem", color: "#64748b", lineHeight: 1.5 }}>
+              <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
                 Generates live user chat completions grounded in configured policies.
               </p>
             </div>
 
-            <div style={{ padding: "14px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.8125rem", fontWeight: 700, color: "#0f172a" }}>
+            <div className="p-4 bg-slate-50 hover:bg-white rounded-xl border border-slate-300 hover:border-blue-500 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 transition-all duration-200">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 <span>Multi-Bank Eligibility Engine</span>
               </div>
-              <p style={{ margin: "6px 0 0 0", fontSize: "0.75rem", color: "#64748b", lineHeight: 1.5 }}>
+              <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
                 Evaluates borrower criteria against master bank policies and underwriting cutoffs.
               </p>
             </div>

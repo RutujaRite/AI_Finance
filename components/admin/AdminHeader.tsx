@@ -79,7 +79,7 @@ export default function AdminHeader({
   return (
     <>
       {/* 1. TOP NAVIGATION BAR */}
-      <header className="flex items-center justify-between h-16 px-6 border-b border-slate-200 bg-white text-slate-800 sticky top-0 z-30 font-sans shadow-2xs">
+      <header className="flex items-center justify-between h-16 px-6 border-b border-slate-300 bg-white text-slate-800 sticky top-0 z-30 font-sans shadow-2xs">
         {/* Left: Brand Group */}
         <div className="flex items-center gap-3">
           <Link href="/admin" className="flex items-center gap-3 no-underline group">
@@ -112,7 +112,7 @@ export default function AdminHeader({
             <button
               type="button"
               onClick={() => router.push("/home?section=assistant")}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 rounded-lg transition-all cursor-pointer shadow-2xs"
               title="Return to AI Assistant"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-slate-600" />
@@ -124,7 +124,7 @@ export default function AdminHeader({
           {title && (
             <Link
               href="/admin"
-              className="inline-flex items-center gap-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium no-underline transition-colors"
+              className="inline-flex items-center gap-1.5 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 rounded-lg px-3 py-1.5 text-xs font-medium no-underline transition-all shadow-2xs"
             >
               <LayoutGrid className="w-3.5 h-3.5 text-slate-600" />
               <span className="hidden md:inline">Overview</span>
@@ -136,7 +136,7 @@ export default function AdminHeader({
             type="button"
             onClick={() => router.push("/admin/company-search")}
             title="Company Search"
-            className="h-10 w-10 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 flex items-center justify-center transition-colors cursor-pointer"
+            className="h-10 w-10 rounded-xl text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
           >
             <Search className="w-4 h-4" />
           </button>
@@ -146,7 +146,7 @@ export default function AdminHeader({
             <button
               type="button"
               title="Notifications"
-              className="h-10 w-10 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 flex items-center justify-center transition-colors cursor-pointer"
+              className="h-10 w-10 rounded-xl text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
             >
               <Bell className="w-4 h-4" />
             </button>
@@ -158,7 +158,7 @@ export default function AdminHeader({
             <button
               type="button"
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="h-10 rounded-xl flex items-center gap-2.5 px-2.5 text-slate-700 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
+              className="h-10 rounded-xl flex items-center gap-2.5 px-2.5 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 transition-all cursor-pointer shadow-2xs"
               aria-label="User profile menu"
             >
               {/* Circular Avatar */}
@@ -185,8 +185,8 @@ export default function AdminHeader({
 
             {/* Dropdown Menu */}
             {profileDropdownOpen && (
-              <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-xl border border-slate-200 shadow-xl py-1.5 z-50 text-xs font-sans animate-fade-in">
-                <div className="px-4 py-3 border-b border-slate-100">
+              <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-xl border border-slate-300 shadow-xl py-1.5 z-50 text-xs font-sans animate-fade-in">
+                <div className="px-4 py-3 border-b border-slate-200">
                   <div className="font-semibold text-slate-900 text-sm">
                     {userName}
                   </div>
@@ -237,7 +237,7 @@ export default function AdminHeader({
                   </Link>
                 </div>
 
-                <div className="border-t border-slate-100 pt-1">
+                <div className="border-t border-slate-200 pt-1">
                   <button
                     type="button"
                     onClick={handleLogout}
@@ -255,7 +255,7 @@ export default function AdminHeader({
 
       {/* 2. BREADCRUMBS & PAGE HEADER SECTION (Optional / Sub-pages) */}
       {showBreadcrumbs && (title || breadcrumbs.length > 0) && (
-        <section className="bg-white border-b border-slate-200 px-6 sm:px-8 py-4 sm:py-5 font-sans shadow-2xs">
+        <section className="bg-white border-b border-slate-300 px-6 sm:px-8 py-4 sm:py-5 font-sans shadow-xs">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="min-w-0 flex-1">
               {/* Breadcrumb Navigation */}
@@ -309,7 +309,7 @@ export default function AdminHeader({
               <button
                 type="button"
                 onClick={() => router.push("/admin")}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 shadow-2xs rounded-lg transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 shadow-2xs rounded-lg transition-all cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
                 <span>Back to Overview</span>

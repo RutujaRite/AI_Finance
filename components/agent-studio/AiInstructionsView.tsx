@@ -738,10 +738,10 @@ export default function AiInstructionsView({
 
 
   return (
-    <div className="flex-1 bg-[#F5F9FF] h-full overflow-y-auto ai-scroll-pane p-3.5 sm:p-6 md:p-8">
-      <div className="ai-main-layout w-full max-w-7xl mx-auto space-y-4">
+    <div className="w-full min-h-full bg-slate-50 flex-1 overflow-y-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* 1. PAGE HEADER BANNER (GRADIENT CARD WITH AI MASCOT ILLUSTRATION) */}
-        <div className="ai-header-banner relative overflow-hidden flex items-center justify-between bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-white border border-blue-200/80 rounded-xl p-5">
+        <div className="ai-header-banner relative overflow-hidden flex items-center justify-between bg-white border border-slate-300 rounded-2xl p-5 sm:p-6 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md">
           <div className="flex items-center gap-3 sm:gap-4 relative z-10">
             {/* AI Chip Icon Badge */}
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[11px] bg-[#1677FF] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/25">
@@ -817,7 +817,7 @@ export default function AiInstructionsView({
         </div>
 
         {/* 2. AGENT CONTROL TOOLBAR (HORIZONTAL WHITE CARD) */}
-        <div className="ai-card bg-white border border-slate-200 shadow-xs rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="ai-card bg-white border border-slate-300 shadow-xs rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 transition-all duration-200 hover:border-blue-500">
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Agent Selector Dropdown Button (Professional UI, 38px) */}
             <div className="relative" ref={agentDropdownRef}>
@@ -948,7 +948,7 @@ export default function AiInstructionsView({
         </div>
 
         {/* 3. AGENT IDENTITY & PERSONA (FULL WIDTH WHITE CARD WITH LIGHT COLOR SHADOW) */}
-        <div className="ai-card bg-white border border-slate-200 shadow-xs rounded-xl p-6 transition-all">
+        <div className="ai-card bg-white border border-slate-300 shadow-xs rounded-2xl p-6 transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
           <div className="flex items-center justify-between pb-4">
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-[12px] bg-[#EAF2FF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
@@ -1030,7 +1030,7 @@ export default function AiInstructionsView({
         </div>
 
         {/* 4. INSTRUCTIONS FOR THE AI AGENT (FULL WIDTH WHITE CARD DIRECTLY BELOW PERSONA) */}
-        <div className="ai-card bg-white border border-slate-200 shadow-xs rounded-xl p-6">
+        <div className="ai-card bg-white border border-slate-300 shadow-xs rounded-2xl p-6 transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
           <div className="flex items-center justify-between pb-3.5 border-b border-[#DCE8F8]">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-[10px] bg-[#E6EEFF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
@@ -1100,9 +1100,9 @@ export default function AiInstructionsView({
         </div>
 
         {/* 3. KNOWLEDGE BASE UPLOAD & SOURCES (50/50 SIDE-BY-SIDE EQUAL-HEIGHT GRID) */}
-        <div className="ai-upload-grid">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left: Drag-and-Drop Upload Area */}
-          <div className="ai-card flex flex-col justify-between rounded-[14px] border border-[#DCE8F8] bg-white p-5 md:p-6 shadow-[0_2px_10px_rgba(30,80,150,0.03)]">
+          <div className="ai-card flex flex-col justify-between rounded-2xl border border-slate-300 bg-white p-5 md:p-6 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
             <div>
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-[10px] bg-[#E1EFFF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
@@ -1151,7 +1151,7 @@ export default function AiInstructionsView({
           </div>
 
           {/* Right: Add from existing sources */}
-          <div className="ai-card flex flex-col justify-between rounded-[14px] border border-[#DCE8F8] bg-white p-5 md:p-6 shadow-[0_2px_10px_rgba(30,80,150,0.03)]">
+          <div className="ai-card flex flex-col justify-between rounded-2xl border border-slate-300 bg-white p-5 md:p-6 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
             <div>
               <div className="mb-3.5">
                 <h3 className="font-bold text-[#12336B] text-base tracking-tight">
@@ -1237,7 +1237,7 @@ export default function AiInstructionsView({
         </div>
 
         {/* 5. UPLOADED KNOWLEDGE BASE FILES */}
-        <div className="ai-card p-0 overflow-hidden rounded-[14px] border border-[#DCE8F8] bg-white shadow-[0_2px_10px_rgba(30,80,150,0.03)]">
+        <div className="ai-card p-0 overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md">
           {/* Table Header Controls */}
           <div className="p-4 sm:p-5 border-b border-[#DCE8F8] flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-white">
             <div className="flex items-center gap-3">

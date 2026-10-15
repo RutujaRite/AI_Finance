@@ -220,8 +220,8 @@ export default function KnowledgeBaseView({
   }
 
   return (
-    <div className="flex-1 bg-[#F8FAFC] min-h-screen p-3.5 sm:p-6 md:p-8 overflow-y-auto">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="w-full min-h-full bg-slate-50 flex-1 overflow-y-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Top Navigation Bar: Back to AI Agent Studio */}
         <div className="flex items-center justify-between pb-1">
           <button
@@ -370,7 +370,7 @@ export default function KnowledgeBaseView({
         </div>
 
         {/* Knowledge Scope & Grounding Behavior Card */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-white rounded-2xl border border-slate-300 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
               <Globe className="w-4 h-4" />
@@ -400,15 +400,7 @@ export default function KnowledgeBaseView({
         </div>
 
         {/* Uploaded Knowledge Base Table - Full Width (AI Model Blue Ribbon Style) */}
-        <div
-          style={{
-            background: "#ffffff",
-            borderRadius: "16px",
-            border: "1px solid #bfdbfe",
-            boxShadow: "0 4px 20px -2px rgba(59, 130, 246, 0.08)",
-            overflow: "hidden",
-          }}
-        >
+        <div className="bg-white rounded-2xl border border-slate-300 shadow-xs overflow-hidden transition-all duration-200 hover:border-blue-500 hover:shadow-md">
           {/* Header ribbon */}
           <div
             style={{

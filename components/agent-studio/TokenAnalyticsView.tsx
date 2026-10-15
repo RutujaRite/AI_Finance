@@ -174,17 +174,17 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
   const isAlertThresholdReached = summary.budgetUsedPercent >= summary.alertThresholdPercent;
 
   return (
-    <div className="flex-1 bg-[#F8FAFC] min-h-screen p-6 md:p-8 overflow-y-auto">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="w-full flex-1 bg-slate-50 min-h-full overflow-y-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* CallNow Style Page Header */}
         <div className="cn-page-header">
           <div className="flex items-center gap-3">
-            <div className="cn-metric-card-icon purple w-10 h-10 rounded-xl shadow-xs">
-              <Activity className="w-5 h-5 text-purple-600" />
+            <div className="w-11 h-11 rounded-2xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 shadow-xs shrink-0">
+              <Activity className="w-6 h-6 text-purple-600" />
             </div>
             <div>
-              <h1 className="cn-page-header-title">AI Token Usage &amp; Analytics</h1>
-              <p className="cn-page-header-subtitle">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">AI Token Usage &amp; Analytics</h1>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">
                 Real-time tracking of LLM token consumption, prompt vs completion breakdowns, and budget limits.
               </p>
             </div>
@@ -193,7 +193,7 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
           <div className="cn-page-header-actions">
             <button
               onClick={() => setIsBudgetModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 shadow-xs transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 hover:border-slate-400 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 shadow-2xs transition-all cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5 text-slate-500" />
               <span>Configure Budget</span>
@@ -202,7 +202,7 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
             <button
               onClick={handleClearLogs}
               disabled={isClearing || recentLogs.length === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-red-200 rounded-lg text-xs font-semibold text-red-600 bg-white hover:bg-red-50 shadow-xs transition cursor-pointer disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-rose-300 hover:border-rose-400 rounded-lg text-xs font-semibold text-rose-600 bg-white hover:bg-rose-50 shadow-2xs transition-all cursor-pointer disabled:opacity-40"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Clear History</span>
@@ -211,7 +211,7 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
             <button
               onClick={fetchTokenData}
               disabled={refreshing}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs hover:shadow-md transition-all cursor-pointer disabled:opacity-50"
             >
               <RotateCcw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
               <span>Refresh</span>
@@ -221,46 +221,45 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
 
         {/* Alert Banner if Near/Over Budget */}
         {isAlertThresholdReached && (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-amber-900 text-xs">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-3 text-amber-900 text-xs shadow-xs">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <strong className="font-semibold">Token Usage Alert:</strong> You have consumed{" "}
+              <strong className="font-bold">Token Usage Alert:</strong> You have consumed{" "}
               {summary.budgetUsedPercent}% of your monthly token budget ({summary.totalTokens.toLocaleString()} /{" "}
               {summary.budgetTokens.toLocaleString()} tokens). Consider adjusting your budget threshold or optimizing prompt sizes.
             </div>
           </div>
         )}
 
-        {/* CallNow 4-Card KPI Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Responsive 4-Card KPI Grid (1 col -> 2 col -> 4 col) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Total Tokens */}
-          <div className="cn-metric-card">
-            <div className="cn-metric-card-icon purple">
+          <div className="bg-white border border-slate-300 rounded-2xl p-5 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 shrink-0">
               <Zap className="w-5 h-5" />
             </div>
-            <div className="cn-metric-card-body">
-              <div className="cn-metric-card-label">Total Tokens</div>
-              <div className="cn-metric-card-value">
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Tokens</div>
+              <div className="text-2xl font-extrabold text-slate-900 tabular-nums tracking-tight">
                 {summary.totalTokens.toLocaleString()}
               </div>
-              <div className="cn-metric-card-trend up">
-                <span className="font-bold">{summary.totalCalls}</span>
-                <span>calls executed</span>
+              <div className="inline-flex items-center gap-1.5 text-xs text-purple-700 font-semibold mt-1">
+                <span>{summary.totalCalls} calls executed</span>
               </div>
             </div>
           </div>
 
           {/* Card 2: Prompt Tokens */}
-          <div className="cn-metric-card">
-            <div className="cn-metric-card-icon info">
+          <div className="bg-white border border-slate-300 rounded-2xl p-5 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-600 shrink-0">
               <Layers className="w-5 h-5" />
             </div>
-            <div className="cn-metric-card-body">
-              <div className="cn-metric-card-label">Prompt Tokens</div>
-              <div className="cn-metric-card-value">
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Prompt Tokens</div>
+              <div className="text-2xl font-extrabold text-slate-900 tabular-nums tracking-tight">
                 {summary.promptTokens.toLocaleString()}
               </div>
-              <div className="cn-metric-card-trend flat">
+              <div className="inline-flex items-center gap-1 text-xs text-sky-700 font-semibold mt-1">
                 <span>
                   {summary.totalTokens > 0
                     ? `${Math.round((summary.promptTokens / summary.totalTokens) * 100)}% volume`
@@ -271,16 +270,16 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
           </div>
 
           {/* Card 3: Completion Tokens */}
-          <div className="cn-metric-card">
-            <div className="cn-metric-card-icon success">
+          <div className="bg-white border border-slate-300 rounded-2xl p-5 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
               <TrendingUp className="w-5 h-5" />
             </div>
-            <div className="cn-metric-card-body">
-              <div className="cn-metric-card-label">Completion Tokens</div>
-              <div className="cn-metric-card-value">
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Completion Tokens</div>
+              <div className="text-2xl font-extrabold text-slate-900 tabular-nums tracking-tight">
                 {summary.completionTokens.toLocaleString()}
               </div>
-              <div className="cn-metric-card-trend up">
+              <div className="inline-flex items-center gap-1 text-xs text-emerald-700 font-semibold mt-1">
                 <span>
                   {summary.totalTokens > 0
                     ? `${Math.round((summary.completionTokens / summary.totalTokens) * 100)}% volume`
@@ -291,16 +290,18 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
           </div>
 
           {/* Card 4: Monthly Budget Consumption */}
-          <div className="cn-metric-card">
-            <div className={`cn-metric-card-icon ${isAlertThresholdReached ? "warning" : "success"}`}>
+          <div className="bg-white border border-slate-300 rounded-2xl p-5 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-start gap-3.5">
+            <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${
+              isAlertThresholdReached ? "bg-amber-50 border-amber-200 text-amber-600" : "bg-emerald-50 border-emerald-200 text-emerald-600"
+            }`}>
               <ShieldAlert className="w-5 h-5" />
             </div>
-            <div className="cn-metric-card-body">
-              <div className="cn-metric-card-label">Budget Consumed</div>
-              <div className="cn-metric-card-value">
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Budget Consumed</div>
+              <div className="text-2xl font-extrabold text-slate-900 tabular-nums tracking-tight">
                 {summary.budgetUsedPercent}%
               </div>
-              <div className="cn-metric-card-sub">
+              <div className="text-xs text-slate-500 font-medium mt-1 truncate">
                 Limit: {summary.budgetTokens.toLocaleString()}
               </div>
             </div>
@@ -308,15 +309,15 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
         </div>
 
         {/* Budget Progress Bar Card */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-3">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-slate-800">Monthly Token Budget Consumption</span>
-            <span className="text-slate-500 font-medium">
+        <div className="bg-white p-6 rounded-2xl border border-slate-300 shadow-xs space-y-3.5 transition-all duration-200 hover:border-slate-400">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-1.5">
+            <span className="font-bold text-slate-800 text-sm">Monthly Token Budget Consumption</span>
+            <span className="text-slate-600 font-semibold font-mono tabular-nums">
               {summary.totalTokens.toLocaleString()} / {summary.budgetTokens.toLocaleString()} Tokens ({summary.budgetUsedPercent}%)
             </span>
           </div>
 
-          <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+          <div className="w-full h-3.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
             <div
               className={`h-full transition-all duration-500 rounded-full ${
                 summary.budgetUsedPercent >= 90
@@ -329,23 +330,27 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
             />
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-slate-400">
+          <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
             <span>0 tokens</span>
-            <span className="text-amber-600 font-medium">Alert threshold: {summary.alertThresholdPercent}%</span>
+            <span className="text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+              Alert threshold: {summary.alertThresholdPercent}%
+            </span>
             <span>{summary.budgetTokens.toLocaleString()} tokens</span>
           </div>
         </div>
 
         {/* 2-Column Breakdown: By Model & By Agent */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left: Usage by Model */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-purple-600" />
+          <div className="bg-white p-6 rounded-2xl border border-slate-300 shadow-xs space-y-4 transition-all duration-200 hover:border-slate-400">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">
+                  <Zap className="w-4 h-4 text-purple-600" />
+                </div>
                 <h2 className="text-sm font-bold text-slate-900">Usage by AI Model</h2>
               </div>
-              <span className="text-xs text-slate-400">{byModel.length} models used</span>
+              <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">{byModel.length} models used</span>
             </div>
 
             {byModel.length === 0 ? (
@@ -362,11 +367,11 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
                         <span className="font-semibold text-slate-800 truncate max-w-[200px]" title={item.modelName}>
                           {item.modelName}
                         </span>
-                        <span className="text-slate-500 font-mono text-[11px]">
+                        <span className="text-slate-600 font-mono tabular-nums text-[11px]">
                           {item.totalTokens.toLocaleString()} tokens ({item.count} calls • {pct}%)
                         </span>
                       </div>
-                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
                         <div
                           className="h-full bg-purple-500 rounded-full transition-all duration-300"
                           style={{ width: `${Math.min(100, Math.max(4, pct))}%` }}
@@ -380,13 +385,15 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
           </div>
 
           {/* Right: Usage by Agent */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <Bot className="w-4 h-4 text-blue-600" />
+          <div className="bg-white p-6 rounded-2xl border border-slate-300 shadow-xs space-y-4 transition-all duration-200 hover:border-slate-400">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+                  <Bot className="w-4 h-4 text-blue-600" />
+                </div>
                 <h2 className="text-sm font-bold text-slate-900">Usage by AI Agent</h2>
               </div>
-              <span className="text-xs text-slate-400">{byAgent.length} active agents</span>
+              <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">{byAgent.length} active agents</span>
             </div>
 
             {byAgent.length === 0 ? (
@@ -403,11 +410,11 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
                         <span className="font-semibold text-slate-800 truncate max-w-[200px]" title={item.agentName}>
                           {item.agentName}
                         </span>
-                        <span className="text-slate-500 font-mono text-[11px]">
+                        <span className="text-slate-600 font-mono tabular-nums text-[11px]">
                           {item.totalTokens.toLocaleString()} tokens ({item.count} calls • {pct}%)
                         </span>
                       </div>
-                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
                         <div
                           className="h-full bg-blue-600 rounded-full transition-all duration-300"
                           style={{ width: `${Math.min(100, Math.max(4, pct))}%` }}
@@ -422,32 +429,32 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
         </div>
 
         {/* Real-Time Audit Log Table */}
-        <div className="cn-table-wrapper">
+        <div className="bg-white border border-slate-300 rounded-2xl shadow-xs overflow-hidden">
           {/* Table Header & Controls */}
-          <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+          <div className="p-4 sm:p-5 border-b border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-100/70">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Recent Token Activity Log</h2>
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Audit trail of recent LLM execution tokens across chat and studio playground.
               </p>
             </div>
 
             <div className="flex items-center gap-2.5">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="text"
                   placeholder="Filter logs..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 shadow-xs w-40"
+                  className="pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 shadow-2xs hover:border-slate-400 w-44 transition-all"
                 />
               </div>
 
               <select
                 value={sourceFilter}
                 onChange={(e) => setSourceFilter(e.target.value)}
-                className="px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 shadow-xs cursor-pointer text-slate-700"
+                className="px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 shadow-2xs hover:border-slate-400 cursor-pointer text-slate-700 transition-all"
               >
                 <option value="all">All Sources</option>
                 <option value="chat">Main Chat</option>
@@ -457,40 +464,40 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
           </div>
 
           {/* Table Body */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px] tracking-wider">
+          <div className="overflow-x-auto max-h-[480px]">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="sticky top-0 bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase text-[11px] tracking-wider z-10">
                 <tr>
-                  <th className="py-3 px-4">Time</th>
-                  <th className="py-3 px-4">Agent</th>
-                  <th className="py-3 px-4">Source</th>
-                  <th className="py-3 px-4">Model</th>
-                  <th className="py-3 px-4 text-right">Prompt</th>
-                  <th className="py-3 px-4 text-right">Completion</th>
-                  <th className="py-3 px-4 text-right">Total Tokens</th>
+                  <th className="py-3.5 px-4">Time</th>
+                  <th className="py-3.5 px-4">Agent</th>
+                  <th className="py-3.5 px-4">Source</th>
+                  <th className="py-3.5 px-4">Model</th>
+                  <th className="py-3.5 px-4 text-right">Prompt</th>
+                  <th className="py-3.5 px-4 text-right">Completion</th>
+                  <th className="py-3.5 px-4 text-right">Total Tokens</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-200">
                 {filteredLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
+                    <td colSpan={7} className="py-10 text-center text-slate-400 text-xs">
                       No matching token activity logs found.
                     </td>
                   </tr>
                 ) : (
                   filteredLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3 px-4 text-slate-500 whitespace-nowrap text-[11px]">
+                    <tr key={log.id} className="hover:bg-blue-50/50 transition-colors border-b border-slate-200">
+                      <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap text-xs font-mono tabular-nums">
                         {new Date(log.createdAt).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
                           second: "2-digit",
                         })}
                       </td>
-                      <td className="py-3 px-4 font-semibold text-slate-800">
+                      <td className="py-3.5 px-4 font-semibold text-slate-800">
                         {log.agentName}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-4">
                         <span
                           className={`cn-status-pill ${
                             log.source === "playground" ? "purple" : "info"
@@ -500,16 +507,16 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
                           {log.source === "playground" ? "Playground" : "Main Chat"}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-slate-600 font-mono text-[11px] truncate max-w-[180px]" title={log.modelName}>
+                      <td className="py-3.5 px-4 text-slate-600 font-mono text-[11px] truncate max-w-[180px]" title={log.modelName}>
                         {log.modelName}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-600 text-[11px]">
+                      <td className="py-3.5 px-4 text-right font-mono tabular-nums text-slate-600 text-xs">
                         {log.promptTokens.toLocaleString()}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-600 text-[11px]">
+                      <td className="py-3.5 px-4 text-right font-mono tabular-nums text-slate-600 text-xs">
                         {log.completionTokens.toLocaleString()}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 text-[11px]">
+                      <td className="py-3.5 px-4 text-right font-mono tabular-nums font-bold text-slate-900 text-xs">
                         {log.totalTokens.toLocaleString()}
                       </td>
                     </tr>
@@ -523,7 +530,7 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
         {/* Modal for Configuring Budget */}
         {isBudgetModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-5 animate-scaleUp">
+            <div className="bg-white rounded-2xl border border-slate-300 shadow-2xl w-full max-w-md p-6 space-y-5 animate-scaleUp">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">

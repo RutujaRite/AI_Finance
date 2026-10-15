@@ -55,7 +55,7 @@ export default function StudioTopbar({
         )}
         <Link
           href="/admin"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-xs"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 hover:border-slate-400 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-all shadow-2xs"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Dashboard</span>
@@ -91,8 +91,8 @@ export default function StudioTopbar({
         </button>
 
         {dropdownOpen && (
-          <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 z-50 text-sm animate-fadeIn">
-            <div className="px-4 py-2 border-b border-slate-100">
+          <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-300 py-1.5 z-50 text-sm animate-fadeIn">
+            <div className="px-4 py-2 border-b border-slate-200">
               <div className="font-semibold text-slate-900 text-sm">{userName}</div>
               <div className="text-xs text-slate-500 truncate">
                 {user?.email || "rutujarite@gmail.com"}
@@ -131,7 +131,7 @@ export default function StudioTopbar({
                 } catch (e) {}
                 router.push("/?logout=true")
               }}
-              className="w-full flex items-center gap-2.5 px-4 py-2 text-rose-600 hover:bg-rose-50 text-xs font-medium border-t border-slate-100 text-left"
+              className="w-full flex items-center gap-2.5 px-4 py-2 text-rose-600 hover:bg-rose-50 text-xs font-medium border-t border-slate-200 text-left"
             >
               <LogOut className="w-4 h-4 text-rose-500" />
               <span>Sign out</span>
