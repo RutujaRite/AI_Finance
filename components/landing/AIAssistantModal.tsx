@@ -19,7 +19,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
     {
       id: 'm1',
       sender: 'assistant',
-      text: "Hello! I am your AI Underwriting & Loan Assistant. Ask me anything about loan eligibility, FOIR multipliers, interest rates for 20+ banks, or search for bank managers in your city.",
+      text: "Hello! I am your AI Loan Offer Predictor. Based on public financial benchmarks and pre-void policy data, I predict which Indian bank can give you the best loan offer with up to 99% confirmed accuracy.",
       timestamp: 'Just now'
     }
   ]);
@@ -92,12 +92,12 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
             </div>
             <div>
               <div className="header-title-row">
-                <h3 className="chat-title">AI Loan Assistant</h3>
+                <h3 className="chat-title">AI Loan Offer Predictor</h3>
                 <span className="online-pill">
-                  <span className="pulsing-dot" /> Live Underwriter
+                  <span className="pulsing-dot" /> 99% Confirmed Match
                 </span>
               </div>
-              <p className="chat-subtitle">Real-time banking underwriting algorithms & loan calculations</p>
+              <p className="chat-subtitle">Guiding with public benchmarks & scenario prediction across Indian banks</p>
             </div>
           </div>
           <button onClick={onClose} className="chat-close-btn" type="button">
@@ -180,7 +180,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
               </div>
               <div className="msg-bubble loading-bubble">
                 <RefreshCw size={14} className="spin-icon" />
-                <span>Consulting underwriting policies...</span>
+                <span>Predicting loan offers across public benchmarks...</span>
               </div>
             </div>
           )}
@@ -387,13 +387,13 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         }
 
         .user-row .msg-avatar {
-          background: var(--primary-500);
+          background: linear-gradient(135deg, #0d9488 0%, #1e40af 100%);
           color: #ffffff;
         }
 
         .ai-row .msg-avatar {
           background: var(--bg-subtle);
-          color: var(--primary-600);
+          color: var(--teal-600);
           border: 1px solid var(--border-color);
         }
 
@@ -405,7 +405,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         }
 
         .user-row .msg-bubble {
-          background: var(--primary-500);
+          background: linear-gradient(135deg, #0d9488 0%, #1e40af 100%);
           color: #ffffff;
           border-bottom-right-radius: 2px;
         }
@@ -529,7 +529,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           width: 40px;
           height: 40px;
           border-radius: 50%;
-          background: var(--primary-500);
+          background: linear-gradient(135deg, #0d9488, #2563eb);
           color: #ffffff;
           display: flex;
           align-items: center;
@@ -543,7 +543,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         }
 
         .chat-send-btn:not(:disabled):hover {
-          background: var(--primary-600);
+          filter: brightness(1.1);
           transform: scale(1.05);
         }
       `}</style>

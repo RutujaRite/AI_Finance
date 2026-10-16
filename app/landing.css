@@ -9,7 +9,7 @@
   --navy-600: #2563EB;
   --navy-hover: #1D4ED8;
 
-  /* Teal Accents */
+  /* Teal Accents & Brand Primary Colors */
   --teal-50: #f0fdfa;
   --teal-100: #ccfbf1;
   --teal-200: #99f6e4;
@@ -19,6 +19,17 @@
   --teal-700: #0f766e;
   --teal-800: #115e59;
   --teal-glow: rgba(15, 118, 110, 0.28);
+
+  --primary-50: #f0fdfa;
+  --primary-100: #ccfbf1;
+  --primary-200: #99f6e4;
+  --primary-300: #5eead4;
+  --primary-400: #2dd4bf;
+  --primary-500: #0d9488;
+  --primary-600: #0f766e;
+  --primary-700: #115e59;
+  --primary-800: #134e4a;
+  --primary-900: #042f2e;
 
   /* Light Theme Surfaces & Backgrounds */
   --bg-primary: #f8fafc;
@@ -80,6 +91,17 @@
   --text-disabled: #64748b;
   --text-inverted: #0f172a;
 
+  --primary-50: rgba(13, 148, 136, 0.18);
+  --primary-100: rgba(13, 148, 136, 0.28);
+  --primary-200: rgba(20, 184, 166, 0.40);
+  --primary-300: #2dd4bf;
+  --primary-400: #5eead4;
+  --primary-500: #14b8a6;
+  --primary-600: #2dd4bf;
+  --primary-700: #5eead4;
+  --primary-800: #99f6e4;
+  --primary-900: #ccfbf1;
+
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
   --shadow-md: 0 4px 12px -1px rgb(0 0 0 / 0.45);
   --shadow-lg: 0 12px 30px -3px rgb(0 0 0 / 0.55);
@@ -105,6 +127,17 @@ body {
   color: var(--text-primary);
   transition: background-color 0.25s ease, color 0.25s ease;
   -webkit-font-smoothing: antialiased;
+}
+
+/* High-contrast brand selection highlight across landing page */
+::selection {
+  background: #0d9488;
+  color: #ffffff;
+}
+
+::-moz-selection {
+  background: #0d9488;
+  color: #ffffff;
 }
 
 a {
@@ -259,27 +292,6 @@ input[type="range"]::-moz-range-thumb {
 /* ==========================================================================
    LANDING PAGE PROFESSIONAL ANIMATIONS SUITE
    ========================================================================== */
-
-/* 1. Top Reading / Scroll Progress Line */
-.top-scroll-progress-track {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3.5px;
-  background: transparent;
-  z-index: 9999;
-  pointer-events: none;
-}
-
-.top-scroll-progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #0d9488 0%, #2563eb 50%, #8b5cf6 100%);
-  width: 0%;
-  box-shadow: 0 0 12px rgba(37, 99, 235, 0.6);
-  transition: width 0.08s ease-out;
-  border-radius: 0 2px 2px 0;
-}
 
 /* 2. Scroll Reveal Animations */
 .reveal-on-scroll {

@@ -28,10 +28,7 @@ export const EligibilityCalculatorSection: React.FC<EligibilityCalculatorSection
   onOpenRegister,
   onOpenLogin,
 }) => {
-  // Currency unit state: INR by default
-  const [currency, setCurrency] = useState<'USD' | 'INR'>('INR');
-
-  // Core required inputs: Monthly Income & Existing Obligations
+  // Core required inputs: Monthly Income & Existing Obligations (INR for Indian Banks)
   const [monthlyIncome, setMonthlyIncome] = useState<number>(75000);
   const [existingObligations, setExistingObligations] = useState<number>(12000);
   const [interestRate, setInterestRate] = useState<number>(8.5);
@@ -39,13 +36,8 @@ export const EligibilityCalculatorSection: React.FC<EligibilityCalculatorSection
   const [employmentType, setEmploymentType] = useState<'salaried' | 'self-employed'>('salaried');
   const [savedStatus, setSavedStatus] = useState(false);
 
-  const currSymbol = currency === 'USD' ? '$' : '₹';
-  const formatNumber = (num: number) => {
-    if (currency === 'INR') {
-      return num.toLocaleString('en-IN');
-    }
-    return num.toLocaleString('en-US');
-  };
+  const currSymbol = '₹';
+  const formatNumber = (num: number) => num.toLocaleString('en-IN');
 
   // Eligibility Calculation Logic (Banking FOIR Standard)
   const { 
@@ -59,8 +51,8 @@ export const EligibilityCalculatorSection: React.FC<EligibilityCalculatorSection
     const income = monthlyIncome;
     const debts = existingObligations;
     
-    // FOIR tier: standard 50% for normal income, up to 60% for higher income
-    const foirTier = income >= (currency === 'USD' ? 10000 : 150000) ? 0.60 : 0.50;
+    // FOIR tier: standard 50% for normal income, up to 60% for higher income (INR 1.5 Lakh+)
+    const foirTier = income >= 150000 ? 0.60 : 0.50;
     const maxTotalPermissibleEMI = income * foirTier;
     const availableEMI = Math.max(0, maxTotalPermissibleEMI - debts);
 
@@ -106,7 +98,7 @@ export const EligibilityCalculatorSection: React.FC<EligibilityCalculatorSection
       statusColor: colorClass,
       bonusIfCleared: clearedPrincipal
     };
-  }, [monthlyIncome, existingObligations, interestRate, tenureYears, currency]);
+  }, [monthlyIncome, existingObligations, interestRate, tenureYears]);
 
   const handleSaveReport = () => {
     if (!currentUser) {
@@ -124,38 +116,13 @@ export const EligibilityCalculatorSection: React.FC<EligibilityCalculatorSection
         <div className="section-head">
           <div className="section-badge">
             <Sliders size={15} className="text-teal" />
-            <span>Underwriting Intelligence</span>
+            <span>Predictive Loan Intelligence</span>
           </div>
           <h2 className="section-title">Loan Eligibility Calculator</h2>
           <p className="section-subtitle">
-            Find out how much you can borrow based on your monthly income and current obligations according to verified banking FOIR standards.
+            Find out how much you can borrow based on your monthly income and obligations calculated using public banking FOIR benchmarks (99% confirmed match).
           </p>
 
-          {/* Currency Toggle */}
-          <div className="currency-selector">
-            <button 
-              type="button"
-              onClick={() => {
-                setCurrency('USD');
-                if (monthlyIncome > 50000) setMonthlyIncome(7500);
-                if (existingObligations > 10000) setExistingObligations(800);
-              }}
-              className={`currency-pill ${currency === 'USD' ? 'active' : ''}`}
-            >
-              USD ($)
-            </button>
-            <button 
-              type="button"
-              onClick={() => {
-                setCurrency('INR');
-                if (monthlyIncome < 30000) setMonthlyIncome(85000);
-                if (existingObligations < 5000) setExistingObligations(12000);
-              }}
-              className={`currency-pill ${currency === 'INR' ? 'active' : ''}`}
-            >
-              INR (₹)
-            </button>
-          </div>
         </div>
 
         {/* Eligibility Main Box */}
@@ -206,32 +173,20 @@ export const EligibilityCalculatorSection: React.FC<EligibilityCalculatorSection
 
                 <input
                   type="range"
-                  min={currency === 'USD' ? 1000 : 20000}
-                  max={currency === 'USD' ? 40000 : 800000}
-                  step={currency === 'USD' ? 250 : 5000}
+                  min={20000}
+                  max={800000}
+                  step={5000}
                   value={monthlyIncome}
                   onChange={(e) => setMonthlyIncome(Number(e.target.value))}
                   className="teal-range-slider"
                 />
 
                 <div className="preset-chips">
-                  {currency === 'USD' ? (
-                    <>
-                      <button type="button" onClick={() => setMonthlyIncome(3500)} className="preset-chip">$3,500/mo</button>
-                      <button type="button" onClick={() => setMonthlyIncome(5000)} className="preset-chip">$5,000/mo</button>
-                      <button type="button" onClick={() => setMonthlyIncome(7500)} className="preset-chip">$7,500/mo</button>
-                      <button type="button" onClick={() => setMonthlyIncome(12000)} className="preset-chip">$12,000/mo</button>
-                      <button type="button" onClick={() => setMonthlyIncome(20000)} className="preset-chip">$20,000/mo</button>
-                    </>
-                  ) : (
-                    <>
-                      <button type="button" onClick={() => setMonthlyIncome(35000)} className="preset-chip">₹35k/mo</button>
-                      <button type="button" onClick={() => setMonthlyIncome(60000)} className="preset-chip">₹60k/mo</button>
-                      <button type="button" onClick={() => setMonthlyIncome(100000)} className="preset-chip">₹1 Lakh/mo</button>
-                      <button type="button" onClick={() => setMonthlyIncome(175000)} className="preset-chip">₹1.75 Lakh/mo</button>
-                      <button type="button" onClick={() => setMonthlyIncome(300000)} className="preset-chip">₹3 Lakh/mo</button>
-                    </>
-                  )}
+                  <button type="button" onClick={() => setMonthlyIncome(35000)} className={`preset-chip ${monthlyIncome === 35000 ? 'active' : ''}`}>₹35k/mo</button>
+                  <button type="button" onClick={() => setMonthlyIncome(60000)} className={`preset-chip ${monthlyIncome === 60000 ? 'active' : ''}`}>₹60k/mo</button>
+                  <button type="button" onClick={() => setMonthlyIncome(100000)} className={`preset-chip ${monthlyIncome === 100000 ? 'active' : ''}`}>₹1 Lakh/mo</button>
+                  <button type="button" onClick={() => setMonthlyIncome(175000)} className={`preset-chip ${monthlyIncome === 175000 ? 'active' : ''}`}>₹1.75 Lakh/mo</button>
+                  <button type="button" onClick={() => setMonthlyIncome(300000)} className={`preset-chip ${monthlyIncome === 300000 ? 'active' : ''}`}>₹3 Lakh/mo</button>
                 </div>
               </div>
 
@@ -256,8 +211,8 @@ export const EligibilityCalculatorSection: React.FC<EligibilityCalculatorSection
                 <input
                   type="range"
                   min={0}
-                  max={currency === 'USD' ? 15000 : 200000}
-                  step={currency === 'USD' ? 50 : 1000}
+                  max={200000}
+                  step={1000}
                   value={existingObligations}
                   onChange={(e) => setExistingObligations(Number(e.target.value))}
                   className="teal-range-slider"
@@ -314,7 +269,7 @@ export const EligibilityCalculatorSection: React.FC<EligibilityCalculatorSection
                   <span className="scorecard-label">Estimated Eligible Loan Amount</span>
                   <span className="badge-ai-approved">
                     <ShieldCheck size={13} />
-                    <span>Instant Underwriting</span>
+                    <span>99% Confirmed Prediction</span>
                   </span>
                 </div>
 
@@ -539,14 +494,16 @@ export const EligibilityCalculatorSection: React.FC<EligibilityCalculatorSection
 
         .emp-btn.active {
           border-color: var(--teal-600);
-          color: var(--teal-700);
-          background: var(--teal-50);
+          color: #ffffff;
+          background: var(--teal-600);
+          box-shadow: 0 2px 8px rgba(13, 148, 136, 0.3);
         }
 
         :global([data-theme='dark']) .emp-btn.active {
-          background: rgba(13, 148, 136, 0.15);
-          color: var(--teal-300);
-          border-color: var(--teal-400);
+          background: var(--teal-600);
+          color: #ffffff;
+          border-color: var(--teal-500);
+          box-shadow: 0 2px 8px rgba(13, 148, 136, 0.4);
         }
 
         .field-group {
@@ -613,6 +570,13 @@ export const EligibilityCalculatorSection: React.FC<EligibilityCalculatorSection
           border-color: var(--teal-600);
           color: var(--teal-600);
           background: var(--teal-50);
+        }
+
+        .preset-chip.active {
+          background: var(--teal-600);
+          border-color: var(--teal-600);
+          color: #ffffff;
+          box-shadow: 0 2px 6px rgba(13, 148, 136, 0.25);
         }
 
         .range-bounds {

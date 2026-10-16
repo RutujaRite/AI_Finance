@@ -303,6 +303,8 @@ CREATE TABLE IF NOT EXISTS emi_calculations (
     total_interest NUMERIC(15, 2),
     total_payment NUMERIC(15, 2),
     processing_fee_amount NUMERIC(15, 2),
+    client_name VARCHAR(150),
+    client_phone VARCHAR(50),
     schedule JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

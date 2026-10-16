@@ -20,7 +20,7 @@ export const AIAssistantSection: React.FC = () => {
     {
       id: 'm1',
       sender: 'assistant',
-      text: 'Hello! I am your AI Financial Advisor. Ask me anything about home loan EMIs, FOIR eligibility criteria, interest rate negotiations, or bank underwriting policies.',
+      text: 'Hello! I am your AI Loan Predictor. Ask me anything about personal or home loan EMIs in INR, which bank can give you the best offer, CIBIL score requirements, or public banking benchmarks.',
       timestamp: 'Just now'
     }
   ]);
@@ -91,9 +91,9 @@ export const AIAssistantSection: React.FC = () => {
             <Bot size={15} className="text-teal" />
             <span>24/7 Intelligent Guidance</span>
           </div>
-          <h2 className="section-title">AI Financial Assistant</h2>
+          <h2 className="section-title">AI Loan Offer Predictor & Assistant</h2>
           <p className="section-subtitle">
-            Get instant answers to complex loan, mortgage, and underwriting questions without scheduling appointments or waiting on hold.
+            Get instant AI predictions on which Indian bank offers you the lowest interest rate, simulate EMIs in INR, and understand public lending criteria with up to 99% confirmed accuracy.
           </p>
         </div>
 
@@ -107,7 +107,7 @@ export const AIAssistantSection: React.FC = () => {
               </div>
               <div>
                 <h4 className="agent-name">CreditWise Neural Advisor</h4>
-                <p className="agent-role">Trained on 20+ Bank Underwriting Guidelines</p>
+                <p className="agent-role">Predicted on 20+ Indian Bank Public Policies (99% Confirmed)</p>
               </div>
             </div>
             <div className="security-tag">

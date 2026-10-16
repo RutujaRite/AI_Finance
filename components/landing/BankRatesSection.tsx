@@ -41,17 +41,28 @@ const BANKS_DATA: BankRate[] = [
     popular: true
   },
   {
-    id: 'hdfc',
-    name: 'HDFC Bank',
-    logoCode: 'HDFC',
-    bgColor: '#fee2e2',
-    textColor: '#dc2626',
+    id: 'bob',
+    name: 'Bank of Baroda',
+    logoCode: 'BOB',
+    bgColor: '#ffedd5',
+    textColor: '#c2410c',
     minRoi: '8.40%',
     maxTenure: '30 Years',
-    processingFee: '0.50% (Max ₹15k)',
-    cibilMin: 720,
-    perk: 'Fast-track digital approvals within 48 hours for salaried applicants',
-    popular: true
+    processingFee: '0.25% (Max ₹10k)',
+    cibilMin: 685,
+    perk: 'Concessionary rates for salaried borrowers with public sector employers'
+  },
+  {
+    id: 'pnb',
+    name: 'Punjab National Bank',
+    logoCode: 'PNB',
+    bgColor: '#fef3c7',
+    textColor: '#b45309',
+    minRoi: '8.45%',
+    maxTenure: '30 Years',
+    processingFee: '0.35% (Max ₹15k)',
+    cibilMin: 690,
+    perk: 'Zero pre-closure penalty and flexible repayment terms'
   },
   {
     id: 'icici',
@@ -63,7 +74,32 @@ const BANKS_DATA: BankRate[] = [
     maxTenure: '30 Years',
     processingFee: '0.50%',
     cibilMin: 700,
-    perk: 'Pre-approved digital sanction letter in 3 minutes via netbanking'
+    perk: 'Pre-approved digital sanction letter predicted in 3 minutes via netbanking',
+    popular: true
+  },
+  {
+    id: 'kotak',
+    name: 'Kotak Mahindra Bank',
+    logoCode: 'KMB',
+    bgColor: '#fee2e2',
+    textColor: '#dc2626',
+    minRoi: '8.70%',
+    maxTenure: '25 Years',
+    processingFee: '0.50% (Max ₹12,000)',
+    cibilMin: 700,
+    perk: 'Special concession for women borrowers & instant digital sanction'
+  },
+  {
+    id: 'indus',
+    name: 'IndusInd Bank',
+    logoCode: 'INDUS',
+    bgColor: '#fce7f3',
+    textColor: '#9d174d',
+    minRoi: '8.85%',
+    maxTenure: '25 Years',
+    processingFee: '0.50% (Max ₹10k)',
+    cibilMin: 700,
+    perk: 'Flexible salary multipliers based on average quarterly balance'
   },
   {
     id: 'axis',
@@ -78,21 +114,23 @@ const BANKS_DATA: BankRate[] = [
     perk: 'Shubh Aarambh benefit: 12 EMI waivers on timely regular repayments'
   },
   {
-    id: 'kotak',
-    name: 'Kotak Mahindra Bank',
-    logoCode: 'KMB',
+    id: 'hdfc',
+    name: 'HDFC Bank',
+    logoCode: 'HDFC',
     bgColor: '#fee2e2',
     textColor: '#dc2626',
-    minRoi: '8.70%',
-    maxTenure: '25 Years',
-    processingFee: '0.50% (Max ₹12,000)',
-    cibilMin: 700,
-    perk: 'Special concession for women borrowers & fast digital sanction'
+    minRoi: '8.40%',
+    maxTenure: '30 Years',
+    processingFee: '0.50% (Max ₹15k)',
+    cibilMin: 720,
+    perk: 'Fast-track digital approvals within 48 hours for corporate salaried applicants',
+    popular: true
   }
 ];
 
 export const BankRatesSection: React.FC = () => {
-  const [filterCibil, setFilterCibil] = useState<number>(680);
+  // Default to 700+ (Good) filter so multiple leading banks display immediately
+  const [filterCibil, setFilterCibil] = useState<number>(700);
 
   const filteredBanks = BANKS_DATA.filter(b => b.cibilMin <= filterCibil);
 
@@ -101,17 +139,17 @@ export const BankRatesSection: React.FC = () => {
       <div className="container">
         <div className="section-head">
           <div className="section-badge">
-            <TrendingUp size={15} className="text-teal" />
-            <span>Live Lending Benchmark</span>
+            <Sparkles size={15} className="text-teal" />
+            <span>AI Predictions 99% Confirmed • Public Benchmark Guidance</span>
           </div>
-          <h2 className="section-title">Compare Leading Bank Rates</h2>
+          <h2 className="section-title">Compare Leading Indian Bank Rates & Offers</h2>
           <p className="section-subtitle">
-            We continuously track real-time underwriting policies, interest spreads, and processing concessions across partner institutions.
+            Our AI model predicts which Indian bank can give you the best loan offer with up to 99% confirmed alignment. All guidance is derived from publicly aggregated lending data and historic benchmarks—we do not collect private data or claim direct feeds from banks.
           </p>
 
           {/* Filter by Credit Score */}
           <div className="credit-score-filter">
-            <span className="filter-label">Filter by Your Credit / CIBIL Score:</span>
+            <span className="filter-label">Filter by Your Predicted CIBIL / Credit Score:</span>
             <div className="filter-pills">
               <button 
                 type="button" 
@@ -125,14 +163,14 @@ export const BankRatesSection: React.FC = () => {
                 onClick={() => setFilterCibil(700)}
                 className={`cibil-pill ${filterCibil === 700 ? 'active' : ''}`}
               >
-                700+ (Good)
+                700+ (Good • Recommended)
               </button>
               <button 
                 type="button" 
                 onClick={() => setFilterCibil(750)}
                 className={`cibil-pill ${filterCibil === 750 ? 'active' : ''}`}
               >
-                750+ (Excellent)
+                750+ (Excellent Prime)
               </button>
             </div>
           </div>

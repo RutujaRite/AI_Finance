@@ -310,9 +310,10 @@ export const BankManagersModal: React.FC<BankManagersModalProps> = ({
         }
 
         .city-pill.active {
-          background: var(--primary-50);
-          color: var(--primary-600);
-          border-color: var(--primary-500);
+          background: var(--teal-600);
+          color: #ffffff;
+          border-color: var(--teal-600);
+          box-shadow: 0 2px 6px rgba(13, 148, 136, 0.3);
         }
 
         .managers-scroll-area {

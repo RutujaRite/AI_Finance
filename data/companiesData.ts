@@ -288,9 +288,9 @@ export const COMPANIES_DATA: CompanyListing[] = [
   {
     id: 'zomato',
     name: 'Zomato Limited',
-    industry: 'Consumer Tech & Logistics',
+    industry: 'Consumer Tech & Food Delivery',
     category: 'CAT-B',
-    badgeColor: '#f59e0b',
+    badgeColor: '#d97706',
     bankTiers: {
       hdfc: 'CAT-B Listed',
       icici: 'CAT-B',
@@ -305,11 +305,125 @@ export const COMPANIES_DATA: CompanyListing[] = [
     fastTrack: false
   },
   {
+    id: 'swiggy',
+    name: 'Swiggy Limited',
+    industry: 'Quick Commerce & Tech',
+    category: 'CAT-B',
+    badgeColor: '#d97706',
+    bankTiers: {
+      hdfc: 'CAT-B Listed',
+      icici: 'CAT-B Platinum',
+      sbi: 'Tier-2 Tech',
+      axis: 'CAT-B',
+      kotak: 'CAT-B Tech'
+    },
+    maxMultiplier: '22x Monthly Net',
+    roiDiscount: 'Standard (8.55% p.a.)',
+    maxFoir: 'Up to 60% FOIR',
+    processingFee: 'Standard 0.50%',
+    fastTrack: false
+  },
+  {
+    id: 'paytm',
+    name: 'Paytm (One97 Communications)',
+    industry: 'FinTech & Digital Payments',
+    category: 'CAT-B',
+    badgeColor: '#d97706',
+    bankTiers: {
+      hdfc: 'CAT-B Listed',
+      icici: 'CAT-B',
+      sbi: 'Tier-2 FinTech',
+      axis: 'CAT-B',
+      kotak: 'CAT-B Corp'
+    },
+    maxMultiplier: '20x Monthly Net',
+    roiDiscount: 'Standard (8.65% p.a.)',
+    maxFoir: 'Up to 58% FOIR',
+    processingFee: 'Standard 0.50%',
+    fastTrack: false
+  },
+  {
+    id: 'delhivery',
+    name: 'Delhivery Supply Chain',
+    industry: 'Logistics & Supply Chain',
+    category: 'CAT-B',
+    badgeColor: '#d97706',
+    bankTiers: {
+      hdfc: 'CAT-B',
+      icici: 'CAT-B',
+      sbi: 'Tier-2 Logistics',
+      axis: 'CAT-B',
+      kotak: 'CAT-B'
+    },
+    maxMultiplier: '22x Monthly Net',
+    roiDiscount: 'Standard (8.60% p.a.)',
+    maxFoir: 'Up to 60% FOIR',
+    processingFee: 'Standard 0.50%',
+    fastTrack: false
+  },
+  {
+    id: 'lic',
+    name: 'Life Insurance Corporation (LIC)',
+    industry: 'Government & Insurance PSU',
+    category: 'Govt / PSU',
+    badgeColor: '#7c3aed',
+    bankTiers: {
+      hdfc: 'Govt Navratna',
+      icici: 'Govt & PSU Elite',
+      sbi: 'Permanent Govt Super',
+      axis: 'Govt Elite',
+      kotak: 'Govt Premier'
+    },
+    maxMultiplier: '32x Monthly Net',
+    roiDiscount: '0.40% Discount (8.20% p.a.)',
+    maxFoir: 'Up to 72% FOIR',
+    processingFee: 'Zero / Nil Processing',
+    fastTrack: true
+  },
+  {
+    id: 'ongc',
+    name: 'ONGC (Oil & Natural Gas Corp)',
+    industry: 'Energy & Maharatna PSU',
+    category: 'Govt / PSU',
+    badgeColor: '#7c3aed',
+    bankTiers: {
+      hdfc: 'Govt Maharatna',
+      icici: 'Govt Elite',
+      sbi: 'Permanent Govt Super',
+      axis: 'Govt Elite',
+      kotak: 'Govt Maharatna'
+    },
+    maxMultiplier: '32x Monthly Net',
+    roiDiscount: '0.40% Discount (8.20% p.a.)',
+    maxFoir: 'Up to 72% FOIR',
+    processingFee: 'Zero / Nil Processing',
+    fastTrack: true
+  },
+  {
+    id: 'iocl',
+    name: 'Indian Oil Corporation (IOCL)',
+    industry: 'Energy & Maharatna PSU',
+    category: 'Govt / PSU',
+    badgeColor: '#7c3aed',
+    bankTiers: {
+      hdfc: 'Govt Maharatna',
+      icici: 'Govt Elite',
+      sbi: 'Permanent Govt Super',
+      axis: 'Govt Elite',
+      kotak: 'Govt Maharatna'
+    },
+    maxMultiplier: '32x Monthly Net',
+    roiDiscount: '0.40% Discount (8.20% p.a.)',
+    maxFoir: 'Up to 70% FOIR',
+    processingFee: 'Zero / Nil Processing',
+    fastTrack: true
+  },
+  {
     id: 'flipkart',
     name: 'Flipkart Internet (Walmart Group)',
     industry: 'E-commerce & Retail Tech',
     category: 'CAT-A',
-    badgeColor: '#3b82f6',
+    badgeColor: '#2563eb',
     bankTiers: {
       hdfc: 'CAT-A',
       icici: 'Elite',

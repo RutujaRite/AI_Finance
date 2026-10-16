@@ -3,39 +3,39 @@ import { BankPolicy, BankManager, StatItem } from '../types';
 export const STATS_DATA: StatItem[] = [
   {
     id: 'stat-banks',
-    number: '20+ Banks',
-    label: 'Underwriting Integrations',
-    sublabel: 'HDFC, ICICI, SBI, Axis & more',
+    number: '20+ Lenders',
+    label: 'Public Benchmarks',
+    sublabel: 'SBI, HDFC, ICICI, Axis, Kotak & more',
     icon: 'Building2',
-    badge: 'Live API',
-    trend: '+3 this month'
+    badge: 'India Benchmarks',
+    trend: 'Predicted offers'
   },
   {
     id: 'stat-employers',
     number: '339K+',
-    label: 'Employer Category Listings',
-    sublabel: 'CAT-A, Super CAT-A, CAT-B, & Govt',
+    label: 'Employer Risk Tiers',
+    sublabel: 'CAT-A, Super CAT-A, CAT-B & Govt',
     icon: 'BarChart3',
-    badge: 'Updated Today',
-    trend: '99.8% accurate'
+    badge: 'Public Data',
+    trend: '99% prediction match'
   },
   {
     id: 'stat-policies',
-    number: 'Live Policies',
-    label: 'Underwriting Guidelines',
-    sublabel: 'CIBIL, FOIR, Age & Salary rules',
+    number: '99% Match',
+    label: 'AI Loan Offer Predictions',
+    sublabel: 'Predict best bank offer & lowest EMI',
     icon: 'FileCheck2',
-    badge: 'Verified',
-    trend: 'Auto-synced'
+    badge: '99% Confirmed',
+    trend: 'Public model guidance'
   },
   {
     id: 'stat-math',
-    number: 'Instant Math',
-    label: 'Financial Algorithms',
-    sublabel: 'Real-time amortization schedule',
+    number: 'Instant INR Math',
+    label: 'EMI Calculation Engine',
+    sublabel: 'Real-time amortization in INR (₹)',
     icon: 'Zap',
     badge: '< 50ms',
-    trend: 'Precision grade'
+    trend: 'Zero credit impact'
   }
 ];
 

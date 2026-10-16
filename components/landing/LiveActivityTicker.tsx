@@ -79,7 +79,7 @@ export const LiveActivityTicker: React.FC = () => {
   return (
     <aside
       className="live-activity-floating-toast"
-      aria-label="Live underwriting activity notifications"
+      aria-label="Live loan prediction notifications"
       style={{
         position: 'fixed',
         bottom: '24px',

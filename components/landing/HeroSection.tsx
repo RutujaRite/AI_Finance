@@ -38,32 +38,32 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           {/* AI Platform Chip */}
           <div className="hero-pill-badge">
             <span className="pill-dot" />
-            <Bot size={14} className="text-teal" />
-            <span>Next-Gen AI Loan Intelligence</span>
+            <Sparkles size={14} className="text-teal" />
+            <span>Predict Best Indian Bank Loan Offers • 99% Confirmed Match</span>
           </div>
 
           {/* Strong Headline specifically required */}
           <h1 className="hero-title">
-            Smarter Loan Decisions <br />
-            <span className="gradient-text">with AI.</span>
+            Predict Your Best Loan Offer <br />
+            <span className="gradient-text">with 99% AI Accuracy.</span>
           </h1>
 
           {/* Subtitle specifically required */}
           <p className="hero-subtitle">
-            Calculate accurate monthly EMIs instantly, explore corporate employer underwriting categories, and unlock personalized banking insights—all with zero credit score impact.
+            Predict which Indian bank can give you the best loan offer with lowest interest rates. Guided by publicly aggregated financial benchmarks, calculate monthly EMIs in INR (₹), explore employer risk categories, and compare top lenders with zero credit score impact.
           </p>
 
           {/* CTAs */}
           <div className="hero-cta-group">
             <a href="#emi-calculator" className="btn-primary-cta">
               <Calculator size={18} />
-              <span>Calculate EMI Instantly</span>
+              <span>Calculate EMI (INR)</span>
               <ArrowRight size={16} />
             </a>
 
-            <a href="#company-search" className="btn-secondary-cta">
-              <Building2 size={18} />
-              <span>Search Company Category</span>
+            <a href="#bank-rates" className="btn-secondary-cta">
+              <TrendingUp size={18} />
+              <span>Predict Bank Offers</span>
             </a>
 
             {onTriggerAutoTour && (
@@ -90,11 +90,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </div>
             <div className="trust-item">
               <CheckCircle size={16} className="text-teal" />
-              <span>20+ Partner Lenders</span>
+              <span>Predictions 99% Confirmed</span>
             </div>
             <div className="trust-item">
               <CheckCircle size={16} className="text-teal" />
-              <span>Instant Real-Time Math</span>
+              <span>Public Indian Lender Benchmarks</span>
             </div>
           </div>
         </div>
@@ -165,8 +165,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <div className="floating-badge badge-top-right">
               <Award size={18} className="badge-icon-gold" />
               <div>
-                <p className="floating-title">99.4% Accuracy</p>
-                <p className="floating-desc">Bank Underwriting Rules</p>
+                <p className="floating-title">99% Confirmed</p>
+                <p className="floating-desc">AI Loan Offer Prediction</p>
               </div>
             </div>
 

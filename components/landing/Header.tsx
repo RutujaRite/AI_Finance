@@ -67,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <div className="brand-text">
             <span className="brand-title">CreditWise<span className="brand-accent">AI</span></span>
-            <span className="brand-tagline">AI Financial Assistant</span>
+            <span className="brand-tagline">AI Loan Offer Predictor</span>
           </div>
         </a>
 
@@ -83,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
           </a>
           <a href="#ai-assistant" className="nav-link">
             <Bot size={15} />
-            <span>AI Advisor</span>
+            <span>AI Predictor</span>
           </a>
           <a href="#bank-rates" className="nav-link">
             <TrendingUp size={15} />
@@ -94,6 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span>Market Insights</span>
           </a>
           <a href="#features" className="nav-link">
+            <ShieldCheck size={15} />
             <span>Features</span>
           </a>
         </nav>
@@ -275,14 +276,17 @@ export const Header: React.FC<HeaderProps> = ({
           align-items: center;
           justify-content: space-between;
           height: var(--header-height);
+          gap: 16px;
         }
 
         /* Logo */
         .brand-logo {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           text-decoration: none;
+          flex-shrink: 0;
+          white-space: nowrap;
         }
 
         .logo-badge {
@@ -296,6 +300,7 @@ export const Header: React.FC<HeaderProps> = ({
           justify-content: center;
           color: #ffffff;
           box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+          flex-shrink: 0;
         }
 
         .logo-live-dot {
@@ -319,6 +324,7 @@ export const Header: React.FC<HeaderProps> = ({
           font-weight: 800;
           letter-spacing: -0.02em;
           color: var(--text-primary);
+          white-space: nowrap;
         }
 
         .brand-accent {
@@ -334,25 +340,35 @@ export const Header: React.FC<HeaderProps> = ({
           text-transform: uppercase;
           letter-spacing: 0.05em;
           color: var(--text-muted);
+          white-space: nowrap;
         }
 
         /* Desktop Nav */
         .desktop-nav {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 4px;
+          flex-wrap: nowrap;
+          flex-shrink: 1;
         }
 
         .nav-link {
-          display: flex;
+          display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 8px 14px;
-          font-size: 0.88rem;
+          padding: 8px 12px;
+          font-size: 0.86rem;
           font-weight: 600;
           color: var(--text-secondary);
           border-radius: var(--radius-md);
           transition: all 0.2s ease;
+          white-space: nowrap;
+          flex-shrink: 0;
+          text-decoration: none;
+        }
+
+        .nav-link span {
+          white-space: nowrap;
         }
 
         .nav-link:hover {
@@ -706,7 +722,21 @@ export const Header: React.FC<HeaderProps> = ({
         }
 
         /* Responsive Breakpoints */
-        @media (max-width: 960px) {
+        @media (max-width: 1260px) {
+          .desktop-nav {
+            gap: 2px;
+          }
+          .nav-link {
+            padding: 7px 9px;
+            font-size: 0.81rem;
+            gap: 4px;
+          }
+          .brand-tagline {
+            display: none;
+          }
+        }
+
+        @media (max-width: 1080px) {
           .desktop-nav {
             display: none;
           }

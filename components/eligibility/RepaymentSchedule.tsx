@@ -238,18 +238,6 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
     }
   };
 
-  const todayStr = useMemo(() => {
-    return new Date().toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  }, []);
-
-  const reportRefId = useMemo(() => {
-    return `INCX-${Math.floor(100000 + Math.random() * 900000)}`;
-  }, []);
-
   return (
     <section className="card repayment-section-card">
       {/* 1. Header with Export PDF Action */}

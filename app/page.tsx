@@ -1,25 +1,62 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/landing/Header';
 import { HeroSection } from '@/components/landing/HeroSection';
 import { PartnerBanksMarquee } from '@/components/landing/PartnerBanksMarquee';
-import { AutoScrollTourWidget } from '@/components/landing/AutoScrollTourWidget';
-import { LiveActivityTicker } from '@/components/landing/LiveActivityTicker';
-import { EMICalculatorSection } from '@/components/landing/EMICalculatorSection';
-import { AIAssistantSection } from '@/components/landing/AIAssistantSection';
-import { BankRatesSection } from '@/components/landing/BankRatesSection';
-import { CompanySearchSection } from '@/components/landing/CompanySearchSection';
 import { FeaturesSection } from '@/components/landing/FeaturesSection';
 import { MetricCards } from '@/components/landing/MetricCards';
 import { ServiceCards } from '@/components/landing/ServiceCards';
 import { Footer } from '@/components/landing/Footer';
-import { AuthModals } from '@/components/landing/AuthModals';
-import { LegalModal, LegalDocType } from '@/components/landing/LegalModal';
+import { LegalDocType } from '@/components/landing/LegalModal';
 import { User, ThemeMode } from '@/types';
 import { CheckCircle2, Sparkles, X, TrendingUp, Bot, ArrowRight } from 'lucide-react';
 import './landing.css';
+
+// Lazy-load below-the-fold heavy sections and modals to keep initial bundle tiny and fast
+const EMICalculatorSection = dynamic(
+  () => import('@/components/landing/EMICalculatorSection').then((mod) => mod.EMICalculatorSection),
+  {
+    loading: () => <div style={{ minHeight: '350px' }} />,
+    ssr: true,
+  }
+);
+
+const AIAssistantSection = dynamic(
+  () => import('@/components/landing/AIAssistantSection').then((mod) => mod.AIAssistantSection),
+  {
+    loading: () => <div style={{ minHeight: '300px' }} />,
+    ssr: true,
+  }
+);
+
+const BankRatesSection = dynamic(
+  () => import('@/components/landing/BankRatesSection').then((mod) => mod.BankRatesSection),
+  {
+    loading: () => <div style={{ minHeight: '300px' }} />,
+    ssr: true,
+  }
+);
+
+const CompanySearchSection = dynamic(
+  () => import('@/components/landing/CompanySearchSection').then((mod) => mod.CompanySearchSection),
+  {
+    loading: () => <div style={{ minHeight: '350px' }} />,
+    ssr: true,
+  }
+);
+
+const AuthModals = dynamic(
+  () => import('@/components/landing/AuthModals').then((mod) => mod.AuthModals),
+  { ssr: false }
+);
+
+const LegalModal = dynamic(
+  () => import('@/components/landing/LegalModal').then((mod) => mod.LegalModal),
+  { ssr: false }
+);
 
 export default function HomePage() {
   const router = useRouter();
@@ -39,12 +76,6 @@ export default function HomePage() {
   // User feedback toast
   const [authToast, setAuthToast] = useState<string | null>(null);
 
-  // Auto-scroll Tour State & Scroll Progress
-  const [isAutoScrolling, setIsAutoScrolling] = useState(false);
-  const [scrollSpeed, setScrollSpeed] = useState<'1x' | '2x'>('1x');
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const autoScrollRafRef = useRef<number | null>(null);
-
   // Initialize theme and restore user session from backend / localStorage
   useEffect(() => {
     // 1. Theme initialization
@@ -58,31 +89,9 @@ export default function HomePage() {
       document.documentElement.setAttribute('data-bs-theme', 'light');
     }
 
-    // 2. User session initialization (check real session first, then fallback to localStorage)
-    async function initUserSession() {
-      try {
-        const res = await fetch('/api/auth/verify', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.user) {
-            const serverUser: User = {
-              id: String(data.user.id || 'usr_active'),
-              name: data.user.name || (data.user.email ? data.user.email.split('@')[0] : 'User'),
-              email: data.user.email,
-              role: data.user.role === 'admin' ? 'Loan Officer' : 'DSA Agent',
-              avatarInitials: ((data.user.name || data.user.email || 'U').substring(0, 2)).toUpperCase(),
-              company: data.user.company || 'CreditWise Financial Network'
-            };
-            setCurrentUser(serverUser);
-            localStorage.setItem('finai_user', JSON.stringify(serverUser));
-            return;
-          }
-        }
-      } catch (err) {
-        console.warn('Auth verify check notice:', err);
-      }
-
-      // Local storage fallback
+    // 2. User session initialization (check localStorage immediately, verify in background)
+    function initUserSession() {
+      // Immediate local check to eliminate blocking
       const savedUserJson = localStorage.getItem('finai_user');
       if (savedUserJson) {
         try {
@@ -94,6 +103,36 @@ export default function HomePage() {
           console.error('Failed to parse saved user', e);
         }
       }
+
+      // Background verification without blocking initial page rendering
+      fetch('/api/auth/verify', { credentials: 'include' })
+        .then((res) => {
+          if (res.ok) {
+            return res.json();
+          }
+          if (savedUserJson) {
+            setCurrentUser(null);
+            localStorage.removeItem('finai_user');
+          }
+          return null;
+        })
+        .then((data) => {
+          if (data && data.success && data.user) {
+            const serverUser: User = {
+              id: String(data.user.id || 'usr_active'),
+              name: data.user.name || (data.user.email ? data.user.email.split('@')[0] : 'User'),
+              email: data.user.email,
+              role: data.user.role === 'admin' ? 'Loan Officer' : 'DSA Agent',
+              avatarInitials: ((data.user.name || data.user.email || 'U').substring(0, 2)).toUpperCase(),
+              company: data.user.company || 'CreditWise Financial Network'
+            };
+            setCurrentUser(serverUser);
+            localStorage.setItem('finai_user', JSON.stringify(serverUser));
+          }
+        })
+        .catch((err) => {
+          console.warn('Auth verify check notice:', err);
+        });
     }
 
     // 3. Auto-open AuthModal if redirected from protected routes or URL params
@@ -109,9 +148,6 @@ export default function HomePage() {
       if (isLogout === 'true' || isLogout === '1') {
         setAuthToast('You have been securely logged out.');
         setTimeout(() => setAuthToast(null), 4500);
-        setTimeout(() => {
-          setIsAutoScrolling(true);
-        }, 800);
         if (window.history.replaceState) {
           const url = new URL(window.location.href);
           url.searchParams.delete('logout');
@@ -128,36 +164,26 @@ export default function HomePage() {
 
     initUserSession();
 
-    // Prefetch all key workspace routes for instant zero-latency transitions
-    try {
-      router.prefetch('/home');
-      router.prefetch('/home?section=assistant');
-      router.prefetch('/home?section=emi');
-      router.prefetch('/home?section=eligibility');
-      router.prefetch('/home?section=policies');
-      router.prefetch('/admin');
-      router.prefetch('/admin/users');
-      router.prefetch('/admin/models');
-      router.prefetch('/agent-studio');
-      router.prefetch('/bank-managers');
-      router.prefetch('/profile');
-    } catch {}
+    // Quietly warm up the primary workspace route during idle time only
+    if (typeof window !== 'undefined') {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => {
+          try {
+            router.prefetch('/home');
+          } catch {}
+        });
+      } else {
+        setTimeout(() => {
+          try {
+            router.prefetch('/home');
+          } catch {}
+        }, 2000);
+      }
+    }
   }, [router]);
 
-  // 4. Scroll Progress Tracking & IntersectionObserver for Scroll Reveals
+  // 4. IntersectionObserver for Scroll Reveals
   useEffect(() => {
-    const handleScrollProgress = () => {
-      const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
-      if (totalScroll > 0) {
-        const currentProgress = (window.scrollY / totalScroll) * 100;
-        setScrollProgress(Math.min(100, Math.max(0, currentProgress)));
-      }
-    };
-
-    window.addEventListener('scroll', handleScrollProgress, { passive: true });
-    handleScrollProgress();
-
-    // IntersectionObserver for scroll-driven reveals
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -176,71 +202,9 @@ export default function HomePage() {
     revealElements.forEach((el) => observer.observe(el));
 
     return () => {
-      window.removeEventListener('scroll', handleScrollProgress);
       observer.disconnect();
     };
   }, []);
-
-  // 5. Buttery-smooth Auto-Scroll Down Engine (requestAnimationFrame)
-  useEffect(() => {
-    if (!isAutoScrolling) {
-      if (autoScrollRafRef.current) {
-        cancelAnimationFrame(autoScrollRafRef.current);
-        autoScrollRafRef.current = null;
-      }
-      return;
-    }
-
-    const step = scrollSpeed === '2x' ? 3.6 : 1.8;
-
-    const scrollStep = () => {
-      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      if (window.scrollY >= maxScroll - 6) {
-        // Reached the end of the page smoothly
-        setIsAutoScrolling(false);
-        return;
-      }
-
-      window.scrollBy(0, step);
-      autoScrollRafRef.current = requestAnimationFrame(scrollStep);
-    };
-
-    autoScrollRafRef.current = requestAnimationFrame(scrollStep);
-
-    // Stop auto-scroll gracefully on user touch or manual mouse wheel interaction
-    const handleUserInterrupt = () => {
-      setIsAutoScrolling(false);
-    };
-
-    window.addEventListener('wheel', handleUserInterrupt, { passive: true });
-    window.addEventListener('touchmove', handleUserInterrupt, { passive: true });
-
-    return () => {
-      if (autoScrollRafRef.current) {
-        cancelAnimationFrame(autoScrollRafRef.current);
-        autoScrollRafRef.current = null;
-      }
-      window.removeEventListener('wheel', handleUserInterrupt);
-      window.removeEventListener('touchmove', handleUserInterrupt);
-    };
-  }, [isAutoScrolling, scrollSpeed]);
-
-  const handleToggleAutoScroll = () => {
-    setIsAutoScrolling((prev) => !prev);
-  };
-
-  const handleToggleSpeed = () => {
-    setScrollSpeed((prev) => (prev === '1x' ? '2x' : '1x'));
-  };
-
-  const startAutoScrollTour = () => {
-    if (window.scrollY >= document.documentElement.scrollHeight - window.innerHeight - 50) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      setTimeout(() => setIsAutoScrolling(true), 600);
-    } else {
-      setIsAutoScrolling(true);
-    }
-  };
 
   // Theme toggle
   const toggleTheme = () => {
@@ -362,10 +326,6 @@ export default function HomePage() {
 
   return (
     <div className="landing-page-root bg-grid">
-      {/* Dynamic Top Reading / Scroll Progress Line */}
-      <div className="top-scroll-progress-track">
-        <div className="top-scroll-progress-bar" style={{ width: `${scrollProgress}%` }} />
-      </div>
 
       {/* Toast Notification */}
       {authToast && (
@@ -397,11 +357,10 @@ export default function HomePage() {
 
       {/* Main Page Flow */}
       <main>
-        {/* 2. Hero Section with Auto Tour trigger */}
+        {/* 2. Hero Section */}
         <HeroSection
           onOpenRegister={handleOpenRegister}
           isLoggedIn={!!currentUser}
-          onTriggerAutoTour={startAutoScrollTour}
         />
 
         {/* 2.5 Infinite Auto-Scrolling Partner Banks Marquee */}
@@ -458,18 +417,6 @@ export default function HomePage() {
       <div className="reveal-on-scroll">
         <Footer onOpenLegal={handleOpenLegal} />
       </div>
-
-      {/* Floating Auto-Scroll Tour Controller */}
-      <AutoScrollTourWidget
-        isAutoScrolling={isAutoScrolling}
-        onToggleAutoScroll={handleToggleAutoScroll}
-        scrollSpeed={scrollSpeed}
-        onToggleSpeed={handleToggleSpeed}
-        scrollProgress={scrollProgress}
-      />
-
-      {/* Real-Time Live Underwriting Activity Ticker */}
-      <LiveActivityTicker />
 
       {/* 9. Authentication Modals (Register & Login) */}
       <AuthModals

@@ -39,8 +39,8 @@ export const BankPoliciesModal: React.FC<BankPoliciesModalProps> = ({
               <FileText size={20} />
             </div>
             <div>
-              <h2 className="header-title">Live Bank Policy Guidelines & Underwriting</h2>
-              <p className="header-desc">Standardized underwriting criteria across top tier partner institutions</p>
+              <h2 className="header-title">Public Bank Policy Benchmarks & Lending Guidelines</h2>
+              <p className="header-desc">Publicly aggregated lending criteria & predicted eligibility benchmarks across leading Indian banks</p>
             </div>
           </div>
           <button onClick={onClose} className="modal-close-btn" type="button">
@@ -232,10 +232,11 @@ export const BankPoliciesModal: React.FC<BankPoliciesModalProps> = ({
         }
 
         .bank-tab-item.active {
-          background: var(--primary-50);
-          color: var(--primary-600);
-          border-color: var(--primary-500);
+          background: var(--teal-600);
+          color: #ffffff;
+          border-color: var(--teal-600);
           font-weight: 700;
+          box-shadow: 0 2px 8px rgba(13, 148, 136, 0.3);
         }
 
         .bank-code {

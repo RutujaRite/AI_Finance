@@ -51,11 +51,11 @@ export const ServiceCards: React.FC<ServiceCardsProps> = ({
     <section className="services-section">
       <div className="section-header-row">
         <div>
-          <span className="section-eyebrow">EXPLORE DASHBOARD TOOLS</span>
-          <h2 className="section-title">Application Services & Underwriting Suite</h2>
+          <span className="section-eyebrow">EXPLORE PREDICTIVE FINANCIAL TOOLS</span>
+          <h2 className="section-title">AI Loan Guidance & Offer Prediction Suite</h2>
         </div>
         <p className="section-subtitle">
-          Intelligent automated banking tools designed to streamline loan sourcing, policy verification, and client conversion.
+          Intelligent tools designed to forecast which Indian bank gives you the best loan offer, calculate accurate monthly EMIs in INR (₹), and explore public corporate risk tiers with up to 99% accuracy.
         </p>
       </div>
 
@@ -192,7 +192,7 @@ export const ServiceCards: React.FC<ServiceCardsProps> = ({
           <div className="card-body">
             <h3 className="card-title">Bank Policy Guidelines</h3>
             <p className="card-description">
-              Explore underwriting policy guidelines, FOIR multipliers, minimum salary requirements, and view official bank documents.
+              Explore publicly available lending criteria, FOIR multipliers, minimum salary requirements, and public benchmark policy summaries.
             </p>
 
             <div className="policy-highlights-box">

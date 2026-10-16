@@ -18,12 +18,12 @@ export const FeaturesSection: React.FC = () => {
     {
       icon: Building2,
       title: '339K+ Company Category Search',
-      desc: 'Instant employer risk tier lookup across HDFC, ICICI, SBI & Axis to unlock up to 0.35% lower ROI and higher loan multipliers.'
+      desc: 'AI-predicted employer risk tier lookup across public benchmarks for HDFC, ICICI, SBI & Axis to discover up to 0.35% lower interest forecasts and higher multipliers.'
     },
     {
       icon: Zap,
-      title: 'Real-Time Dynamic Math',
-      desc: 'Instant slider-driven recalculation of EMIs, interest totals, and amortization schedules with zero lag.'
+      title: 'Real-Time Dynamic Math in INR',
+      desc: 'Instant slider-driven recalculation of monthly EMIs in INR (₹), interest totals, and full amortization schedules with zero lag.'
     },
     {
       icon: ShieldCheck,
@@ -32,8 +32,8 @@ export const FeaturesSection: React.FC = () => {
     },
     {
       icon: Bot,
-      title: 'AI Underwriting Advisor',
-      desc: 'Get personalized suggestions to improve your FOIR ratio, optimize tenure, and maximize lender approvals.'
+      title: 'AI Loan Offer Predictor (99% Match)',
+      desc: 'Get data-backed predictions on which Indian bank will give you the best loan offer, optimize your tenure, and maximize approval odds.'
     },
     {
       icon: TrendingDown,
@@ -47,8 +47,8 @@ export const FeaturesSection: React.FC = () => {
     },
     {
       icon: FileCheck,
-      title: '20+ Lender Alignment',
-      desc: 'Algorithms benchmarked against credit policies from leading institutions like HDFC, SBI, ICICI, and Chase.'
+      title: '20+ Indian Lenders Benchmarked',
+      desc: 'Algorithms benchmarked against publicly accessible guidelines from leading Indian institutions including SBI, HDFC, ICICI, Axis, and Kotak.'
     }
   ];
 

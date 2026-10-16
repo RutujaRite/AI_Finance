@@ -20,6 +20,7 @@ export default function HomePage() {
   const router = useRouter()
   const [activeSection, setActiveSection] = useState<DashboardSection>("assistant")
   const [user, setUser] = useState<any>(null)
+  const [mounted, setMounted] = useState(false)
   const [messages, setMessages] = useState<any[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
@@ -37,6 +38,8 @@ export default function HomePage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [clearHistoryModalOpen, setClearHistoryModalOpen] = useState(false)
   const [messageActions, setMessageActions] = useState<Record<string, { liked: boolean; disliked: boolean }>>({})
+  const [attachedFile, setAttachedFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const [messagesRef, setMessagesRef] = useState<HTMLDivElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -79,6 +82,14 @@ export default function HomePage() {
   }, [input])
 
   useEffect(() => {
+    setMounted(true)
+    try {
+      const saved = localStorage.getItem("finai_user")
+      if (saved) {
+        setUser(JSON.parse(saved))
+      }
+    } catch {}
+
     checkAuth()
     loadState()
     loadConversations()
@@ -325,9 +336,14 @@ export default function HomePage() {
   }
 
   async function sendMessage(text: string, companySelection?: { type: "confirm" | "retry" | "select"; company_id?: string; company_name?: string }) {
-    if (!text.trim() || loading) return
+    const rawText = text.trim()
+    if ((!rawText && !attachedFile) || loading) return
 
-    const resolvedText = text.trim()
+    const resolvedText = attachedFile
+      ? (rawText ? `${rawText}\n\n📎 *[Attached File: ${attachedFile.name}]*` : `📎 *[Attached File: ${attachedFile.name}]*`)
+      : rawText
+
+    setAttachedFile(null)
 
     if (abortControllerRef.current) {
       try { abortControllerRef.current.abort() } catch {}
@@ -2722,14 +2738,14 @@ export default function HomePage() {
           onClick={() => toggleLike(message.id)}
           title="Good response"
         >
-          <i className="bi bi-hand-thumbs-up" />
+          <i className={`bi ${actions.liked ? "bi-hand-thumbs-up-fill" : "bi-hand-thumbs-up"}`} />
         </button>
         <button
           className={`message-action-btn ${actions.disliked ? "active-dislike" : ""}`}
           onClick={() => toggleDislike(message.id)}
           title="Bad response"
         >
-          <i className="bi bi-hand-thumbs-down" />
+          <i className={`bi ${actions.disliked ? "bi-hand-thumbs-down-fill" : "bi-hand-thumbs-down"}`} />
         </button>
         {isErrorMessage(message) && (
           <button
@@ -2744,7 +2760,25 @@ export default function HomePage() {
     )
   }
 
-  if (!user) return <main style={{ padding: 24, textAlign: "center", color: "var(--ink-soft)" }}>Loading...</main>
+  if (!mounted || !user) {
+    return (
+      <main className="home-body chat-page" style={{ alignItems: "center", justifyContent: "center", height: "100vh" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+          <div style={{
+            width: "36px",
+            height: "36px",
+            border: "3px solid var(--border)",
+            borderTopColor: "var(--accent)",
+            borderRadius: "50%",
+            animation: "spin 0.8s linear infinite"
+          }} />
+          <span style={{ fontSize: "0.875rem", color: "var(--ink-muted)", fontWeight: 500 }}>
+            Loading CreditWise Workspace...
+          </span>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className={`home-body ${activeSection === "assistant" ? "chat-page" : ""}`}>
@@ -2828,7 +2862,18 @@ export default function HomePage() {
                               />
                               <button
                                 type="submit"
-                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", padding: 0, fontSize: "11px" }}
+                                style={{
+                                  background: "var(--accent-soft)",
+                                  border: "1px solid var(--accent-soft-strong)",
+                                  cursor: "pointer",
+                                  color: "var(--accent)",
+                                  padding: "3px 6px",
+                                  fontSize: "12px",
+                                  borderRadius: "4px",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center"
+                                }}
                                 title="Save"
                               >
                                 <i className="bi bi-check-lg" />
@@ -2836,7 +2881,18 @@ export default function HomePage() {
                               <button
                                 type="button"
                                 onClick={() => setEditingConvId(null)}
-                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-muted)", padding: 0, fontSize: "11px" }}
+                                style={{
+                                  background: "var(--surface-2)",
+                                  border: "1px solid var(--border)",
+                                  cursor: "pointer",
+                                  color: "var(--ink-muted)",
+                                  padding: "3px 6px",
+                                  fontSize: "12px",
+                                  borderRadius: "4px",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center"
+                                }}
                                 title="Cancel"
                               >
                                 <i className="bi bi-x-lg" />
@@ -2977,6 +3033,62 @@ export default function HomePage() {
         </aside>
 
         <main className="chat-main">
+          {/* Top Chat Bar with Active Conversation Title & Model Selector */}
+          <div className="chat-header-bar" style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0.5rem 1rem",
+            borderBottom: "1px solid var(--border)",
+            background: "var(--surface)",
+            minHeight: "48px",
+            flexShrink: 0
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+              <span style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {conversations.find((c) => String(c.id) === String(activeConvIdRef.current || activeConversationId))?.title || "AI Loan & Underwriting Assistant"}
+              </span>
+            </div>
+
+            {/* Model Selector Dropdown */}
+            <div className="model-selector-wrapper" ref={modelSelectorRef}>
+              <button
+                type="button"
+                className="model-selector"
+                onClick={() => setModelDropdownOpen((prev) => !prev)}
+                aria-expanded={modelDropdownOpen}
+                title="Select AI Model Engine"
+              >
+                <span>{AVAILABLE_MODELS.find((m) => m.id === selectedModel)?.icon || "⚡"}</span>
+                <span>{AVAILABLE_MODELS.find((m) => m.id === selectedModel)?.name || "Auto (Best Available)"}</span>
+                <i className="bi bi-chevron-down" style={{ fontSize: "0.7rem", opacity: 0.7 }} />
+              </button>
+
+              <div className={`model-dropdown ${modelDropdownOpen ? "open" : ""}`}>
+                {AVAILABLE_MODELS.map((model) => (
+                  <button
+                    key={model.id}
+                    type="button"
+                    className={`model-dropdown-item ${selectedModel === model.id ? "active" : ""}`}
+                    onClick={() => {
+                      setSelectedModel(model.id)
+                      setModelDropdownOpen(false)
+                    }}
+                  >
+                    <span style={{ fontSize: "1rem" }}>{model.icon}</span>
+                    <div>
+                      <div className="model-dropdown-item-name">{model.name}</div>
+                      <div className="model-dropdown-item-desc">{model.desc}</div>
+                    </div>
+                    {selectedModel === model.id && (
+                      <i className="bi bi-check2" style={{ marginLeft: "auto", color: "var(--accent)" }} />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div
             className="chat-messages"
             id="chatMessages"
@@ -3096,9 +3208,52 @@ export default function HomePage() {
           </div>
 
           <div className="chat-composer">
+            {attachedFile && (
+              <div style={{
+                maxWidth: "800px",
+                margin: "0 auto 6px auto",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "4px 10px",
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                borderRadius: "8px",
+                fontSize: "0.75rem",
+                color: "var(--ink)"
+              }}>
+                <i className="bi bi-file-earmark-text" style={{ color: "var(--accent)" }} />
+                <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{attachedFile.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setAttachedFile(null)}
+                  style={{ marginLeft: "auto", background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--ink-muted)", fontSize: "0.85rem" }}
+                  title="Remove attached file"
+                >
+                  <i className="bi bi-x-circle-fill" />
+                </button>
+              </div>
+            )}
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              accept=".pdf,.doc,.docx,.txt,.csv,.jpg,.jpeg,.png"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) {
+                  setAttachedFile(file)
+                }
+              }}
+            />
             <form className="chat-composer-form" onSubmit={(e) => { e.preventDefault(); sendMessage(input) }} autoComplete="off">
-              <button type="button" className="chat-attachment-btn" title="Attach file" onClick={() => {}}>
-                <i className="bi bi-paperclip" style={{ fontSize: "1rem" }} />
+              <button
+                type="button"
+                className="chat-attachment-btn"
+                title="Attach file (PDF, DOCX, CSV, TXT)"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <i className="bi bi-paperclip" style={{ fontSize: "1rem", color: attachedFile ? "var(--accent)" : "inherit" }} />
               </button>
               <div className="chat-input-wrap">
                 <textarea
@@ -3127,7 +3282,7 @@ export default function HomePage() {
                   <i className="bi bi-stop-fill" style={{ fontSize: "1.1rem" }} />
                 </button>
               ) : (
-                <button className="chat-send-btn" type="submit" title="Send message" disabled={!input.trim()}>
+                <button className="chat-send-btn" type="submit" title="Send message" disabled={!input.trim() && !attachedFile}>
                   <i className="bi bi-arrow-up" style={{ fontSize: "0.9375rem" }} />
                 </button>
               )}

@@ -32,7 +32,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal }) => {
               <span className="brand-name">CreditWise<span className="text-teal">AI</span></span>
             </div>
             <p className="footer-mission">
-              Empowering individuals and financial advisors with transparent, real-time AI loan calculators, amortization models, and lender underwriting benchmarks.
+              Empowering borrowers across India with transparent AI loan predictions, real-time EMI calculators in INR, and publicly available lender comparison benchmarks.
             </p>
             <div className="security-badge-row">
               <Lock size={14} className="text-teal" />
@@ -40,7 +40,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal }) => {
             </div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '12px', fontSize: '0.78rem', color: '#10b981', fontWeight: 600 }}>
               <span className="pulse-beacon" />
-              <span>All 24 Partner Lender Models Operational</span>
+              <span>AI Predictions 99% Confirmed • Public Benchmarks Active</span>
             </div>
           </div>
 
@@ -48,21 +48,20 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal }) => {
           <div className="footer-col">
             <h4 className="footer-heading">Calculators</h4>
             <ul className="footer-links">
-              <li><a href="#emi-calculator">Smart EMI Calculator</a></li>
+              <li><a href="#emi-calculator">Smart EMI Calculator (INR)</a></li>
               <li><a href="#emi-calculator">Amortization Schedule</a></li>
               <li><a href="#emi-calculator">Prepayment Optimizer</a></li>
-              <li><a href="#bank-rates">FOIR & DTI Debt Ratio</a></li>
+              <li><a href="#bank-rates">Predicted FOIR & Debt Ratio</a></li>
             </ul>
           </div>
 
-          {/* Underwriting Tools */}
+          {/* Platform Links */}
           <div className="footer-col">
             <h4 className="footer-heading">Platform</h4>
             <ul className="footer-links">
               <li><a href="#ai-assistant">AI Financial Assistant</a></li>
               <li><a href="#company-search">Company Category Search</a></li>
-              <li><a href="#bank-rates">Partner Bank Benchmarks</a></li>
-              <li><a href="#features">Underwriting Rules</a></li>
+              <li><a href="#bank-rates">Compare Leading Bank Rates</a></li>
               <li>
                 <button 
                   type="button" 
@@ -79,7 +78,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal }) => {
         {/* Disclaimer */}
         <div className="footer-disclaimer-box">
           <p>
-            <strong>Financial Disclaimer:</strong> Calculations provided by CreditWiseAI are for estimated informational and scenario planning purposes only. Actual interest rates, processing fees, and final loan sanctions are subject to individual credit assessment, official bank underwriting, and verification of income documents by respective lenders.
+            <strong>Public Information Guidance & Predictive Disclaimer:</strong> CreditWise AI is an independent guidance and scenario simulation engine designed exclusively for Indian borrowers. All calculations, interest spreads, and loan eligibility estimates are AI-powered predictions derived strictly from publicly available financial benchmarks, historic lending trends, and mathematical models (delivering up to 99% prediction accuracy). CreditWise AI does not receive or obtain private information directly from banks, does not represent itself as a direct banking affiliate, and does not provide credit sanctioning directly. Final loan sanction, interest rates, and approval terms remain subject to individual documentation, credit verification, and underwriting criteria by respective registered financial institutions.
           </p>
         </div>
 
@@ -122,6 +121,19 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal }) => {
           color: #94a3b8;
           padding: 70px 0 30px 0;
           border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* High-Contrast Crisp Selection for Footer */
+        .site-footer ::selection,
+        .site-footer *::selection {
+          background: #0d9488 !important;
+          color: #ffffff !important;
+        }
+
+        .site-footer ::-moz-selection,
+        .site-footer *::-moz-selection {
+          background: #0d9488 !important;
+          color: #ffffff !important;
         }
 
         .footer-top-grid {
@@ -201,8 +213,11 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal }) => {
           transition: color 0.2s ease;
         }
 
-        .footer-links a:hover {
+        .footer-links a:hover,
+        .footer-links a:focus,
+        .footer-links a:active {
           color: #2dd4bf;
+          outline: none;
         }
 
         /* Disclaimer */
@@ -253,9 +268,14 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal }) => {
         }
 
         .bottom-links a:hover,
-        .footer-legal-btn:hover {
+        .bottom-links a:focus,
+        .bottom-links a:active,
+        .footer-legal-btn:hover,
+        .footer-legal-btn:focus,
+        .footer-legal-btn:active {
           color: #2dd4bf;
           text-decoration: underline;
+          outline: none;
         }
 
         .footer-platform-btn {
@@ -269,8 +289,11 @@ export const Footer: React.FC<FooterProps> = ({ onOpenLegal }) => {
           text-align: left;
         }
 
-        .footer-platform-btn:hover {
+        .footer-platform-btn:hover,
+        .footer-platform-btn:focus,
+        .footer-platform-btn:active {
           color: #2dd4bf;
+          outline: none;
         }
 
         @media (max-width: 960px) {

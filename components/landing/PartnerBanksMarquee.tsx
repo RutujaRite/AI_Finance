@@ -36,8 +36,8 @@ export const PartnerBanksMarquee: React.FC = () => {
     <div className="partner-marquee-container">
       <div className="marquee-glass-wrapper">
         <div className="marquee-header-pill">
-          <ShieldCheck size={14} className="text-teal" />
-          <span>20+ Lenders Integrated</span>
+          <Sparkles size={14} className="text-teal" />
+          <span>20+ Leading Indian Lenders Benchmarked</span>
         </div>
 
         <div className="marquee-inner-viewport">

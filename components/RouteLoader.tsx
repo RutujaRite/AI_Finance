@@ -145,7 +145,8 @@ export default function RouteLoader() {
             const currentPathWithSearch = window.location.pathname + window.location.search;
             const targetPathWithSearch = targetUrl.pathname + targetUrl.search;
 
-            if (currentPathWithSearch !== targetPathWithSearch) {
+            // Only trigger full route loading when navigating to a genuinely different pathname
+            if (targetUrl.pathname !== window.location.pathname) {
               const label = anchor.getAttribute("title") || anchor.innerText?.trim() || targetUrl.pathname;
               startLoading(label.slice(0, 30));
             }
@@ -159,8 +160,15 @@ export default function RouteLoader() {
       if (navItem) {
         const customHref = navItem.getAttribute("data-href") || navItem.getAttribute("data-navigate");
         if (customHref && customHref.startsWith("/")) {
-          if (customHref !== (window.location.pathname + window.location.search)) {
-            startLoading(customHref);
+          try {
+            const targetUrl = new URL(customHref, window.location.origin);
+            if (targetUrl.pathname !== window.location.pathname) {
+              startLoading(customHref);
+            }
+          } catch {
+            if (customHref !== window.location.pathname) {
+              startLoading(customHref);
+            }
           }
         }
       }
@@ -175,10 +183,7 @@ export default function RouteLoader() {
       if (url) {
         try {
           const targetUrl = new URL(url.toString(), window.location.origin);
-          const currentPathWithSearch = window.location.pathname + window.location.search;
-          const targetPathWithSearch = targetUrl.pathname + targetUrl.search;
-
-          if (targetUrl.origin === window.location.origin && currentPathWithSearch !== targetPathWithSearch) {
+          if (targetUrl.origin === window.location.origin && targetUrl.pathname !== window.location.pathname) {
             startLoading(targetUrl.pathname);
           }
         } catch {}
@@ -191,10 +196,7 @@ export default function RouteLoader() {
       if (url) {
         try {
           const targetUrl = new URL(url.toString(), window.location.origin);
-          const currentPathWithSearch = window.location.pathname + window.location.search;
-          const targetPathWithSearch = targetUrl.pathname + targetUrl.search;
-
-          if (targetUrl.origin === window.location.origin && currentPathWithSearch !== targetPathWithSearch) {
+          if (targetUrl.origin === window.location.origin && targetUrl.pathname !== window.location.pathname) {
             startLoading(targetUrl.pathname);
           }
         } catch {}
@@ -231,6 +233,11 @@ export default function RouteLoader() {
       clearAllTimers();
     };
   }, [startLoading, stopLoading, clearAllTimers]);
+
+  // Do not render any loading bar or overlay on the public landing page
+  if (pathname === '/') {
+    return null;
+  }
 
   if (!isNavigating && progress === 0) {
     return null;

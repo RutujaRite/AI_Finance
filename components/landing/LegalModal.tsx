@@ -180,7 +180,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
               <div className="doc-alert-box alert-amber">
                 <AlertTriangle size={18} className="alert-icon text-amber" />
                 <div>
-                  <strong>Informational Calculator Only:</strong> CreditWiseAI is an algorithmic simulation and financial planning interface. We are not a bank, non-banking financial company (NBFC), or licensed credit dispensary. All EMI math, FOIR ratios, and loan multipliers represent estimated approximations. Final loan sanction, loan-to-value (LTV), processing fees, and interest pricing remain subject to official bank underwriting, credit appraisal, and legal document verification by individual financial institutions.
+                  <strong>Public Information Guidance & Predictive AI Model:</strong> CreditWiseAI is an independent predictive simulation and financial guidance interface for Indian borrowers. We are not a bank, NBFC, or direct lender. All EMI calculations, bank comparisons, and predicted offers are algorithmic simulations derived strictly from publicly available financial benchmarks, historic lending trends, and mathematical models (achieving up to 99% prediction accuracy). We do not receive private data feeds directly from banks, do not represent any bank directly, and do not make credit sanction decisions. Final approval, interest pricing, and terms remain exclusively subject to each registered lender's independent verification.
                 </div>
               </div>
 

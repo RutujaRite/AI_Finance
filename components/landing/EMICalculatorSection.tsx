@@ -29,10 +29,7 @@ export const EMICalculatorSection: React.FC<EMICalculatorSectionProps> = ({
   onOpenRegister,
   onOpenLogin,
 }) => {
-  // Currency unit state: INR by default for CreditWise AI
-  const [currency, setCurrency] = useState<'USD' | 'INR'>('INR');
-
-  // Input states
+  // Input states (INR strictly for Indian Banking)
   const [loanAmount, setLoanAmount] = useState<number>(2500000);
   const [interestRate, setInterestRate] = useState<number>(8.5);
   const [tenureYears, setTenureYears] = useState<number>(15);
@@ -40,14 +37,9 @@ export const EMICalculatorSection: React.FC<EMICalculatorSectionProps> = ({
   const [showAmortization, setShowAmortization] = useState(false);
   const [savedNotification, setSavedNotification] = useState<string | null>(null);
 
-  // Currency configuration
-  const currSymbol = currency === 'USD' ? '$' : '₹';
-  const formatNumber = (num: number) => {
-    if (currency === 'INR') {
-      return num.toLocaleString('en-IN');
-    }
-    return num.toLocaleString('en-US');
-  };
+  // Currency configuration — strictly INR for Indian Banks
+  const currSymbol = '₹';
+  const formatNumber = (num: number) => num.toLocaleString('en-IN');
 
   // Calculate EMI in real-time
   const { emi, totalInterest, totalPayment, principalPercent, interestPercent, schedule } = useMemo(() => {
@@ -144,29 +136,6 @@ export const EMICalculatorSection: React.FC<EMICalculatorSectionProps> = ({
             Fine-tune your loan parameters with real-time sliders and discover your exact monthly repayment, total interest, and AI-powered prepayment savings.
           </p>
 
-          {/* Currency Toggle */}
-          <div className="currency-selector">
-            <button 
-              type="button"
-              onClick={() => {
-                setCurrency('USD');
-                if (loanAmount > 1000000) setLoanAmount(100000);
-              }}
-              className={`currency-pill ${currency === 'USD' ? 'active' : ''}`}
-            >
-              USD ($)
-            </button>
-            <button 
-              type="button"
-              onClick={() => {
-                setCurrency('INR');
-                if (loanAmount < 500000) setLoanAmount(2500000);
-              }}
-              className={`currency-pill ${currency === 'INR' ? 'active' : ''}`}
-            >
-              INR (₹)
-            </button>
-          </div>
         </div>
 
         {/* Calculator Main Grid */}
@@ -191,33 +160,22 @@ export const EMICalculatorSection: React.FC<EMICalculatorSectionProps> = ({
 
                 <input
                   type="range"
-                  min={currency === 'USD' ? 5000 : 100000}
-                  max={currency === 'USD' ? 1000000 : 20000000}
-                  step={currency === 'USD' ? 1000 : 25000}
+                  min={100000}
+                  max={20000000}
+                  step={25000}
                   value={loanAmount}
                   onChange={(e) => setLoanAmount(Number(e.target.value))}
                   className="teal-range-slider"
                 />
 
-                {/* Quick Presets */}
+                {/* Quick Presets in INR */}
                 <div className="preset-chips">
-                  {currency === 'USD' ? (
-                    <>
-                      <button type="button" onClick={() => setLoanAmount(25000)} className="preset-chip">$25k</button>
-                      <button type="button" onClick={() => setLoanAmount(50000)} className="preset-chip">$50k</button>
-                      <button type="button" onClick={() => setLoanAmount(100000)} className="preset-chip">$100k</button>
-                      <button type="button" onClick={() => setLoanAmount(250000)} className="preset-chip">$250k</button>
-                      <button type="button" onClick={() => setLoanAmount(500000)} className="preset-chip">$500k</button>
-                    </>
-                  ) : (
-                    <>
-                      <button type="button" onClick={() => setLoanAmount(500000)} className="preset-chip">₹5 Lakh</button>
-                      <button type="button" onClick={() => setLoanAmount(1500000)} className="preset-chip">₹15 Lakh</button>
-                      <button type="button" onClick={() => setLoanAmount(2500000)} className="preset-chip">₹25 Lakh</button>
-                      <button type="button" onClick={() => setLoanAmount(5000000)} className="preset-chip">₹50 Lakh</button>
-                      <button type="button" onClick={() => setLoanAmount(10000000)} className="preset-chip">₹1 Crore</button>
-                    </>
-                  )}
+                  <button type="button" onClick={() => setLoanAmount(500000)} className={`preset-chip ${loanAmount === 500000 ? 'active' : ''}`}>₹5 Lakh</button>
+                  <button type="button" onClick={() => setLoanAmount(1000000)} className={`preset-chip ${loanAmount === 1000000 ? 'active' : ''}`}>₹10 Lakh</button>
+                  <button type="button" onClick={() => setLoanAmount(2500000)} className={`preset-chip ${loanAmount === 2500000 ? 'active' : ''}`}>₹25 Lakh</button>
+                  <button type="button" onClick={() => setLoanAmount(5000000)} className={`preset-chip ${loanAmount === 5000000 ? 'active' : ''}`}>₹50 Lakh</button>
+                  <button type="button" onClick={() => setLoanAmount(10000000)} className={`preset-chip ${loanAmount === 10000000 ? 'active' : ''}`}>₹1 Crore</button>
+                  <button type="button" onClick={() => setLoanAmount(15000000)} className={`preset-chip ${loanAmount === 15000000 ? 'active' : ''}`}>₹1.5 Crore</button>
                 </div>
               </div>
 
@@ -659,6 +617,13 @@ export const EMICalculatorSection: React.FC<EMICalculatorSectionProps> = ({
           border-color: var(--teal-600);
           color: var(--teal-600);
           background: var(--teal-50);
+        }
+
+        .preset-chip.active {
+          background: var(--teal-600);
+          border-color: var(--teal-600);
+          color: #ffffff;
+          box-shadow: 0 2px 6px rgba(13, 148, 136, 0.25);
         }
 
         .range-bounds {

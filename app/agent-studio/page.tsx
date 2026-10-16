@@ -1,7 +1,7 @@
 // app/agent-studio/page.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bot, Sparkles, AlertTriangle, X, Plus, ChevronDown, Check, Layers, Cpu, Compass } from "lucide-react";
 import StudioSidebar, { StudioNavTab } from "@/components/agent-studio/StudioSidebar";
@@ -140,7 +140,7 @@ const FALLBACK_DEFAULT_AGENT: Agent = {
   updatedAt: new Date().toISOString(),
 };
 
-export default function AgentStudioPage() {
+function AgentStudioContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -1023,5 +1023,13 @@ export default function AgentStudioPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function AgentStudioPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400">Loading Agent Studio...</div>}>
+      <AgentStudioContent />
+    </Suspense>
   );
 }

@@ -49,11 +49,11 @@ export const CompanySearchSection: React.FC<CompanySearchSectionProps> = ({
         <div className="section-head">
           <div className="section-badge">
             <Building2 size={15} className="text-teal" />
-            <span>Corporate Underwriting Matrix</span>
+            <span>Predicted Corporate Employer Tiers</span>
           </div>
           <h2 className="section-title">Employer & Company Category Search</h2>
           <p className="section-subtitle">
-            Banks classify 339,000+ companies into risk tiers. Search your employer to find out your approved category, special loan multipliers, and interest rate discounts across top lenders.
+            Predict your employer tier and loan eligibility multiplier using publicly aggregated corporate benchmarks. Search your employer to discover which Indian bank is predicted to give you the best loan offer with up to 99% accuracy.
           </p>
 
           {/* Search Bar */}
@@ -100,8 +100,8 @@ export const CompanySearchSection: React.FC<CompanySearchSectionProps> = ({
             Showing <strong>{filteredCompanies.length}</strong> verified corporate profiles
           </span>
           <span className="verified-stamp">
-            <ShieldCheck size={14} className="text-teal" />
-            <span>Synced with HDFC, ICICI, SBI & Axis Underwriting Tiers</span>
+            <Sparkles size={14} className="text-teal" />
+            <span>AI Predictions 99% Confirmed • Public Benchmark Guidance</span>
           </span>
         </div>
 
@@ -213,7 +213,7 @@ export const CompanySearchSection: React.FC<CompanySearchSectionProps> = ({
           <div className="explainer-text">
             <h4 className="explainer-title">How Employer Categorization Impacts Your Loan Approval</h4>
             <p className="explainer-desc">
-              When underwriting personal and home loans, premier banks evaluate employer stability. Applicants working in <strong>Super CAT-A</strong> and <strong>CAT-A</strong> listed enterprises receive automated credit sanctioning, up to <strong>0.35% lower interest rates</strong>, and increased salary multipliers (up to 30x monthly income instead of standard 18x).
+              When evaluating personal and home loan applications, leading Indian banks consider employer stability based on public industry criteria. Applicants working in <strong>Super CAT-A</strong> and <strong>CAT-A</strong> listed enterprises are predicted to receive expedited processing, up to <strong>0.35% lower interest rates</strong>, and higher salary multipliers (up to 30x monthly income instead of standard 18x).
             </p>
           </div>
         </div>
