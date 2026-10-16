@@ -1255,6 +1255,69 @@ total_generation: ${totalGenDuration}ms`);
   };
 }
 
+import { PolicyLookupResult } from "./ai/types";
+
 // Backward-compatible alias
 export const answerPolicyQuestion = answerPolicyWithRag;
+
+/**
+ * Standard Structured Policy Lookup
+ * Strictly returns { found: true, value, lender, parameter } or { found: false, message: "Not specified in the available policy." }
+ * Prohibits parameter invention or guessing.
+ */
+export async function lookupPolicyParameterStructured(
+  lenderName: string,
+  parameterOrQuery: string,
+  context?: string
+): Promise<PolicyLookupResult> {
+  const target = await resolvePolicyTarget(lenderName);
+  const canonicalLender = target?.bankName || lenderName;
+
+  // 1. Try deterministic parameter extraction first (verified master policies)
+  const specific = extractSpecificBankPolicyParameter(canonicalLender, parameterOrQuery, context);
+  if (specific && !specific.includes("Not specified in the available policy")) {
+    return {
+      found: true,
+      value: specific,
+      lender: canonicalLender,
+      parameter: parameterOrQuery,
+      sourceFile: target?.fileName || `${canonicalLender.replace(/\s+/g, "_")}_Master_Policy.txt`,
+    };
+  }
+
+  // 2. Try RAG retrieval if target is mapped in DB
+  if (target) {
+    const ragResult = await answerPolicyWithRag({
+      bankId: target.bankId,
+      policyFileId: target.policyFileId,
+      bankName: target.bankName,
+      bankCode: target.bankCode,
+      fileName: target.fileName,
+      query: parameterOrQuery,
+    });
+
+    if (
+      ragResult.answer &&
+      !ragResult.answer.toLowerCase().includes("not available in our verified records") &&
+      !ragResult.answer.toLowerCase().includes("information is not available") &&
+      !ragResult.answer.includes("Not specified in the available policy")
+    ) {
+      return {
+        found: true,
+        value: ragResult.answer,
+        lender: target.bankName,
+        parameter: parameterOrQuery,
+        sourceFile: target.fileName,
+        metadata: { sources: ragResult.sources },
+      };
+    }
+  }
+
+  return {
+    found: false,
+    message: "Not specified in the available policy.",
+    lender: canonicalLender,
+    parameter: parameterOrQuery,
+  };
+}
 

@@ -66,24 +66,24 @@ export async function syncAgentToDb(agent: Agent, userId?: number): Promise<void
         agent.responseStyle || "balanced",
         JSON.stringify(agent.modes || {}),
         agent.operationalMode || "standard",
-        agent.goal || "",
+        (typeof agent.instructions === "string" ? agent.instructions : agent.instructions?.advancedPrompt) || agent.goal || "",
         JSON.stringify(agent.guardrailTemplates || []),
         agent.manualGuardrails || "",
-        JSON.stringify(
-          agent.generalInstructions || {
-            role: agent.instructions?.agentRole || "Senior Loan & Credit Advisory Specialist",
-            goal: agent.instructions?.businessDescription || "Help users compare loan eligibility and bank policies.",
-            behaviour: [
-              "Be accurate",
-              "Be conversational",
-              "Be concise",
-              "Ask only necessary questions",
-              "Do not repeatedly ask the same question",
-              "Maintain relevant conversation context",
-            ],
-            customRules: agent.instructions?.additionalInstructions || "",
-          }
-        ),
+        JSON.stringify({
+          ...(typeof agent.generalInstructions === "object" ? agent.generalInstructions : {}),
+          role: agent.instructions?.agentRole || (agent.generalInstructions as any)?.role || `${agent.name} Specialist`,
+          goal: agent.instructions?.businessDescription || agent.goal || "Help users compare loan eligibility and bank policies.",
+          behaviour: (agent.generalInstructions as any)?.behaviour || [
+            "Be accurate",
+            "Be conversational",
+            "Be concise",
+            "Ask only necessary questions",
+            "Do not repeatedly ask the same question",
+            "Maintain relevant conversation context",
+          ],
+          customRules: agent.instructions?.additionalInstructions || (agent.generalInstructions as any)?.customRules || "",
+          prompt: typeof agent.instructions === "string" ? agent.instructions : (agent.instructions?.advancedPrompt || agent.goal || ""),
+        }),
         agent.allowGeneralKnowledge !== false,
         JSON.stringify(
           agent.globalGuardrails || {
@@ -115,6 +115,13 @@ function mapRowToAgent(row: any): Agent {
   const globalGuard = typeof row.global_guardrails === "string" ? JSON.parse(row.global_guardrails) : (row.global_guardrails || {});
   const guardTemplates = Array.isArray(row.guardrail_templates) ? row.guardrail_templates : (typeof row.guardrail_templates === "string" ? JSON.parse(row.guardrail_templates) : []);
 
+  const storedInstructions =
+    row.goal ||
+    generalInst.prompt ||
+    generalInst.advancedPrompt ||
+    generalInst.customRules ||
+    "For bank-specific values (minimum salary, cut-off CIBIL scores, LTV ratios, interest rates), rely strictly on verified knowledge base files. For general financial definitions or industry acronyms (e.g., FOIR, LTV, CIBIL, EMI), provide clear standard financial definitions while noting that exact percentage thresholds depend on individual lender policy.";
+
   return {
     id: row.id,
     userId: row.user_id !== null && row.user_id !== undefined ? Number(row.user_id) : undefined,
@@ -125,16 +132,16 @@ function mapRowToAgent(row: any): Agent {
     responseStyle: (row.response_style || "balanced") as any,
     modes: typeof row.modes === "string" ? JSON.parse(row.modes) : (row.modes || { aiAgentMode: true, conversations: true, campaigns: false }),
     operationalMode: (row.operational_mode || "standard") as any,
-    goal: row.goal || "",
+    goal: row.goal || storedInstructions,
     guardrailTemplates: guardTemplates,
     manualGuardrails: row.manual_guardrails || "",
     instructions: {
       businessDescription: row.goal || "Help users compare loan eligibility and bank policies.",
       agentRole: generalInst.role || `${row.name} Specialist`,
-      tone: "Warm, professional, empathetic, and transparent",
+      tone: generalInst.tone || "Warm, professional, empathetic, and transparent",
       escalationRules: "Direct complex requests to a supervisor.",
       additionalInstructions: generalInst.customRules || "",
-      advancedPrompt: "Base bank policy responses strictly on verified knowledge.",
+      advancedPrompt: storedInstructions,
       temperature: 0.6,
       knowledgeInstructions: {
         groundingPolicy: "strict",
@@ -376,6 +383,8 @@ export async function listAgentDocuments(
         kd.vector_status as "vectorStatus",
         kd.is_active as "isActive",
         kd.metadata,
+        COALESCE(kd.source, 'knowledge_agent_passed') as source,
+        COALESCE(kd.is_policy_file, false) as "isPolicyFile",
         kd.uploaded_at as "uploadedAt",
         kd.updated_at as "updatedAt",
         kdi.id as "instructionId",
@@ -405,6 +414,8 @@ export async function listAgentDocuments(
       vectorStatus: r.vectorStatus || "Indexed",
       isActive: r.isActive !== false,
       metadata: r.metadata,
+      source: r.source || "knowledge_agent_passed",
+      is_policy_file: Boolean(r.isPolicyFile),
       uploadedAt: r.uploadedAt ? new Date(r.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Today",
       updatedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : new Date().toISOString(),
       instruction: r.instructionText
@@ -839,7 +850,9 @@ export async function listAllKnowledgeDocumentsAcrossAgents(): Promise<Array<{
         kd.status,
         kd.chunk_count as "chunkCount",
         kd.uploaded_at as "uploadedAt",
-        kd.raw_text as "rawText"
+        kd.raw_text as "rawText",
+        COALESCE(kd.source, 'knowledge_agent_passed') as "source",
+        COALESCE(kd.is_policy_file, false) as "isPolicyFile"
       FROM knowledge_documents kd
       LEFT JOIN agents a ON kd.agent_id = a.id
       ORDER BY kd.uploaded_at DESC`
@@ -857,6 +870,8 @@ export async function listAllKnowledgeDocumentsAcrossAgents(): Promise<Array<{
       chunkCount: Number(r.chunkCount || 0),
       uploadedAt: r.uploadedAt ? new Date(r.uploadedAt).toISOString() : new Date().toISOString(),
       rawText: r.rawText || "",
+      source: r.source || "knowledge_agent_passed",
+      is_policy_file: Boolean(r.isPolicyFile ?? (r.name.toLowerCase().includes("policy"))),
     }));
 
     // Also include custom_agents files if any
@@ -879,6 +894,8 @@ export async function listAllKnowledgeDocumentsAcrossAgents(): Promise<Array<{
                 chunkCount: 1,
                 uploadedAt: new Date().toISOString(),
                 rawText: "Indexed in custom agent RAG knowledge base.",
+                source: "knowledge_agent_passed",
+                is_policy_file: false,
               });
             }
           }

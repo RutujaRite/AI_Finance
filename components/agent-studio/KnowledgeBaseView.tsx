@@ -19,8 +19,10 @@ import {
   Globe,
   CheckCircle2,
   ArrowLeft,
+  Pencil,
+  Loader2,
 } from "lucide-react";
-import { Agent } from "@/lib/agent-studio/types";
+import { Agent, isKnowledgeBaseAgent } from "@/lib/agent-studio/types";
 
 interface KnowledgeDocItem {
   id: string;
@@ -34,6 +36,8 @@ interface KnowledgeDocItem {
   agentId?: string;
   agentName?: string;
   chunkCount?: number;
+  source?: string;
+  is_policy_file?: boolean;
 }
 
 const SEED_DOCUMENTS: KnowledgeDocItem[] = [];
@@ -67,6 +71,12 @@ export default function KnowledgeBaseView({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAgentFilter, setSelectedAgentFilter] = useState("All Agents");
   const [previewDoc, setPreviewDoc] = useState<KnowledgeDocItem | null>(null);
+  const [editDoc, setEditDoc] = useState<KnowledgeDocItem | null>(null);
+  const [editDocName, setEditDocName] = useState("");
+  const [editAgentId, setEditAgentId] = useState("");
+  const [editRawText, setEditRawText] = useState("");
+  const [loadingEditDoc, setLoadingEditDoc] = useState(false);
+  const [savingEditDoc, setSavingEditDoc] = useState(false);
   const [isAgentMenuOpen, setIsAgentMenuOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const agentMenuRef = React.useRef<HTMLDivElement>(null);
@@ -85,6 +95,7 @@ export default function KnowledgeBaseView({
 
   const allAgentsList = agents && agents.length > 0 ? agents : [agent];
   const agentDisplayName = agent.name || "CreditWise Assistant";
+  const isCurrentAgentKnowledge = isKnowledgeBaseAgent(agent);
 
   // Fetch all knowledge documents across all agents from RAG chunks / database
   async function fetchDocs() {
@@ -95,8 +106,8 @@ export default function KnowledgeBaseView({
         if (data.documents && Array.isArray(data.documents)) {
           const mapped: KnowledgeDocItem[] = data.documents.map((d: any) => ({
             id: d.id,
-            agentId: d.agentId,
-            agentName: d.agentName || "CreditWise Assistant",
+            agentId: d.agentId || d.agent_id,
+            agentName: d.agentName || d.agent_name || "CreditWise Assistant",
             name: d.name,
             type: (d.fileType?.toUpperCase() === "DOCX"
               ? "DOCX"
@@ -124,6 +135,8 @@ export default function KnowledgeBaseView({
             contentSnippet: d.rawText
               ? d.rawText.substring(0, 320)
               : "Indexed and stored in RAG knowledge chunks for AI agent retrieval.",
+            source: d.source || "knowledge_agent_passed",
+            is_policy_file: d.is_policy_file ?? (d.name?.toLowerCase().includes("policy") || d.category === "Bank Policy"),
           }));
 
           setDocuments(mapped);
@@ -140,6 +153,11 @@ export default function KnowledgeBaseView({
 
   async function handleFileUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
+    if (!isKnowledgeBaseAgent(agent)) {
+      onToast("This agent is configured as a conversational assistant. Document-level policy retrieval is handled independently by designated Knowledge Base agents.", "warning");
+      return;
+    }
+
     const file = files[0];
     const ext = file.name.split(".").pop()?.toUpperCase() || "PDF";
     const allowed = ["PDF", "DOCX", "DOC", "TXT", "XLSX", "XLS", "CSV", "JSON"];
@@ -201,14 +219,43 @@ export default function KnowledgeBaseView({
     ])
   ) as string[];
 
+  // Global policy filenames to strictly suppress from conversational agents
+  const GLOBAL_POLICY_FILES = [
+    "akte_bank_policy.pdf",
+    "hdfc_bank_terms.pdf",
+    "policy_notes.txt",
+    "master_bank_policy.pdf",
+  ];
+
   // Filtered documents
   const filteredDocuments = documents.filter((doc) => {
+    // If active agent is conversational/greeting:
+    if (!isCurrentAgentKnowledge) {
+      const isDocForThisAgent = doc.agentId === agent.id;
+      const isPassedByAgent = doc.source === "knowledge_agent_passed";
+      const isGlobalPolicy =
+        doc.is_policy_file === true ||
+        doc.category === "Bank Policy" ||
+        GLOBAL_POLICY_FILES.some((p) => doc.name.toLowerCase().includes(p));
+
+      // Strict scoping: files.filter(file => file.agent_id === currentAgent.id && file.source === 'knowledge_agent_passed')
+      // and completely suppress global policy documents
+      if (!isDocForThisAgent || !isPassedByAgent || isGlobalPolicy) {
+        return false;
+      }
+    } else {
+      // For Knowledge Base agents:
+      if (selectedAgentFilter !== "All Agents") {
+        if (doc.agentName !== selectedAgentFilter && doc.agentId !== selectedAgentFilter) {
+          return false;
+        }
+      }
+    }
+
     const matchesSearch =
       doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (doc.agentName || "").toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesAgent =
-      selectedAgentFilter === "All Agents" || doc.agentName === selectedAgentFilter;
-    return matchesSearch && matchesAgent;
+    return matchesSearch;
   });
 
   function handleDeleteDoc(docId: string, docName: string) {
@@ -216,6 +263,58 @@ export default function KnowledgeBaseView({
       setDocuments((prev) => prev.filter((d) => d.id !== docId));
       fetch(`/api/agents/knowledge?docId=${docId}`, { method: "DELETE" }).catch(() => {});
       onToast(`Removed "${docName}"`, "info");
+    }
+  }
+
+  async function handleOpenEditModal(doc: KnowledgeDocItem) {
+    setEditDoc(doc);
+    setEditDocName(doc.name);
+    setEditAgentId(doc.agentId || agent.id);
+    setEditRawText(doc.contentSnippet || "");
+    setLoadingEditDoc(true);
+    try {
+      const res = await fetch(`/api/agent-studio/documents/${doc.id}`);
+      const data = await res.json();
+      if (res.ok && data.success && data.rawText !== undefined) {
+        setEditRawText(data.rawText);
+      }
+    } catch (err) {
+      console.error("Failed to fetch full document text:", err);
+    } finally {
+      setLoadingEditDoc(false);
+    }
+  }
+
+  async function handleSaveEditDoc(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editDoc) return;
+    if (!editDocName.trim()) {
+      onToast("Document title cannot be empty", "warning");
+      return;
+    }
+    setSavingEditDoc(true);
+    try {
+      const res = await fetch(`/api/agent-studio/documents/${editDoc.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editDocName.trim(),
+          agentId: editAgentId,
+          rawText: editRawText,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        onToast(`Document "${editDocName}" updated and re-indexed.`, "success");
+        setEditDoc(null);
+        await fetchDocs();
+      } else {
+        onToast(data.error || "Failed to update document", "warning");
+      }
+    } catch {
+      onToast("Error updating document", "warning");
+    } finally {
+      setSavingEditDoc(false);
     }
   }
 
@@ -259,15 +358,17 @@ export default function KnowledgeBaseView({
               onChange={(e) => handleFileUpload(e.target.files)}
             />
 
-            {/* Direct Upload Document button */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition cursor-pointer shadow-xs disabled:opacity-50"
-            >
-              <Upload className="w-3.5 h-3.5 text-white" />
-              <span>{isUploading ? "Uploading..." : "Upload Document"}</span>
-            </button>
+            {/* Direct Upload Document button - only for Knowledge Base agents */}
+            {isKnowledgeBaseAgent(agent) && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                <Upload className="w-3.5 h-3.5 text-white" />
+                <span>{isUploading ? "Uploading..." : "Upload Document"}</span>
+              </button>
+            )}
 
             {onNavigateToInstructions && (
               <button
@@ -369,35 +470,79 @@ export default function KnowledgeBaseView({
           </div>
         </div>
 
-        {/* Knowledge Scope & Grounding Behavior Card */}
-        <div className="bg-white rounded-2xl border border-slate-300 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
-              <Globe className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-xs font-bold text-slate-900">
-                  Global Bank Policy Access:
-                </h3>
-                <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  Enabled
-                </span>
+        {/* Knowledge Scope & Grounding Behavior Card / Informational state for Conversational Assistant */}
+        {!isKnowledgeBaseAgent(agent) ? (
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 p-6 rounded-2xl border border-blue-200/80 bg-white shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md">
+            <div className="flex items-start gap-4 max-w-2xl flex-1">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
+                <Bot className="w-6 h-6 text-blue-600" />
               </div>
-              <p className="text-[11px] text-slate-500 mt-0.5 max-w-xl">
-                {agentDisplayName} prioritizes its own uploaded documents below, while also cross-referencing official master bank policies (Axis, HDFC, ICICI, Bandhan, etc.) during multi-lender evaluations.
-              </p>
+              <div className="flex-1 min-w-0">
+                <div className="inline-flex items-center gap-2.5 flex-wrap">
+                  <h3 className="text-base font-bold text-[#12336B] tracking-tight">
+                    Conversational Assistant Mode
+                  </h3>
+                  <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                    General / Greeting
+                  </span>
+                </div>
+                <p className="text-xs text-[#526B91] mt-1.5 leading-relaxed">
+                  This agent is configured as a conversational assistant. Document-level policy retrieval is handled independently by designated Knowledge Base agents.
+                </p>
+              </div>
+            </div>
+
+            {onSelectAgent && (
+              <div className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const knowledgeAgent = allAgentsList.find((a) => isKnowledgeBaseAgent(a) && a.id !== agent.id);
+                    if (knowledgeAgent) {
+                      onSelectAgent(knowledgeAgent.id);
+                      onToast(`Switched to Knowledge Base Agent "${knowledgeAgent.name}"`, "info");
+                    } else {
+                      onToast("No dedicated Knowledge Base agent found.", "warning");
+                    }
+                  }}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs whitespace-nowrap rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs hover:shadow-md transition cursor-pointer"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Switch to Dedicated Knowledge Agent</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-300 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
+                <Globe className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs font-bold text-slate-900">
+                    Global Bank Policy Access:
+                  </h3>
+                  <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    Enabled
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5 max-w-xl">
+                  {agentDisplayName} prioritizes its own uploaded documents below, while also cross-referencing official master bank policies (Axis, HDFC, ICICI, Bandhan, etc.) during multi-lender evaluations.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+              <span className="text-[11px] font-semibold text-slate-500">Grounding Strictness:</span>
+              <span className="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 text-xs font-bold rounded-lg">
+                {agent.guardrailTemplates?.includes("Strict Knowledge Usage") ? "Strict (No Hallucination)" : "Standard (Hybrid)"}
+              </span>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-            <span className="text-[11px] font-semibold text-slate-500">Grounding Strictness:</span>
-            <span className="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 text-xs font-bold rounded-lg">
-              {agent.guardrailTemplates?.includes("Strict Knowledge Usage") ? "Strict (No Hallucination)" : "Standard (Hybrid)"}
-            </span>
-          </div>
-        </div>
+        )}
 
         {/* Uploaded Knowledge Base Table - Full Width (AI Model Blue Ribbon Style) */}
         <div className="bg-white rounded-2xl border border-slate-300 shadow-xs overflow-hidden transition-all duration-200 hover:border-blue-500 hover:shadow-md">
@@ -505,6 +650,7 @@ export default function KnowledgeBaseView({
                   <th className="py-3 px-3">File Name</th>
                   <th className="py-3 px-2">Respective Agent</th>
                   <th className="py-3 px-2">Type</th>
+                  <th className="py-3 px-2">Provenance</th>
                   <th className="py-3 px-2">Size / Chunks</th>
                   <th className="py-3 px-2">Uploaded On</th>
                   <th className="py-3 px-2">Status</th>
@@ -514,8 +660,19 @@ export default function KnowledgeBaseView({
               <tbody className="divide-y divide-slate-100">
                 {filteredDocuments.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-slate-400">
-                      No documents found matching criteria.
+                    <td colSpan={8} className="text-center py-10 text-slate-500">
+                      {!isCurrentAgentKnowledge ? (
+                        <div className="max-w-md mx-auto space-y-1.5 py-4">
+                          <p className="text-xs font-semibold text-slate-700">
+                            No document-level knowledge files indexed for this conversational assistant.
+                          </p>
+                          <p className="text-[11px] text-slate-400">
+                            Document-level policy retrieval is handled independently by designated Knowledge Base agents.
+                          </p>
+                        </div>
+                      ) : (
+                        "No documents found matching criteria."
+                      )}
                     </td>
                   </tr>
                 ) : (
@@ -576,6 +733,14 @@ export default function KnowledgeBaseView({
                         </span>
                       </td>
 
+                      {/* Provenance Badge */}
+                      <td className="py-3 px-2">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                          <CheckCircle2 className="w-2.5 h-2.5 text-blue-600" />
+                          Source: Passed by Agent
+                        </span>
+                      </td>
+
                       {/* Size / RAG Chunks */}
                       <td className="py-3 px-2 text-slate-600">
                         <div className="flex flex-col leading-tight">
@@ -618,6 +783,13 @@ export default function KnowledgeBaseView({
                             title="View document content"
                           >
                             <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEditModal(doc)}
+                            className="p-1 hover:text-amber-600 rounded transition cursor-pointer"
+                            title="Edit document details / text content"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleReindexDoc(doc.id, doc.name)}
@@ -709,6 +881,117 @@ export default function KnowledgeBaseView({
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Edit Modal */}
+      {editDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 animate-fadeIn flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200/60">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    Edit Document Details & Content
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Update document name, re-assign agent, or edit text content to re-index chunks.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditDoc(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditDoc} className="mt-4 flex flex-col flex-1 min-h-0 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    File Name / Title
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editDocName}
+                    onChange={(e) => setEditDocName(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 bg-white"
+                    placeholder="Document title or filename..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Respective Agent
+                  </label>
+                  <select
+                    value={editAgentId}
+                    onChange={(e) => setEditAgentId(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 bg-white"
+                  >
+                    {allAgentsList.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name || "Default Agent"} {a.id === agent.id ? "(Current Agent)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex items-center justify-between mb-1.5 shrink-0">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Document Content (Raw Text / Criteria)
+                  </label>
+                  {loadingEditDoc ? (
+                    <span className="flex items-center gap-1 text-[11px] text-blue-600 font-medium">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Loading full text...
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-slate-400">
+                      {editRawText.length.toLocaleString()} characters
+                    </span>
+                  )}
+                </div>
+                <textarea
+                  value={editRawText}
+                  onChange={(e) => setEditRawText(e.target.value)}
+                  placeholder="Enter or modify the raw text or policy criteria here..."
+                  disabled={loadingEditDoc}
+                  className="w-full flex-1 min-h-[260px] p-3 border border-slate-200 rounded-lg font-mono text-xs leading-relaxed text-slate-800 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-y"
+                />
+                <p className="text-[11px] text-slate-400 mt-1.5 shrink-0">
+                  Saving modifications will automatically re-segment text into RAG chunks and refresh vector embeddings in PostgreSQL.
+                </p>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setEditDoc(null)}
+                  disabled={savingEditDoc}
+                  className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEditDoc || loadingEditDoc || !editDocName.trim()}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  {savingEditDoc && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {savingEditDoc ? "Saving & Re-indexing..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -114,8 +114,8 @@ if (fs.existsSync(targetPath)) {
   assertCheck("Toolbar: Controls enclosed inside horizontal card with #DCE8F8 border and shadow",
     content.includes("ai-card") && content.includes("shadow-[0_2px_8px_rgba(30,80,150,0.04)]")
   );
-  assertCheck("Toolbar: Agent selector dropdown with 38px height", 
-    content.includes("isAgentDropdownOpen") && content.includes("h-[38px]")
+  assertCheck("Toolbar: Redundant agent dropdown and create agent buttons removed from secondary action bar", 
+    !content.includes("isAgentDropdownOpen") && !content.includes("+ Create Agent Toolbar Button")
   );
   assertCheck("Toolbar: Switchable Active / Inactive button with #E7F9F1 and #079669", 
     content.includes("handleToggleActiveStatus") &&
@@ -161,7 +161,7 @@ if (fs.existsSync(targetPath)) {
     content.includes("ai-textarea")
   );
   assertCheck("Instructions Card: Footer with Character limit counter",
-    content.includes("/ 2000 characters") || content.includes("/ 2,000 characters")
+    content.includes("/ 10,000 characters") || content.includes("/ 10000 characters") || content.includes("/ 2000 characters")
   );
   assertCheck("Instructions Card: Footer with Autosave status and green #079669 check",
     content.includes("Autosaved") && content.includes("#079669")

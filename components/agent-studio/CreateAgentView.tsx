@@ -76,7 +76,7 @@ export default function CreateAgentView({
       currentAgent?.instructions?.additionalInstructions ||
       currentAgent?.instructions?.businessDescription ||
       currentAgent?.goal ||
-      "You are a helpful support assistant. Answer clearly, follow the instructions below, and use the knowledge base when relevant."
+      "For bank-specific values (minimum salary, cut-off CIBIL scores, LTV ratios, interest rates), rely strictly on verified knowledge base files. For general financial definitions or industry acronyms (e.g., FOIR, LTV, CIBIL, EMI), provide clear standard financial definitions while noting that exact percentage thresholds depend on individual lender policy."
     );
   });
 
@@ -191,7 +191,7 @@ export default function CreateAgentView({
   }
 
   function handleInstructionsChange(val: string) {
-    if (val.length <= 2000) {
+    if (val.length <= 10000) {
       setInstructions(val);
       setIsSaved(false);
       onUpdateAgent({
@@ -569,15 +569,15 @@ export default function CreateAgentView({
                 </p>
                 <div className="relative">
                   <textarea
-                    rows={6}
+                    rows={10}
                     value={instructions}
-                    maxLength={2000}
+                    maxLength={10000}
                     onChange={(e) => handleInstructionsChange(e.target.value)}
                     placeholder="You are a helpful support assistant. Answer clearly, follow the instructions below, and use the knowledge base when relevant."
-                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-lg border border-[#DFE7F3] text-[#101D45] placeholder-[#7183A3]/70 focus:outline-none focus:border-[#1769FF] focus:ring-1 focus:ring-[#1769FF] transition resize-y min-h-[140px] bg-white"
+                    className="w-full px-3.5 py-2.5 font-mono text-sm leading-relaxed rounded-lg border border-[#DFE7F3] text-[#101D45] placeholder-[#7183A3]/70 focus:outline-none focus:border-[#1769FF] focus:ring-1 focus:ring-[#1769FF] transition resize-y min-h-[280px] bg-white"
                   />
                   <div className="text-right text-[11px] text-[#7183A3] mt-1 font-mono">
-                    {instructions.length} / 2000
+                    {instructions.length.toLocaleString()} / 10,000
                   </div>
                 </div>
               </div>

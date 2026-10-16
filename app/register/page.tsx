@@ -79,7 +79,13 @@ export default function RegisterPage() {
           localStorage.setItem("finai_user", JSON.stringify(data.user))
         } catch {}
 
-        router.replace("/home")
+        const params =
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search)
+            : null
+        const from = params?.get("from")
+        const target = from && from !== "/platform" && from !== "/dashboard" && from !== "/home" ? from : "/"
+        router.replace(target)
         return
       }
 

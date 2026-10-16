@@ -153,6 +153,16 @@ export default function AdminHeader({
             <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-blue-600 ring-2 ring-white" />
           </div>
 
+          {/* Direct "Back to Home" / "Main App" Header Button */}
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 bg-white hover:bg-slate-50 border border-slate-300 hover:border-blue-400 rounded-xl transition-all cursor-pointer shadow-2xs no-underline"
+            title="Exit Admin & Go to Home"
+          >
+            <Home className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden sm:inline">Back to Home</span>
+          </Link>
+
           {/* Admin Profile Dropdown - 40px height hit target */}
           <div className="relative" ref={dropdownRef}>
             <button
@@ -197,6 +207,19 @@ export default function AdminHeader({
                     <ShieldCheck className="w-3 h-3" />
                     <span>Admin Workspace</span>
                   </div>
+                </div>
+
+                {/* Back to Home / Main App with subtle divider */}
+                <div className="py-1 border-b border-gray-100">
+                  <Link
+                    href="/"
+                    onClick={() => setProfileDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-slate-700 hover:text-blue-600 hover:bg-blue-50/60 text-xs font-semibold no-underline transition-colors"
+                  >
+                    <Home className="w-4 h-4 text-blue-600" />
+                    <span>Back to Home</span>
+                    <span className="ml-auto text-[10px] font-normal text-slate-400">Main App</span>
+                  </Link>
                 </div>
 
                 <div className="py-1">

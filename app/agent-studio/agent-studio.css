@@ -137,14 +137,15 @@
 
 .ai-textarea {
   width: 100%;
-  min-height: 220px;
-  max-height: 480px;
+  min-height: 340px;
+  max-height: none;
   padding: 14px 16px;
   box-sizing: border-box;
   border: 1px solid #DCE8F8;
-  border-radius: 7px;
-  font-size: 13.5px;
-  line-height: 1.6;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 14px;
+  line-height: 1.625;
   resize: vertical;
   background: #FFFFFF;
   color: #12336B;

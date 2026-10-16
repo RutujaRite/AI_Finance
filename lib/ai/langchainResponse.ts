@@ -66,10 +66,19 @@ export function normalizeModelSlug(rawModel?: string): string {
     return DEFAULT_FALLBACK_MODEL;
   }
   if (trimmed === "gpt-4o") return "openai/gpt-4o";
-  if (trimmed === "claude-3.5-sonnet") return "anthropic/claude-3.5-sonnet";
+  if (trimmed === "gpt-4o-mini") return "openai/gpt-4o-mini";
+  if (trimmed.includes("claude-3-5-sonnet") || trimmed.includes("claude-3.5-sonnet")) return "anthropic/claude-3.5-sonnet";
+  if (trimmed.includes("claude-3-opus") || trimmed.includes("claude-3.opus")) return "anthropic/claude-3-opus";
   if (trimmed === "gemini-pro" || trimmed === "gemini-flash" || trimmed === "gemini-2.5-flash") {
     return "google/gemini-2.5-flash";
   }
+  if (trimmed.includes("gemini-1.5-pro")) return "google/gemini-pro-1.5";
+  if (trimmed === "llama-3.3-70b-versatile" || trimmed === "llama-3.3-70b") return "meta-llama/llama-3.3-70b-instruct";
+  if (trimmed === "deepseek-r1" || trimmed === "deepseek/deepseek-r1") return "deepseek/deepseek-r1";
+  if (trimmed === "deepseek-v3") return "deepseek/deepseek-chat";
+  if (!trimmed.includes("/") && trimmed.startsWith("claude-")) return `anthropic/${trimmed}`;
+  if (!trimmed.includes("/") && trimmed.startsWith("gpt-")) return `openai/${trimmed}`;
+  if (!trimmed.includes("/") && trimmed.startsWith("llama-")) return `meta-llama/${trimmed}`;
   return trimmed;
 }
 

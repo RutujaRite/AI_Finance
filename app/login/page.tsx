@@ -25,6 +25,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [resetSuccess, setResetSuccess] = useState("")
   const [theme, setTheme] = useState<"light" | "dark">("light")
 
   useEffect(() => {
@@ -37,6 +38,11 @@ export default function LoginPage() {
       setTheme(savedTheme)
       document.documentElement.setAttribute("data-theme", savedTheme)
       document.documentElement.setAttribute("data-bs-theme", savedTheme)
+
+      const params = new URLSearchParams(window.location.search)
+      if (params.get("reset") === "success") {
+        setResetSuccess("Your password has been successfully reset. Please sign in with your new password.")
+      }
     }
   }, [])
 
@@ -76,20 +82,12 @@ export default function LoginPage() {
             ? new URLSearchParams(window.location.search)
             : null
         const from = params?.get("from")
+        const target =
+          from && from !== "/platform" && from !== "/dashboard" && from !== "/login" && from !== "/register" && from !== "/"
+            ? from
+            : "/home"
 
-        const isAdmin =
-          String(data.user?.role || "").trim().toLowerCase() === "admin" ||
-          data.user?.is_admin === true ||
-          String(data.user?.email || "").toLowerCase() === "admin@gmail.com" ||
-          String(data.user?.email || "").toLowerCase().startsWith("admin")
-
-        if (from) {
-          router.replace(from)
-        } else if (isAdmin) {
-          router.replace("/admin")
-        } else {
-          router.replace("/home")
-        }
+        window.location.href = target
         return
       }
 
@@ -127,20 +125,12 @@ export default function LoginPage() {
             ? new URLSearchParams(window.location.search)
             : null
         const from = params?.get("from")
+        const target =
+          from && from !== "/platform" && from !== "/dashboard" && from !== "/login" && from !== "/register" && from !== "/"
+            ? from
+            : "/home"
 
-        const isAdmin =
-          String(data.user?.role || "").trim().toLowerCase() === "admin" ||
-          data.user?.is_admin === true ||
-          String(data.user?.email || "").toLowerCase() === "admin@gmail.com" ||
-          String(data.user?.email || "").toLowerCase().startsWith("admin")
-
-        if (from) {
-          router.replace(from)
-        } else if (isAdmin) {
-          router.replace("/admin")
-        } else {
-          router.replace("/home")
-        }
+        window.location.href = target
         return
       }
 
@@ -640,6 +630,27 @@ export default function LoginPage() {
             />
           </div>
 
+          {resetSuccess && (
+            <div
+              style={{
+                padding: "10px 14px",
+                borderRadius: "10px",
+                background: "rgba(16, 185, 129, 0.1)",
+                border: "1px solid rgba(16, 185, 129, 0.3)",
+                color: "#10b981",
+                fontSize: "0.8125rem",
+                fontWeight: 500,
+                marginBottom: "14px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <CheckCircle2 size={16} />
+              <span>{resetSuccess}</span>
+            </div>
+          )}
+
           {error && (
             <div
               style={{
@@ -734,6 +745,19 @@ export default function LoginPage() {
                 >
                   Password
                 </label>
+                <a
+                  href="/forgot-password"
+                  style={{
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    color: "#0284c7",
+                    textDecoration: "none",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                >
+                  Forgot password?
+                </a>
               </div>
               <div
                 style={{

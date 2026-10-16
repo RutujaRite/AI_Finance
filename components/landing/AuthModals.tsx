@@ -73,8 +73,9 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
         onLoginSuccess(data.user);
         onClose();
         const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-        const target = params?.get('from') || '/home';
-        router.push(target);
+        const from = params?.get('from');
+        const target = from && from !== '/platform' && from !== '/dashboard' && from !== '/login' && from !== '/register' && from !== '/' ? from : '/home';
+        window.location.href = target;
         return;
       }
 
@@ -116,8 +117,9 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
         onLoginSuccess(data.user);
         onClose();
         const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-        const target = params?.get('from') || '/home';
-        router.push(target);
+        const from = params?.get('from');
+        const target = from && from !== '/platform' && from !== '/dashboard' && from !== '/login' && from !== '/register' && from !== '/' ? from : '/home';
+        window.location.href = target;
         return;
       }
 
@@ -150,8 +152,9 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
         onLoginSuccess(data.user);
         onClose();
         const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-        const target = params?.get('from') || '/home';
-        router.push(target);
+        const from = params?.get('from');
+        const target = from && from !== '/platform' && from !== '/dashboard' && from !== '/login' && from !== '/register' && from !== '/' ? from : '/home';
+        window.location.href = target;
         return;
       }
 
@@ -358,7 +361,31 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
               <div className="form-field">
                 <div className="field-label-split">
                   <label className="field-label">Password</label>
-                  <span className="sample-hint">Demo: 12345</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="sample-hint">Demo: 12345</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>•</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        router.push('/forgot-password');
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        color: 'var(--teal-600)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        textDecoration: 'none',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                      onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                    >
+                      Forgot?
+                    </button>
+                  </div>
                 </div>
                 <div className="field-input-wrapper">
                   <Lock size={18} className="field-icon" />

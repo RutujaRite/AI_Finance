@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { docId, category } = body;
+    const { docId, name, agentId, rawText, category } = body;
 
     if (!docId) {
       return NextResponse.json(
@@ -47,20 +47,19 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // Persist category update into PostgreSQL if possible
-    try {
-      const pool = (await import("@/lib/db")).default;
-      await pool.query(
-        `UPDATE knowledge_documents SET raw_text = raw_text WHERE id = $1`,
-        [docId]
-      );
-    } catch {}
+    const { updateAndReindexDocument } = await import("@/lib/agent-studio/documentProcessor");
+    const result = await updateAndReindexDocument(docId, {
+      name,
+      agentId,
+      rawText,
+    });
 
     const documents = await listAllKnowledgeDocumentsAcrossAgents();
     return NextResponse.json({
       success: true,
       documents,
-      message: `Document updated successfully`,
+      message: result.success ? "Document updated and re-indexed successfully" : (result.error || "Update processed"),
+      chunkCount: result.chunkCount,
     });
   } catch (error: any) {
     console.error("[API_ALL_KNOWLEDGE_PATCH_ERROR]", error);

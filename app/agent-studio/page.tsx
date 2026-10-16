@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bot, Sparkles, AlertTriangle, X } from "lucide-react";
+import { Bot, Sparkles, AlertTriangle, X, Plus, ChevronDown, Check, Layers, Cpu, Compass } from "lucide-react";
 import StudioSidebar, { StudioNavTab } from "@/components/agent-studio/StudioSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AiInstructionsView from "@/components/agent-studio/AiInstructionsView";
@@ -13,8 +13,78 @@ import SettingsView from "@/components/agent-studio/SettingsView";
 import TokenAnalyticsView from "@/components/agent-studio/TokenAnalyticsView";
 import ModelConfigurationView from "@/components/agent-studio/ModelConfigurationView";
 import Toast from "@/components/agent-studio/Toast";
-import { Agent, UserSubscriptionState } from "@/lib/agent-studio/types";
+import { Agent, AgentInstructions, UserSubscriptionState } from "@/lib/agent-studio/types";
 import "./agent-studio.css";
+
+interface AgentPreset {
+  id: string;
+  name: string;
+  badge: string;
+  role: string;
+  description: string;
+  tone: string;
+  responseStyle: string;
+  prompt: string;
+  model: string;
+}
+
+const PRESET_TEMPLATES: AgentPreset[] = [
+  {
+    id: "loan_specialist",
+    name: "Loan Specialist",
+    badge: "Most Popular",
+    role: "Credit & Personal Loan Specialist",
+    description: "Evaluates multi-bank personal and business loan eligibility based on uploaded policies.",
+    tone: "Professional and friendly",
+    responseStyle: "Clear, helpful, concise",
+    prompt: "You are a professional Credit & Loan Specialist. Base all bank policy responses strictly on verified knowledge documents. Always verify net monthly income, employer category, and CIBIL score before concluding eligibility.",
+    model: "gpt-4o-mini",
+  },
+  {
+    id: "mortgage_advisor",
+    name: "Mortgage Advisor",
+    badge: "Home Loans",
+    role: "Mortgage & Property Finance Advisor",
+    description: "Assists users with home loan eligibility, LTV ratios, and property documentation.",
+    tone: "Professional and advisory",
+    responseStyle: "Clear, helpful, concise",
+    prompt: "You are a dedicated Mortgage & Home Loan Advisor. Assist customers in calculating eligibility, comparing interest rates across partner banks, understanding LTV ratios, and verifying property documentation.",
+    model: "claude-3-5-sonnet",
+  },
+  {
+    id: "kyc_bot",
+    name: "KYC Verification Bot",
+    badge: "Compliance",
+    role: "KYC & Compliance Officer",
+    description: "Validates applicant documentation, salary slips, and identity proofs against banking rules.",
+    tone: "Strict, objective, and precise",
+    responseStyle: "Clear, helpful, concise",
+    prompt: "You are a KYC Verification assistant. Review applicant documents against compliance requirements. Validate identity proofs, address documents, 6-month bank statements, and salary slips strictly according to banking standards.",
+    model: "gpt-4o",
+  },
+  {
+    id: "greeting_assistant",
+    name: "Greeting Assistant",
+    badge: "Front-desk",
+    role: "Customer Welcome & Intake Coordinator",
+    description: "Welcomes visitors, discovers financial needs, and collects pre-qualification details.",
+    tone: "Warm, empathetic, and welcoming",
+    responseStyle: "Clear, helpful, concise",
+    prompt: "You are a warm, welcoming financial concierge. Greet visitors warmly, discover what financial or loan assistance they are looking for, and guide them smoothly through initial eligibility pre-screening.",
+    model: "gpt-4o-mini",
+  },
+  {
+    id: "custom",
+    name: "Custom Blank Agent",
+    badge: "Blank",
+    role: "Domain AI Assistant",
+    description: "Configure custom system prompt and domain rules from scratch.",
+    tone: "Professional and friendly",
+    responseStyle: "Clear, helpful, concise",
+    prompt: "For bank-specific values (minimum salary, cut-off CIBIL scores, LTV ratios, interest rates), rely strictly on verified knowledge base files. For general financial definitions or industry acronyms (e.g., FOIR, LTV, CIBIL, EMI), provide clear standard financial definitions while noting that exact percentage thresholds depend on individual lender policy.",
+    model: "gpt-4o-mini",
+  },
+];
 
 const FALLBACK_DEFAULT_AGENT: Agent = {
   id: "agent_loan_assistant",
@@ -82,14 +152,30 @@ export default function AgentStudioPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Agent Creation Modal State
+  // Agent Creation Modal State (Option B: Modal Prompt)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newAgentName, setNewAgentName] = useState("");
-  const [newAgentDescription, setNewAgentDescription] = useState("");
-  const [newAgentRole, setNewAgentRole] = useState("Credit Specialist");
+  const [newAgentPreset, setNewAgentPreset] = useState("loan_specialist");
+  const [newAgentName, setNewAgentName] = useState("Loan Specialist");
+  const [newAgentDescription, setNewAgentDescription] = useState("Evaluates multi-bank personal and business loan eligibility based on uploaded policies.");
+  const [newAgentRole, setNewAgentRole] = useState("Credit & Personal Loan Specialist");
   const [newAgentTone, setNewAgentTone] = useState("Professional and friendly");
-  const [newAgentGoal, setNewAgentGoal] = useState("");
+  const [newAgentResponseStyle, setNewAgentResponseStyle] = useState("Clear, helpful, concise");
+  const [newAgentModel, setNewAgentModel] = useState("gpt-4o-mini");
+  const [newAgentPrompt, setNewAgentPrompt] = useState("You are a professional Credit & Loan Specialist. Base all bank policy responses strictly on verified knowledge documents. Always verify net monthly income, employer category, and CIBIL score before concluding eligibility.");
   const [isCreating, setIsCreating] = useState(false);
+
+  function handleSelectPreset(presetId: string) {
+    const preset = PRESET_TEMPLATES.find((p) => p.id === presetId);
+    if (!preset) return;
+    setNewAgentPreset(presetId);
+    setNewAgentName(preset.id === "custom" ? "" : preset.name);
+    setNewAgentRole(preset.role);
+    setNewAgentDescription(preset.description);
+    setNewAgentTone(preset.tone);
+    setNewAgentResponseStyle(preset.responseStyle);
+    setNewAgentPrompt(preset.prompt);
+    setNewAgentModel(preset.model);
+  }
 
   // Agent Delete Modal State
   const [deleteConfirmAgentId, setDeleteConfirmAgentId] = useState<string | null>(null);
@@ -154,26 +240,137 @@ export default function AgentStudioPage() {
     }
   }
 
-  const currentAgent =
+  const selectedAgent =
     agents.find((a) => a.id === selectedAgentId) || agents[0] || FALLBACK_DEFAULT_AGENT;
+  const currentAgent = selectedAgent;
+
+  function getSelectedAgentInstructions(ag: Agent): string {
+    const rawGoal = (ag.goal || "").trim();
+    const systemPrompt = ((ag as any).system_prompt || "").trim();
+    const advPrompt =
+      (typeof ag.instructions === "string"
+        ? ag.instructions
+        : ag.instructions?.advancedPrompt || "")
+      .trim();
+
+    // Prefer specific stored instructions over generic fallback
+    if (rawGoal && rawGoal !== "Base bank policy responses strictly on verified knowledge.") {
+      return rawGoal;
+    }
+    if (systemPrompt && systemPrompt !== "Base bank policy responses strictly on verified knowledge.") {
+      return systemPrompt;
+    }
+    if (advPrompt && advPrompt !== "Base bank policy responses strictly on verified knowledge.") {
+      return advPrompt;
+    }
+    return (
+      rawGoal ||
+      systemPrompt ||
+      advPrompt ||
+      ag.instructions?.businessDescription ||
+      "For bank-specific values (minimum salary, cut-off CIBIL scores, LTV ratios, interest rates), rely strictly on verified knowledge base files. For general financial definitions or industry acronyms (e.g., FOIR, LTV, CIBIL, EMI), provide clear standard financial definitions while noting that exact percentage thresholds depend on individual lender policy."
+    );
+  }
+
+  // Sync state with selected agent
+  const [instructions, setInstructions] = useState<string>("");
+  const [agentName, setAgentName] = useState<string>("");
+  const [tone, setTone] = useState<string>("Professional and friendly");
+  const [responseStyle, setResponseStyle] = useState<string>("Clear, helpful, concise");
+
+  useEffect(() => {
+    if (selectedAgent) {
+      const prompt = getSelectedAgentInstructions(selectedAgent);
+      setInstructions(prompt);
+      setAgentName(selectedAgent.name || "");
+      setTone(
+        (selectedAgent as any).tone ||
+          selectedAgent.instructions?.tone ||
+          "Professional and friendly"
+      );
+      setResponseStyle(
+        (selectedAgent as any).response_style ||
+          (selectedAgent.responseStyle === "detailed"
+            ? "Detailed"
+            : selectedAgent.responseStyle === "balanced"
+            ? "Step-by-step"
+            : "Clear, helpful, concise")
+      );
+    }
+  }, [selectedAgentId, selectedAgent]);
+
+  const activeAgent = {
+    ...currentAgent,
+    is_active: currentAgent.isActiveForUser !== false && currentAgent.status === "active",
+  };
+
+  function handleDeleteAgent() {
+    setDeleteConfirmAgentId(currentAgent.id);
+  }
+
+  async function handleSaveInstructions() {
+    await handleSaveChanges();
+  }
 
   function handleUpdateCurrentAgent(updates: Partial<Agent>) {
     setAgents((prev) =>
       prev.map((a) => (a.id === currentAgent.id ? { ...a, ...updates } : a))
     );
+    if (updates.goal) {
+      setInstructions(updates.goal);
+    } else if (typeof updates.instructions === "string") {
+      setInstructions(updates.instructions);
+    } else if (updates.instructions?.advancedPrompt) {
+      setInstructions(updates.instructions.advancedPrompt);
+    }
   }
+
+  const currentInstructionsObj: AgentInstructions =
+    typeof currentAgent.instructions === "object" && currentAgent.instructions !== null
+      ? currentAgent.instructions
+      : {
+          businessDescription: currentAgent.description || "Help users compare loan eligibility and bank policies.",
+          agentRole: `${currentAgent.name} Specialist`,
+          tone: "Professional and friendly",
+          escalationRules: "Direct complex requests to a supervisor.",
+          additionalInstructions: "",
+          advancedPrompt: instructions || currentAgent.goal || "",
+        };
+
+  const agentForInstructionsView: Agent = {
+    ...currentAgent,
+    goal: instructions || currentAgent.goal,
+    instructions: {
+      ...currentInstructionsObj,
+      advancedPrompt: instructions || currentInstructionsObj.advancedPrompt || currentAgent.goal || "",
+    },
+  };
 
   async function handleSaveChanges() {
     try {
       setSaving(true);
+      const agentToSave: Agent = {
+        ...currentAgent,
+        goal: instructions || currentAgent.goal,
+        instructions: {
+          ...currentInstructionsObj,
+          advancedPrompt: instructions || currentInstructionsObj.advancedPrompt || currentAgent.goal || "",
+        },
+      };
+
       const res = await fetch(`/api/agents/${currentAgent.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(currentAgent),
+        body: JSON.stringify(agentToSave),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setToast({ message: "Changes saved successfully", type: "success" });
+        setToast({ message: "Instructions saved successfully", type: "success" });
+        if (data.agent) {
+          setAgents((prev) =>
+            prev.map((a) => (a.id === data.agent.id ? { ...a, ...data.agent } : a))
+          );
+        }
       } else {
         setToast({ message: data.error || "Saved locally", type: "info" });
       }
@@ -184,7 +381,8 @@ export default function AgentStudioPage() {
     }
   }
 
-  async function handleCreateAgent() {
+  async function handleCreateAgent(e?: React.FormEvent) {
+    if (e) e.preventDefault();
     if (!newAgentName.trim()) {
       setToast({ message: "Agent name is required", type: "warning" });
       return;
@@ -198,13 +396,12 @@ export default function AgentStudioPage() {
         body: JSON.stringify({
           name: newAgentName.trim(),
           description: newAgentDescription.trim() || `${newAgentName.trim()} Assistant`,
-          goal: newAgentGoal.trim() || "Assist users with accurate answers grounded in domain knowledge.",
-          responseStyle: "concise",
-          instructions: {
-            agentRole: newAgentRole.trim() || "Loan Specialist",
-            tone: newAgentTone,
-            businessDescription: newAgentDescription.trim() || "Enterprise loan & policy specialist",
-          },
+          system_prompt: newAgentPrompt.trim() || "For bank-specific values (minimum salary, cut-off CIBIL scores, LTV ratios, interest rates), rely strictly on verified knowledge base files. For general financial definitions or industry acronyms (e.g., FOIR, LTV, CIBIL, EMI), provide clear standard financial definitions while noting that exact percentage thresholds depend on individual lender policy.",
+          tone: newAgentTone,
+          response_style: newAgentResponseStyle,
+          is_active: false,
+          model: newAgentModel || "gpt-4o-mini",
+          agentRole: newAgentRole.trim() || `${newAgentName.trim()} Specialist`,
         }),
       });
 
@@ -212,10 +409,8 @@ export default function AgentStudioPage() {
       if (res.ok && data.success && data.agent) {
         setAgents((prev) => [data.agent, ...prev]);
         setSelectedAgentId(data.agent.id);
+        setActiveTab("instructions");
         setIsCreateModalOpen(false);
-        setNewAgentName("");
-        setNewAgentDescription("");
-        setNewAgentGoal("");
         setToast({ message: `Agent "${data.agent.name}" created successfully!`, type: "success" });
       } else {
         setToast({ message: data.error || "Failed to create agent", type: "warning" });
@@ -311,6 +506,45 @@ export default function AgentStudioPage() {
         title="AI Agent Studio"
         description="Configure agent prompts, guardrails, policy knowledge bases, and test simulations."
         breadcrumbs={[{ label: "AI Agent Studio" }]}
+        actions={
+          <div className="flex items-center gap-2">
+            {/* Agent Dropdown Selector in Top Bar */}
+            <div className="relative">
+              <select
+                value={selectedAgentId}
+                onChange={(e) => {
+                  setSelectedAgentId(e.target.value);
+                  const selected = agents.find((a) => a.id === e.target.value);
+                  if (selected) {
+                    setToast({ message: `Switched to ${selected.name}`, type: "info" });
+                  }
+                }}
+                className="h-[36px] text-xs font-semibold text-slate-800 bg-white border border-slate-300 hover:border-slate-400 rounded-lg px-3 py-1.5 shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer max-w-[200px] truncate"
+                title="Select Agent"
+              >
+                {agents.map((ag) => (
+                  <option key={ag.id} value={ag.id}>
+                    {ag.name} {ag.isActiveForUser ? "● (Active)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Top Bar "+ Create Agent" Button */}
+            <button
+              type="button"
+              onClick={() => {
+                handleSelectPreset("loan_specialist");
+                setIsCreateModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 h-[36px] px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 shadow-xs rounded-lg transition-all cursor-pointer whitespace-nowrap"
+              title="Create New AI Agent"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Create Agent</span>
+            </button>
+          </div>
+        }
       />
 
       {/* 2. Studio Workspace below Topbar */}
@@ -334,6 +568,57 @@ export default function AgentStudioPage() {
 
         {/* Studio Content Viewport */}
         <div className="flex-1 flex flex-col h-full overflow-hidden">
+          {/* Top action bar */}
+          <div className="px-4 sm:px-6 pt-4 pb-2 bg-slate-50 shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+              <div className="flex items-center gap-3">
+                {/* Agent Selector Dropdown */}
+                <select
+                  value={selectedAgentId}
+                  onChange={(e) => setSelectedAgentId(e.target.value)}
+                  className="px-3.5 py-2 text-sm font-semibold bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  {agents.map((agent: any) => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.name}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Status Badge */}
+                <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-medium flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  {activeAgent?.is_active ? "Active" : "Inactive"}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 transition cursor-pointer"
+                >
+                  + Create Agent
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDeleteAgent}
+                  className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-lg hover:bg-rose-100 transition cursor-pointer"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveInstructions}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm transition cursor-pointer"
+                >
+                  Save Instructions
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Mobile sub-bar if on small screens */}
           <div className="lg:hidden flex items-center justify-between px-4 py-2.5 bg-white border-b border-slate-300 shadow-2xs">
             <button
@@ -354,7 +639,7 @@ export default function AgentStudioPage() {
           <main className="flex-1 h-full overflow-y-auto bg-slate-50 flex flex-col">
           {activeTab === "instructions" && (
             <AiInstructionsView
-              agent={currentAgent}
+              agent={agentForInstructionsView}
               agents={agents}
               onSelectAgent={(id) => setSelectedAgentId(id)}
               onUpdateAgent={handleUpdateCurrentAgent}
@@ -428,64 +713,122 @@ export default function AgentStudioPage() {
         </div>
       </div>
 
-      {/* Create New Agent Modal */}
+      {/* Create New Agent Modal (Option B: Modal Prompt) */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50/50 to-indigo-50/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleIn">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-slate-50 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs ring-4 ring-blue-50">
                   <Bot className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Create New AI Agent</h3>
-                  <p className="text-xs text-slate-500">Configure name, custom instructions, and behavior</p>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span>Create New AI Agent</span>
+                    <span className="text-[10px] font-semibold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      Option B Modal
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500">Configure persona presets, assigned model, and initial prompt</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg transition cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                title="Close modal"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
+            {/* Modal Scrollable Form */}
             <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleCreateAgent();
-              }}
-              className="p-6 space-y-4"
+              onSubmit={handleCreateAgent}
+              className="flex-1 overflow-y-auto p-6 space-y-4"
             >
+              {/* 1. Base Template / Persona Presets */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Agent Name <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-blue-600" />
+                    Base Template / Persona Preset
+                  </span>
+                  <span className="text-[11px] font-normal text-slate-500 lowercase">click to auto-populate</span>
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. HDFC & Axis Specialist, Retail Underwriter"
-                  value={newAgentName}
-                  onChange={(e) => setNewAgentName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
-                />
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {PRESET_TEMPLATES.map((preset) => {
+                    const isSelected = newAgentPreset === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => handleSelectPreset(preset.id)}
+                        className={`text-left p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? "border-blue-500 bg-blue-50/70 shadow-xs ring-2 ring-blue-500/20"
+                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className={`text-xs font-bold truncate ${isSelected ? "text-blue-900" : "text-slate-800"}`}>
+                            {preset.name}
+                          </span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
+                        </div>
+                        <span className="text-[10px] text-slate-500 line-clamp-2 leading-tight">
+                          {preset.description}
+                        </span>
+                        <div className="mt-1.5 pt-1 border-t border-slate-100 flex items-center justify-between text-[9px] text-slate-400">
+                          <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">
+                            {preset.model.replace("-mini", "")}
+                          </span>
+                          <span className="font-semibold text-blue-600">{preset.badge}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* 2. Agent Name & Model Assignment */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Agent Role
+                    Agent Name <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Underwriting Expert"
-                    value={newAgentRole}
-                    onChange={(e) => setNewAgentRole(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                    required
+                    placeholder="e.g. Mortgage Advisor, KYC Verification Bot"
+                    value={newAgentName}
+                    onChange={(e) => setNewAgentName(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-white shadow-2xs"
                   />
                 </div>
 
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+                    <Cpu className="w-3.5 h-3.5 text-blue-600" />
+                    Model Assignment
+                  </label>
+                  <select
+                    value={newAgentModel}
+                    onChange={(e) => setNewAgentModel(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-white shadow-2xs cursor-pointer"
+                  >
+                    <option value="gpt-4o-mini">gpt-4o-mini (OpenAI · Fast & cost-efficient)</option>
+                    <option value="gpt-4o">gpt-4o (OpenAI · Advanced reasoning)</option>
+                    <option value="claude-3-5-sonnet">claude-3-5-sonnet (Anthropic · Policy logic)</option>
+                    <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Groq · Low latency)</option>
+                    <option value="gemini-1.5-pro">gemini-1.5-pro (Google · 1M+ context)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 3. Tone of Voice & Response Style */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Tone of Voice
@@ -493,43 +836,79 @@ export default function AgentStudioPage() {
                   <select
                     value={newAgentTone}
                     onChange={(e) => setNewAgentTone(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-white"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-white shadow-2xs cursor-pointer"
                   >
-                    <option value="Professional and friendly">Professional & Friendly</option>
-                    <option value="Direct and concise">Direct & Concise</option>
-                    <option value="Empathetic and advisory">Empathetic & Advisory</option>
-                    <option value="Formal and analytical">Formal & Analytical</option>
+                    <option value="Professional and friendly">Professional and friendly</option>
+                    <option value="Formal and authoritative">Formal and authoritative</option>
+                    <option value="Empathetic and warm">Empathetic and warm</option>
+                    <option value="Direct and concise">Direct and concise</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Response Style
+                  </label>
+                  <select
+                    value={newAgentResponseStyle}
+                    onChange={(e) => setNewAgentResponseStyle(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-white shadow-2xs cursor-pointer"
+                  >
+                    <option value="Clear, helpful, concise">Clear, helpful, concise</option>
+                    <option value="Detailed and thorough">Detailed and thorough</option>
+                    <option value="Step-by-step bulleted">Step-by-step bulleted</option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Description / Purpose
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Evaluates personal loans and eligibility rules for prime IT employees"
-                  value={newAgentDescription}
-                  onChange={(e) => setNewAgentDescription(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
-                />
+              {/* 4. Description / Role */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Assigned Role
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Mortgage & Home Loan Advisor"
+                    value={newAgentRole}
+                    onChange={(e) => setNewAgentRole(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-white shadow-2xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Brief Description
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Assists users with home loan eligibility and LTV"
+                    value={newAgentDescription}
+                    onChange={(e) => setNewAgentDescription(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-white shadow-2xs"
+                  />
+                </div>
               </div>
 
+              {/* 5. Initial System Instruction Prompt */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Primary Instructions / Goal
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Initial System Instruction Prompt</span>
+                  <span className="text-[11px] font-normal text-slate-400">
+                    {newAgentPrompt.length} chars
+                  </span>
                 </label>
                 <textarea
-                  rows={3}
-                  placeholder="e.g. Answer strictly using uploaded bank policies. Always verify employer and CIBIL score before concluding eligibility."
-                  value={newAgentGoal}
-                  onChange={(e) => setNewAgentGoal(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800"
+                  rows={4}
+                  placeholder="For bank-specific values (minimum salary, cut-off CIBIL scores, LTV ratios, interest rates), rely strictly on verified knowledge base files. For general financial definitions or industry acronyms (e.g., FOIR, LTV, CIBIL, EMI), provide clear standard financial definitions while noting that exact percentage thresholds depend on individual lender policy."
+                  value={newAgentPrompt}
+                  onChange={(e) => setNewAgentPrompt(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-mono leading-relaxed border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-slate-50/50 shadow-2xs resize-y min-h-[90px]"
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+              {/* Modal Footer */}
+              <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
@@ -540,9 +919,19 @@ export default function AgentStudioPage() {
                 <button
                   type="submit"
                   disabled={!newAgentName.trim() || isCreating}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5 active:scale-95"
                 >
-                  {isCreating ? "Creating..." : "Create Agent"}
+                  {isCreating ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Creating Agent...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Create & Configure</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

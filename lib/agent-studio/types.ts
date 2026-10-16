@@ -112,6 +112,8 @@ export interface KnowledgeDocumentRecord {
   isActive: boolean;
   rawText?: string;
   metadata?: any;
+  source?: string; // 'knowledge_agent_passed'
+  is_policy_file?: boolean;
   uploadedAt: string;
   updatedAt: string;
   instruction?: KnowledgeDocumentInstruction;
@@ -176,6 +178,7 @@ export interface Agent {
   modes: AgentModes;
   operationalMode?: OperationalMode;
   goal?: string;
+  model?: string;
   guardrailTemplates?: string[];
   manualGuardrails?: string;
   instructions: AgentInstructions;
@@ -191,10 +194,69 @@ export interface Agent {
   knowledge: KnowledgeDocument[];
   documents?: KnowledgeDocumentRecord[];
   documentCount?: number;
+  type?: "knowledge" | "conversational" | "greeting" | "standard";
   capabilities: Record<string, boolean>;
   usage: AgentUsageStats;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Checks whether an agent is explicitly configured as a Knowledge Base agent.
+ * Conversational and greeting assistants return false.
+ */
+export function isKnowledgeBaseAgent(agent?: Agent | any): boolean {
+  if (!agent) return false;
+
+  // 1. Explicit type field
+  if (agent.type === "knowledge" || agent.type === "knowledge_base" || agent.type === "rag") {
+    return true;
+  }
+  if (agent.type === "greeting" || agent.type === "conversational") {
+    return false;
+  }
+
+  // 2. Capabilities check
+  if (agent.capabilities?.search_knowledge === true || agent.capabilities?.knowledge_retrieval === true) {
+    return true;
+  }
+  if (agent.capabilities && agent.capabilities.search_knowledge === false) {
+    return false;
+  }
+
+  // 3. Operational mode check
+  if (agent.operationalMode === "rag_focused") {
+    return true;
+  }
+
+  // 4. Role or name indicators
+  const role = String(agent.instructions?.agentRole || agent.generalInstructions?.role || "").toLowerCase();
+  const name = String(agent.name || "").toLowerCase();
+
+  // Greeting or conversational welcome is explicitly not a knowledge agent
+  if (
+    name.includes("greeting") ||
+    name.includes("welcome") ||
+    role.includes("greeting") ||
+    role.includes("welcome") ||
+    role.includes("front-desk")
+  ) {
+    return false;
+  }
+
+  // Knowledge, underwriter, policy, or loan eligibility agents
+  if (
+    role.includes("knowledge") ||
+    role.includes("policy") ||
+    role.includes("underwrit") ||
+    name.includes("knowledge") ||
+    name.includes("policy") ||
+    name.includes("loan eligibility")
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 export interface UserSubscriptionState {

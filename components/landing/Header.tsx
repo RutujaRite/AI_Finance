@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   TrendingUp,
   Building2,
-  BarChart3
+  BarChart3,
+  ArrowRight
 } from 'lucide-react';
 import { User as UserType, ThemeMode } from '@/types';
 
@@ -113,13 +114,13 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Auth State */}
           {currentUser ? (
             <div className="auth-buttons-group">
-              <a 
-                href="/home?section=assistant"
+              <a
+                href="/home"
                 className="btn-register-solid"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
               >
-                <span>Launch Platform</span>
-                <ChevronDown size={14} style={{ transform: 'rotate(-90deg)' }} />
+                <span>Enter Workspace</span>
+                <ArrowRight size={14} />
               </a>
               <button
                 type="button"
@@ -201,13 +202,14 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="mobile-auth-row">
               {currentUser ? (
                 <>
-                  <a 
-                    href="/home?section=assistant"
+                  <a
+                    href="/home"
                     onClick={() => setMobileMenuOpen(false)}
                     className="btn-register-solid full-width"
-                    style={{ textAlign: 'center', textDecoration: 'none' }}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', textAlign: 'center', textDecoration: 'none' }}
                   >
-                    <span>Launch Platform</span>
+                    <span>Enter Workspace</span>
+                    <ArrowRight size={14} />
                   </a>
                   <button 
                     type="button"
@@ -216,8 +218,9 @@ export const Header: React.FC<HeaderProps> = ({
                       onLogout?.();
                     }}
                     className="btn-login-outline full-width"
-                    style={{ textAlign: 'center' }}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', textAlign: 'center' }}
                   >
+                    <LogOut size={15} />
                     <span>Logout</span>
                   </button>
                 </>

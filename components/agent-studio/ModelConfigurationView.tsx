@@ -1,1479 +1,1470 @@
 // components/agent-studio/ModelConfigurationView.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Cpu,
-  Zap,
-  Activity,
-  CheckCircle2,
-  Clock,
-  RotateCw,
-  Sliders,
   Key,
-  Eye,
-  EyeOff,
-  Save,
-  Send,
-  Sparkles,
-  Bot,
-  Layers,
-  Copy,
+  Plus,
+  Trash2,
+  CheckCircle2,
   Check,
-  Code,
-  ChevronDown,
-  ChevronUp,
-  AlertCircle,
+  Copy,
+  RotateCw,
+  Search,
+  Bot,
   ExternalLink,
   ShieldCheck,
-  CheckCheck,
-  ArrowRight,
-  Sparkle,
+  Sparkles,
+  Layers,
+  Activity,
+  AlertTriangle,
+  Eye,
+  EyeOff,
+  X,
+  Server,
+  Zap,
+  Star,
+  Network,
 } from "lucide-react";
 
-interface ModelPreset {
+export type ModelProvider = "openai" | "anthropic" | "google" | "groq" | "ollama" | "custom";
+
+export type ModelPurpose =
+  | "General Chat"
+  | "Complex Reasoning & Policy RAG"
+  | "Fast Extraction & Guardrails"
+  | "Embeddings & Vector Search"
+  | "Underwriting / Eligibility Engine";
+
+export interface RegisteredModel {
   id: string;
   name: string;
-  provider: string;
-  tag: string;
-  recommended?: boolean;
-  isFree?: boolean;
-  defaultTemp: number;
-  defaultTokens: number;
-  description: string;
+  model_id: string;
+  provider: ModelProvider | string;
+  purpose: ModelPurpose | string;
+  is_assistant_default: boolean;
+  created_at?: string;
+  assignedAgents?: string[];
+  usageStatus?: string;
+  route_via_gateway?: boolean;
 }
 
-const PRESET_MODELS: ModelPreset[] = [
-  {
-    id: "nvidia/nemotron-3-ultra-550b-a55b:free",
-    name: "NVIDIA Nemotron 3 Ultra 550B",
-    provider: "OpenRouter (Nvidia)",
-    tag: "Active Free Tier • Ultra Fast",
-    recommended: true,
-    isFree: true,
-    defaultTemp: 0.4,
-    defaultTokens: 1024,
-    description: "High-throughput 550B MoE model tuned for low-latency financial QA and prompt grounding.",
-  },
-  {
-    id: "deepseek/deepseek-v3",
-    name: "DeepSeek V3",
-    provider: "DeepSeek",
-    tag: "High Reasoning • Financial QA",
-    recommended: true,
-    defaultTemp: 0.7,
-    defaultTokens: 1024,
-    description: "State-of-the-art open weights model with deep multi-step deduction for loan underwriting policies.",
-  },
-  {
-    id: "google/gemini-2.5-flash",
-    name: "Google Gemini 2.5 Flash",
-    provider: "Google AI",
-    tag: "Ultra Fast Streaming",
-    defaultTemp: 0.4,
-    defaultTokens: 1024,
-    description: "Exceptional streaming latency and massive 1M context window for rapid user interactions.",
-  },
-  {
-    id: "openai/gpt-4o",
-    name: "OpenAI GPT-4o Enterprise",
-    provider: "OpenAI",
-    tag: "Enterprise Reasoning & Tools",
-    defaultTemp: 0.7,
-    defaultTokens: 2048,
-    description: "Industry benchmark for tool orchestration, structured JSON outputs, and complex loan math.",
-  },
-  {
-    id: "anthropic/claude-3.5-sonnet",
-    name: "Anthropic Claude 3.5 Sonnet",
-    provider: "Anthropic",
-    tag: "Context Precision & Nuance",
-    defaultTemp: 0.5,
-    defaultTokens: 2048,
-    description: "Top-tier accuracy for long financial document synthesis and strict policy adherence.",
-  },
-  {
-    id: "custom",
-    name: "Custom Model Identifier",
-    provider: "Custom Provider",
-    tag: "BYO Model Slug",
-    defaultTemp: 0.7,
-    defaultTokens: 1024,
-    description: "Connect any OpenRouter or open-weights model identifier (e.g. meta-llama/llama-3.3-70b-instruct).",
-  },
-];
-
-const PRESET_TEST_PROMPTS = [
-  "Check personal loan eligibility criteria for ₹5 Lakh",
-  "Calculate monthly EMI for ₹10 Lakh at 10.5% for 3 years",
-  "Explain debt-to-income (FOIR) ratio rules in simple terms",
-  "Test model reasoning speed and response latency",
-];
+export interface ProviderKeyItem {
+  id: string;
+  name: string;
+  defaultBaseUrl: string;
+  baseUrl: string;
+  hasKey: boolean;
+  maskedKey: string;
+  updatedAt: string | null;
+  isCustom?: boolean;
+}
 
 interface ModelConfigurationViewProps {
   onToast: (msg: string, type?: "success" | "info" | "warning") => void;
 }
 
+const PROVIDER_OPTIONS: { id: ModelProvider; label: string }[] = [
+  { id: "custom", label: "OpenRouter / Custom Gateway" },
+  { id: "openai", label: "OpenAI" },
+  { id: "anthropic", label: "Anthropic" },
+  { id: "google", label: "Google Gemini" },
+  { id: "groq", label: "Groq LPU" },
+  { id: "ollama", label: "Ollama (Self-Hosted)" },
+];
+
+const PURPOSE_OPTIONS: ModelPurpose[] = [
+  "General Chat",
+  "Complex Reasoning & Policy RAG",
+  "Fast Extraction & Guardrails",
+  "Embeddings & Vector Search",
+  "Underwriting / Eligibility Engine",
+];
+
 export default function ModelConfigurationView({ onToast }: ModelConfigurationViewProps) {
-  // Model state
-  const [activeModelId, setActiveModelId] = useState<string>("nvidia/nemotron-3-ultra-550b-a55b:free");
-  const [customModelSlug, setCustomModelSlug] = useState<string>("");
-  const [provider, setProvider] = useState<string>("OpenRouter (Nvidia)");
-  const [temperature, setTemperature] = useState<number>(0.4);
-  const [maxTokens, setMaxTokens] = useState<number>(1024);
-  const [apiKey, setApiKey] = useState<string>("");
-  const [showApiKey, setShowApiKey] = useState<boolean>(false);
-  const [hasConfiguredKey, setHasConfiguredKey] = useState<boolean>(true);
+  // Navigation tabs
+  const [activeTab, setActiveTab] = useState<"models" | "keys" | "usage">("models");
 
-  // Diagnostic state
-  const [latencyMs, setLatencyMs] = useState<number>(184);
-  const [lastHealthCheck, setLastHealthCheck] = useState<string>("Just now");
-  const [isPinging, setIsPinging] = useState<boolean>(false);
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
+  // Models state
+  const [models, setModels] = useState<RegisteredModel[]>([]);
+  const [loadingModels, setLoadingModels] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [providerFilter, setProviderFilter] = useState<string>("ALL");
+  const [purposeFilter, setPurposeFilter] = useState<string>("ALL");
 
-  // Interactive Live Test state
-  const [testPrompt, setTestPrompt] = useState<string>(PRESET_TEST_PROMPTS[0]);
-  const [isTesting, setIsTesting] = useState<boolean>(false);
-  const [testElapsedMs, setTestElapsedMs] = useState<number>(0);
-  const [testResponse, setTestResponse] = useState<any | null>(null);
-  const [showRawJson, setShowRawJson] = useState<boolean>(false);
-  const [copiedResponse, setCopiedResponse] = useState<boolean>(false);
-  const [copiedSlug, setCopiedSlug] = useState<boolean>(false);
-  const [showInactiveEngines, setShowInactiveEngines] = useState<boolean>(false);
+  // Provider keys state
+  const [providers, setProviders] = useState<ProviderKeyItem[]>([]);
+  const [loadingProviders, setLoadingProviders] = useState<boolean>(true);
 
-  // Load active model config from DB on mount
-  async function loadConfig() {
+  // Modals state
+  const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [modelToDelete, setModelToDelete] = useState<RegisteredModel | null>(null);
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
+
+  // Key Edit Modal state
+  const [keyModalProvider, setKeyModalProvider] = useState<ProviderKeyItem | null>(null);
+  const [newApiKey, setNewApiKey] = useState<string>("");
+  const [newBaseUrl, setNewBaseUrl] = useState<string>("");
+  const [showRawKey, setShowRawKey] = useState<boolean>(false);
+  const [testingKey, setTestingKey] = useState<boolean>(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
+
+  // Custom Provider Modal state
+  const [showCustomProviderModal, setShowCustomProviderModal] = useState<boolean>(false);
+  const [customProviderName, setCustomProviderName] = useState<string>("");
+  const [customProviderId, setCustomProviderId] = useState<string>("");
+  const [customProviderBaseUrl, setCustomProviderBaseUrl] = useState<string>("");
+  const [customProviderKey, setCustomProviderKey] = useState<string>("");
+
+  // Add Model Form state
+  const [formName, setFormName] = useState<string>("");
+  const [formModelId, setFormModelId] = useState<string>("");
+  const [formProvider, setFormProvider] = useState<ModelProvider>("custom");
+  const [formPurpose, setFormPurpose] = useState<ModelPurpose>("General Chat");
+  const [formIsDefault, setFormIsDefault] = useState<boolean>(false);
+  const [formRouteViaGateway, setFormRouteViaGateway] = useState<boolean>(true);
+
+  // Copy feedback state
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Fetch models
+  const fetchModels = async () => {
+    setLoadingModels(true);
     try {
-      setLoading(true);
-      const res = await fetch("/api/admin/studio-model");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.config) {
-          const cfg = data.config;
-          const currentId = cfg.model_identifier;
-          setActiveModelId(currentId);
-          setProvider(cfg.provider || "OpenRouter");
-          setTemperature(cfg.temperature !== undefined ? Number(cfg.temperature) : 0.4);
-          setMaxTokens(cfg.max_tokens ? Number(cfg.max_tokens) : 1024);
-          setHasConfiguredKey(Boolean(cfg.has_key));
-          setLatencyMs(cfg.latency_ms || 184);
-          setLastHealthCheck(cfg.last_health_check || "Just now");
-
-          const isStandard = PRESET_MODELS.some((m) => m.id === currentId && m.id !== "custom");
-          if (!isStandard) {
-            setCustomModelSlug(currentId);
-          }
-        }
+      const res = await fetch("/api/admin/registered-models");
+      const data = await res.json();
+      if (data.success && Array.isArray(data.models)) {
+        setModels(data.models);
+      } else {
+        onToast(data.error || "Failed to load registered models", "warning");
       }
-    } catch (err) {
-      console.warn("Could not load model configuration:", err);
+    } catch (err: any) {
+      onToast("Network error fetching models", "warning");
     } finally {
-      setLoading(false);
+      setLoadingModels(false);
     }
-  }
+  };
+
+  // Fetch provider keys
+  const fetchProviders = async () => {
+    setLoadingProviders(true);
+    try {
+      const res = await fetch("/api/admin/provider-keys");
+      const data = await res.json();
+      if (data.success && Array.isArray(data.providers)) {
+        setProviders(data.providers);
+      }
+    } catch (err: any) {
+      console.error("Failed to load provider keys", err);
+    } finally {
+      setLoadingProviders(false);
+    }
+  };
 
   useEffect(() => {
-    loadConfig();
+    fetchModels();
+    fetchProviders();
   }, []);
 
-  // Ping model connection
-  async function handlePingConnection() {
-    try {
-      setIsPinging(true);
-      const effectiveMid = activeModelId === "custom" ? customModelSlug.trim() : activeModelId;
-      const res = await fetch("/api/admin/models/test-key", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model_name: effectiveMid,
-          api_key: apiKey.trim() || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        const measured = data.test_result?.latency_ms || Math.floor(Math.random() * 80 + 120);
-        setLatencyMs(measured);
-        setLastHealthCheck("Just now");
-        onToast(`Connection operational! Latency: ${measured}ms`, "success");
-      } else {
-        onToast(data.message || "Model test reported connection issues", "warning");
-      }
-    } catch (err: any) {
-      onToast("Ping failed: " + err.message, "warning");
-    } finally {
-      setIsPinging(false);
-    }
-  }
-
-  // Save model settings
-  async function handleSaveConfig() {
-    try {
-      setIsSaving(true);
-      const effectiveMid = activeModelId === "custom" ? customModelSlug.trim() : activeModelId;
-      if (!effectiveMid) {
-        onToast("Please enter a valid model identifier", "warning");
-        return;
-      }
-      const res = await fetch("/api/admin/studio-model", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model_identifier: effectiveMid,
-          temperature,
-          max_tokens: maxTokens,
-          custom_api_key: apiKey.trim() || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setHasConfiguredKey(true);
-        setApiKey("");
-        onToast(`Active model updated to "${effectiveMid}" across full project!`, "success");
-        loadConfig();
-      } else {
-        onToast(data.message || "Failed to save model configuration", "warning");
-      }
-    } catch (err: any) {
-      onToast("Error saving model: " + err.message, "warning");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  // Execute interactive live model test
-  async function handleRunLiveTest() {
-    if (!testPrompt.trim()) {
-      onToast("Please enter a test prompt", "warning");
+  // Handle register model submit
+  const handleRegisterModel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formName.trim() || !formModelId.trim()) {
+      onToast("Please provide both model name and model identifier string.", "warning");
       return;
     }
-    const effectiveMid = activeModelId === "custom" ? customModelSlug.trim() : activeModelId;
-    setIsTesting(true);
-    setTestResponse(null);
-    setTestElapsedMs(0);
 
-    const startTime = Date.now();
-    const timer = setInterval(() => {
-      setTestElapsedMs(Date.now() - startTime);
-    }, 50);
-
+    setActionLoading(true);
     try {
-      const res = await fetch("/api/admin/studio-model/test", {
+      const payload = {
+        name: formName.trim(),
+        model_id: formModelId.trim(),
+        provider: formProvider,
+        purpose: formPurpose,
+        is_assistant_default: formIsDefault,
+        route_via_gateway: formRouteViaGateway,
+      };
+
+      let res = await fetch("/api/admin/models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        res = await fetch("/api/admin/registered-models", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      const data = await res.json();
+      if (data.success) {
+        onToast(`Model "${formName}" registered successfully!`, "success");
+        setShowAddModal(false);
+        // Reset form
+        setFormName("");
+        setFormModelId("");
+        setFormProvider("custom");
+        setFormPurpose("General Chat");
+        setFormIsDefault(false);
+        setFormRouteViaGateway(true);
+        fetchModels();
+      } else {
+        onToast(data.message || data.error || "Failed to register model", "warning");
+      }
+    } catch {
+      onToast("Error saving model. Please try again.", "warning");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle set as assistant default
+  const handleSetDefault = async (model: RegisteredModel) => {
+    if (model.is_assistant_default) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/registered-models/${model.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_assistant_default: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        onToast(`"${model.name}" is now the primary AI Assistant default model.`, "success");
+        fetchModels();
+      } else {
+        onToast(data.error || "Failed to update default model", "warning");
+      }
+    } catch {
+      onToast("Network error updating default model", "warning");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle delete model
+  const handleDeleteConfirm = async () => {
+    if (!modelToDelete) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/registered-models/${modelToDelete.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        onToast(`Model "${modelToDelete.name}" deleted.`, "info");
+        setShowDeleteModal(false);
+        setModelToDelete(null);
+        fetchModels();
+      } else {
+        onToast(data.error || "Failed to delete model", "warning");
+      }
+    } catch {
+      onToast("Error deleting model", "warning");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Copy model ID
+  const handleCopyId = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+    onToast("Model ID copied to clipboard", "info");
+  };
+
+  // Test provider connection
+  const handleTestProvider = async (providerId: string, customKey?: string, customBaseUrl?: string) => {
+    setTestingKey(true);
+    setTestResult(null);
+    try {
+      let res = await fetch("/api/admin/keys/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: testPrompt.trim(),
-          model_name: effectiveMid,
-          api_key: apiKey.trim() || undefined,
+          provider: providerId,
+          api_key: customKey || undefined,
+          base_url: customBaseUrl || undefined,
         }),
       });
-      clearInterval(timer);
-      setTestElapsedMs(Date.now() - startTime);
+
+      if (!res.ok) {
+        res = await fetch("/api/admin/provider-keys/test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider: providerId,
+            api_key: customKey || undefined,
+            base_url: customBaseUrl || undefined,
+          }),
+        });
+      }
 
       const data = await res.json();
-      if (res.ok && data.success) {
-        setTestResponse(data);
-        onToast(`Test completed in ${data.latencyMs}ms!`, "success");
-      } else {
-        setTestResponse({
-          error: true,
-          message: data.message || data.error || "Model test execution failed",
-          latencyMs: Date.now() - startTime,
+      if (data.success) {
+        setTestResult({
+          success: true,
+          message: data.message || "Connection active and responsive",
+          latencyMs: data.latencyMs,
         });
-        onToast(data.message || "Model test failed", "warning");
+        onToast(`Connection verified (${data.latencyMs}ms)`, "success");
+      } else {
+        const errMsg = data.error || data.details || "Connection test failed";
+        setTestResult({
+          success: false,
+          message: errMsg,
+        });
+        onToast(`Authentication failed: ${errMsg}`, "warning");
       }
     } catch (err: any) {
-      clearInterval(timer);
-      setTestElapsedMs(Date.now() - startTime);
-      setTestResponse({
-        error: true,
-        message: "Network Error: " + err.message,
-        latencyMs: Date.now() - startTime,
+      const errMsg = err.message || "Network timeout testing provider";
+      setTestResult({
+        success: false,
+        message: errMsg,
       });
-      onToast("Test request error: " + err.message, "warning");
+      onToast(`Authentication failed: ${errMsg}`, "warning");
     } finally {
-      setIsTesting(false);
+      setTestingKey(false);
     }
-  }
+  };
 
-  function handleCopyResponse() {
-    if (testResponse?.reply) {
-      navigator.clipboard.writeText(testResponse.reply);
-      setCopiedResponse(true);
-      setTimeout(() => setCopiedResponse(false), 2000);
-      onToast("Response copied to clipboard", "info");
+  // Save updated provider key
+  const handleSaveProviderKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!keyModalProvider) return;
+    if (!newApiKey.trim()) {
+      onToast("Please enter an API key", "warning");
+      return;
     }
-  }
 
-  function handleCopySlug(slug: string) {
-    navigator.clipboard.writeText(slug);
-    setCopiedSlug(true);
-    setTimeout(() => setCopiedSlug(false), 2000);
-    onToast("Model slug copied to clipboard", "info");
-  }
+    setActionLoading(true);
+    try {
+      let res = await fetch("/api/admin/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: keyModalProvider.id,
+          api_key: newApiKey.trim(),
+          base_url: newBaseUrl.trim() || undefined,
+        }),
+      });
 
-  const isCurrentActive = (presetId: string) => {
-    if (presetId === "custom") {
-      return !PRESET_MODELS.some((m) => m.id === activeModelId && m.id !== "custom");
+      if (!res.ok) {
+        res = await fetch("/api/admin/provider-keys", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider: keyModalProvider.id,
+            api_key: newApiKey.trim(),
+            base_url: newBaseUrl.trim() || undefined,
+          }),
+        });
+      }
+
+      const data = await res.json();
+      if (data.success) {
+        onToast(data.message || "Key saved successfully", "success");
+        setKeyModalProvider(null);
+        setNewApiKey("");
+        setNewBaseUrl("");
+        setTestResult(null);
+        fetchProviders();
+      } else {
+        onToast(data.error || "Failed to save key", "warning");
+      }
+    } catch {
+      onToast("Error updating key", "warning");
+    } finally {
+      setActionLoading(false);
     }
-    return activeModelId === presetId;
+  };
+
+  // Save new custom provider
+  const handleSaveCustomProvider = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customProviderName.trim() || !customProviderId.trim() || !customProviderBaseUrl.trim()) {
+      onToast("Provider name, identifier, and base URL are required.", "warning");
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      let res = await fetch("/api/admin/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: customProviderId.trim().toLowerCase(),
+          name: customProviderName.trim(),
+          api_key: customProviderKey.trim() || "sk-custom-placeholder",
+          base_url: customProviderBaseUrl.trim(),
+        }),
+      });
+
+      if (!res.ok) {
+        res = await fetch("/api/admin/provider-keys", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider: customProviderId.trim().toLowerCase(),
+            name: customProviderName.trim(),
+            api_key: customProviderKey.trim() || "sk-custom-placeholder",
+            base_url: customProviderBaseUrl.trim(),
+          }),
+        });
+      }
+
+      const data = await res.json();
+      if (data.success) {
+        onToast(`Custom provider "${customProviderName}" added successfully!`, "success");
+        setShowCustomProviderModal(false);
+        setCustomProviderName("");
+        setCustomProviderId("");
+        setCustomProviderBaseUrl("");
+        setCustomProviderKey("");
+        fetchProviders();
+      } else {
+        onToast(data.error || "Failed to add custom provider", "warning");
+      }
+    } catch {
+      onToast("Error saving custom provider", "warning");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Filtered models
+  const filteredModels = useMemo(() => {
+    return models.filter((m) => {
+      const matchesSearch =
+        m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.model_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.provider.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesProvider = providerFilter === "ALL" || m.provider.toLowerCase() === providerFilter.toLowerCase();
+      const matchesPurpose = purposeFilter === "ALL" || m.purpose.toLowerCase() === purposeFilter.toLowerCase();
+      return matchesSearch && matchesProvider && matchesPurpose;
+    });
+  }, [models, searchQuery, providerFilter, purposeFilter]);
+
+  // Active default model
+  const activeDefaultModel = useMemo(() => {
+    return models.find((m) => m.is_assistant_default) || null;
+  }, [models]);
+
+  // Provider badge renderer
+  const renderProviderBadge = (provider: string, routeViaGateway?: boolean) => {
+    const p = provider.toLowerCase();
+    let bg = "bg-slate-100 text-slate-800 border-slate-300";
+    let label = provider.toUpperCase();
+
+    if (p.includes("openai")) {
+      bg = "bg-emerald-50 text-emerald-700 border-emerald-200";
+      label = "OPENAI";
+    } else if (p.includes("anthropic")) {
+      bg = "bg-amber-50 text-amber-700 border-amber-200";
+      label = "ANTHROPIC";
+    } else if (p.includes("google")) {
+      bg = "bg-blue-50 text-blue-700 border-blue-200";
+      label = "GOOGLE GEMINI";
+    } else if (p.includes("groq")) {
+      bg = "bg-orange-50 text-orange-700 border-orange-200";
+      label = "GROQ";
+    } else if (p.includes("custom") || p.includes("openrouter")) {
+      bg = "bg-purple-50 text-purple-700 border-purple-200";
+      label = "OPENROUTER / GATEWAY";
+    } else if (p.includes("ollama")) {
+      bg = "bg-slate-100 text-slate-700 border-slate-300";
+      label = "OLLAMA";
+    }
+
+    const isRoutedViaGateway = routeViaGateway !== false || p === "custom" || p.includes("openrouter");
+
+    return (
+      <div className="space-y-1">
+        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${bg}`}>
+          <Server className="w-3 h-3" />
+          {label}
+        </span>
+        {isRoutedViaGateway && p !== "ollama" && (
+          <div className="flex items-center gap-1 text-[11px] text-emerald-600 font-medium" title="Routes via OpenRouter multi-provider key">
+            <Zap className="w-3 h-3 text-emerald-500 shrink-0" />
+            <span className="truncate">OpenRouter Gateway (Inherited Key)</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Purpose badge renderer
+  const renderPurposeBadge = (purpose: string) => {
+    let style = "bg-blue-50 text-blue-700 border-blue-200";
+    if (purpose.includes("Underwriting") || purpose.includes("Eligibility")) {
+      style = "bg-emerald-50 text-emerald-700 border-emerald-200";
+    } else if (purpose.includes("Complex Reasoning") || purpose.includes("Policy RAG")) {
+      style = "bg-indigo-50 text-indigo-700 border-indigo-200";
+    } else if (purpose.includes("Fast Extraction") || purpose.includes("Guardrails")) {
+      style = "bg-amber-50 text-amber-700 border-amber-200";
+    } else if (purpose.includes("Embeddings")) {
+      style = "bg-cyan-50 text-cyan-700 border-cyan-200";
+    }
+
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border ${style}`}>
+        <Sparkles className="w-3 h-3 opacity-70" />
+        {purpose}
+      </span>
+    );
   };
 
   return (
-    <div className="w-full min-h-full bg-slate-50 flex-1 overflow-y-auto">
-      <style>{`
-        .mc-container {
-          width: 100%;
-          min-height: 100%;
-          background: #f8fafc;
-          padding: 0;
-          box-sizing: border-box;
-          font-family: inherit;
-        }
-        .mc-wrapper {
-          max-width: 80rem;
-          margin: 0 auto;
-          padding: 2rem 1rem;
-          box-sizing: border-box;
-        }
-        @media (min-width: 640px) {
-          .mc-wrapper {
-            padding: 2rem 1.5rem;
-          }
-        }
-        @media (min-width: 1024px) {
-          .mc-wrapper {
-            padding: 2rem;
-          }
-        }
-        .mc-page-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-          flex-wrap: wrap;
-          margin-bottom: 24px;
-        }
-        .mc-page-title {
-          margin: 0;
-          font-size: 1.35rem;
-          font-weight: 800;
-          color: #0f172a;
-          letter-spacing: -0.02em;
-        }
-        .mc-page-subtitle {
-          margin: 4px 0 0 0;
-          font-size: 0.8125rem;
-          color: #64748b;
-          line-height: 1.5;
-        }
-        .mc-header-actions {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-        .mc-btn-secondary {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 8px 14px;
-          background: #ffffff;
-          border: 1px solid #e2e8f0;
-          border-radius: 9px;
-          font-size: 0.8125rem;
-          font-weight: 600;
-          color: #334155;
-          cursor: pointer;
-          transition: all 0.15s ease;
-          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-        }
-        .mc-btn-secondary:hover:not(:disabled) {
-          background: #f8fafc;
-          border-color: #cbd5e1;
-          color: #0f172a;
-        }
-        .mc-btn-primary {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 8px 16px;
-          background: #2563eb;
-          border: 1px solid #1d4ed8;
-          border-radius: 9px;
-          font-size: 0.8125rem;
-          font-weight: 600;
-          color: #ffffff;
-          cursor: pointer;
-          transition: all 0.15s ease;
-          box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25);
-        }
-        .mc-btn-primary:hover:not(:disabled) {
-          background: #1d4ed8;
-        }
-        .mc-card {
-          background: #ffffff;
-          border: 1px solid #cbd5e1;
-          border-radius: 16px;
-          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
-          overflow: hidden;
-          margin-bottom: 24px;
-          transition: all 0.2s ease;
-        }
-        .mc-card:hover {
-          border-color: #3b82f6;
-          box-shadow: 0 4px 14px -2px rgba(59, 130, 246, 0.12), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-          transform: translateY(-2px);
-        }
-        .mc-card-header {
-          padding: 16px 22px;
-          border-bottom: 1px solid #f1f5f9;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          flex-wrap: wrap;
-        }
-        .mc-ribbon-header {
-          background: linear-gradient(135deg, #f5f3ff 0%, #eff6ff 100%);
-          border-bottom: 1px solid #ede9fe;
-          padding: 18px 24px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          flex-wrap: wrap;
-          gap: 14px;
-        }
-        .mc-ribbon-badge-icon {
-          width: 42px;
-          height: 42px;
-          border-radius: 12px;
-          background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-          color: #ffffff;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
-          flex-shrink: 0;
-        }
-        .mc-metrics-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-          gap: 16px;
-          padding: 20px 24px;
-        }
-        .mc-metric-card {
-          background: #f8fafc;
-          border: 1px solid #cbd5e1;
-          border-radius: 12px;
-          padding: 15px 18px;
-          transition: all 0.2s ease;
-        }
-        .mc-metric-card:hover {
-          background: #ffffff;
-          border-color: #3b82f6;
-          box-shadow: 0 4px 10px rgba(59, 130, 246, 0.08);
-          transform: translateY(-1px);
-        }
-        .mc-metric-label {
-          font-size: 0.6875rem;
-          font-weight: 700;
-          color: #64748b;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          display: block;
-          margin-bottom: 6px;
-        }
-        .mc-metric-value {
-          font-size: 0.9375rem;
-          font-weight: 700;
-          color: #0f172a;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .mc-metric-subtext {
-          font-size: 0.75rem;
-          color: #64748b;
-          margin-top: 4px;
-        }
+    <div className="w-full flex-1 bg-slate-50 min-h-full overflow-y-auto">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Model & Provider Management</h1>
+            <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-blue-200">
+              Production Routing
+            </span>
+          </div>
+          <p className="text-sm text-slate-500 mt-1">
+            Configure LLM engines, manage API provider credentials, and inspect live assistant bindings.
+          </p>
+        </div>
 
-        /* Active Foundation Engine Showcase Card */
-        .mc-active-engine-card {
-          position: relative;
-          background: #ffffff;
-          border: 1.5px solid #cbd5e1;
-          border-radius: 16px;
-          padding: 24px 26px;
-          box-shadow: 0 4px 14px -2px rgba(59, 130, 246, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          overflow: hidden;
-          transition: all 0.2s ease;
-        }
-        .mc-active-engine-card:hover {
-          border-color: #3b82f6;
-        }
-        .mc-active-engine-card::before {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 4px;
-          background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #3b82f6 100%);
-        }
-        .mc-active-engine-top {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          flex-wrap: wrap;
-          gap: 12px;
-        }
-        .mc-pill-active {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 4px 12px;
-          background: #ede9fe;
-          border: 1px solid #ddd6fe;
-          color: #6d28d9;
-          border-radius: 9999px;
-          font-size: 0.6875rem;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-        .mc-pill-provider {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: #475569;
-          background: #f1f5f9;
-          border: 1px solid #cbd5e1;
-          padding: 3px 10px;
-          border-radius: 8px;
-        }
-        .mc-pill-in-use {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 5px 14px;
-          background: #ecfdf5;
-          border: 1px solid #a7f3d0;
-          color: #047857;
-          border-radius: 9999px;
-          font-size: 0.75rem;
-          font-weight: 700;
-        }
-        .mc-dot-pulse {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          background: #10b981;
-          animation: mcPulse 1.8s infinite;
-        }
-        @keyframes mcPulse {
-          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
-          70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-        }
-        .mc-change-engine-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          padding: 6px 14px;
-          background: #ffffff;
-          border: 1px solid #cbd5e1;
-          border-radius: 8px;
-          color: #4f46e5;
-          font-size: 0.8125rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-        }
-        .mc-change-engine-btn:hover {
-          background: #f5f3ff;
-          border-color: #3b82f6;
-          color: #4338ca;
-        }
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => {
+              fetchModels();
+              fetchProviders();
+            }}
+            disabled={loadingModels || loadingProviders}
+            className="p-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            title="Refresh list"
+          >
+            <RotateCw className={`w-4 h-4 ${(loadingModels || loadingProviders) ? "animate-spin" : ""}`} />
+          </button>
 
-        /* Chips Bar */
-        .mc-chips-bar {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          flex-wrap: wrap;
-          padding-top: 14px;
-          border-top: 1px solid #f1f5f9;
-        }
-        .mc-info-chip {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 4px 10px;
-          background: #f8fafc;
-          border: 1px solid #cbd5e1;
-          border-radius: 8px;
-          font-size: 0.75rem;
-          color: #334155;
-          font-weight: 500;
-          transition: all 0.2s ease;
-        }
-        .mc-info-chip:hover {
-          border-color: #3b82f6;
-          background: #ffffff;
-        }
-        .mc-info-chip strong {
-          color: #0f172a;
-          font-weight: 700;
-        }
-        .mc-copy-slug-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          background: transparent;
-          border: none;
-          color: #6366f1;
-          cursor: pointer;
-          font-size: 0.6875rem;
-          font-weight: 600;
-          padding: 2px 4px;
-          border-radius: 4px;
-          transition: background 0.15s ease;
-        }
-        .mc-copy-slug-btn:hover {
-          background: #e0e7ff;
-        }
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-sm transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Register Model
+          </button>
+        </div>
+      </div>
 
-        /* Alternative Preset Cards Grid */
-        .mc-preset-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-          gap: 16px;
-          margin-top: 14px;
-        }
-        .mc-preset-card {
-          background: #ffffff;
-          border: 1px solid #cbd5e1;
-          border-radius: 14px;
-          padding: 18px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          position: relative;
-        }
-        .mc-preset-card:hover {
-          border-color: #3b82f6;
-          box-shadow: 0 4px 16px rgba(59, 130, 246, 0.12);
-          transform: translateY(-2px);
-        }
-        .mc-preset-card.active {
-          border: 1.5px solid #2563eb;
-          background: #eff6ff;
-        }
-
-        /* Slider Controls */
-        .mc-slider-wrap {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-        .mc-slider-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          font-size: 0.8125rem;
-          font-weight: 600;
-          color: #334155;
-        }
-        .mc-badge-val {
-          font-family: ui-monospace, monospace;
-          font-weight: 700;
-          color: #4f46e5;
-          background: #eff6ff;
-          border: 1px solid #bfdbfe;
-          padding: 2px 8px;
-          border-radius: 6px;
-          font-size: 0.8125rem;
-        }
-        .mc-range {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 100%;
-          height: 6px;
-          border-radius: 999px;
-          background: #cbd5e1;
-          outline: none;
-          cursor: pointer;
-          transition: background 0.15s ease;
-        }
-        .mc-range::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: #2563eb;
-          border: 2px solid #ffffff;
-          box-shadow: 0 2px 6px rgba(37, 99, 235, 0.45);
-          cursor: pointer;
-          transition: transform 0.15s ease;
-        }
-        .mc-range::-webkit-slider-thumb:hover {
-          transform: scale(1.15);
-        }
-        .mc-range::-moz-range-thumb {
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: #2563eb;
-          border: 2px solid #ffffff;
-          box-shadow: 0 2px 6px rgba(37, 99, 235, 0.45);
-          cursor: pointer;
-        }
-        .mc-slider-ticks {
-          display: flex;
-          justify-content: space-between;
-          font-size: 0.6875rem;
-          color: #64748b;
-        }
-        .mc-input {
-          width: 100%;
-          box-sizing: border-box;
-          padding: 9px 12px;
-          font-size: 0.8125rem;
-          color: #0f172a;
-          background: #ffffff;
-          border: 1px solid #cbd5e1;
-          border-radius: 8px;
-          outline: none;
-          transition: all 0.2s ease;
-        }
-        .mc-input:focus {
-          border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-        }
-      `}</style>
-
-      <div className="mc-wrapper">
-        {/* Top Header */}
-        <div className="mc-page-header">
-          <div>
-            <h1 className="mc-page-title">
-              Model Configuration &amp; Diagnostic Center
-            </h1>
-            <p className="mc-page-subtitle">
-              Centralized management for AI reasoning LLMs, provider API keys, generation parameters, and live test simulations.
+      {/* Overview Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Active Default Model Card */}
+        <div className="bg-white border-2 border-blue-500/30 rounded-xl p-4 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Assistant Default</span>
+            <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
+          </div>
+          <div className="mt-2">
+            <h3 className="font-bold text-slate-900 text-base truncate">
+              {activeDefaultModel ? activeDefaultModel.name : "Not Configured"}
+            </h3>
+            <p className="text-xs text-slate-500 font-mono truncate mt-0.5">
+              {activeDefaultModel ? activeDefaultModel.model_id : "No default selected"}
             </p>
           </div>
-
-          <div className="mc-header-actions">
-            <button
-              type="button"
-              onClick={handlePingConnection}
-              disabled={isPinging}
-              className="mc-btn-secondary"
-            >
-              <Zap className={`w-3.5 h-3.5 text-emerald-600 ${isPinging ? "animate-pulse" : ""}`} />
-              <span>{isPinging ? "Testing Ping..." : "Ping Connection"}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={loadConfig}
-              className="mc-btn-primary"
-            >
-              <RotateCw className="w-3.5 h-3.5" />
-              <span>Refresh</span>
-            </button>
+          <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Active on CreditWise Assistant
           </div>
         </div>
 
-        {/* Module 1: Active Model Overview Ribbon & Health Status */}
-        <div className="mc-card">
-          <div className="mc-ribbon-header">
-            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-              <div className="mc-ribbon-badge-icon">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h2 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#4c1d95" }}>
-                  Active Foundation Model
-                </h2>
-                <span style={{ fontSize: "0.8125rem", color: "#7c3aed", fontWeight: 500 }}>
-                  Primary intelligence engine powering the entire CreditWise platform
-                </span>
-              </div>
+        {/* Registered Models Count */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">Configured Models</span>
+            <Cpu className="w-4 h-4 text-slate-400" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-slate-900">{models.length}</span>
+            <span className="text-xs text-slate-500">models registered</span>
+          </div>
+          <div className="mt-3 text-xs text-slate-500">Available across all underwriting tools</div>
+        </div>
+
+        {/* Provider API Keys Status */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">Active Providers</span>
+            <Key className="w-4 h-4 text-slate-400" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-slate-900">
+              {providers.filter((p) => p.hasKey).length} / {providers.length}
+            </span>
+            <span className="text-xs text-slate-500">keys verified</span>
+          </div>
+          <div className="mt-3 text-xs text-emerald-600 font-medium">OpenRouter & Custom Gateway live</div>
+        </div>
+
+        {/* Agent Bindings */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider">Agent Bindings</span>
+            <Bot className="w-4 h-4 text-slate-400" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-slate-900">4</span>
+            <span className="text-xs text-slate-500">active assistants</span>
+          </div>
+          <div className="mt-3 text-xs text-slate-500">Multi-Bank, Guardrail, RAG, QA</div>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="border-b border-slate-200">
+        <nav className="flex space-x-6">
+          <button
+            onClick={() => setActiveTab("models")}
+            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab === "models"
+                ? "border-blue-600 text-blue-600 font-semibold"
+                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+            }`}
+          >
+            <Cpu className="w-4 h-4" />
+            Registered Models ({models.length})
+          </button>
+
+          <button
+            onClick={() => setActiveTab("keys")}
+            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab === "keys"
+                ? "border-blue-600 text-blue-600 font-semibold"
+                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+            }`}
+          >
+            <Key className="w-4 h-4" />
+            Provider API Keys
+          </button>
+
+          <button
+            onClick={() => setActiveTab("usage")}
+            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab === "usage"
+                ? "border-blue-600 text-blue-600 font-semibold"
+                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+            }`}
+          >
+            <Network className="w-4 h-4" />
+            Agent & Assistant Bindings
+          </button>
+        </nav>
+      </div>
+
+      {/* TAB 1: REGISTERED MODELS */}
+      {activeTab === "models" && (
+        <div className="w-full space-y-4">
+          {/* Filter Bar */}
+          <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 border border-slate-200 rounded-xl shadow-sm">
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Search by name, model ID, or provider..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span className="mc-pill-in-use">
-                <span className="mc-dot-pulse" />
-                <span>Operational</span>
-              </span>
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "5px",
-                  padding: "4px 10px",
-                  background: "#f3e8ff",
-                  borderRadius: "9999px",
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  color: "#6b21a8",
-                }}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <select
+                value={providerFilter}
+                onChange={(e) => setProviderFilter(e.target.value)}
+                className="text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <Clock className="w-3.5 h-3.5 text-purple-600" />
-                <span>{latencyMs}ms</span>
-              </span>
+                <option value="ALL">All Providers</option>
+                <option value="custom">Custom / OpenRouter</option>
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+                <option value="google">Google</option>
+                <option value="groq">Groq</option>
+                <option value="ollama">Ollama</option>
+              </select>
+
+              <select
+                value={purposeFilter}
+                onChange={(e) => setPurposeFilter(e.target.value)}
+                className="text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="ALL">All Purposes</option>
+                {PURPOSE_OPTIONS.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+
+              {/* + Add Model Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setFormName("");
+                  setFormModelId("");
+                  setFormProvider("custom");
+                  setFormPurpose("General Chat");
+                  setFormIsDefault(false);
+                  setFormRouteViaGateway(true);
+                  setShowAddModal(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-lg shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+                title="Register New AI Model"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Add Model</span>
+              </button>
             </div>
           </div>
 
-          <div className="mc-metrics-grid">
-            <div className="mc-metric-card">
-              <span className="mc-metric-label">Model Identifier</span>
-              <div className="mc-metric-value" style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.875rem" }} title={activeModelId}>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {activeModelId}
-                </span>
+          {/* Models Table */}
+          <div className="w-full bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            {loadingModels ? (
+              <div className="p-12 text-center text-slate-500">
+                <RotateCw className="w-6 h-6 animate-spin mx-auto text-blue-600 mb-2" />
+                <p className="text-sm">Loading configured models...</p>
               </div>
-              <span className="mc-metric-subtext" style={{ color: "#6d28d9", fontWeight: 600 }}>
-                Provider: {provider}
-              </span>
-            </div>
-
-            <div className="mc-metric-card">
-              <span className="mc-metric-label">API Authentication</span>
-              <div className="mc-metric-value">
-                <Key className="w-4 h-4 text-emerald-600" />
-                <span>{hasConfiguredKey ? "API Key Configured" : "No Key Set"}</span>
+            ) : filteredModels.length === 0 ? (
+              <div className="p-12 text-center text-slate-500">
+                <Cpu className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                <p className="font-medium text-slate-700">No models match your filters.</p>
+                <p className="text-xs text-slate-400 mt-1">Try resetting your search query or provider filter.</p>
               </div>
-              <span className="mc-metric-subtext">
-                Managed in PostgreSQL &amp; .env.local
-              </span>
-            </div>
-
-            <div className="mc-metric-card">
-              <span className="mc-metric-label">Health Diagnostics</span>
-              <div className="mc-metric-value">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Verified Active</span>
-              </div>
-              <span className="mc-metric-subtext">
-                Last checked: {lastHealthCheck}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Module 2: Active Foundation AI Engine Showcase */}
-        <div className="mc-card p-6">
-          <div className="border-b border-slate-100 pb-4 mb-6 flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center shrink-0 shadow-2xs">
-                <Cpu className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="m-0 text-base font-extrabold text-slate-900 tracking-tight">
-                  Active Foundation AI Engine
-                </h2>
-                <p className="m-0 text-xs text-slate-500 mt-0.5">
-                  Currently engaged reasoning intelligence powering customer interactions, underwriting, and calculations.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="mc-pill-in-use">
-                <span className="mc-dot-pulse" />
-                <span>Active Runtime</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Featured Active Engine Card */}
-          {(() => {
-            const currentPreset = PRESET_MODELS.find((p) => isCurrentActive(p.id)) || {
-              id: activeModelId,
-              name: activeModelId === "custom" ? (customModelSlug || "Custom Model Identifier") : activeModelId,
-              provider: provider,
-              tag: "Current Active Model",
-              defaultTemp: temperature,
-              defaultTokens: maxTokens,
-              description: "Currently active foundational LLM running across the platform.",
-            };
-
-            const effectiveSlug = activeModelId === "custom" ? (customModelSlug || "custom") : activeModelId;
-
-            return (
-              <div className="mc-active-engine-card">
-                <div className="mc-active-engine-top">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="mc-pill-active">
-                      CURRENT DEFAULT
-                    </span>
-                    <span className="mc-pill-provider">
-                      <Sparkle className="w-3 h-3 text-indigo-500" />
-                      <span>{currentPreset.provider}</span>
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowInactiveEngines(!showInactiveEngines)}
-                      className="mc-change-engine-btn"
-                    >
-                      <span>{showInactiveEngines ? "Collapse Catalog" : "Browse All Engines"}</span>
-                      {showInactiveEngines ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="m-0 mb-1.5 text-lg font-extrabold text-slate-900 tracking-tight">
-                    {currentPreset.name}
-                  </h3>
-                  <p className="m-0 text-xs text-slate-600 leading-relaxed max-w-2xl">
-                    {currentPreset.description}
-                  </p>
-                </div>
-
-                {/* Structured Metadata Chips Bar */}
-                <div className="mc-chips-bar">
-                  <div className="mc-info-chip font-mono text-xs">
-                    <Code className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Slug: <strong>{effectiveSlug}</strong></span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopySlug(effectiveSlug)}
-                      className="mc-copy-slug-btn"
-                      title="Copy Model Slug"
-                    >
-                      {copiedSlug ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                      <span>{copiedSlug ? "Copied" : "Copy"}</span>
-                    </button>
-                  </div>
-
-                  <div className="mc-info-chip">
-                    <Sliders className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Temp: <strong>{temperature}</strong></span>
-                  </div>
-
-                  <div className="mc-info-chip">
-                    <Zap className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Max Tokens: <strong>{maxTokens}</strong></span>
-                  </div>
-
-                  <div className="mc-info-chip">
-                    <Activity className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Latency: <strong>~{latencyMs}ms</strong></span>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-
-        {/* Module 3: Foundation Engine Catalog & Model Selectors */}
-        <div className="mc-card p-6">
-          <div className="border-b border-slate-100 pb-4 mb-6 flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
-                <Bot className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="m-0 text-base font-extrabold text-slate-900 tracking-tight">
-                  Foundation Engine Catalog
-                </h2>
-                <p className="m-0 text-xs text-slate-500 mt-0.5">
-                  Select and switch between high-throughput financial reasoning engines and custom LLMs.
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowInactiveEngines(!showInactiveEngines)}
-              className="mc-btn-secondary"
-            >
-              <span>{showInactiveEngines ? "Hide Catalog" : `View All Engines (${PRESET_MODELS.length})`}</span>
-              {showInactiveEngines ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-
-          {showInactiveEngines ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                <span>Available Foundation Models</span>
-                <span className="text-[11px] text-slate-400 font-normal">Click any card to select as active engine</span>
-              </div>
-              <div className="mc-preset-grid">
-                {PRESET_MODELS.map((preset) => {
-                  const isSelected = isCurrentActive(preset.id);
-                  return (
-                    <div
-                      key={preset.id}
-                      onClick={() => {
-                        setActiveModelId(preset.id);
-                        if (preset.id !== "custom") {
-                          setTemperature(preset.defaultTemp);
-                          setMaxTokens(preset.defaultTokens);
-                        }
-                      }}
-                      className={`mc-preset-card ${isSelected ? "active" : ""}`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between gap-2 mb-2.5">
-                          <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
-                            {preset.provider}
-                          </span>
-                          <div className="flex items-center gap-1.5">
-                            {isSelected && (
-                              <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full border border-blue-200">
-                                Current Active
-                              </span>
-                            )}
-                            {preset.recommended && (
-                              <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">
-                                Recommended
-                              </span>
-                            )}
-                            {preset.isFree && (
-                              <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                                Free Tier
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-slate-600">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-semibold text-slate-500 tracking-wider">
+                    <tr>
+                      <th className="px-5 py-3.5">Model Name & ID</th>
+                      <th className="px-5 py-3.5">Provider</th>
+                      <th className="px-5 py-3.5">Assigned Purpose</th>
+                      <th className="px-5 py-3.5">Assistant Status</th>
+                      <th className="px-5 py-3.5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredModels.map((model) => (
+                      <tr key={model.id} className="hover:bg-slate-50/70 transition-colors">
+                        {/* Name & ID */}
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-900">{model.name}</span>
+                            {model.is_assistant_default && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                <Star className="w-3 h-3 fill-amber-500" />
+                                PRIMARY DEFAULT
                               </span>
                             )}
                           </div>
-                        </div>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono border border-slate-200">
+                              {model.model_id}
+                            </code>
+                            <button
+                              onClick={() => handleCopyId(model.id, model.model_id)}
+                              className="text-slate-400 hover:text-slate-600 transition-colors p-0.5"
+                              title="Copy identifier"
+                            >
+                              {copiedId === model.id ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </td>
 
-                        <h4 className="m-0 mb-1.5 text-sm font-bold text-slate-900">
-                          {preset.name}
-                        </h4>
-                        <p className="m-0 text-xs text-slate-500 leading-relaxed">
-                          {preset.description}
-                        </p>
-                      </div>
+                        {/* Provider */}
+                        <td className="px-5 py-4">{renderProviderBadge(model.provider, model.route_via_gateway)}</td>
 
-                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <span className="font-mono text-slate-400 text-[11px]">
-                          T: {preset.defaultTemp} • {preset.defaultTokens} tok
-                        </span>
-                        <button
-                          type="button"
-                          className={isSelected ? "mc-btn-primary" : "mc-btn-secondary"}
-                          style={{ padding: "4px 10px", fontSize: "0.75rem" }}
-                        >
-                          <span>{isSelected ? "Active" : "Select"}</span>
-                          {!isSelected && <ArrowRight className="w-3 h-3" />}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
-              <div className="text-xs text-slate-600">
-                Currently running <strong>{activeModelId}</strong>. Open the catalog to switch between NVIDIA Nemotron, DeepSeek V3, Gemini Flash, Claude 3.5, or a Custom Slug.
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowInactiveEngines(true)}
-                className="mc-btn-secondary text-xs"
-              >
-                <span>Browse Catalog</span>
-                <ChevronDown className="w-3 h-3" />
-              </button>
-            </div>
-          )}
+                        {/* Purpose */}
+                        <td className="px-5 py-4">{renderPurposeBadge(model.purpose)}</td>
 
-          {activeModelId === "custom" && (
-            <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-300 space-y-2">
-              <label className="block text-xs font-bold text-slate-800">
-                Enter Custom Model Identifier (OpenRouter Slug)
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. meta-llama/llama-3.3-70b-instruct or mistralai/mistral-large"
-                value={customModelSlug}
-                onChange={(e) => setCustomModelSlug(e.target.value)}
-                className="mc-input font-mono"
-              />
-              <p className="m-0 text-[11px] text-slate-500">
-                You can specify any valid model identifier available on OpenRouter.
-              </p>
-            </div>
-          )}
-        </div>
+                        {/* Assistant Status */}
+                        <td className="px-5 py-4">
+                          {model.is_assistant_default ? (
+                            <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                              Active Assistant Engine
+                            </div>
+                          ) : (
+                            <div className="text-xs text-slate-500">
+                              Standby / Dedicated Purpose
+                            </div>
+                          )}
+                          {model.assignedAgents && model.assignedAgents.length > 0 && (
+                            <div className="text-[11px] text-slate-400 mt-1 truncate max-w-xs">
+                              {model.assignedAgents.join(", ")}
+                            </div>
+                          )}
+                        </td>
 
-        {/* Module 4: Provider API Key & Credentials Management */}
-        <div className="mc-card p-6">
-          <div className="border-b border-slate-100 pb-4 mb-6 flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
-                <Key className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="m-0 text-base font-extrabold text-slate-900 tracking-tight">
-                  Provider API Credentials
-                </h2>
-                <p className="m-0 text-xs text-slate-500 mt-0.5">
-                  Manage secret credentials for OpenRouter, OpenAI, and DeepSeek gateway proxies.
-                </p>
-              </div>
-            </div>
+                        {/* Actions */}
+                        <td className="px-5 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {!model.is_assistant_default && (
+                              <button
+                                onClick={() => handleSetDefault(model)}
+                                disabled={actionLoading}
+                                className="px-2.5 py-1 text-xs font-semibold text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors disabled:opacity-50"
+                              >
+                                Set as Default
+                              </button>
+                            )}
 
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-              {hasConfiguredKey ? "Key Configured & Active" : "No Key Set"}
-            </span>
-          </div>
-
-          <div className="space-y-4">
-            <div className="mc-slider-wrap">
-              <div className="mc-slider-header">
-                <span className="flex items-center gap-1.5 font-bold text-slate-800">
-                  <Key className="w-4 h-4 text-amber-600" />
-                  <span>OpenRouter / Provider API Key</span>
-                </span>
-                <span className="text-xs text-slate-400">
-                  Leave blank to retain active environment key
-                </span>
-              </div>
-              <div className="relative">
-                <input
-                  type={showApiKey ? "text" : "password"}
-                  placeholder={hasConfiguredKey ? "sk-or-v1-••••••••••••••••••••••••••••••••••••••••" : "Enter API key"}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  className="mc-input font-mono pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-                  aria-label={showApiKey ? "Hide key" : "Show key"}
-                >
-                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              <p className="text-[11px] text-slate-500 m-0">
-                Keys are stored securely with PostgreSQL encryption and never transmitted to the client in plain text.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Module 5: Generation & Inference Parameters */}
-        <div className="mc-card p-6">
-          <div className="border-b border-slate-100 pb-4 mb-6 flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
-                <Sliders className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="m-0 text-base font-extrabold text-slate-900 tracking-tight">
-                  Inference &amp; Generation Parameters
-                </h2>
-                <p className="m-0 text-xs text-slate-500 mt-0.5">
-                  Tune model creativity, response bounds, and output determinism for banking policies.
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleSaveConfig}
-              disabled={isSaving}
-              className="mc-btn-primary"
-            >
-              <Save className="w-4 h-4" />
-              <span>{isSaving ? "Saving Configuration..." : "Save & Apply Parameters"}</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Max Output Tokens */}
-            <div className="mc-slider-wrap bg-slate-50/60 p-4 rounded-xl border border-slate-200">
-              <div className="mc-slider-header">
-                <span className="font-bold text-slate-800">Max Output Tokens</span>
-                <span className="mc-badge-val">{maxTokens}</span>
-              </div>
-              <input
-                type="range"
-                min="256"
-                max="4096"
-                step="128"
-                value={maxTokens}
-                onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-                className="mc-range"
-              />
-              <div className="mc-slider-ticks">
-                <span>256 (Concise)</span>
-                <span>1024 (Standard)</span>
-                <span>4096 (Extended Analysis)</span>
-              </div>
-            </div>
-
-            {/* Temperature */}
-            <div className="mc-slider-wrap bg-slate-50/60 p-4 rounded-xl border border-slate-200">
-              <div className="mc-slider-header">
-                <span className="font-bold text-slate-800">Temperature (Creativity &amp; Determinism)</span>
-                <span className="mc-badge-val">{temperature}</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={temperature}
-                onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                className="mc-range"
-              />
-              <div className="mc-slider-ticks">
-                <span>0.0 (Deterministic)</span>
-                <span>0.4 (Recommended)</span>
-                <span>1.0 (Creative)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Module 4: Full Interactive Live Test Console */}
-        <div className="mc-card">
-          <div className="mc-card-header">
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <Send className="w-4 h-4 text-blue-600" />
-              <h2 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 700, color: "#0f172a" }}>
-                Live Interactive Model Test Console
-              </h2>
-            </div>
-            <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#2563eb", background: "#eff6ff", padding: "2px 10px", borderRadius: "9999px" }}>
-              Full End-to-End Diagnostic
-            </span>
-          </div>
-
-          <div style={{ padding: "22px 24px", display: "flex", flexDirection: "column", gap: "16px" }}>
-            {/* Preset Prompt Chips */}
-            <div>
-              <span style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: "8px" }}>
-                Quick Test Prompts:
-              </span>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                {PRESET_TEST_PROMPTS.map((promptText, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setTestPrompt(promptText)}
-                    style={{
-                      fontSize: "0.75rem",
-                      padding: "6px 12px",
-                      borderRadius: "8px",
-                      border: testPrompt === promptText ? "1px solid #93c5fd" : "1px solid #e2e8f0",
-                      background: testPrompt === promptText ? "#eff6ff" : "#ffffff",
-                      color: testPrompt === promptText ? "#1d4ed8" : "#475569",
-                      fontWeight: testPrompt === promptText ? 600 : 500,
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    {promptText}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Test Prompt Textarea */}
-            <div>
-              <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: "6px" }}>
-                Test Prompt
-              </label>
-              <textarea
-                rows={3}
-                value={testPrompt}
-                onChange={(e) => setTestPrompt(e.target.value)}
-                placeholder="Enter your prompt to evaluate the model's live response, reasoning, and token generation..."
-                className="mc-input"
-                style={{ resize: "vertical", fontFamily: "inherit" }}
-              />
-            </div>
-
-            {/* Execution Button */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
-              <div style={{ fontSize: "0.8125rem", color: "#64748b" }}>
-                <span>Target Engine: </span>
-                <strong style={{ fontFamily: "ui-monospace, monospace", color: "#0f172a" }}>
-                  {activeModelId === "custom" ? customModelSlug || "custom" : activeModelId}
-                </strong>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleRunLiveTest}
-                disabled={isTesting}
-                className="mc-btn-primary"
-                style={{ padding: "10px 22px" }}
-              >
-                {isTesting ? (
-                  <>
-                    <RotateCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Executing ({testElapsedMs}ms)...</span>
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Run Live Model Test</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Response Output Card */}
-            {testResponse && (
-              <div style={{ marginTop: "10px", paddingTop: "16px", borderTop: "1px solid #f1f5f9", display: "flex", flexDirection: "column", gap: "12px" }}>
-                {/* Metrics */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", padding: "12px 14px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.8125rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: "5px", fontWeight: 700, color: testResponse.error ? "#dc2626" : "#059669" }}>
-                      {testResponse.error ? <AlertCircle className="w-4 h-4 text-red-600" /> : <CheckCheck className="w-4 h-4 text-emerald-600" />}
-                      <span>{testResponse.error ? "Execution Failed" : "Response Generated"}</span>
-                    </span>
-                    <span style={{ color: "#cbd5e1" }}>•</span>
-                    <span style={{ fontFamily: "ui-monospace, monospace", color: "#334155" }}>
-                      ⏱️ Latency: <strong>{testResponse.latencyMs}ms</strong>
-                    </span>
-                  </div>
-
-                  {testResponse.usage && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontFamily: "ui-monospace, monospace", fontSize: "0.75rem", color: "#6d28d9", background: "#f3e8ff", padding: "3px 10px", borderRadius: "6px" }}>
-                      <Zap className="w-3 h-3 text-purple-600" />
-                      <span>
-                        {testResponse.usage.totalTokens} Tokens ({testResponse.usage.promptTokens} in • {testResponse.usage.completionTokens} out)
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Rendered Reply */}
-                <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "14px 16px" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: "8px", marginBottom: "8px", borderBottom: "1px solid #f1f5f9" }}>
-                    <span style={{ fontSize: "0.6875rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#94a3b8" }}>
-                      Model Response Output
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleCopyResponse}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "5px",
-                        fontSize: "0.75rem",
-                        fontWeight: 600,
-                        color: "#64748b",
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {copiedResponse ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedResponse ? "Copied" : "Copy"}</span>
-                    </button>
-                  </div>
-
-                  <div style={{ fontSize: "0.8125rem", color: testResponse.error ? "#b91c1c" : "#1e293b", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                    {testResponse.reply || testResponse.message}
-                  </div>
-                </div>
-
-                {/* Raw JSON */}
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => setShowRawJson(!showRawJson)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "5px",
-                      fontSize: "0.75rem",
-                      fontWeight: 600,
-                      color: "#64748b",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: 0,
-                    }}
-                  >
-                    <Code className="w-3.5 h-3.5" />
-                    <span>{showRawJson ? "Hide Raw Diagnostic JSON" : "View Raw Diagnostic JSON"}</span>
-                    {showRawJson ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                  </button>
-
-                  {showRawJson && (
-                    <pre style={{ marginTop: "8px", padding: "12px", background: "#0f172a", color: "#f8fafc", borderRadius: "10px", fontSize: "0.75rem", fontFamily: "ui-monospace, monospace", overflowX: "auto", maxHeight: "240px" }}>
-                      {JSON.stringify(testResponse, null, 2)}
-                    </pre>
-                  )}
-                </div>
+                            <button
+                              onClick={() => {
+                                setModelToDelete(model);
+                                setShowDeleteModal(true);
+                              }}
+                              disabled={actionLoading}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                              title="Delete model"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
         </div>
+      )}
 
-        {/* Module 5: Connected Systems */}
-        <div className="mc-card">
-          <div className="mc-card-header">
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <Layers className="w-4 h-4 text-purple-600" />
-              <h2 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 700, color: "#0f172a" }}>
-                Connected Systems Powered by this Foundation LLM
-              </h2>
+      {/* TAB 2: PROVIDER API KEYS */}
+      {activeTab === "keys" && (
+        <div className="w-full space-y-4">
+          <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3 shadow-xs">
+            <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+            <div className="text-sm text-blue-900">
+              <p className="font-semibold">Secure Credential Storage</p>
+              <p className="text-xs text-blue-700 mt-0.5">
+                API keys are encrypted and stored in PostgreSQL. They are used securely on server-side model routing and never exposed in client bundles.
+              </p>
             </div>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", fontWeight: 600, color: "#047857" }}>
-              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981" }} />
-              <span>3 Systems Synchronized</span>
-            </span>
           </div>
 
-          <div className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="p-4 bg-slate-50 hover:bg-white rounded-xl border border-slate-300 hover:border-blue-500 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 transition-all duration-200">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
-                <Bot className="w-4 h-4 text-blue-600" />
-                <span>AI Agent Studio Playground</span>
-              </div>
-              <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
-                Executes prompt simulation turns and persona evaluations in real-time.
-              </p>
-            </div>
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {providers.map((p) => (
+              <div
+                key={p.id}
+                className="w-full bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-slate-300 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-slate-900 text-base">{p.name}</h3>
+                    {p.hasKey ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Configured
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                        Missing Key
+                      </span>
+                    )}
+                  </div>
 
-            <div className="p-4 bg-slate-50 hover:bg-white rounded-xl border border-slate-300 hover:border-blue-500 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 transition-all duration-200">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
-                <Sparkles className="w-4 h-4 text-purple-600" />
-                <span>Customer AI Assistant (/home)</span>
-              </div>
-              <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
-                Generates live user chat completions grounded in configured policies.
-              </p>
-            </div>
+                  <div className="mt-3 space-y-2">
+                    <div>
+                      <span className="text-xs text-slate-400 uppercase font-semibold">Active Key</span>
+                      <p className="text-sm font-mono text-slate-800 bg-slate-50 p-2 rounded border border-slate-100 mt-0.5 truncate">
+                        {p.maskedKey}
+                      </p>
+                    </div>
 
-            <div className="p-4 bg-slate-50 hover:bg-white rounded-xl border border-slate-300 hover:border-blue-500 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 transition-all duration-200">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Multi-Bank Eligibility Engine</span>
+                    <div>
+                      <span className="text-xs text-slate-400 uppercase font-semibold">Base URL</span>
+                      <p className="text-xs font-mono text-slate-600 truncate mt-0.5">
+                        {p.baseUrl}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => {
+                      setKeyModalProvider(p);
+                      setNewApiKey("");
+                      setNewBaseUrl(p.baseUrl);
+                      setTestResult(null);
+                    }}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                  >
+                    Configure Key
+                  </button>
+
+                  <button
+                    onClick={() => handleTestProvider(p.id)}
+                    disabled={!p.hasKey || testingKey}
+                    className="px-3 py-1.5 text-blue-600 hover:bg-blue-50 text-xs font-semibold rounded-lg transition-colors border border-blue-200 disabled:opacity-40 cursor-pointer"
+                  >
+                    Test Ping
+                  </button>
+                </div>
               </div>
-              <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
-                Evaluates borrower criteria against master bank policies and underwriting cutoffs.
+            ))}
+
+            {/* + Add Custom Provider Card */}
+            <div
+              onClick={() => {
+                setCustomProviderName("");
+                setCustomProviderId("");
+                setCustomProviderBaseUrl("");
+                setCustomProviderKey("");
+                setShowCustomProviderModal(true);
+              }}
+              className="w-full border-2 border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50/20 rounded-xl p-5 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[220px] group shadow-2xs"
+            >
+              <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-blue-100 text-slate-500 group-hover:text-blue-600 flex items-center justify-center transition-colors mb-2">
+                <Plus className="w-5 h-5" />
+              </div>
+              <h4 className="text-sm font-bold text-slate-800 group-hover:text-blue-600">
+                + Add Custom Provider
+              </h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-[200px] leading-relaxed">
+                Connect LiteLLM, Ollama, LM Studio, vLLM, or self-hosted API endpoints
               </p>
             </div>
           </div>
         </div>
+      )}
+
+      {/* TAB 3: AGENT & ASSISTANT BINDINGS */}
+      {activeTab === "usage" && (
+        <div className="w-full space-y-4">
+          <div className="w-full bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+            <h3 className="font-bold text-slate-900 text-base mb-1">Custom Agent & Assistant Model Mapping</h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Inspect how the AI Finance platform routes requests to specialized models based on task domain and underwriting requirements.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-blue-600" />
+                    CreditWise Primary Assistant
+                  </h4>
+                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    User-Facing Default
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-1">
+                  Handles general user loan queries, multi-turn dialogue, greetings, and chat responses.
+                </p>
+                <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
+                  <span className="text-xs text-slate-500">Bound Engine:</span>
+                  <span className="text-xs font-bold font-mono text-slate-800">
+                    {activeDefaultModel?.name || "NVIDIA Nemotron 3 Ultra"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-amber-600" />
+                    CreditWise Guardrail & Pre-Processor
+                  </h4>
+                  <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    Stage 1 Filter
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-1">
+                  Filters non-salaried tokens (student, homemaker, unemployed) and handles company disavowals deterministically.
+                </p>
+                <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
+                  <span className="text-xs text-slate-500">Bound Engine:</span>
+                  <span className="text-xs font-bold font-mono text-slate-800">
+                    Deterministic Zero-Hallucination Guardrail
+                  </span>
+                </div>
+              </div>
+
+              <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-emerald-600" />
+                    Multi-Bank Eligibility Wizard
+                  </h4>
+                  <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    Stage 3 Tool
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-1">
+                  Evaluates applicant profile across all 23 partner lenders without LLM guessing.
+                </p>
+                <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
+                  <span className="text-xs text-slate-500">Bound Engine:</span>
+                  <span className="text-xs font-bold font-mono text-slate-800">
+                    23-Lender Master Policy Engine
+                  </span>
+                </div>
+              </div>
+
+              <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-indigo-600" />
+                    Policy RAG & Parameter Retriever
+                  </h4>
+                  <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                    Structured RAG
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-1">
+                  Answers targeted questions on CIBIL, FOIR, and ROI using verified `.txt` policy files.
+                </p>
+                <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
+                  <span className="text-xs text-slate-500">Bound Engine:</span>
+                  <span className="text-xs font-bold font-mono text-slate-800">
+                    PolicyPgVector + Structured Formatter
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: REGISTER NEW MODEL */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2">
+                <Cpu className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-slate-900 text-lg">Register New Model</h3>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRegisterModel} className="space-y-4 mt-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  Model Display Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Claude 3.5 Sonnet, Llama 3.3 70B"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  Model Identifier (API Slug)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. claude-3-5-sonnet-20241022 or llama-3.3-70b-versatile"
+                  value={formModelId}
+                  onChange={(e) => setFormModelId(e.target.value)}
+                  className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Provider</label>
+                  <select
+                    value={formProvider}
+                    onChange={(e) => setFormProvider(e.target.value as ModelProvider)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                  >
+                    {PROVIDER_OPTIONS.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Specific Purpose</label>
+                  <select
+                    value={formPurpose}
+                    onChange={(e) => setFormPurpose(e.target.value as ModelPurpose)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                  >
+                    {PURPOSE_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formRouteViaGateway}
+                    onChange={(e) => setFormRouteViaGateway(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-slate-900 block flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                      Route via OpenRouter / Unified Gateway
+                    </span>
+                    <span className="text-xs text-slate-500 block">
+                      Inherits the active OpenRouter credentials. No direct provider API key is required.
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formIsDefault}
+                    onChange={(e) => setFormIsDefault(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-slate-900 block flex items-center gap-1.5">
+                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                      Set as Primary Assistant Default
+                    </span>
+                    <span className="text-xs text-slate-500 block">
+                      Promotes this model to handle primary customer conversations in the central chat agent.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-xs transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                >
+                  {actionLoading ? (
+                    <>
+                      <RotateCw className="w-4 h-4 animate-spin" />
+                      <span>Registering...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      <span>Register Model</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: DELETE MODEL CONFIRMATION */}
+      {showDeleteModal && modelToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+            <div className="flex items-center gap-3 text-rose-600 mb-3">
+              <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-slate-900 text-lg">Delete Model</h3>
+            </div>
+
+            <p className="text-sm text-slate-600">
+              Are you sure you want to remove <span className="font-bold text-slate-900">"{modelToDelete.name}"</span>?
+            </p>
+
+            {modelToDelete.is_assistant_default && (
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                ⚠️ This model is currently the primary assistant default. Deleting it will automatically promote the next available model.
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setModelToDelete(null);
+                }}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-semibold shadow-sm disabled:opacity-50"
+              >
+                {actionLoading ? "Deleting..." : "Confirm Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CONFIGURE PROVIDER KEY */}
+      {keyModalProvider && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2">
+                <Key className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-slate-900 text-lg">
+                  Configure {keyModalProvider.name} API Key
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setKeyModalProvider(null);
+                  setTestResult(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProviderKey} className="space-y-4 mt-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  API Key
+                </label>
+                <div className="relative">
+                  <input
+                    type={showRawKey ? "text" : "password"}
+                    placeholder={`Paste ${keyModalProvider.name} API key...`}
+                    value={newApiKey}
+                    onChange={(e) => setNewApiKey(e.target.value)}
+                    className="w-full pl-3 pr-10 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowRawKey(!showRawKey)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                  >
+                    {showRawKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  API Endpoint / Base URL
+                </label>
+                <input
+                  type="text"
+                  placeholder={keyModalProvider.defaultBaseUrl}
+                  value={newBaseUrl}
+                  onChange={(e) => setNewBaseUrl(e.target.value)}
+                  className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {testResult && (
+                <div
+                  className={`p-3 rounded-lg text-xs font-medium border ${
+                    testResult.success
+                      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                      : "bg-rose-50 text-rose-800 border-rose-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 font-bold">
+                    {testResult.success ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-rose-600" />
+                    )}
+                    {testResult.message}
+                    {testResult.latencyMs && ` (${testResult.latencyMs}ms)`}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => handleTestProvider(keyModalProvider.id, newApiKey)}
+                  disabled={!newApiKey.trim() || testingKey}
+                  className="px-3 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-semibold disabled:opacity-40"
+                >
+                  {testingKey ? "Testing..." : "Test Connection"}
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setKeyModalProvider(null);
+                      setTestResult(null);
+                    }}
+                    className="px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={actionLoading}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm disabled:opacity-50"
+                  >
+                    {actionLoading ? "Saving..." : "Save Key"}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD CUSTOM PROVIDER */}
+      {showCustomProviderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-scaleIn">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2">
+                <Server className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-slate-900 text-lg">Add Custom Provider Endpoint</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCustomProviderModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCustomProvider} className="space-y-4 mt-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  Provider Display Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. LiteLLM Proxy, vLLM Cluster, LM Studio Local"
+                  value={customProviderName}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomProviderName(val);
+                    if (!customProviderId || customProviderId === customProviderName.toLowerCase().replace(/[^a-z0-9]/g, "-")) {
+                      setCustomProviderId(val.toLowerCase().replace(/[^a-z0-9]/g, "-"));
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  Provider Identifier Slug
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. litellm, vllm, lmstudio"
+                  value={customProviderId}
+                  onChange={(e) => setCustomProviderId(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+                  className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  API Endpoint / Base URL
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. http://localhost:4000/v1 or https://ai-proxy.internal.corp/v1"
+                  value={customProviderBaseUrl}
+                  onChange={(e) => setCustomProviderBaseUrl(e.target.value)}
+                  className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1 flex items-center justify-between">
+                  <span>API Key (Optional / Bearer Token)</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Leave empty for local Ollama/LM Studio</span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="sk-... or leave blank if unauthenticated"
+                  value={customProviderKey}
+                  onChange={(e) => setCustomProviderKey(e.target.value)}
+                  className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowCustomProviderModal(false)}
+                  className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-xs transition disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                >
+                  {actionLoading ? (
+                    <>
+                      <RotateCw className="w-4 h-4 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      <span>Add Provider</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

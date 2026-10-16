@@ -294,7 +294,7 @@ export default function HomePage() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const target = params.get('from') || '/home';
-      router.push(target);
+      window.location.href = target;
     }
   };
 

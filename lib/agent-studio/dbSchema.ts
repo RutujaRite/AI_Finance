@@ -89,6 +89,24 @@ export async function initAgentStudioDb(): Promise<void> {
         updated_at TIMESTAMP DEFAULT NOW()
       );
       ALTER TABLE knowledge_documents ADD COLUMN IF NOT EXISTS user_id INTEGER;
+      ALTER TABLE knowledge_documents ADD COLUMN IF NOT EXISTS source VARCHAR(100) DEFAULT 'knowledge_agent_passed';
+      ALTER TABLE knowledge_documents ADD COLUMN IF NOT EXISTS is_policy_file BOOLEAN DEFAULT false;
+
+      CREATE OR REPLACE VIEW agent_knowledge_files AS
+      SELECT 
+        kd.id,
+        kd.agent_id,
+        kd.name,
+        kd.file_type,
+        kd.file_size,
+        kd.status,
+        kd.chunk_count,
+        kd.is_active,
+        COALESCE(kd.source, 'knowledge_agent_passed') AS source,
+        COALESCE(kd.is_policy_file, false) AS is_policy_file,
+        kd.uploaded_at,
+        kd.updated_at
+      FROM knowledge_documents kd;
     `);
 
     // 5. Knowledge Chunks table (with pgvector if vector type exists, or jsonb embedding)

@@ -81,10 +81,11 @@ export async function GET(req: NextRequest) {
   }
 }
 
+import pool from "@/lib/db";
+
 /**
  * POST /api/admin/models
- * Creates a new custom model.
- * Body: { category, model_name, api_key, is_active }
+ * Registers a new model in registered_models, or creates a custom engine in ai_models.
  * Protected: Admin only.
  */
 export async function POST(req: NextRequest) {
@@ -105,6 +106,82 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
+
+    // Check if this is a Registered Model payload (name, model_id, purpose, provider)
+    if (body.model_id || body.purpose || (body.name && !body.category)) {
+      const name = String(body.name || "").trim();
+      const modelId = String(body.model_id || body.model_name || "").trim();
+      const provider = String(body.provider || "custom").toLowerCase().trim();
+      const purpose = String(body.purpose || "General Chat").trim();
+      const isDefault = Boolean(body.is_assistant_default || body.is_default);
+      const routeViaGateway = body.route_via_gateway !== false;
+
+      if (!name) {
+        return NextResponse.json(
+          { success: false, error: "Validation Error", message: "Model Display Name is required." },
+          { status: 400 }
+        );
+      }
+      if (!modelId) {
+        return NextResponse.json(
+          { success: false, error: "Validation Error", message: "Model Identifier (API slug) is required." },
+          { status: 400 }
+        );
+      }
+
+      const client = await pool.connect();
+      try {
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS registered_models (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            name VARCHAR(255) NOT NULL,
+            model_id VARCHAR(255) NOT NULL UNIQUE,
+            provider VARCHAR(50) NOT NULL,
+            purpose VARCHAR(100) NOT NULL DEFAULT 'General Chat',
+            is_assistant_default BOOLEAN NOT NULL DEFAULT false,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            route_via_gateway BOOLEAN DEFAULT true
+          );
+          ALTER TABLE registered_models ADD COLUMN IF NOT EXISTS route_via_gateway BOOLEAN DEFAULT true;
+        `);
+
+        if (isDefault) {
+          await client.query(`UPDATE registered_models SET is_assistant_default = false`);
+          try {
+            await client.query(`UPDATE ai_models SET is_active = false, is_default = false WHERE category = 'LLM'`);
+            await client.query(
+              `INSERT INTO ai_models (category, model_name, provider, is_active, is_default, display_name, updated_at)
+               VALUES ('LLM', $1, $2, true, true, $3, NOW())
+               ON CONFLICT (id) DO NOTHING`,
+              [modelId, provider, name]
+            );
+          } catch {}
+        }
+
+        const insertRes = await client.query(
+          `INSERT INTO registered_models (name, model_id, provider, purpose, is_assistant_default, route_via_gateway)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (model_id) DO UPDATE SET
+             name = EXCLUDED.name,
+             provider = EXCLUDED.provider,
+             purpose = EXCLUDED.purpose,
+             is_assistant_default = EXCLUDED.is_assistant_default,
+             route_via_gateway = EXCLUDED.route_via_gateway
+           RETURNING *`,
+          [name, modelId, provider, purpose, isDefault, routeViaGateway]
+        );
+
+        return NextResponse.json({
+          success: true,
+          message: `Model "${name}" registered successfully.`,
+          model: insertRes.rows[0],
+        });
+      } finally {
+        client.release();
+      }
+    }
+
+    // Legacy handler: { category, model_name, api_key, is_active }
     const category = String(body?.category || "").trim().toUpperCase() as ModelCategory;
     const model_name = String(body?.model_name || "").trim();
     const api_key = body?.api_key ? String(body.api_key).trim() : undefined;

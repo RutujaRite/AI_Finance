@@ -43,13 +43,66 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Missing file id" }, { status: 400 });
     }
 
+    // Check if fileId is a filesystem scan identifier (fs-...)
+    if (String(fileId).startsWith("fs-")) {
+      const rawName = String(fileId).replace(/^fs-/, "");
+      const possiblePaths = [
+        path.join(process.cwd(), "company-master-files", rawName),
+        path.join(process.cwd(), "public", "uploads", "bank-company-data", rawName),
+        path.join(process.cwd(), "data", rawName),
+      ];
+
+      for (const p of possiblePaths) {
+        if (existsSync(p)) {
+          const fileBuffer = await readFile(p);
+          const ext = path.extname(rawName).toLowerCase();
+          const contentType =
+            ext === ".csv"
+              ? "text/csv; charset=utf-8"
+              : ext === ".xlsx"
+              ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              : ext === ".xls"
+              ? "application/vnd.ms-excel"
+              : "application/octet-stream";
+
+          return new NextResponse(fileBuffer, {
+            headers: {
+              "Content-Type": contentType,
+              "Content-Disposition": `attachment; filename="${encodeURIComponent(rawName)}"`,
+            },
+          });
+        }
+      }
+    }
+
     const client = await pool.connect();
     try {
-      const res = await client.query(
-        "SELECT id, file_name, file_path, file_size FROM bank_uploaded_files WHERE id = $1",
-        [Number(fileId)]
-      );
+      const numericId = parseInt(String(fileId), 10);
+      let res;
+      if (!isNaN(numericId)) {
+        res = await client.query(
+          "SELECT id, file_name, file_path, file_size FROM bank_uploaded_files WHERE id = $1",
+          [numericId]
+        );
+      } else {
+        res = await client.query(
+          "SELECT id, file_name, file_path, file_size FROM bank_uploaded_files WHERE file_name = $1 LIMIT 1",
+          [fileId]
+        );
+      }
+
       if (res.rowCount === 0) {
+        // Check if file exists directly on disk by name
+        const directDiskPath = path.join(process.cwd(), "company-master-files", String(fileId));
+        if (existsSync(directDiskPath)) {
+          const fileBuffer = await readFile(directDiskPath);
+          return new NextResponse(fileBuffer, {
+            headers: {
+              "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              "Content-Disposition": `attachment; filename="${encodeURIComponent(String(fileId))}"`,
+            },
+          });
+        }
         return NextResponse.json({ success: false, error: "File not found" }, { status: 404 });
       }
 
@@ -66,6 +119,12 @@ export async function GET(
           fullPath = file_path;
         } else {
           fullPath = path.join(process.cwd(), file_path);
+        }
+
+        // Also check company-master-files if not found in primary path
+        if (!existsSync(fullPath)) {
+          const altPath = path.join(process.cwd(), "company-master-files", file_name);
+          if (existsSync(altPath)) fullPath = altPath;
         }
 
         if (existsSync(fullPath)) {

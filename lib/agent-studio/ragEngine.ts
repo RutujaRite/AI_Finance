@@ -2,8 +2,8 @@
 import pool from "@/lib/db";
 import { generateQueryEmbedding } from "@/lib/policyRetrieval";
 import { openRouterChat } from "@/lib/openrouter";
-import { KnowledgeDocumentRecord, Agent, GUARDRAIL_TEMPLATES } from "./types";
-export { GUARDRAIL_TEMPLATES };
+import { KnowledgeDocumentRecord, Agent, GUARDRAIL_TEMPLATES, isKnowledgeBaseAgent } from "./types";
+export { GUARDRAIL_TEMPLATES, isKnowledgeBaseAgent };
 
 export interface RetrievedKnowledgeContext {
   document: KnowledgeDocumentRecord;
@@ -22,14 +22,21 @@ export interface RagRetrievalResult {
 /**
  * Section 10: Dynamic Knowledge Selection
  * Identifies which connected documents are relevant to the user query based on:
+ * - Agent capability & designation (conversational/greeting agents do not retrieve policy docs)
  * - Document filename & type
  * - Document's `when_to_use` / `when_not_to_use` rules
  * - User query terms (e.g., personal loan vs education loan)
  */
 export function selectRelevantDocuments(
   query: string,
-  documents: KnowledgeDocumentRecord[]
+  documents: KnowledgeDocumentRecord[],
+  agent?: Agent
 ): KnowledgeDocumentRecord[] {
+  // If agent is a conversational/greeting assistant without knowledge capability, suppress policy docs
+  if (agent && !isKnowledgeBaseAgent(agent)) {
+    return [];
+  }
+
   const activeDocs = documents.filter((d) => d.isActive !== false && d.status !== "FAILED");
   if (activeDocs.length === 0) return [];
 
@@ -378,7 +385,7 @@ export function buildConfiguredAgentPrompt(
   const allowGenKnowledge = agent.allowGeneralKnowledge !== false;
 
   let generalKnowledgeInstruction = allowGenKnowledge
-    ? "GENERAL KNOWLEDGE: Allowed. Answer general financial, technical, definitions, and domain questions directly and accurately. When asked about general non-loan topics (e.g. AI, programming, LLMs, RAG, general knowledge), answer the user query directly without injecting loan policies, personal financial questionnaires, or employer requirements. For specific bank/company eligibility policies, ground answers strictly in verified knowledge."
+    ? "GENERAL KNOWLEDGE: Allowed. Answer general financial, technical, definitions, and domain questions directly and accurately. For bank-specific values (minimum salary, cut-off CIBIL scores, LTV ratios, interest rates), rely strictly on verified knowledge base files. For general financial definitions or industry acronyms (e.g., FOIR, LTV, CIBIL, EMI), provide clear standard financial definitions while noting that exact percentage thresholds depend on individual lender policy. When asked about general non-loan topics (e.g. AI, programming, LLMs, RAG, general knowledge), answer the user query directly without injecting loan policies, personal financial questionnaires, or employer requirements."
     : "GENERAL KNOWLEDGE: Restricted. Answer strictly within verified knowledge documents and tools. If asked about facts not in verified knowledge, clearly state that the configured knowledge does not contain enough information.";
 
   parts.push(
@@ -433,6 +440,8 @@ export function buildConfiguredAgentPrompt(
     `For eligibility results, always show eligible banks in a neat table with exactly:\n` +
     `| Bank | Status | CIBIL | Tenure | Est. EMI |\n\n` +
     `### BANK POLICY & CITATION GUIDELINES:\n` +
+    `- For bank-specific values (minimum salary, cut-off CIBIL scores, LTV ratios, interest rates), rely strictly on verified knowledge base files.\n` +
+    `- For general financial definitions or industry acronyms (e.g., FOIR, LTV, CIBIL, EMI), provide clear standard financial definitions while noting that exact percentage thresholds depend on individual lender policy.\n` +
     `- When answering from uploaded knowledge base documents or partner bank policies, cite the document name or lender clearly.\n` +
     `- Never guess missing values; explicitly state "Not specified in the available policy." if a field is not documented.`
   );

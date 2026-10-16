@@ -27,6 +27,7 @@ import {
   Layers,
   Sparkles,
   Bot,
+  Home,
 } from "lucide-react";
 
 interface DashboardStats {
@@ -224,6 +225,17 @@ export default function AdminDashboardPage() {
               <p className="text-sm text-slate-600 mt-1.5 m-0 leading-relaxed">
                 Manage platform lender policies, company database, managers, and system users.
               </p>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 bg-white hover:bg-slate-50 border border-slate-300 hover:border-blue-400 rounded-xl transition-all shadow-2xs no-underline cursor-pointer"
+                title="Return to main application home page"
+              >
+                <Home className="w-4 h-4 text-blue-600" />
+                <span>Go to Home</span>
+              </Link>
             </div>
           </div>
         </section>

@@ -13,6 +13,7 @@ import {
   retrieveKnowledgeChunks,
   validateAgentResponse,
   buildConfiguredAgentPrompt,
+  isKnowledgeBaseAgent,
 } from "@/lib/agent-studio/ragEngine";
 import { getActiveLlmModelName } from "@/lib/ai/modelRouter";
 import { verifyToken } from "@/lib/auth";
@@ -89,12 +90,18 @@ export async function POST(
     const toolsUsed: string[] = [];
     let recordedTokenUsage: any = null;
 
-    // 2. Fetch connected agent documents from Database (Section 10)
-    const agentDocuments = await listAgentDocuments(agent.id);
-    const relevantDocs = selectRelevantDocuments(cleanInput, agentDocuments);
+    // 2. Fetch connected agent documents from Database if Knowledge Base Agent
+    const isKnowledgeAgent = isKnowledgeBaseAgent(agent);
+    const agentDocuments = isKnowledgeAgent ? await listAgentDocuments(agent.id) : [];
+    const relevantDocs = isKnowledgeAgent ? selectRelevantDocuments(cleanInput, agentDocuments, agent) : [];
 
     // 3. Perform RAG Retrieval against relevant documents
-    const ragResult = await retrieveKnowledgeChunks(cleanInput, relevantDocs);
+    const ragResult = relevantDocs.length > 0 ? await retrieveKnowledgeChunks(cleanInput, relevantDocs) : {
+      hasRelevantKnowledge: false,
+      selectedDocuments: [],
+      allRetrievedChunkIds: [],
+      groundingPrompt: "",
+    };
 
     // Build execution pipeline trace
     const pipeline = [

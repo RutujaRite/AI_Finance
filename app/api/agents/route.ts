@@ -51,19 +51,46 @@ export async function POST(req: NextRequest) {
   try {
     const userId = getUserId(req);
     const body = await req.json();
-    const { name, description, purpose, goal, responseStyle, operationalMode, instructions, guardrails } = body;
+    const name = (body.name || "").trim();
 
-    if (!name || !name.trim()) {
+    if (!name) {
       return NextResponse.json(
         { success: false, error: "Agent name is required" },
         { status: 400 }
       );
     }
 
+    const systemPrompt =
+      body.system_prompt ||
+      body.systemPrompt ||
+      body.instructions?.advancedPrompt ||
+      body.goal ||
+      body.purpose ||
+      "For bank-specific values (minimum salary, cut-off CIBIL scores, LTV ratios, interest rates), rely strictly on verified knowledge base files. For general financial definitions or industry acronyms (e.g., FOIR, LTV, CIBIL, EMI), provide clear standard financial definitions while noting that exact percentage thresholds depend on individual lender policy.";
+
+    const tone =
+      body.tone ||
+      body.instructions?.tone ||
+      "Professional and friendly";
+
+    const responseStyleRaw =
+      body.response_style ||
+      body.responseStyle ||
+      "concise";
+
+    let mappedResponseStyle: "concise" | "balanced" | "detailed" = "concise";
+    if (responseStyleRaw.toLowerCase().includes("detail")) mappedResponseStyle = "detailed";
+    else if (responseStyleRaw.toLowerCase().includes("step") || responseStyleRaw.toLowerCase().includes("balanced")) mappedResponseStyle = "balanced";
+
+    const isActive = body.is_active === true || body.status === "active";
+    const description = body.description || `${name} Assistant`;
+    const model = body.model || "gpt-4o-mini";
+    const role = body.agentRole || body.role || body.instructions?.agentRole || `${name} Specialist`;
+
     const result = createAgent({
-      name: name.trim(),
-      description: (description || "").trim(),
-      purpose: (purpose || goal || "").trim(),
+      name,
+      description,
+      purpose: systemPrompt,
     });
 
     if (!result.success) {
@@ -81,17 +108,29 @@ export async function POST(req: NextRequest) {
       if (userId !== undefined) {
         result.agent.userId = userId;
       }
-      if (operationalMode) {
-        result.agent.operationalMode = operationalMode;
-      }
-      if (responseStyle) {
-        result.agent.responseStyle = responseStyle;
-      }
-      if (instructions && typeof instructions === "object") {
-        result.agent.instructions = { ...result.agent.instructions, ...instructions };
-      }
-      if (guardrails) {
-        result.agent.manualGuardrails = typeof guardrails === "string" ? guardrails : "";
+      result.agent.status = isActive ? "active" : "draft";
+      result.agent.isActiveForUser = isActive;
+      result.agent.responseStyle = mappedResponseStyle;
+      result.agent.operationalMode = body.operationalMode || "standard";
+      result.agent.goal = systemPrompt;
+      result.agent.model = model;
+      (result.agent as any).system_prompt = systemPrompt;
+      (result.agent as any).tone = tone;
+      (result.agent as any).response_style = responseStyleRaw;
+
+      result.agent.instructions = {
+        businessDescription: description,
+        agentRole: role,
+        tone: tone,
+        escalationRules: body.instructions?.escalationRules || "Direct complex underwriting requests to a senior manager.",
+        additionalInstructions: body.instructions?.additionalInstructions || "Verify employer name and net monthly income before evaluating bank eligibility.",
+        advancedPrompt: systemPrompt,
+        temperature: body.instructions?.temperature || 0.4,
+        ...(typeof body.instructions === "object" ? body.instructions : {}),
+      };
+
+      if (body.guardrails) {
+        result.agent.manualGuardrails = typeof body.guardrails === "string" ? body.guardrails : "";
       }
 
       try {

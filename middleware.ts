@@ -51,9 +51,14 @@ export async function middleware(request: NextRequest) {
     pathname === '/login' ||
     pathname === '/register' ||
     pathname === '/logout' ||
+    pathname === '/forgot-password' ||
+    pathname === '/reset-password' ||
     pathname === '/api/auth/login' ||
     pathname === '/api/auth/register' ||
-    pathname === '/api/auth/logout'
+    pathname === '/api/auth/logout' ||
+    pathname === '/api/auth/forgot-password' ||
+    pathname === '/api/auth/reset-password' ||
+    pathname === '/api/auth/verify-reset-code'
   ) {
     return NextResponse.next()
   }

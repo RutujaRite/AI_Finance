@@ -38,7 +38,7 @@ import {
   Cpu,
   Download
 } from "lucide-react";
-import { Agent } from "@/lib/agent-studio/types";
+import { Agent, isKnowledgeBaseAgent } from "@/lib/agent-studio/types";
 
 interface AgentDocItem {
   id: string;
@@ -53,6 +53,8 @@ interface AgentDocItem {
   whenNotToUse?: string;
   guardrailText?: string;
   isActive?: boolean;
+  source?: string;
+  isPolicyFile?: boolean;
 }
 
 interface BankPolicyLibraryItem {
@@ -186,7 +188,6 @@ export default function AiInstructionsView({
   const [isAssistantVisible, setIsAssistantVisible] = useState(
     agent.operationalMode !== "task_focused"
   );
-  const [isAgentDropdownOpen, setIsAgentDropdownOpen] = useState(false);
   const [isAgentActive, setIsAgentActive] = useState<boolean>(
     agent.isActiveForUser !== false && agent.status === "active"
   );
@@ -251,80 +252,189 @@ export default function AiInstructionsView({
   const [isAddingFromSource, setIsAddingFromSource] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const agentDropdownRef = useRef<HTMLDivElement>(null);
-
-  const allAgentsList = agents && agents.length > 0 ? agents : [agent];
-
-  // Close agent dropdown on click outside
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (agentDropdownRef.current && !agentDropdownRef.current.contains(e.target as Node)) {
-        setIsAgentDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // Form values based on current agent
   const agentName = agent.name || "Loan Assistant";
   const agentRole = agent.instructions?.agentRole || "Loan Consultant";
-  const conversationTone = agent.instructions?.tone || "Professional and friendly";
-  const responseStyle =
-    agent.responseStyle === "detailed"
-      ? "Detailed"
-      : agent.responseStyle === "balanced"
-      ? "Step-by-step"
-      : "Clear, helpful, concise";
 
   const defaultPrompt =
     "You are a helpful AI assistant. Understand the user's message before responding. Follow the configured business instructions. Use the connected knowledge base for supported answers. If information is missing, ask a clear follow-up question. Do not invent facts. Keep responses friendly, accurate, and easy to understand.";
 
-  const instructionsText =
-    agent.instructions?.advancedPrompt && agent.instructions.advancedPrompt.length > 50
-      ? agent.instructions.advancedPrompt
-      : defaultPrompt;
+  function getAgentInstructions(targetAgent: Agent): string {
+    const rawGoal = (targetAgent.goal || "").trim();
+    const systemPrompt = ((targetAgent as any).system_prompt || "").trim();
+    const advPrompt =
+      (typeof targetAgent.instructions === "string"
+        ? targetAgent.instructions
+        : targetAgent.instructions?.advancedPrompt || "")
+      .trim();
+
+    if (rawGoal && rawGoal !== "Base bank policy responses strictly on verified knowledge.") {
+      return rawGoal;
+    }
+    if (systemPrompt && systemPrompt !== "Base bank policy responses strictly on verified knowledge.") {
+      return systemPrompt;
+    }
+    if (advPrompt && advPrompt !== "Base bank policy responses strictly on verified knowledge.") {
+      return advPrompt;
+    }
+    return (
+      rawGoal ||
+      systemPrompt ||
+      advPrompt ||
+      targetAgent.instructions?.additionalInstructions ||
+      targetAgent.instructions?.businessDescription ||
+      defaultPrompt
+    );
+  }
+
+  const [instructionsText, setInstructionsText] = useState<string>(() => getAgentInstructions(agent));
+  const [currentTone, setCurrentTone] = useState<string>(
+    agent.instructions?.tone || (agent as any).tone || "Professional and friendly"
+  );
+  const [currentResponseStyle, setCurrentResponseStyle] = useState<string>(
+    agent.responseStyle === "detailed"
+      ? "Detailed"
+      : agent.responseStyle === "balanced"
+      ? "Step-by-step"
+      : "Clear, helpful, concise"
+  );
+
+  // Sync AI Instruction Box and Persona when selected agent changes
+  useEffect(() => {
+    if (agent) {
+      setInstructionsText(getAgentInstructions(agent));
+      setCurrentTone(
+        agent.instructions?.tone || (agent as any).tone || "Professional and friendly"
+      );
+      setCurrentResponseStyle(
+        (agent as any).response_style ||
+          (agent.responseStyle === "detailed"
+            ? "Detailed"
+            : agent.responseStyle === "balanced"
+            ? "Step-by-step"
+            : "Clear, helpful, concise")
+      );
+      setIsDraft(false);
+      loadAgentKnowledge();
+    }
+  }, [agent.id, agent]);
 
   // Real API Fetch: Knowledge Documents for Current Agent
   async function loadAgentKnowledge() {
     try {
       setIsLoadingDocs(true);
       setDocsError(null);
-      const res = await fetch(`/api/agents/${agent.id}/knowledge`);
+
+      const isKnowledgeAgent = isKnowledgeBaseAgent(agent);
+
+      // If this is a conversational or greeting assistant, strictly suppress policy files
+      if (!isKnowledgeAgent) {
+        try {
+          const res = await fetch(`/api/knowledge-files?agentId=${agent.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && Array.isArray(data.files)) {
+              const mapped: AgentDocItem[] = data.files
+                .filter((d: any) => d.agent_id === agent.id && d.source === "knowledge_agent_passed")
+                .map((d: any) => ({
+                  id: d.id,
+                  name: d.name,
+                  type: (d.file_type || d.fileType || "PDF").toUpperCase(),
+                  size: d.file_size || d.fileSize || "1.0 MB",
+                  uploadedOn: new Date(d.uploaded_at || d.uploadedAt || Date.now()).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  }),
+                  status: d.status === "FAILED" ? "Failed" : "Active",
+                  content: d.content || d.extractedText || undefined,
+                  isActive: d.is_active !== false,
+                  source: "knowledge_agent_passed",
+                  isPolicyFile: false,
+                }));
+              setAgentDocs(mapped);
+              return;
+            }
+          }
+        } catch {}
+        setAgentDocs([]);
+        return;
+      }
+
+      // For Knowledge Base agents: fetch directly linked knowledge files
+      const res = await fetch(`/api/knowledge-files?agentId=${agent.id}`);
       if (res.ok) {
         const data = await res.json();
+        if (data.success && Array.isArray(data.files) && data.files.length > 0) {
+          const mapped: AgentDocItem[] = data.files
+            .filter((d: any) => d.agent_id === agent.id)
+            .map((d: any) => ({
+              id: d.id,
+              name: d.name,
+              type: (d.file_type || d.fileType || "PDF").toUpperCase(),
+              size: d.file_size || d.fileSize || "1.0 MB",
+              uploadedOn: new Date(d.uploaded_at || d.uploadedAt || Date.now()).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              status: d.status === "FAILED" ? "Failed" : "Active",
+              content: d.content || d.extractedText || undefined,
+              instructionText: d.instructionText || "",
+              whenToUse: d.whenToUse || "",
+              whenNotToUse: d.whenNotToUse || "",
+              guardrailText: d.guardrailText || "",
+              isActive: d.is_active !== false,
+              source: "knowledge_agent_passed",
+              isPolicyFile: false,
+            }));
+          setAgentDocs(mapped);
+          return;
+        }
+      }
+
+      // Fallback: fetch from /api/agents/${agent.id}/knowledge
+      const resFallback = await fetch(`/api/agents/${agent.id}/knowledge`);
+      if (resFallback.ok) {
+        const data = await resFallback.json();
         if (data.success && Array.isArray(data.documents) && data.documents.length > 0) {
-          const mapped: AgentDocItem[] = data.documents.map((d: any) => ({
-            id: d.id,
-            name: d.name,
-            type: (d.fileType || "PDF").toUpperCase(),
-            size: d.fileSize || "1.0 MB",
-            uploadedOn: new Date(d.uploadedAt || Date.now()).toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            status: d.status === "FAILED" ? "Failed" : "Active",
-            content: d.content || d.extractedText || undefined,
-            instructionText: d.instruction?.instructionText || "",
-            whenToUse: d.instruction?.whenToUse || "",
-            whenNotToUse: d.instruction?.whenNotToUse || "",
-            guardrailText: d.guardrail?.guardrailText || "",
-            isActive: d.isActive !== false,
-          }));
+          const mapped: AgentDocItem[] = data.documents
+            .filter((d: any) => d.agentId === agent.id && !d.is_policy_file && !d.name.toLowerCase().includes("policy"))
+            .map((d: any) => ({
+              id: d.id,
+              name: d.name,
+              type: (d.fileType || "PDF").toUpperCase(),
+              size: d.fileSize || "1.0 MB",
+              uploadedOn: new Date(d.uploadedAt || Date.now()).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              status: d.status === "FAILED" ? "Failed" : "Active",
+              content: d.content || d.extractedText || undefined,
+              instructionText: d.instruction?.instructionText || "",
+              whenToUse: d.instruction?.whenToUse || "",
+              whenNotToUse: d.instruction?.whenNotToUse || "",
+              guardrailText: d.guardrail?.guardrailText || "",
+              isActive: d.isActive !== false,
+              source: "knowledge_agent_passed",
+              isPolicyFile: false,
+            }));
           setAgentDocs(mapped);
         } else {
-          // If no documents uploaded yet for this agent, display reference policies from reference mockup
-          setAgentDocs(DEFAULT_REFERENCE_DOCS);
+          setAgentDocs([]);
         }
       } else {
-        setAgentDocs(DEFAULT_REFERENCE_DOCS);
+        setAgentDocs([]);
       }
     } catch (err: any) {
       console.warn("Notice loading agent knowledge documents:", err);
-      setAgentDocs(DEFAULT_REFERENCE_DOCS);
+      setAgentDocs([]);
     } finally {
       setIsLoadingDocs(false);
     }
@@ -358,11 +468,21 @@ export default function AiInstructionsView({
     onUpdateAgent({ name });
   }
 
+  const currentInstructions = (typeof agent.instructions === "object" && agent.instructions) ? agent.instructions : {
+    businessDescription: "Help users check loan eligibility based on bank policy documents.",
+    agentRole: "CreditWise Loan Specialist",
+    tone: "Professional and friendly",
+    escalationRules: "Direct complex underwriting requests to a senior manager.",
+    additionalInstructions: "Verify employer name and net monthly income before evaluating bank eligibility.",
+    advancedPrompt: defaultPrompt,
+    temperature: 0.4,
+  };
+
   function handleRoleChange(role: string) {
     setIsDraft(true);
     onUpdateAgent({
       instructions: {
-        ...agent.instructions,
+        ...currentInstructions,
         agentRole: role,
       },
     });
@@ -370,9 +490,10 @@ export default function AiInstructionsView({
 
   function handleToneChange(tone: string) {
     setIsDraft(true);
+    setCurrentTone(tone);
     onUpdateAgent({
       instructions: {
-        ...agent.instructions,
+        ...currentInstructions,
         tone,
       },
     });
@@ -381,10 +502,13 @@ export default function AiInstructionsView({
   function handleStyleChange(style: string) {
     setIsDraft(true);
     let mapped: "concise" | "balanced" | "detailed" = "concise";
-    if (style.includes("Detailed")) mapped = "detailed";
-    else if (style.includes("Step") || style.includes("balanced")) mapped = "balanced";
+    if (style.toLowerCase().includes("detailed")) mapped = "detailed";
+    else if (style.toLowerCase().includes("step") || style.toLowerCase().includes("balanced")) mapped = "balanced";
     else mapped = "concise";
 
+    setCurrentResponseStyle(
+      mapped === "detailed" ? "Detailed" : mapped === "balanced" ? "Step-by-step" : "Clear, helpful, concise"
+    );
     onUpdateAgent({
       responseStyle: mapped,
     });
@@ -393,10 +517,11 @@ export default function AiInstructionsView({
   function handleInstructionsChange(text: string) {
     if (text.length > 10000) return;
     setIsDraft(true);
+    setInstructionsText(text);
     onUpdateAgent({
       goal: text,
       instructions: {
-        ...agent.instructions,
+        ...currentInstructions,
         advancedPrompt: text,
       },
     });
@@ -415,6 +540,10 @@ export default function AiInstructionsView({
   // Real File Upload Handler (POST /api/agents/[id]/knowledge)
   async function handleFileUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
+    if (!isKnowledgeBaseAgent(agent)) {
+      onToast("This agent is configured as a conversational assistant. Document-level policy retrieval is handled independently by designated Knowledge Base agents.", "warning");
+      return;
+    }
     const file = files[0];
 
     const ext = file.name.split(".").pop()?.toUpperCase() || "PDF";
@@ -817,133 +946,63 @@ export default function AiInstructionsView({
         </div>
 
         {/* 2. AGENT CONTROL TOOLBAR (HORIZONTAL WHITE CARD) */}
-        <div className="ai-card bg-white border border-slate-300 shadow-xs rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 transition-all duration-200 hover:border-blue-500">
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Agent Selector Dropdown Button (Professional UI, 38px) */}
-            <div className="relative" ref={agentDropdownRef}>
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs transition-all duration-200 hover:border-blue-500">
+          <div className="flex items-center gap-3">
+            {/* Agent Selector Dropdown */}
+            {agents && agents.length > 0 && (
+              <select
+                value={agent.id}
+                onChange={(e) => onSelectAgent && onSelectAgent(e.target.value)}
+                className="px-3.5 py-2 text-sm font-semibold bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              >
+                {agents.map((ag: any) => (
+                  <option key={ag.id} value={ag.id}>
+                    {ag.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Status Badge */}
+            <span
+              onClick={handleToggleActiveStatus}
+              className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-medium flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition"
+              title="Click to toggle status"
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${isAgentActive ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+              {isAgentActive ? "Active" : "Inactive"}
+            </span>
+
+            {onCreateAgentClick && (
               <button
                 type="button"
-                onClick={() => setIsAgentDropdownOpen((prev) => !prev)}
-                className="h-[38px] flex items-center gap-2.5 px-3.5 border border-[#DCE8F8] hover:border-[#1677FF] rounded-[7px] bg-white shadow-xs text-xs font-semibold text-[#12336B] hover:bg-[#F5F9FF] transition cursor-pointer"
-                title="Select Agent"
+                onClick={onCreateAgentClick}
+                className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 transition cursor-pointer"
               >
-                <Bot className="w-4 h-4 text-[#1677FF]" />
-                <span className="max-w-[150px] truncate">{agentName}</span>
-                <ChevronDown
-                  className={`w-3.5 h-3.5 text-[#526B91] transition-transform ${
-                    isAgentDropdownOpen ? "rotate-180" : ""
-                  }`}
-                />
+                + Create Agent
               </button>
-
-              {isAgentDropdownOpen && (
-                <div className="absolute left-0 top-full mt-1.5 w-64 bg-white border border-[#DCE8F8] rounded-[10px] shadow-xl z-50 py-1.5 overflow-hidden animate-fadeIn">
-                  <div className="px-3.5 py-1.5 text-[10px] font-bold text-[#526B91] uppercase tracking-wider border-b border-[#DCE8F8] flex items-center justify-between">
-                    <span>Select Agent</span>
-                    <span className="bg-[#EAF3FF] text-[#1677FF] px-1.5 py-0.5 rounded text-[10px] font-semibold">
-                      {allAgentsList.length}
-                    </span>
-                  </div>
-                  <div className="max-h-60 overflow-y-auto py-1">
-                    {allAgentsList.map((ag) => {
-                      const isSelected = ag.id === agent.id;
-                      return (
-                        <button
-                          key={ag.id}
-                          type="button"
-                          onClick={() => {
-                            if (onSelectAgent) {
-                              onSelectAgent(ag.id);
-                              setIsDraft(false);
-                              onToast(`Switched to ${ag.name}`, "info");
-                            }
-                            setIsAgentDropdownOpen(false);
-                          }}
-                          className={`w-full text-left px-3.5 py-2 flex items-center justify-between text-xs transition cursor-pointer ${
-                            isSelected
-                              ? "bg-[#EAF3FF] text-[#1677FF] font-semibold"
-                              : "text-[#12336B] hover:bg-[#F5F9FF]"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            <Bot className="w-3.5 h-3.5 text-[#1677FF]" />
-                            <span className="truncate">{ag.name}</span>
-                          </div>
-                          {isSelected && (
-                            <span className="w-2 h-2 rounded-full bg-[#1677FF] shrink-0" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {onCreateAgentClick && (
-                    <div className="p-2 border-t border-[#DCE8F8] bg-[#F5F9FF]/80">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsAgentDropdownOpen(false);
-                          onCreateAgentClick();
-                        }}
-                        className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-[#1677FF] hover:bg-[#0e65e6] text-white rounded-[7px] text-xs font-semibold shadow-xs transition cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Create New Agent</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Switchable Active / Inactive Button (Small Rectangular with Micro-Animation) */}
-            <button
-              type="button"
-              onClick={handleToggleActiveStatus}
-              className={`h-[32px] flex items-center gap-1.5 px-3 rounded-[6px] text-xs font-semibold transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] cursor-pointer shadow-xs border ${
-                isAgentActive
-                  ? "bg-[#E7F9F1] hover:bg-[#d5f5e7] border-[#079669]/30 text-[#079669]"
-                  : "bg-slate-100 hover:bg-slate-200/80 border-slate-300 text-slate-600"
-              }`}
-              title={isAgentActive ? "Status: Active — Click to Deactivate" : "Status: Inactive — Click to Activate"}
-              aria-label={isAgentActive ? "Active" : "Inactive"}
-            >
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  isAgentActive ? "bg-[#079669] animate-pulse" : "bg-slate-400"
-                }`}
-              />
-              <span>{isAgentActive ? "Active" : "Inactive"}</span>
-            </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 ml-auto">
-            {/* Professional Delete Agent Button (Small Rectangular with Micro-Animation) */}
-<button
-  type="button"
-  onClick={() => {
-    if (onDeleteAgentClick) onDeleteAgentClick(agent.id);
-    else onToast("Cannot delete default agent", "warning");
-  }}
-  className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-medium px-4 py-2 rounded-lg"
-  title="Delete this agent"
-  aria-label="Delete"
->
-  <Trash2 className="w-3.5 h-3.5 text-[#F04452]" />
-  <span>Delete</span>
-</button>
-
-            {/* Professional Save Instructions Button (Small Rectangular, Primary Blue with Micro-Animation) */}
-<button
-  type="button"
-  onClick={handleSaveClick}
-  disabled={saving}
-  className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg shadow-xs"
-  title="Save instructions"
-  aria-label="Save instructions"
->
-  <Save className="w-3.5 h-3.5 text-white" />
-  <span>{saving ? "Saving..." : "Save Instructions"}</span>
-</button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (onDeleteAgentClick) onDeleteAgentClick(agent.id);
+                else onToast("Cannot delete default agent", "warning");
+              }}
+              className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-lg hover:bg-rose-100 transition cursor-pointer"
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveClick}
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
+            >
+              {saving ? "Saving..." : "Save Instructions"}
+            </button>
           </div>
         </div>
 
@@ -995,10 +1054,11 @@ export default function AiInstructionsView({
     </label>
     <div className="relative">
       <select
-        value={conversationTone}
+        value={currentTone}
         onChange={(e) => handleToneChange(e.target.value)}
         className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3.5 py-2.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
       >
+        <option value="Professional and friendly">Professional and friendly</option>
         <option value="Professional and Friendly">Professional and friendly</option>
         <option value="Formal">Formal</option>
         <option value="Conversational">Conversational</option>
@@ -1015,12 +1075,14 @@ export default function AiInstructionsView({
     </label>
     <div className="relative">
       <select
-        value={responseStyle}
+        value={currentResponseStyle}
         onChange={(e) => handleStyleChange(e.target.value)}
         className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3.5 py-2.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
       >
+        <option value="Clear, helpful, concise">Clear, helpful, concise</option>
         <option value="Clear, Helpful, Concise">Clear, helpful, concise</option>
         <option value="Detailed">Detailed</option>
+        <option value="Step-by-step">Step-by-step</option>
         <option value="Step-by-Step">Step-by-step</option>
       </select>
       <ChevronDown className="w-4 h-4 text-[#526B91] pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2" />
@@ -1048,14 +1110,14 @@ export default function AiInstructionsView({
             </div>
             <div className="mb-5 border-b border-slate-100"></div>
             {/* Clean Instructions Container Box */}
-          <div className="pt-4">
-            <div className="border border-[#DCE8F8] focus-within:border-[#1677FF] focus-within:ring-2 focus-within:ring-[#1677FF]/10 rounded-[12px] bg-white p-4 transition shadow-xs">
-<textarea
-  value={instructionsText}
-  onChange={(e) => handleInstructionsChange(e.target.value)}
-  placeholder="Write your custom instructions here..."
-  className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3.5 py-2.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
-/>
+          <div className="pt-4 w-full">
+            <div className="border border-[#DCE8F8] focus-within:border-[#1677FF] focus-within:ring-2 focus-within:ring-[#1677FF]/10 rounded-[12px] bg-white p-4 transition shadow-xs w-full">
+              <textarea
+                value={instructionsText}
+                onChange={(e) => handleInstructionsChange(e.target.value)}
+                placeholder="Write your custom instructions here..."
+                className="ai-textarea w-full min-h-[340px] font-mono text-sm leading-relaxed resize-y bg-white border border-slate-300 text-slate-900 rounded-lg p-3.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
+              />
 
               {/* Reference Checklist Guidelines */}
               <div className="pt-3.5 border-t border-[#F0F5FA] space-y-2 text-xs text-[#526B91]">
@@ -1075,7 +1137,7 @@ export default function AiInstructionsView({
 
               {/* Character Limit Counter */}
               <div className="text-right text-[11px] font-mono text-[#8FA0BC] pt-2">
-                {instructionsText.length.toLocaleString()} / 2000 characters
+                {instructionsText.length.toLocaleString()} / 10,000 characters
               </div>
             </div>
 
@@ -1099,142 +1161,185 @@ export default function AiInstructionsView({
           </div>
         </div>
 
-        {/* 3. KNOWLEDGE BASE UPLOAD & SOURCES (50/50 SIDE-BY-SIDE EQUAL-HEIGHT GRID) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left: Drag-and-Drop Upload Area */}
-          <div className="ai-card flex flex-col justify-between rounded-2xl border border-slate-300 bg-white p-5 md:p-6 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
-            <div>
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-[10px] bg-[#E1EFFF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
-                  <UploadCloud className="w-5 h-5 text-[#1677FF]" />
+        {/* 3. KNOWLEDGE BASE UPLOAD & SOURCES */}
+        {isKnowledgeBaseAgent(agent) ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left: Drag-and-Drop Upload Area */}
+            <div className="ai-card flex flex-col justify-between rounded-2xl border border-slate-300 bg-white p-5 md:p-6 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
+              <div>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-[10px] bg-[#E1EFFF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
+                    <UploadCloud className="w-5 h-5 text-[#1677FF]" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-[#12336B] text-base tracking-tight">
+                      Upload Knowledge Base
+                    </h2>
+                    <p className="text-xs text-[#526B91] mt-0.5">
+                      Add documents like PDFs, Word files, or text files.
+                    </p>
+                    <p className="text-[11px] text-[#526B91]/80 mt-0.5 font-medium">
+                      Supported: PDF, DOCX, TXT, CSV, XLSX (Max size: 10MB per file)
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-bold text-[#12336B] text-base tracking-tight">
-                    Upload Knowledge Base
-                  </h2>
-                  <p className="text-xs text-[#526B91] mt-0.5">
-                    Add documents like PDFs, Word files, or text files.
-                  </p>
-                  <p className="text-[11px] text-[#526B91]/80 mt-0.5 font-medium">
-                    Supported: PDF, DOCX, TXT, CSV, XLSX (Max size: 10MB per file)
-                  </p>
+
+                {/* Dropzone Box with Normal Light Border */}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-4 border border-solid border-[#D2E2F8] hover:border-[#1677FF] bg-[#F7FAFE] hover:bg-[#EFF6FF] rounded-[10px] p-6 text-center transition-all duration-200 cursor-pointer shadow-[0_1px_3px_rgba(30,80,150,0.02)] hover:shadow-sm"
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept=".pdf,.docx,.doc,.txt,.xlsx,.xls,.csv"
+                    onChange={(e) => handleFileUpload(e.target.files)}
+                  />
+                  <div className="text-xs text-[#526B91] mb-2 font-medium">
+                    Drag and drop files here or
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isUploading}
+                    className="h-[32px] px-4 bg-[#1677FF] hover:bg-[#0E65E6] active:bg-[#0958D9] text-white rounded-[6px] text-xs font-semibold shadow-xs transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>{isUploading ? "Uploading..." : "Choose Files"}</span>
+                  </button>
+                  <div className="text-[11px] text-[#8FA0BC] mt-2">
+                    Supports single or multiple files
+                  </div>
                 </div>
               </div>
+            </div>
 
-              {/* Dropzone Box with Normal Light Border */}
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="mt-4 border border-solid border-[#D2E2F8] hover:border-[#1677FF] bg-[#F7FAFE] hover:bg-[#EFF6FF] rounded-[10px] p-6 text-center transition-all duration-200 cursor-pointer shadow-[0_1px_3px_rgba(30,80,150,0.02)] hover:shadow-sm"
-              >
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept=".pdf,.docx,.doc,.txt,.xlsx,.xls,.csv"
-                  onChange={(e) => handleFileUpload(e.target.files)}
-                />
-                <div className="text-xs text-[#526B91] mb-2 font-medium">
-                  Drag and drop files here or
+            {/* Right: Add from existing sources */}
+            <div className="ai-card flex flex-col justify-between rounded-2xl border border-slate-300 bg-white p-5 md:p-6 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
+              <div>
+                <div className="mb-3.5">
+                  <h3 className="font-bold text-[#12336B] text-base tracking-tight">
+                    Or add from existing sources
+                  </h3>
+                  <p className="text-xs text-[#526B91] mt-0.5">
+                    Connect live web links, text notes, or verified policies.
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  disabled={isUploading}
-                  className="h-[32px] px-4 bg-[#1677FF] hover:bg-[#0E65E6] active:bg-[#0958D9] text-white rounded-[6px] text-xs font-semibold shadow-xs transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <span>{isUploading ? "Uploading..." : "Choose Files"}</span>
-                </button>
-                <div className="text-[11px] text-[#8FA0BC] mt-2">
-                  Supports single or multiple files
+
+                <div className="space-y-2.5">
+                  {/* 1. From URL */}
+                  <button
+                    type="button"
+                    onClick={() => setIsUrlModalOpen(true)}
+                    className="ai-source-card group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Link2 className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-[#12336B] group-hover:text-[#1677FF] transition-colors">
+                          From URL
+                        </div>
+                        <div className="text-[11px] text-[#526B91]">
+                          Add content from a web link
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-[#8FA0BC] group-hover:text-[#1677FF] group-hover:translate-x-0.5 transition-all" />
+                  </button>
+
+                  {/* 2. From Text */}
+                  <button
+                    type="button"
+                    onClick={() => setIsTextModalOpen(true)}
+                    className="ai-source-card group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-[#12336B] group-hover:text-[#1677FF] transition-colors">
+                          From Text
+                        </div>
+                        <div className="text-[11px] text-[#526B91]">
+                          Paste your content directly
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-[#8FA0BC] group-hover:text-[#1677FF] group-hover:translate-x-0.5 transition-all" />
+                  </button>
+
+                  {/* 3. From Knowledge Base Library */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLibraryModalOpen(true);
+                      loadLibraryPolicies();
+                    }}
+                    className="ai-source-card group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Folder className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-[#12336B] group-hover:text-[#1677FF] transition-colors">
+                          From Knowledge Base Library
+                        </div>
+                        <div className="text-[11px] text-[#526B91]">
+                          Use existing pre-configured data
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-[#8FA0BC] group-hover:text-[#1677FF] group-hover:translate-x-0.5 transition-all" />
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-
-          {/* Right: Add from existing sources */}
-          <div className="ai-card flex flex-col justify-between rounded-2xl border border-slate-300 bg-white p-5 md:p-6 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
-            <div>
-              <div className="mb-3.5">
-                <h3 className="font-bold text-[#12336B] text-base tracking-tight">
-                  Or add from existing sources
-                </h3>
-                <p className="text-xs text-[#526B91] mt-0.5">
-                  Connect live web links, text notes, or verified policies.
+        ) : (
+          /* Informational State for Conversational / Greeting Assistant */
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 p-6 rounded-2xl border border-blue-200/80 bg-white shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md">
+            <div className="flex items-start gap-4 max-w-2xl flex-1">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100 shadow-2xs">
+                <Bot className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="inline-flex items-center gap-2.5 flex-wrap">
+                  <h2 className="font-bold text-[#12336B] text-base tracking-tight">
+                    Conversational Assistant Mode
+                  </h2>
+                  <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                    General / Greeting
+                  </span>
+                </div>
+                <p className="text-xs text-[#526B91] mt-1.5 leading-relaxed">
+                  This agent is configured as a conversational assistant. Document-level policy retrieval is handled independently by designated Knowledge Base agents.
                 </p>
               </div>
+            </div>
 
-              <div className="space-y-2.5">
-                {/* 1. From URL */}
-                <button
-                  type="button"
-                  onClick={() => setIsUrlModalOpen(true)}
-                  className="ai-source-card group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <Link2 className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-[#12336B] group-hover:text-[#1677FF] transition-colors">
-                        From URL
-                      </div>
-                      <div className="text-[11px] text-[#526B91]">
-                        Add content from a web link
-                      </div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-[#8FA0BC] group-hover:text-[#1677FF] group-hover:translate-x-0.5 transition-all" />
-                </button>
-
-                {/* 2. From Text */}
-                <button
-                  type="button"
-                  onClick={() => setIsTextModalOpen(true)}
-                  className="ai-source-card group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <FileText className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-[#12336B] group-hover:text-[#1677FF] transition-colors">
-                        From Text
-                      </div>
-                      <div className="text-[11px] text-[#526B91]">
-                        Paste your content directly
-                      </div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-[#8FA0BC] group-hover:text-[#1677FF] group-hover:translate-x-0.5 transition-all" />
-                </button>
-
-                {/* 3. From Knowledge Base Library */}
+            {onSelectAgent && (
+              <div className="shrink-0">
                 <button
                   type="button"
                   onClick={() => {
-                    setIsLibraryModalOpen(true);
-                    loadLibraryPolicies();
+                    const kAgent = (agents || []).find((a) => isKnowledgeBaseAgent(a) && a.id !== agent.id);
+                    if (kAgent) {
+                      onSelectAgent(kAgent.id);
+                      onToast(`Switched to Knowledge Base Agent "${kAgent.name}"`, "info");
+                    }
                   }}
-                  className="ai-source-card group"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs whitespace-nowrap rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs hover:shadow-md transition cursor-pointer"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <Folder className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-[#12336B] group-hover:text-[#1677FF] transition-colors">
-                        From Knowledge Base Library
-                      </div>
-                      <div className="text-[11px] text-[#526B91]">
-                        Use existing pre-configured data
-                      </div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-[#8FA0BC] group-hover:text-[#1677FF] group-hover:translate-x-0.5 transition-all" />
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Switch to Dedicated Knowledge Agent</span>
                 </button>
               </div>
-            </div>
+            )}
           </div>
-        </div>
+        )}
 
         {/* 5. UPLOADED KNOWLEDGE BASE FILES */}
         <div className="ai-card p-0 overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md">
@@ -1334,6 +1439,7 @@ export default function AiInstructionsView({
                   <th>Size</th>
                   <th>Uploaded On</th>
                   <th>Status</th>
+                  <th>Provenance</th>
                   <th style={{ textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
@@ -1341,7 +1447,7 @@ export default function AiInstructionsView({
                 {/* Loading State */}
                 {isLoadingDocs ? (
                   <tr>
-                    <td colSpan={7} className="text-center text-[#526B91]" style={{ padding: "40px 14px" }}>
+                    <td colSpan={8} className="text-center text-[#526B91]" style={{ padding: "40px 14px" }}>
                       <div className="flex flex-col items-center justify-center gap-2">
                         <RefreshCw className="w-5 h-5 text-[#1677FF] animate-spin" />
                         <span className="text-xs font-medium text-[#526B91]">
@@ -1353,16 +1459,20 @@ export default function AiInstructionsView({
                 ) : paginatedDocs.length === 0 ? (
                   /* Empty State */
                   <tr>
-                    <td colSpan={7} className="text-center text-[#526B91]" style={{ padding: "40px 14px" }}>
+                    <td colSpan={8} className="text-center text-[#526B91]" style={{ padding: "40px 14px" }}>
                       <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
                         <div className="w-9 h-9 rounded-full bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center">
                           <BookOpen className="w-4.5 h-4.5" />
                         </div>
                         <span className="text-xs font-semibold text-[#12336B]">
-                          No knowledge documents found
+                          {isKnowledgeBaseAgent(agent)
+                            ? "No knowledge documents found"
+                            : "No Knowledge Base Files Required"}
                         </span>
                         <p className="text-[11px] text-[#526B91] text-center">
-                          Upload documents above or click "From Knowledge Base Library" to connect pre-verified bank policies.
+                          {isKnowledgeBaseAgent(agent)
+                            ? 'Upload documents above or click "From Knowledge Base Library" to connect pre-verified bank policies.'
+                            : "This agent is configured as a conversational assistant. Document-level policy retrieval is handled independently by designated Knowledge Base agents."}
                         </p>
                       </div>
                     </td>
@@ -1439,6 +1549,11 @@ export default function AiInstructionsView({
                               }`}
                             />
                             {doc.status}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs">
+                            Source: Passed by Agent
                           </span>
                         </td>
                         <td style={{ textAlign: "right" }}>

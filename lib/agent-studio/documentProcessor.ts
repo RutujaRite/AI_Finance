@@ -265,3 +265,146 @@ export async function processDocumentFile(
     client.release();
   }
 }
+
+/**
+ * Updates a document's name, assigned agent binding, and raw text content,
+ * automatically re-segmenting chunks and re-indexing embeddings.
+ */
+export async function updateAndReindexDocument(
+  documentId: string,
+  updates: {
+    name?: string;
+    agentId?: string;
+    rawText?: string;
+  }
+): Promise<{ success: boolean; chunkCount: number; document?: any; error?: string }> {
+  const client = await pool.connect();
+  try {
+    const docCheck = await client.query(
+      `SELECT * FROM knowledge_documents WHERE id = $1`,
+      [documentId]
+    );
+    if (!docCheck.rowCount || docCheck.rows.length === 0) {
+      return { success: false, chunkCount: 0, error: "Document not found" };
+    }
+
+    const existing = docCheck.rows[0];
+    const newName = updates.name !== undefined ? updates.name.trim() : existing.name;
+    const newAgentId = updates.agentId || existing.agent_id;
+    const isTextUpdated = updates.rawText !== undefined && updates.rawText !== null;
+    const newText = isTextUpdated ? updates.rawText! : existing.raw_text;
+    const newSize = `${Math.max(1, Math.round(Buffer.byteLength(newText || "", "utf8") / 1024))} KB`;
+
+    if (isTextUpdated && newText && newText.trim()) {
+      const chunks = chunkDocumentText(newText);
+      if (chunks.length === 0) {
+        return { success: false, chunkCount: 0, error: "No valid text chunks generated from updated text." };
+      }
+
+      // Clear existing chunks
+      await client.query(`DELETE FROM knowledge_chunks WHERE document_id = $1`, [documentId]);
+
+      // Insert new chunks
+      let indexedVectors = 0;
+      for (const chunk of chunks) {
+        let embeddingVector: number[] | null = null;
+        try {
+          embeddingVector = await generateQueryEmbedding(chunk.content.slice(0, 1000));
+        } catch (embErr) {
+          console.warn(`[CHUNK_EMBEDDING_WARNING] document ${documentId} chunk ${chunk.index}:`, embErr);
+        }
+
+        const chunkId = `${documentId}_c${chunk.index}_${Date.now()}`;
+        const metadata = {
+          documentName: newName,
+          fileType: existing.file_type || "txt",
+          chunkIndex: chunk.index,
+          charCount: chunk.charCount,
+        };
+
+        if (embeddingVector && Array.isArray(embeddingVector)) {
+          await client.query(
+            `INSERT INTO knowledge_chunks (id, document_id, agent_id, chunk_index, content, embedding, char_count, metadata, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6::vector, $7, $8, NOW())`,
+            [
+              chunkId,
+              documentId,
+              newAgentId,
+              chunk.index,
+              chunk.content,
+              `[${embeddingVector.join(",")}]`,
+              chunk.charCount,
+              JSON.stringify(metadata),
+            ]
+          );
+          indexedVectors++;
+        } else {
+          await client.query(
+            `INSERT INTO knowledge_chunks (id, document_id, agent_id, chunk_index, content, char_count, metadata, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+            [
+              chunkId,
+              documentId,
+              newAgentId,
+              chunk.index,
+              chunk.content,
+              chunk.charCount,
+              JSON.stringify(metadata),
+            ]
+          );
+        }
+      }
+
+      // Update knowledge_documents row
+      const updateRes = await client.query(
+        `UPDATE knowledge_documents
+         SET name = $2,
+             agent_id = $3,
+             raw_text = $4,
+             file_size = $5,
+             chunk_count = $6,
+             status = 'COMPLETED',
+             status_message = 'Document updated and re-indexed successfully.',
+             vector_status = $7,
+             updated_at = NOW()
+         WHERE id = $1
+         RETURNING *`,
+        [documentId, newName, newAgentId, newText, newSize, chunks.length, indexedVectors > 0 ? "Indexed" : "Pending"]
+      );
+
+      return {
+        success: true,
+        chunkCount: chunks.length,
+        document: updateRes.rows[0],
+      };
+    } else {
+      // Only metadata / agent assignment updated
+      const updateRes = await client.query(
+        `UPDATE knowledge_documents
+         SET name = $2,
+             agent_id = $3,
+             updated_at = NOW()
+         WHERE id = $1
+         RETURNING *`,
+        [documentId, newName, newAgentId]
+      );
+
+      // Re-link existing chunks to new agent_id
+      await client.query(
+        `UPDATE knowledge_chunks SET agent_id = $2 WHERE document_id = $1`,
+        [documentId, newAgentId]
+      );
+
+      return {
+        success: true,
+        chunkCount: Number(existing.chunk_count || 1),
+        document: updateRes.rows[0],
+      };
+    }
+  } catch (err: any) {
+    console.error(`[UPDATE_AND_REINDEX_ERROR] ${documentId}:`, err);
+    return { success: false, chunkCount: 0, error: err.message };
+  } finally {
+    client.release();
+  }
+}

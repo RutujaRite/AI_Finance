@@ -27,6 +27,7 @@ import {
   retrieveKnowledgeChunks,
   validateAgentResponse,
   buildConfiguredAgentPrompt,
+  isKnowledgeBaseAgent,
 } from "@/lib/agent-studio/ragEngine";
 
 export const runtime = "nodejs";
@@ -279,10 +280,10 @@ export async function POST(req: NextRequest) {
     // 2. DYNAMIC KNOWLEDGE RETRIEVAL FOR CONFIGURED AGENT
     let agentKnowledgeResult: any = undefined;
     let relevantDocs: any[] = [];
-    if (isAgentActive) {
+    if (isAgentActive && isKnowledgeBaseAgent(activeAgent)) {
       try {
         const agentDocuments = await listAgentDocuments(activeAgent.id);
-        relevantDocs = selectRelevantDocuments(message, agentDocuments);
+        relevantDocs = selectRelevantDocuments(message, agentDocuments, activeAgent);
         if (relevantDocs.length > 0) {
           agentKnowledgeResult = await retrieveKnowledgeChunks(message, relevantDocs);
         }

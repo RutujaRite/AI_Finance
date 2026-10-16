@@ -12,6 +12,7 @@ import {
   deleteKnowledgeDocument,
   getAgentFromDb,
 } from "@/lib/agent-studio/dbStore";
+import { isKnowledgeBaseAgent } from "@/lib/agent-studio/types";
 import { processDocumentFile } from "@/lib/agent-studio/documentProcessor";
 import { verifyToken } from "@/lib/auth";
 import pool from "@/lib/db";
@@ -57,11 +58,23 @@ export async function GET(
       );
     }
 
-    const documents = await listAgentDocuments(id);
+    const isKnowledgeAgent = isKnowledgeBaseAgent(agent);
+    let documents = await listAgentDocuments(id);
+    if (!isKnowledgeAgent) {
+      // General or conversational agents: strictly suppress policy files
+      documents = documents.filter(
+        (d: any) =>
+          d.source === "knowledge_agent_passed" &&
+          !d.is_policy_file &&
+          !d.name.toLowerCase().includes("policy")
+      );
+    }
+
     return NextResponse.json({
       success: true,
       documents,
       count: documents.length,
+      isKnowledgeAgent,
       subscription: getUserSubscription(),
     });
   } catch (error: any) {
@@ -88,6 +101,19 @@ export async function POST(
       return NextResponse.json(
         { success: false, error: "Agent not found or access denied" },
         { status: 404 }
+      );
+    }
+
+    const isKnowledgeAgent = isKnowledgeBaseAgent(agent);
+    if (!isKnowledgeAgent) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "This agent is configured as a conversational assistant. Document-level policy retrieval is handled independently by designated Knowledge Base agents.",
+          isConversationalAgent: true,
+        },
+        { status: 400 }
       );
     }
 

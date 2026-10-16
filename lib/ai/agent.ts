@@ -124,6 +124,9 @@ import { validateAgentResponse } from "@/lib/ai/responseValidator";
 import { planResponse, getHumanFieldLabel } from "@/lib/ai/responsePlanner";
 import { normalizeModelSlug, simpleOpenRouterChat } from "@/lib/openrouter";
 import { searchIncraax, incraaxSearch, isIncraaxSearchConfigured, fetchLiveCompanyIntelligence } from "@/lib/incraax";
+import { AgentResponse, AgentState, UnderwritingProfile } from "./types";
+import { isSpecialProfileKeyword, detectCompanyDisavowal as guardrailDisavowal, sanitizeExtractedEntities } from "./guardrails";
+import { classifyAgentIntent, dispatchToolForState } from "./router";
 
 const LLM_TIMEOUT_MS = 25000;
 
@@ -5995,6 +5998,100 @@ async function executeBankTransitionEvaluation(
   }
 
   return finalReply;
+}
+
+/**
+ * Standard Production Agent Flow Controller
+ * 4-Stage Pipeline:
+ * 1. Pre-Processor & Guardrails (guardrails.ts)
+ * 2. Intent Classifier & State Machine (router.ts)
+ * 3. Deterministic Tool Dispatch (router.ts / tools)
+ * 4. Structured Synthesis & Output
+ */
+export async function processAgentMessage(
+  sessionId: string,
+  userMessage: string,
+  options: {
+    model?: string;
+    conversationHistory?: Array<{ role: string; content: string }>;
+    onToken?: (token: string) => void;
+    signal?: AbortSignal;
+  } = {}
+): Promise<AgentResponse> {
+  const rawSession = await getEligibilityState(sessionId);
+  const app = rawSession?.applicant;
+  const currentProfile: UnderwritingProfile = {
+    age: app?.age !== undefined && app?.age !== null ? Number(app.age) : undefined,
+    cibilScore: app?.cibil !== undefined && app?.cibil !== null ? Number(app.cibil) : undefined,
+    monthlySalary: app?.monthlyIncome !== undefined && app?.monthlyIncome !== null ? Number(app.monthlyIncome) : undefined,
+    existingEmi: app?.existingEmi !== undefined && app?.existingEmi !== null ? Number(app.existingEmi) : undefined,
+    loanAmount: app?.loanAmount !== undefined && app?.loanAmount !== null ? Number(app.loanAmount) : undefined,
+    tenureMonths: app?.tenureMonths !== undefined && app?.tenureMonths !== null ? Number(app.tenureMonths) : undefined,
+    companyName: app?.companyName,
+    employmentType: app?.employmentType,
+    city: app?.location,
+    pincode: app?.pincode,
+  };
+
+  // Stage 1 & 2: Pre-process, Guardrails & Intent Classification
+  const classification = classifyAgentIntent(userMessage, currentProfile);
+
+  // Update underwriting profile with sanitized entities
+  const updatedProfile: UnderwritingProfile = {
+    ...currentProfile,
+    age: classification.sanitizedEntities.age ?? currentProfile.age,
+    cibilScore: classification.sanitizedEntities.cibilScore ?? currentProfile.cibilScore,
+    monthlySalary: classification.sanitizedEntities.monthlySalary ?? currentProfile.monthlySalary,
+    existingEmi: classification.sanitizedEntities.existingEmi ?? currentProfile.existingEmi,
+    loanAmount: classification.sanitizedEntities.loanAmount ?? currentProfile.loanAmount,
+    tenureMonths: classification.sanitizedEntities.tenureMonths ?? currentProfile.tenureMonths,
+    companyName:
+      classification.sanitizedEntities.companyName ??
+      (detectCompanyDisavowal(userMessage).isDisavowal ? undefined : currentProfile.companyName),
+    employmentType: classification.sanitizedEntities.employmentType ?? currentProfile.employmentType,
+    city: classification.sanitizedEntities.city ?? currentProfile.city,
+    pincode: classification.sanitizedEntities.pincode ?? currentProfile.pincode,
+  };
+
+  // Persist updated profile in session store
+  if (rawSession) {
+    await saveEligibilityState(sessionId, {
+      ...rawSession,
+      applicant: {
+        ...(rawSession.applicant || {}),
+        ...updatedProfile,
+      },
+    });
+  }
+
+  // Stage 3: Deterministic Tool Dispatch
+  const dispatchResult = await dispatchToolForState({
+    sessionId,
+    userMessage,
+    profile: updatedProfile,
+    classification,
+    model: options.model,
+  });
+
+  // Stage 4: Structured Synthesis & Output (Stream tokens if handler provided)
+  if (options.onToken && dispatchResult.reply) {
+    const chunks = dispatchResult.reply.split(/(\s+)/);
+    for (const chunk of chunks) {
+      if (chunk) {
+        options.onToken(chunk);
+        if (options.signal?.aborted) break;
+      }
+    }
+  }
+
+  return {
+    reply: dispatchResult.reply,
+    state: dispatchResult.state,
+    profile: dispatchResult.profile,
+    toolResult: dispatchResult.toolData,
+    conversationId: sessionId,
+    sources: dispatchResult.sources,
+  };
 }
 
 /**

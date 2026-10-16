@@ -291,13 +291,44 @@ export function createAgent(data: {
 
 export function updateAgent(id: string, updates: Partial<Agent>): Agent | null {
   const store = getStore();
-  const existing = store.agents.get(id);
-  if (!existing) return null;
+  let existing = store.agents.get(id);
+  if (!existing) {
+    const fallbackAgent: Agent = {
+      id,
+      name: updates.name || "Agent",
+      description: updates.description || "",
+      status: updates.status || "active",
+      responseStyle: updates.responseStyle || "balanced",
+      modes: updates.modes || { aiAgentMode: true, conversations: true, campaigns: false },
+      operationalMode: updates.operationalMode || "standard",
+      goal: updates.goal || "",
+      guardrailTemplates: updates.guardrailTemplates || [],
+      manualGuardrails: updates.manualGuardrails || "",
+      instructions: updates.instructions || {
+        businessDescription: updates.description || "",
+        agentRole: "Specialist",
+        tone: "Professional",
+        escalationRules: "",
+        additionalInstructions: "",
+        advancedPrompt: updates.goal || "",
+        temperature: 0.6,
+      },
+      welcomeMessage: updates.welcomeMessage || { enabled: true, text: "Hello!", attachments: [] },
+      qualification: updates.qualification || { leadFields: [], documentCollection: [] },
+      knowledge: updates.knowledge || [],
+      capabilities: updates.capabilities || {},
+      usage: updates.usage || { messagesUsed: 0, maxMessages: 50, knowledgeTokens: 0 },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    existing = fallbackAgent;
+  }
 
   const updated: Agent = {
     ...existing,
     ...updates,
-    id: existing.id, // cannot change id
+    id,
+    name: updates.name || existing.name,
     updatedAt: new Date().toISOString(),
   };
 
