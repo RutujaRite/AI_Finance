@@ -27,10 +27,6 @@ import {
   Layers,
   Sparkles,
   Bot,
-  Home,
-  MessageSquare,
-  Calculator,
-  FileText,
 } from "lucide-react";
 
 interface DashboardStats {
@@ -229,58 +225,6 @@ export default function AdminDashboardPage() {
                 Manage platform lender policies, company database, managers, and system users.
               </p>
             </div>
-
-            <div className="flex items-center gap-2.5">
-              <Link
-                href="/home"
-                className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-98 rounded-xl transition-all shadow-xs no-underline cursor-pointer group"
-                title="Return directly to application homepage"
-              >
-                <Home className="w-4 h-4 text-white" />
-                <span>Return to Homepage</span>
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* Quick Return to Workspace Ribbon */}
-        <section className="mb-6 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-            <span className="font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
-              <Home className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              Main Workspace:
-            </span>
-            <span className="hidden sm:inline text-slate-500 dark:text-slate-400">Jump directly to workspace calculators &amp; features</span>
-          </div>
-          <div className="flex items-center flex-wrap gap-2">
-            <Link
-              href="/home?section=assistant"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 border border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 rounded-lg font-medium transition-colors no-underline"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>AI Assistant</span>
-            </Link>
-            <Link
-              href="/home?section=emi"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 border border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 rounded-lg font-medium transition-colors no-underline"
-            >
-              <Calculator className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span>EMI Calculator</span>
-            </Link>
-            <Link
-              href="/home?section=eligibility"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 border border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 rounded-lg font-medium transition-colors no-underline"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>Eligibility Calculator</span>
-            </Link>
-            <Link
-              href="/home?section=policies"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 border border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 rounded-lg font-medium transition-colors no-underline"
-            >
-              <FileText className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span>Bank Policies</span>
-            </Link>
           </div>
         </section>
 

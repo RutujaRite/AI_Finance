@@ -363,10 +363,10 @@ export default function AdminNavigationPage() {
               className="btn btn-sm"
               onClick={() => router.push("/home")}
               style={{ display: "inline-flex", alignItems: "center", gap: 6, height: "34px", fontSize: "0.8125rem", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", fontWeight: 600 }}
-              title="Return to Application Homepage"
+              title="Return to Application Dashboard"
             >
               <Home size={14} style={{ color: "#2563eb" }} />
-              <span>Homepage</span>
+              <span>Dashboard</span>
             </button>
             <button
               type="button"

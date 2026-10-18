@@ -213,9 +213,7 @@ export default function HomePage() {
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (modelSelectorRef.current && !modelSelectorRef.current.contains(e.target as Node)) {
-        setModelDropdownOpen(false)
-      }
+
       if (contextMenu && !(e.target as HTMLElement).closest(".conversation-context-menu")) {
         setContextMenu(null)
       }
@@ -3047,43 +3045,7 @@ export default function HomePage() {
               </span>
             </div>
 
-            {/* Model Selector Dropdown */}
-            <div className="model-selector-wrapper" ref={modelSelectorRef}>
-              <button
-                type="button"
-                className="model-selector"
-                onClick={() => setModelDropdownOpen((prev) => !prev)}
-                aria-expanded={modelDropdownOpen}
-                title="Select AI Model Engine"
-              >
-                <span>{AVAILABLE_MODELS.find((m) => m.id === selectedModel)?.icon || "⚡"}</span>
-                <span>{AVAILABLE_MODELS.find((m) => m.id === selectedModel)?.name || "Auto (Best Available)"}</span>
-                <i className="bi bi-chevron-down" style={{ fontSize: "0.7rem", opacity: 0.7 }} />
-              </button>
 
-              <div className={`model-dropdown ${modelDropdownOpen ? "open" : ""}`}>
-                {AVAILABLE_MODELS.map((model) => (
-                  <button
-                    key={model.id}
-                    type="button"
-                    className={`model-dropdown-item ${selectedModel === model.id ? "active" : ""}`}
-                    onClick={() => {
-                      setSelectedModel(model.id)
-                      setModelDropdownOpen(false)
-                    }}
-                  >
-                    <span style={{ fontSize: "1rem" }}>{model.icon}</span>
-                    <div>
-                      <div className="model-dropdown-item-name">{model.name}</div>
-                      <div className="model-dropdown-item-desc">{model.desc}</div>
-                    </div>
-                    {selectedModel === model.id && (
-                      <i className="bi bi-check2" style={{ marginLeft: "auto", color: "var(--accent)" }} />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           <div

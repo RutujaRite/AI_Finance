@@ -493,11 +493,11 @@ export default function AiModelsManagementPage() {
               type="button"
               className="btn btn-sm"
               onClick={() => router.push("/home")}
-              title="Return to Application Homepage"
+              title="Return to Application Dashboard"
               style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", height: "36px", fontWeight: 600, background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" }}
             >
               <Home size={15} style={{ color: "#2563eb" }} />
-              Homepage
+              Dashboard
             </button>
 
             <button
