@@ -122,6 +122,8 @@
 }
 
 /* Dark mode overrides */
+html.dark,
+.dark,
 [data-bs-theme="dark"],
 [data-theme="dark"] {
     --bg: #0B1220;

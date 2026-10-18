@@ -58,16 +58,27 @@ export default function AdminHeader({
   const [isDark, setIsDark] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Sync theme state on mount
+  // Sync theme state on mount & listen to changes
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const isDarkMode =
-      document.documentElement.classList.contains("dark") ||
-      document.documentElement.getAttribute("data-theme") === "dark" ||
-      document.documentElement.getAttribute("data-bs-theme") === "dark" ||
-      localStorage.getItem("theme") === "dark" ||
-      localStorage.getItem("creditwise_theme") === "dark";
-    setIsDark(isDarkMode);
+    const syncTheme = () => {
+      const isDarkMode =
+        document.documentElement.classList.contains("dark") ||
+        document.documentElement.getAttribute("data-theme") === "dark" ||
+        document.documentElement.getAttribute("data-bs-theme") === "dark" ||
+        localStorage.getItem("theme") === "dark" ||
+        localStorage.getItem("creditwise_theme") === "dark" ||
+        localStorage.getItem("finai-theme") === "dark";
+      setIsDark(isDarkMode);
+    };
+
+    syncTheme();
+    window.addEventListener("theme-change", syncTheme);
+    window.addEventListener("storage", syncTheme);
+    return () => {
+      window.removeEventListener("theme-change", syncTheme);
+      window.removeEventListener("storage", syncTheme);
+    };
   }, []);
 
   function handleToggleTheme() {
@@ -82,11 +93,16 @@ export default function AdminHeader({
       } else {
         document.documentElement.classList.remove("dark");
       }
+      try {
+        document.cookie = `theme=${mode}; path=/; max-age=31536000; SameSite=Lax`;
+      } catch {}
     }
     try {
       localStorage.setItem("theme", mode);
       localStorage.setItem("creditwise_theme", mode);
+      localStorage.setItem("finai-theme", mode);
     } catch {}
+    window.dispatchEvent(new CustomEvent("theme-change", { detail: { theme: mode } }));
   }
 
   useEffect(() => {

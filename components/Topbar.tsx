@@ -64,20 +64,25 @@ export default function Topbar({
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const saved =
-        (localStorage.getItem("theme") as "light" | "dark") ||
-        (localStorage.getItem("finai-theme") as "light" | "dark") ||
-        (document.documentElement.getAttribute("data-theme") as "light" | "dark") ||
-        (document.documentElement.getAttribute("data-bs-theme") as "light" | "dark") ||
-        "light"
-      setTheme(saved)
-      document.documentElement.setAttribute("data-theme", saved)
-      document.documentElement.setAttribute("data-bs-theme", saved)
-      if (saved === "dark") {
-        document.documentElement.classList.add("dark")
-      } else {
-        document.documentElement.classList.remove("dark")
+      const syncTheme = () => {
+        const saved =
+          (localStorage.getItem("theme") as "light" | "dark") ||
+          (localStorage.getItem("finai-theme") as "light" | "dark") ||
+          (document.documentElement.getAttribute("data-theme") as "light" | "dark") ||
+          (document.documentElement.getAttribute("data-bs-theme") as "light" | "dark") ||
+          "light"
+        setTheme(saved)
+        document.documentElement.setAttribute("data-theme", saved)
+        document.documentElement.setAttribute("data-bs-theme", saved)
+        if (saved === "dark") {
+          document.documentElement.classList.add("dark")
+        } else {
+          document.documentElement.classList.remove("dark")
+        }
       }
+      syncTheme()
+      window.addEventListener("theme-change", syncTheme)
+      window.addEventListener("storage", syncTheme)
     }
 
     const closeDropdown = () => {
@@ -98,6 +103,10 @@ export default function Topbar({
     return () => {
       window.removeEventListener("click", closeDropdown)
       window.removeEventListener("keydown", handleKeyDown)
+      if (typeof window !== "undefined") {
+        window.removeEventListener("theme-change", () => {})
+        window.removeEventListener("storage", () => {})
+      }
     }
   }, [])
 
@@ -115,8 +124,10 @@ export default function Topbar({
       try {
         localStorage.setItem("theme", nextTheme)
         localStorage.setItem("finai-theme", nextTheme)
+        localStorage.setItem("creditwise_theme", nextTheme)
         document.cookie = `theme=${nextTheme}; path=/; max-age=31536000; SameSite=Lax`
       } catch (e) {}
+      window.dispatchEvent(new CustomEvent("theme-change", { detail: { theme: nextTheme } }))
     }
   }
 

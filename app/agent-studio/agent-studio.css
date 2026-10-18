@@ -57,6 +57,55 @@
   --ai-shadow-card: 0 2px 8px rgba(30, 80, 150, 0.04);
 }
 
+/* Dark Mode Tokens (CreditWise Enterprise Dark Palette) */
+html.dark,
+.dark,
+[data-bs-theme="dark"],
+[data-theme="dark"] {
+  --as-bg: #0B1220;
+  --as-card-bg: #111B2E;
+  --as-sidebar-bg: #0F172A;
+  --as-border: #1E293B;
+  --as-border-soft: #334155;
+  --as-primary: #3B82F6;
+  --as-primary-hover: #60A5FA;
+  --as-primary-soft: rgba(59, 130, 246, 0.15);
+  --as-navy: #F8FAFC;
+  --as-text-dark: #F8FAFC;
+  --as-text-body: #CBD5E1;
+  --as-text-muted: #94A3B8;
+  --as-text-light: #64748B;
+  --as-success: #22C55E;
+  --as-emerald: #22C55E;
+  --as-emerald-soft: rgba(34, 197, 94, 0.15);
+
+  --ai-primary: #3B82F6;
+  --ai-primary-hover: #60A5FA;
+  --ai-primary-active: #2563EB;
+  --ai-primary-light: rgba(59, 130, 246, 0.15);
+
+  --ai-background: #090D16;
+  --ai-surface: #0F172A;
+
+  --ai-navy: #F8FAFC;
+  --ai-text: #F8FAFC;
+  --ai-text-body: #CBD5E1;
+  --ai-text-muted: #94A3B8;
+
+  --ai-border: #1E293B;
+  --ai-border-strong: #334155;
+
+  --ai-success: #22C55E;
+  --ai-success-bg: rgba(34, 197, 94, 0.15);
+
+  --ai-danger: #EF4444;
+  --ai-danger-hover: #dc2626;
+  --ai-danger-border: rgba(239, 68, 68, 0.3);
+  --ai-danger-bg: rgba(239, 68, 68, 0.12);
+
+  --ai-shadow-card: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
 /* --------------------------------------------------------------------------
    AI Instructions & Knowledge Base — Modern SaaS UI System
    -------------------------------------------------------------------------- */
@@ -2172,4 +2221,321 @@ input:focus, textarea:focus, select:focus {
   cursor: not-allowed;
   box-shadow: none;
 }
+
+/* ==========================================================================
+   AI AGENT CONFIGURATION / STUDIO — COMPLETE ENTERPRISE DARK MODE
+   Matches CreditWise AI Deep Slate/Navy Theme Across All 6 Modules
+   ========================================================================== */
+
+/* 1. Base Layout & Viewports */
+html.dark .home-body,
+.dark .home-body,
+[data-theme="dark"] .home-body,
+html.dark .admin-fullpage-layout,
+.dark .admin-fullpage-layout,
+[data-theme="dark"] .admin-fullpage-layout {
+  background-color: #090D16 !important;
+  color: #F8FAFC !important;
+}
+
+/* 2. Sidebar Dark Theme */
+html.dark .as-soft-sidebar,
+html.dark .as-dark-sidebar,
+.dark .as-soft-sidebar,
+.dark .as-dark-sidebar,
+[data-theme="dark"] .as-soft-sidebar,
+[data-theme="dark"] .as-dark-sidebar,
+html.dark .as-sidebar-desktop,
+.dark .as-sidebar-desktop,
+[data-theme="dark"] .as-sidebar-desktop {
+  background-color: #0F172A !important;
+  color: #CBD5E1 !important;
+  border-color: #1E293B !important;
+}
+
+html.dark .as-soft-sidebar .as-brand-title,
+.dark .as-soft-sidebar .as-brand-title,
+[data-theme="dark"] .as-soft-sidebar .as-brand-title {
+  color: #F8FAFC !important;
+}
+
+html.dark .as-soft-sidebar .as-brand-sub,
+.dark .as-soft-sidebar .as-brand-sub,
+[data-theme="dark"] .as-soft-sidebar .as-brand-sub {
+  color: #94A3B8 !important;
+}
+
+html.dark .as-nav-btn,
+.dark .as-nav-btn,
+[data-theme="dark"] .as-nav-btn {
+  background-color: #0F172A !important;
+  color: #CBD5E1 !important;
+  border-color: #1E293B !important;
+}
+
+html.dark .as-nav-btn:hover,
+.dark .as-nav-btn:hover,
+[data-theme="dark"] .as-nav-btn:hover {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+  border-color: #334155 !important;
+}
+
+html.dark .as-nav-btn.active,
+.dark .as-nav-btn.active,
+[data-theme="dark"] .as-nav-btn.active {
+  background-color: rgba(59, 130, 246, 0.18) !important;
+  color: #60A5FA !important;
+  border-color: #2563EB !important;
+}
+
+html.dark .as-sidebar-status-box,
+.dark .as-sidebar-status-box,
+[data-theme="dark"] .as-sidebar-status-box {
+  background-color: #16243D !important;
+  border-color: #1E293B !important;
+}
+
+/* 3. Cards & Panels Across All Modules */
+html.dark .ai-card,
+.dark .ai-card,
+[data-theme="dark"] .ai-card,
+html.dark .ai-toolbar-card,
+.dark .ai-toolbar-card,
+[data-theme="dark"] .ai-toolbar-card,
+html.dark .as-panel,
+.dark .as-panel,
+[data-theme="dark"] .as-panel,
+html.dark .as-card,
+.dark .as-card,
+[data-theme="dark"] .as-card {
+  background: #0F172A !important;
+  border-color: #1E293B !important;
+  color: #F8FAFC !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+html.dark .ai-header-banner,
+.dark .ai-header-banner,
+[data-theme="dark"] .ai-header-banner {
+  background: linear-gradient(90deg, #13233A 0%, #1E293B 50%, #13233A 100%) !important;
+  border-color: #334155 !important;
+}
+
+/* 4. Form Inputs, Selects, and Textareas */
+html.dark .ai-input,
+html.dark .ai-select,
+html.dark .ai-textarea,
+.dark .ai-input,
+.dark .ai-select,
+.dark .ai-textarea,
+[data-theme="dark"] .ai-input,
+[data-theme="dark"] .ai-select,
+[data-theme="dark"] .ai-textarea {
+  background: #0B1220 !important;
+  color: #F8FAFC !important;
+  border-color: #1E293B !important;
+}
+
+html.dark .ai-input:focus,
+html.dark .ai-select:focus,
+html.dark .ai-textarea:focus,
+.dark .ai-input:focus,
+.dark .ai-select:focus,
+.dark .ai-textarea:focus,
+[data-theme="dark"] .ai-input:focus,
+[data-theme="dark"] .ai-select:focus,
+[data-theme="dark"] .ai-textarea:focus {
+  border-color: #3B82F6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+}
+
+/* 5. Action Buttons */
+html.dark .ai-action-btn,
+.dark .ai-action-btn,
+[data-theme="dark"] .ai-action-btn {
+  background: #0F172A !important;
+  color: #94A3B8 !important;
+  border-color: #1E293B !important;
+}
+
+html.dark .ai-action-btn:hover,
+.dark .ai-action-btn:hover,
+[data-theme="dark"] .ai-action-btn:hover {
+  background: #1E293B !important;
+  color: #60A5FA !important;
+  border-color: #3B82F6 !important;
+}
+
+html.dark .ai-action-btn--delete,
+.dark .ai-action-btn--delete,
+[data-theme="dark"] .ai-action-btn--delete {
+  background: #0F172A !important;
+  color: #EF4444 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+html.dark .ai-action-btn--delete:hover,
+.dark .ai-action-btn--delete:hover,
+[data-theme="dark"] .ai-action-btn--delete:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #F87171 !important;
+}
+
+/* 6. File Table in Knowledge Base */
+html.dark .ai-file-table-wrapper,
+.dark .ai-file-table-wrapper,
+[data-theme="dark"] .ai-file-table-wrapper {
+  background: #0F172A !important;
+  border-color: #1E293B !important;
+}
+
+html.dark .ai-file-table thead th,
+.dark .ai-file-table thead th,
+[data-theme="dark"] .ai-file-table thead th {
+  background: #16243D !important;
+  color: #94A3B8 !important;
+  border-color: #1E293B !important;
+}
+
+html.dark .ai-file-table tbody td,
+.dark .ai-file-table tbody td,
+[data-theme="dark"] .ai-file-table tbody td {
+  color: #CBD5E1 !important;
+  border-color: #1E293B !important;
+}
+
+html.dark .ai-file-table tbody tr:hover,
+.dark .ai-file-table tbody tr:hover,
+[data-theme="dark"] .ai-file-table tbody tr:hover {
+  background: #16243D !important;
+}
+
+/* 7. Page Headers & Metric Cards */
+html.dark .cn-page-header-title,
+.dark .cn-page-header-title,
+[data-theme="dark"] .cn-page-header-title {
+  color: #F8FAFC !important;
+}
+
+html.dark .cn-page-header-subtitle,
+.dark .cn-page-header-subtitle,
+[data-theme="dark"] .cn-page-header-subtitle {
+  color: #94A3B8 !important;
+}
+
+html.dark .cn-metric-card,
+.dark .cn-metric-card,
+[data-theme="dark"] .cn-metric-card {
+  background: #0F172A !important;
+  border-color: #1E293B !important;
+  color: #F8FAFC !important;
+}
+
+/* 8. Search Bars & Interactive Sandbox Inputs */
+html.dark .ai-sandbox-search-container,
+.dark .ai-sandbox-search-container,
+[data-theme="dark"] .ai-sandbox-search-container {
+  background: #0F172A !important;
+  border-color: #1E293B !important;
+}
+
+html.dark .ai-sandbox-search-input,
+.dark .ai-sandbox-search-input,
+[data-theme="dark"] .ai-sandbox-search-input {
+  background: #0B1220 !important;
+  color: #F8FAFC !important;
+  border-color: #1E293B !important;
+}
+
+html.dark .ai-chat-search-panel,
+.dark .ai-chat-search-panel,
+[data-theme="dark"] .ai-chat-search-panel {
+  background: #111B2E !important;
+  border-color: #1E293B !important;
+}
+
+html.dark .ai-chat-search-input,
+.dark .ai-chat-search-input,
+[data-theme="dark"] .ai-chat-search-input {
+  background: #0B1220 !important;
+  color: #F8FAFC !important;
+  border-color: #1E293B !important;
+}
+
+html.dark .ai-chat-input-container,
+.dark .ai-chat-input-container,
+[data-theme="dark"] .ai-chat-input-container {
+  background: #0F172A !important;
+  border-color: #1E293B !important;
+}
+
+html.dark .ai-chat-input-field,
+.dark .ai-chat-input-field,
+[data-theme="dark"] .ai-chat-input-field {
+  color: #F8FAFC !important;
+}
+
+html.dark .ai-chat-input-field::placeholder,
+.dark .ai-chat-input-field::placeholder,
+[data-theme="dark"] .ai-chat-input-field::placeholder {
+  color: #64748B !important;
+}
+
+html.dark .ai-chat-action-btn,
+.dark .ai-chat-action-btn,
+[data-theme="dark"] .ai-chat-action-btn {
+  color: #94A3B8 !important;
+}
+
+html.dark .ai-chat-action-btn:hover,
+.dark .ai-chat-action-btn:hover,
+[data-theme="dark"] .ai-chat-action-btn:hover {
+  background: #1E293B !important;
+  color: #60A5FA !important;
+}
+
+/* 9. Seamless Fallback Overrides for Hardcoded Light Utilities inside Studio */
+html.dark .bg-white:not([data-keep-light]),
+.dark .bg-white:not([data-keep-light]),
+[data-theme="dark"] .bg-white:not([data-keep-light]) {
+  background-color: #0F172A !important;
+}
+
+html.dark .bg-slate-50:not([data-keep-light]),
+.dark .bg-slate-50:not([data-keep-light]),
+[data-theme="dark"] .bg-slate-50:not([data-keep-light]) {
+  background-color: #0B1220 !important;
+}
+
+html.dark .text-slate-900:not([data-keep-light]),
+html.dark .text-slate-800:not([data-keep-light]),
+.dark .text-slate-900:not([data-keep-light]),
+.dark .text-slate-800:not([data-keep-light]),
+[data-theme="dark"] .text-slate-900:not([data-keep-light]),
+[data-theme="dark"] .text-slate-800:not([data-keep-light]) {
+  color: #F8FAFC !important;
+}
+
+html.dark .text-slate-700:not([data-keep-light]),
+html.dark .text-slate-600:not([data-keep-light]),
+.dark .text-slate-700:not([data-keep-light]),
+.dark .text-slate-600:not([data-keep-light]),
+[data-theme="dark"] .text-slate-700:not([data-keep-light]),
+[data-theme="dark"] .text-slate-600:not([data-keep-light]) {
+  color: #CBD5E1 !important;
+}
+
+html.dark .border-slate-300:not([data-keep-light]),
+html.dark .border-slate-200:not([data-keep-light]),
+html.dark .border-slate-100:not([data-keep-light]),
+.dark .border-slate-300:not([data-keep-light]),
+.dark .border-slate-200:not([data-keep-light]),
+.dark .border-slate-100:not([data-keep-light]),
+[data-theme="dark"] .border-slate-300:not([data-keep-light]),
+[data-theme="dark"] .border-slate-200:not([data-keep-light]),
+[data-theme="dark"] .border-slate-100:not([data-keep-light]) {
+  border-color: #1E293B !important;
+}
+
 

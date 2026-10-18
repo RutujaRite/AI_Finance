@@ -499,7 +499,7 @@ function AgentStudioContent() {
   }
 
   return (
-    <div className="home-body admin-fullpage-layout h-screen max-h-screen overflow-hidden flex flex-col bg-[#F8FAFC]">
+    <div className="home-body admin-fullpage-layout h-screen max-h-screen overflow-hidden flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* 1. Global Admin Topbar & Breadcrumbs without sidebar */}
       <AdminHeader
         user={user}
@@ -519,7 +519,7 @@ function AgentStudioContent() {
                     setToast({ message: `Switched to ${selected.name}`, type: "info" });
                   }
                 }}
-                className="h-[36px] text-xs font-semibold text-slate-800 bg-white border border-slate-300 hover:border-slate-400 rounded-lg px-3 py-1.5 shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer max-w-[200px] truncate"
+                className="h-[36px] text-xs font-semibold text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 rounded-lg px-3 py-1.5 shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer max-w-[200px] truncate"
                 title="Select Agent"
               >
                 {agents.map((ag) => (
@@ -569,7 +569,7 @@ function AgentStudioContent() {
         {/* Studio Content Viewport */}
         <div className="flex-1 flex flex-col h-full overflow-hidden">
           {/* Top action bar */}
-          <div className="px-4 sm:px-6 pt-4 pb-2 bg-slate-50 shrink-0">
+          <div className="px-4 sm:px-6 pt-4 pb-2 bg-slate-50 dark:bg-slate-950 shrink-0">
             <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
               <div className="flex items-center gap-3">
                 {/* Agent Selector Dropdown */}
@@ -620,23 +620,23 @@ function AgentStudioContent() {
           </div>
 
           {/* Mobile sub-bar if on small screens */}
-          <div className="lg:hidden flex items-center justify-between px-4 py-2.5 bg-white border-b border-slate-300 shadow-2xs">
+          <div className="lg:hidden flex items-center justify-between px-4 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-300 dark:border-slate-800 shadow-2xs">
             <button
               onClick={() => setMobileNavOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-700 hover:bg-slate-50 text-sm font-semibold border border-slate-300 hover:border-slate-400 shadow-2xs transition-all cursor-pointer"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-semibold border border-slate-300 dark:border-slate-700 hover:border-slate-400 shadow-2xs transition-all cursor-pointer"
             >
-              <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
               <span>Configuration Navigation</span>
             </button>
-            <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
               {activeTab === "instructions" ? "AI Instructions" : activeTab === "knowledge" ? "Knowledge Base" : activeTab === "demo" ? "Agent Test / Demo" : activeTab === "tokens" ? "Token Analytics" : activeTab === "models" ? "Model Configuration" : "Settings"}
             </span>
           </div>
 
           {/* Dynamic View rendering based on active tab */}
-          <main className="flex-1 h-full overflow-y-auto bg-slate-50 flex flex-col">
+          <main className="flex-1 h-full overflow-y-auto bg-slate-50 dark:bg-slate-950 flex flex-col">
           {activeTab === "instructions" && (
             <AiInstructionsView
               agent={agentForInstructionsView}
