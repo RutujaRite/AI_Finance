@@ -288,6 +288,144 @@ a:hover {
     box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
 }
 
+/* --------------------------------------------------------------------------
+   YouTube-Style Topbar Navigation (Matches modern app header layout)
+   -------------------------------------------------------------------------- */
+.yt-topbar {
+    height: 56px !important;
+    padding: 0 1rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    background: var(--surface) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+[data-theme="dark"] .yt-topbar,
+[data-bs-theme="dark"] .yt-topbar,
+.dark .yt-topbar {
+    background: #0f0f0f !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.yt-hamburger-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 0.16s ease, transform 0.12s ease;
+    flex-shrink: 0;
+}
+
+.yt-hamburger-btn:hover {
+    background: var(--surface-2);
+}
+
+[data-theme="dark"] .yt-hamburger-btn:hover,
+[data-bs-theme="dark"] .yt-hamburger-btn:hover,
+.dark .yt-hamburger-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.yt-create-pill-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #0f172a;
+    transition: all 0.16s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.yt-create-pill-btn:hover {
+    background: #e2e8f0;
+    transform: translateY(-1px);
+}
+
+[data-theme="dark"] .yt-create-pill-btn,
+[data-bs-theme="dark"] .yt-create-pill-btn,
+.dark .yt-create-pill-btn {
+    background: #272727 !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .yt-create-pill-btn:hover,
+[data-bs-theme="dark"] .yt-create-pill-btn:hover,
+.dark .yt-create-pill-btn:hover {
+    background: #383838 !important;
+}
+
+.yt-theme-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 0.16s ease;
+    flex-shrink: 0;
+}
+
+.yt-theme-btn:hover {
+    background: var(--surface-2);
+}
+
+[data-theme="dark"] .yt-theme-btn:hover,
+[data-bs-theme="dark"] .yt-theme-btn:hover,
+.dark .yt-theme-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.yt-avatar-circle-btn {
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.yt-profile-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0d9488 0%, #2563eb 100%);
+    color: #ffffff;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.yt-avatar-circle-btn:hover .yt-profile-avatar {
+    transform: scale(1.06);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+}
+
 .brand {
     display: flex;
     align-items: center;
@@ -3079,14 +3217,21 @@ body:has(.chat-page) {
 
 /* Comprehensive Responsive Adjustments for Mobile Viewports (<= 768px) */
 @media (max-width: 768px) {
-    /* Hide profile menu from topbar completely on mobile; fully available in mobile hamburger drawer */
-    .profile-menu {
-        display: none !important;
+    .yt-topbar {
+        padding: 0 0.5rem !important;
+        height: 56px !important;
+    }
+    .yt-create-pill-btn {
+        padding: 5px 10px !important;
+        font-size: 0.75rem !important;
+    }
+    .yt-profile-avatar-wrapper {
+        display: flex !important;
     }
     .topbar,
     .app-topbar {
         padding: 0 0.5rem !important;
-        height: 58px !important;
+        height: 56px !important;
     }
     .topbar-left {
         gap: 0.35rem !important;
