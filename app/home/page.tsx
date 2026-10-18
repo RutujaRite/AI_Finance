@@ -3294,7 +3294,7 @@ export default function HomePage() {
         </main>
       </div>
 
-      <div style={{ display: activeSection === "emi" ? "block" : "none" }}>
+      <div style={{ display: activeSection === "emi" ? "block" : "none", width: "100%", maxWidth: "100%" }}>
         <EmiCalculator user={user} embedded={true} />
       </div>
 

@@ -83,10 +83,9 @@ export const CalculationBenchmarks: React.FC<CalculationBenchmarksProps> = ({
           <div className="param-header">
             <div className="param-label-group">
               <label htmlFor="input-salary" className="param-title">
-                <IndianRupee size={15} className="text-blue-600" />
+                <IndianRupee size={14} className="text-blue-600" />
                 <span>Net Monthly Salary</span>
               </label>
-              <span className="param-helper">Applicant credited in-hand monthly pay</span>
             </div>
             <div className="param-display-value text-blue-700">
               {formatIndianRupees(salary)}
@@ -139,10 +138,9 @@ export const CalculationBenchmarks: React.FC<CalculationBenchmarksProps> = ({
           <div className="param-header">
             <div className="param-label-group">
               <label htmlFor="input-foir" className="param-title">
-                <Percent size={15} className="text-emerald-600" />
+                <Percent size={14} className="text-emerald-600" />
                 <span>FOIR % (Debt Limit Cap)</span>
               </label>
-              <span className="param-helper">Max permissible percentage of income for EMIs</span>
             </div>
             <div className="param-display-value text-emerald-700 font-mono">
               {foirPercent}%
@@ -195,10 +193,9 @@ export const CalculationBenchmarks: React.FC<CalculationBenchmarksProps> = ({
           <div className="param-header">
             <div className="param-label-group">
               <label htmlFor="input-roi" className="param-title">
-                <Percent size={15} className="text-blue-600" />
+                <Percent size={14} className="text-blue-600" />
                 <span>ROI % (Interest Rate p.a.)</span>
               </label>
-              <span className="param-helper">Annual interest rate applied for amortization</span>
             </div>
             <div className="param-display-value text-blue-700 font-mono">
               {roiPercent}%
@@ -251,10 +248,9 @@ export const CalculationBenchmarks: React.FC<CalculationBenchmarksProps> = ({
           <div className="param-header">
             <div className="param-label-group">
               <label htmlFor="input-tenure" className="param-title">
-                <Calendar size={15} className="text-indigo-600" />
-                <span>Tenure (M)</span>
+                <Calendar size={14} className="text-indigo-600" />
+                <span>Tenure ({((tenureMonths || 0) / 12).toFixed(1)} Yrs)</span>
               </label>
-              <span className="param-helper">Repayment period in months ({((tenureMonths || 0) / 12).toFixed(1)} Yrs)</span>
             </div>
             <div className="param-display-value text-indigo-700 font-mono">
               {tenureMonths}m
@@ -307,10 +303,9 @@ export const CalculationBenchmarks: React.FC<CalculationBenchmarksProps> = ({
           <div className="param-header">
             <div className="param-label-group">
               <label htmlFor="input-multiplier" className="param-title">
-                <Zap size={15} className="text-purple-600" />
-                <span>Multiplier (x)</span>
+                <Zap size={14} className="text-purple-600" />
+                <span>Multiplier (Salary Cap)</span>
               </label>
-              <span className="param-helper">Salary multiple cap (Applied to Considered Salary)</span>
             </div>
             <div className="param-display-value text-purple-700 font-mono">
               {multiplier}x
@@ -372,23 +367,23 @@ export const CalculationBenchmarks: React.FC<CalculationBenchmarksProps> = ({
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 16px 20px;
+          padding: 10px 16px;
           border-bottom: 1px solid #e2e8f0;
           background: #ffffff;
           flex-wrap: wrap;
-          gap: 10px;
+          gap: 8px;
         }
 
         .hdr-left {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
         }
 
         .icon-wrapper {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
           background: #eff6ff;
           color: #2563eb;
           display: flex;
@@ -397,25 +392,25 @@ export const CalculationBenchmarks: React.FC<CalculationBenchmarksProps> = ({
         }
 
         .section-title {
-          font-size: 1.05rem;
+          font-size: 0.95rem;
           font-weight: 700;
           color: #0f172a;
           margin: 0;
         }
 
         .section-subtitle {
-          font-size: 0.78rem;
+          font-size: 0.72rem;
           color: #64748b;
-          margin-top: 2px;
+          margin-top: 1px;
         }
 
         .reset-btn {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          padding: 5px 12px;
+          gap: 5px;
+          padding: 4px 10px;
           border-radius: 6px;
-          font-size: 0.76rem;
+          font-size: 0.72rem;
           font-weight: 600;
           background: #f8fafc;
           border: 1px solid #cbd5e1;
@@ -431,21 +426,21 @@ export const CalculationBenchmarks: React.FC<CalculationBenchmarksProps> = ({
         }
 
         .benchmarks-content {
-          padding: 18px 20px;
+          padding: 10px 14px;
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 8px;
           background: #fafcff;
         }
 
         .param-card {
           background: #ffffff;
           border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 12px 14px;
+          border-radius: 8px;
+          padding: 7px 10px;
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 4px;
           box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
         }
 
@@ -474,33 +469,28 @@ export const CalculationBenchmarks: React.FC<CalculationBenchmarksProps> = ({
         }
 
         .param-title {
-          font-size: 0.84rem;
+          font-size: 0.8rem;
           font-weight: 700;
           color: #1e293b;
           display: flex;
           align-items: center;
-          gap: 6px;
-        }
-
-        .param-helper {
-          font-size: 0.72rem;
-          color: #64748b;
+          gap: 5px;
         }
 
         .param-display-value {
-          font-size: 1.05rem;
+          font-size: 0.95rem;
           font-weight: 800;
         }
 
         .slider-row {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
         }
 
         .styled-range {
           flex: 1;
-          height: 6px;
+          height: 5px;
           border-radius: 9999px;
           background: #e2e8f0;
           outline: none;
@@ -515,7 +505,7 @@ export const CalculationBenchmarks: React.FC<CalculationBenchmarksProps> = ({
           border-radius: 6px;
           background: #ffffff;
           overflow: hidden;
-          padding: 0 6px;
+          padding: 0 4px;
           transition: border-color 0.15s ease;
         }
 
@@ -525,7 +515,7 @@ export const CalculationBenchmarks: React.FC<CalculationBenchmarksProps> = ({
         }
 
         .sym-prefix, .sym-suffix {
-          font-size: 0.76rem;
+          font-size: 0.72rem;
           color: #64748b;
           font-weight: 600;
         }
@@ -533,32 +523,32 @@ export const CalculationBenchmarks: React.FC<CalculationBenchmarksProps> = ({
         .param-num-input {
           border: none;
           outline: none;
-          padding: 6px 4px;
-          font-size: 0.84rem;
+          padding: 4px 4px;
+          font-size: 0.8rem;
           font-weight: 700;
           color: #0f172a;
-          width: 90px;
+          width: 82px;
           text-align: right;
         }
 
         .chips-row {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
           flex-wrap: wrap;
-          padding-top: 2px;
+          padding-top: 1px;
         }
 
         .chips-label {
-          font-size: 0.72rem;
+          font-size: 0.68rem;
           font-weight: 600;
           color: #94a3b8;
         }
 
         .quick-chip {
-          padding: 2px 7px;
+          padding: 1px 6px;
           border-radius: 4px;
-          font-size: 0.72rem;
+          font-size: 0.68rem;
           font-weight: 600;
           background: #f1f5f9;
           border: 1px solid #e2e8f0;

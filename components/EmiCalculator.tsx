@@ -1,7 +1,11 @@
 /**
- * EMI Calculator component — Modern FinTech layout.
- * Loan parameters, monthly EMI hero banner, summary cards, payment distribution ratio,
- * and amortization schedule. Preserves 100% of mathematical computation and save API.
+ * EMI Calculator component — Compact, High-Compatibility FinTech layout.
+ * Features:
+ * 1. Compact viewport-fitting design: fits on all screens without excessive scrolling.
+ * 2. Guaranteed-visible high-contrast Estimated Monthly EMI hero banner.
+ * 3. Client Name & Mobile Number modal before saving calculation to database.
+ * 4. Comprehensive dark mode and light mode theme variable styling.
+ * 5. Integrated tab switcher for Analytics vs Month-by-Month Amortization schedule.
  */
 
 "use client";
@@ -17,10 +21,14 @@ import {
   Printer,
   BookmarkCheck,
   Calendar,
-  IndianRupee,
   Sparkles,
-  ArrowRight,
-  ShieldCheck,
+  User,
+  Phone,
+  X,
+  CheckCircle2,
+  RotateCcw,
+  ListFilter,
+  FileSpreadsheet,
 } from "lucide-react";
 
 export default function EmiCalculator({
@@ -44,6 +52,16 @@ export default function EmiCalculator({
   const [processingFee, setProcessingFee] = useState(0);
   const [schedule, setSchedule] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // Client Details Save Modal State
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [saveSuccessToast, setSaveSuccessToast] = useState<string | null>(null);
+
+  // View tab for right column: 'summary' | 'schedule'
+  const [activeTab, setActiveTab] = useState<"summary" | "schedule">("summary");
 
   useEffect(() => {
     if (propUser) {
@@ -69,6 +87,16 @@ export default function EmiCalculator({
     } catch {
       router.replace("/?auth=login");
     }
+  }
+
+  function handleReset() {
+    setLoanType("Personal Loan");
+    setPrincipal(500000);
+    setRate(9.5);
+    setFee(0.5);
+    setTerm(60);
+    setTermUnit("months");
+    setActiveTab("summary");
   }
 
   function compute() {
@@ -110,12 +138,28 @@ export default function EmiCalculator({
     setSchedule(rows);
   }
 
-  async function saveCalculation() {
-    if (!emi || term <= 0) {
-      alert("Please enter valid loan details");
+  function openSaveModal() {
+    setSaveError("");
+    setSaveModalOpen(true);
+  }
+
+  async function handleConfirmSave(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    const trimmedName = clientName.trim();
+    const trimmedPhone = clientPhone.trim();
+
+    if (!trimmedName) {
+      setSaveError("Please enter the client's full name.");
       return;
     }
+    if (!trimmedPhone || trimmedPhone.length < 8) {
+      setSaveError("Please enter a valid client contact number.");
+      return;
+    }
+
     setSaving(true);
+    setSaveError("");
+
     try {
       const payload = {
         loanType,
@@ -129,20 +173,29 @@ export default function EmiCalculator({
         totalPayment,
         processingFeeAmount: processingFee,
         schedule,
+        clientName: trimmedName,
+        clientPhone: trimmedPhone,
       };
+
       const res = await fetch("/api/emi/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (data.success) {
-        alert("Calculation successfully saved to your profile!");
+
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.success) {
+        setSaveModalOpen(false);
+        setClientName("");
+        setClientPhone("");
+        setSaveSuccessToast(`Assessment saved for ${trimmedName}!`);
+        setTimeout(() => setSaveSuccessToast(null), 4000);
       } else {
-        alert("Save failed. Please try again.");
+        setSaveError(data?.error || "Failed to save calculation. Please try again.");
       }
-    } catch (e) {
-      alert("Save failed. Please try again.");
+    } catch {
+      setSaveError("Network connection error. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -159,23 +212,39 @@ export default function EmiCalculator({
     const details = [
       ["Loan Amount Disbursed", "₹" + formatWholeMoney(data.principal)],
       ["Current Interest (%)", Number(data.annualRate).toFixed(2)],
-      ["Moratorium Interest Capitalized", "NA"],
+      ["Processing Fee", "₹" + formatWholeMoney(data.processingFeeAmount)],
       ["Frequency", "Monthly"],
       ["Loan Type", data.loanType],
-      ["Tenure (Months)", data.termMonths],
+      ["Tenure", `${data.termMonths} Months (${(data.termMonths / 12).toFixed(1)} Yrs)`],
+      ["Monthly EMI", "₹" + formatMoney(data.emi, 2)],
+      ["Total Interest", "₹" + formatMoney(data.totalInterest, 2)],
     ];
+
     const detailMarkup = details
       .map(
         (item) =>
           `<div class="detail-item"><span class="detail-label">${item[0]}</span><span class="detail-colon">:</span><span class="detail-value">${item[1]}</span></div>`
       )
       .join("");
-    const scheduleRows = document.getElementById("scheduleBody")?.innerHTML || "";
+
+    const scheduleRows = schedule
+      .map(
+        (r) =>
+          `<tr>
+            <td style="text-align:center;font-weight:bold;color:#2563EB">#${r.month}</td>
+            <td style="text-align:right">₹${formatMoney(r.emi, 2)}</td>
+            <td style="text-align:right;color:#059669">₹${formatMoney(r.principal, 2)}</td>
+            <td style="text-align:right;color:#7C3AED">₹${formatMoney(r.interest, 2)}</td>
+            <td style="text-align:right;font-weight:600">₹${formatMoney(r.balance, 2)}</td>
+          </tr>`
+      )
+      .join("");
+
     const documentHtml =
       '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Loan Amortization Schedule</title><style>' +
-      '@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#0F172A;font-family:Arial,sans-serif;background:#fff}.print-page{max-width:1120px;margin:0 auto;padding:18px 22px}.print-title{margin:0 0 22px;color:#2563EB;font-size:25px;font-weight:700;text-align:center}.loan-details{margin-bottom:28px;border:2px solid #2563EB;border-radius:8px}.loan-details-heading{margin:-16px auto 12px;width:max-content;padding:0 22px;color:#2563EB;background:#fff;font-size:20px;text-align:center;font-weight:600}.details-grid{display:grid;grid-template-columns:1fr 1fr}.detail-item{display:grid;grid-template-columns:235px 28px 1fr;min-height:72px;padding:16px;border-bottom:1px solid #E2E8F0;align-items:start;font-size:16px}.detail-item:nth-child(odd){border-right:1px solid #E2E8F0}.detail-item:nth-last-child(-n+2){border-bottom:0}.detail-label{color:#475569;line-height:1.32}.detail-value{font-size:16px;line-height:1.32;font-weight:600}.schedule-title{margin:0 0 12px;color:#0F172A;font-size:20px;font-weight:700}.schedule-table{width:100%;border-collapse:collapse;font-size:13px}.schedule-table th{padding:10px;color:#fff;background:#2563EB;text-align:right}.schedule-table th:first-child,.schedule-table td:first-child{text-align:center}.schedule-table td{padding:9px;border-bottom:1px solid #E2E8F0;text-align:right}.schedule-table tbody tr:nth-child(even){background:#F8FAFC}@media print{.print-page{padding:0}.loan-details{break-inside:avoid}.schedule-table thead{display:table-header-group}}</style></head><body><main class="print-page"><h1 class="print-title">Loan Amortization Schedule</h1><section class="loan-details"><div class="loan-details-heading">Loan Details</div><div class="details-grid">' +
+      '@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#0F172A;font-family:Arial,sans-serif;background:#fff}.print-page{max-width:1120px;margin:0 auto;padding:18px 22px}.print-title{margin:0 0 16px;color:#2563EB;font-size:24px;font-weight:700;text-align:center}.loan-details{margin-bottom:20px;border:2px solid #2563EB;border-radius:8px}.loan-details-heading{margin:-14px auto 10px;width:max-content;padding:0 16px;color:#2563EB;background:#fff;font-size:16px;text-align:center;font-weight:700}.details-grid{display:grid;grid-template-columns:1fr 1fr}.detail-item{display:grid;grid-template-columns:220px 20px 1fr;padding:10px 14px;border-bottom:1px solid #E2E8F0;align-items:center;font-size:14px}.detail-item:nth-child(odd){border-right:1px solid #E2E8F0}.detail-item:nth-last-child(-n+2){border-bottom:0}.detail-label{color:#475569}.detail-value{font-weight:600}.schedule-title{margin:0 0 10px;color:#0F172A;font-size:18px;font-weight:700}.schedule-table{width:100%;border-collapse:collapse;font-size:12px}.schedule-table th{padding:8px 10px;color:#fff;background:#2563EB;text-align:right}.schedule-table th:first-child{text-align:center}.schedule-table td{padding:7px 10px;border-bottom:1px solid #E2E8F0}.schedule-table tbody tr:nth-child(even){background:#F8FAFC}@media print{.print-page{padding:0}.loan-details{break-inside:avoid}.schedule-table thead{display:table-header-group}}</style></head><body><main class="print-page"><h1 class="print-title">CreditWise Loan Amortization Schedule</h1><section class="loan-details"><div class="loan-details-heading">Loan Assessment Summary</div><div class="details-grid">' +
       detailMarkup +
-      '</div></section><h2 class="schedule-title">Amortization Schedule</h2><table class="schedule-table"><thead><tr><th>Month</th><th>EMI (₹)</th><th>Principal (₹)</th><th>Interest (₹)</th><th>Balance (₹)</th></tr></thead><tbody>' +
+      '</div></section><h2 class="schedule-title">Month-by-Month Amortization Schedule</h2><table class="schedule-table"><thead><tr><th>Month</th><th>EMI (₹)</th><th>Principal (₹)</th><th>Interest (₹)</th><th>Remaining Balance (₹)</th></tr></thead><tbody>' +
       scheduleRows +
       "</tbody></table></main></body></html>";
 
@@ -220,9 +289,30 @@ export default function EmiCalculator({
 
   if (!user) {
     return (
-      <main className="flex flex-col items-center justify-center p-12 text-slate-400">
-        <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3" />
-        <span className="text-sm font-medium">Loading EMI Calculator...</span>
+      <main
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "50vh",
+          color: "var(--ink-muted)",
+          gap: "12px",
+        }}
+      >
+        <div
+          style={{
+            width: "32px",
+            height: "32px",
+            border: "3px solid var(--border)",
+            borderTopColor: "var(--accent)",
+            borderRadius: "50%",
+            animation: "spin 0.8s linear infinite",
+          }}
+        />
+        <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>
+          Loading EMI Calculator...
+        </span>
       </main>
     );
   }
@@ -230,410 +320,1575 @@ export default function EmiCalculator({
   return (
     <>
       {!embedded && <Topbar user={user} pathname="/home" />}
+
+      {/* Main Fit-to-Screen Container */}
       <div
-        className="w-full bg-slate-50 font-sans animate-fade-in"
-        style={embedded ? { flex: 1, overflow: "auto" } : { minHeight: "calc(100vh - 64px)" }}
+        className="emi-calc-wrapper animate-fade-in"
+        style={{
+          width: "100%",
+          background: "var(--bg)",
+          color: "var(--ink)",
+          minHeight: embedded ? "auto" : "calc(100vh - 64px)",
+          padding: "12px 16px 24px 16px",
+          boxSizing: "border-box",
+        }}
       >
-        <div className="max-w-[1400px] mx-auto px-3.5 sm:px-8 py-4 sm:py-6 space-y-5 sm:space-y-6">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-                <Calculator className="w-6 h-6 text-blue-600" />
-                <span>EMI & Amortization Calculator</span>
-              </h1>
-              <p className="text-sm text-slate-500 mt-1">
-                Simulate monthly installments, interest distribution ratio, and complete loan amortization schedule.
-              </p>
+        <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
+          {/* 1. Ultra-Compact Header Toolbar */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "8px",
+              paddingBottom: "12px",
+              marginBottom: "12px",
+              borderBottom: "1px solid var(--border)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--accent)",
+                }}
+              >
+                <Calculator size={18} />
+              </div>
+              <div>
+                <h1
+                  style={{
+                    fontSize: "1.0625rem",
+                    fontWeight: 700,
+                    margin: 0,
+                    lineHeight: 1.2,
+                    color: "var(--ink)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span>EMI & Amortization Simulator</span>
+                  <span
+                    style={{
+                      fontSize: "0.6875rem",
+                      fontWeight: 600,
+                      padding: "2px 8px",
+                      borderRadius: "12px",
+                      background: "rgba(13, 148, 136, 0.12)",
+                      color: "var(--accent)",
+                      border: "1px solid rgba(13, 148, 136, 0.25)",
+                    }}
+                  >
+                    INR (₹)
+                  </span>
+                </h1>
+                <p
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "var(--ink-muted)",
+                    margin: "2px 0 0 0",
+                  }}
+                >
+                  Real-time debt service, interest ratio & monthly payment schedule
+                </p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Smart Simulator</span>
-              </span>
+
+            {/* Header Right Action Group */}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <button
+                type="button"
+                onClick={handleReset}
+                title="Reset values to defaults"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "5px 10px",
+                  fontSize: "0.75rem",
+                  fontWeight: 500,
+                  borderRadius: "6px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  color: "var(--ink-muted)",
+                  cursor: "pointer",
+                }}
+              >
+                <RotateCcw size={13} />
+                <span>Reset</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={openSaveModal}
+                title="Record client details and save assessment"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  padding: "6px 12px",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  borderRadius: "6px",
+                  background: "var(--accent)",
+                  border: "1px solid var(--accent)",
+                  color: "#ffffff",
+                  cursor: "pointer",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
+                }}
+              >
+                <BookmarkCheck size={14} />
+                <span>Save Calculation</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={printSchedule}
+                title="Print or export A4 statement"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  padding: "6px 12px",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  borderRadius: "6px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  color: "var(--ink)",
+                  cursor: "pointer",
+                }}
+              >
+                <Printer size={14} />
+                <span>Print</span>
+              </button>
             </div>
           </div>
 
-          {/* Main 2-Column Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left Column: Loan Parameters (5 cols) */}
-            <div className="lg:col-span-5 space-y-5">
-              <div className="cw-card p-5 space-y-5">
-                <div className="flex items-center gap-2 font-bold text-slate-900 text-sm border-b border-slate-100 pb-3">
-                  <Sliders className="w-4 h-4 text-blue-600" />
+          {/* Success Toast */}
+          {saveSuccessToast && (
+            <div
+              style={{
+                marginBottom: "12px",
+                padding: "8px 14px",
+                borderRadius: "8px",
+                background: "rgba(16, 185, 129, 0.12)",
+                border: "1px solid rgba(16, 185, 129, 0.3)",
+                color: "#10b981",
+                fontSize: "0.8125rem",
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <CheckCircle2 size={16} />
+              <span>{saveSuccessToast}</span>
+            </div>
+          )}
+
+          {/* 2. Main Balanced 2-Column Grid (Compact & In-View) */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "14px",
+              alignItems: "start",
+            }}
+          >
+            {/* Left Column: Loan Parameters (Compact Inputs) */}
+            <div
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "10px",
+                padding: "14px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  paddingBottom: "8px",
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    fontSize: "0.8125rem",
+                    fontWeight: 700,
+                    color: "var(--ink)",
+                  }}
+                >
+                  <Sliders size={15} style={{ color: "var(--accent)" }} />
                   <span>Loan Parameters</span>
                 </div>
+                <span
+                  style={{
+                    fontSize: "0.6875rem",
+                    color: "var(--ink-muted)",
+                    fontWeight: 500,
+                  }}
+                >
+                  Interactive Inputs
+                </span>
+              </div>
 
-                {/* Field 1: Loan Type */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-700" htmlFor="loanType">
-                    Loan Type
-                  </label>
-                  <select
-                    id="loanType"
-                    className="cw-select"
-                    value={loanType}
-                    onChange={(e) => setLoanType(e.target.value)}
+              {/* Parameter 1: Loan Type */}
+              <div>
+                <label
+                  htmlFor="loanType"
+                  style={{
+                    display: "block",
+                    fontSize: "0.6875rem",
+                    fontWeight: 600,
+                    color: "var(--ink-muted)",
+                    marginBottom: "4px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.03em",
+                  }}
+                >
+                  Loan Type
+                </label>
+                <select
+                  id="loanType"
+                  value={loanType}
+                  onChange={(e) => setLoanType(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface-2)",
+                    color: "var(--ink)",
+                    fontSize: "0.8125rem",
+                    fontWeight: 500,
+                    outline: "none",
+                  }}
+                >
+                  <option>Personal Loan</option>
+                  <option>Home Loan</option>
+                  <option>Auto / Vehicle Loan</option>
+                  <option>Education Loan</option>
+                  <option>Business Loan</option>
+                </select>
+              </div>
+
+              {/* Parameter 2: Loan Amount */}
+              <div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "4px",
+                  }}
+                >
+                  <label
+                    htmlFor="loanAmount"
+                    style={{
+                      fontSize: "0.6875rem",
+                      fontWeight: 600,
+                      color: "var(--ink-muted)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.03em",
+                    }}
                   >
-                    <option>Personal Loan</option>
-                    <option>Home Loan</option>
-                    <option>Auto / Vehicle Loan</option>
-                    <option>Education Loan</option>
-                    <option>Business Loan</option>
-                  </select>
+                    Loan Amount (₹)
+                  </label>
+                  <span
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: 700,
+                      color: "var(--accent)",
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    ₹{formatWholeMoney(principal)}
+                  </span>
                 </div>
-
-                {/* Field 2: Loan Amount */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <label className="text-slate-700" htmlFor="loanAmount">
-                      Loan Amount (₹)
-                    </label>
-                    <span className="text-blue-600 font-bold text-sm">
-                      ₹{formatWholeMoney(principal)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input
-                      id="loanAmountRange"
-                      type="range"
-                      min="50000"
-                      max="10000000"
-                      step="50000"
-                      value={principal}
-                      onChange={(e) => setPrincipal(Number(e.target.value))}
-                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                    />
-                    <input
-                      id="loanAmount"
-                      type="number"
-                      className="cw-input w-28 text-right font-medium text-xs py-1.5"
-                      value={principal}
-                      min="50000"
-                      step="50000"
-                      onChange={(e) => setPrincipal(Number(e.target.value))}
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {[100000, 200000, 500000, 1000000, 2000000, 5000000].map((amt) => (
-                      <button
-                        key={amt}
-                        type="button"
-                        className={`text-[11px] px-2.5 py-1 rounded-md font-medium border transition-colors cursor-pointer ${
-                          principal === amt
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                        }`}
-                        onClick={() => setPrincipal(amt)}
-                      >
-                        ₹{amt >= 100000 ? `${amt / 100000}L` : amt}
-                      </button>
-                    ))}
-                  </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <input
+                    id="loanAmountRange"
+                    type="range"
+                    min="50000"
+                    max="10000000"
+                    step="50000"
+                    value={principal}
+                    onChange={(e) => setPrincipal(Number(e.target.value))}
+                    style={{
+                      flex: 1,
+                      accentColor: "var(--accent)",
+                      height: "5px",
+                      cursor: "pointer",
+                    }}
+                  />
+                  <input
+                    id="loanAmount"
+                    type="number"
+                    min="50000"
+                    step="50000"
+                    value={principal}
+                    onChange={(e) => setPrincipal(Number(e.target.value))}
+                    style={{
+                      width: "105px",
+                      padding: "4px 8px",
+                      textAlign: "right",
+                      borderRadius: "6px",
+                      border: "1px solid var(--border)",
+                      background: "var(--surface-2)",
+                      color: "var(--ink)",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      fontFamily: "monospace",
+                    }}
+                  />
                 </div>
-
-                {/* Field 3: Annual Interest Rate */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <label className="text-slate-700" htmlFor="rate">
-                      Annual Interest Rate (%)
-                    </label>
-                    <span className="text-blue-600 font-bold text-sm">{rate}%</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input
-                      id="rateRange"
-                      type="range"
-                      min="5"
-                      max="24"
-                      step="0.25"
-                      value={rate}
-                      onChange={(e) => setRate(Number(e.target.value))}
-                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                    />
-                    <input
-                      id="rate"
-                      type="number"
-                      className="cw-input w-24 text-right font-medium text-xs py-1.5"
-                      value={rate}
-                      step="0.25"
-                      onChange={(e) => setRate(Number(e.target.value))}
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {[8.5, 9.5, 10.5, 12.0, 14.0].map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        className={`text-[11px] px-2.5 py-1 rounded-md font-medium border transition-colors cursor-pointer ${
-                          rate === r
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                        }`}
-                        onClick={() => setRate(r)}
-                      >
-                        {r}%
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Field 4: Loan Tenure */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <label className="text-slate-700" htmlFor="term">
-                      Loan Tenure
-                    </label>
-                    <span className="text-blue-600 font-bold text-sm">
-                      {term} {termUnit}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="termRange"
-                      type="range"
-                      min="1"
-                      max={termUnit === "years" ? 30 : 360}
-                      step="1"
-                      value={term}
-                      onChange={(e) => setTerm(Number(e.target.value))}
-                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                    />
-                    <input
-                      id="term"
-                      type="number"
-                      className="cw-input w-20 text-right font-medium text-xs py-1.5"
-                      value={term}
-                      step="1"
-                      onChange={(e) => setTerm(Number(e.target.value))}
-                    />
-                    <select
-                      id="monthsOrYears"
-                      className="cw-select w-24 text-xs py-1.5"
-                      value={termUnit}
-                      onChange={(e) => {
-                        const unit = e.target.value as "months" | "years";
-                        setTermUnit(unit);
-                        setTerm(unit === "years" ? 5 : 60);
+                {/* Compact Quick Select Chips */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "4px",
+                    marginTop: "6px",
+                  }}
+                >
+                  {[100000, 300000, 500000, 1000000, 2500000, 5000000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setPrincipal(amt)}
+                      style={{
+                        padding: "2px 7px",
+                        fontSize: "0.6875rem",
+                        fontWeight: 600,
+                        borderRadius: "4px",
+                        border: "1px solid",
+                        borderColor: principal === amt ? "var(--accent)" : "var(--border)",
+                        background:
+                          principal === amt ? "rgba(13, 148, 136, 0.15)" : "var(--surface-2)",
+                        color: principal === amt ? "var(--accent)" : "var(--ink-muted)",
+                        cursor: "pointer",
                       }}
                     >
-                      <option value="months">Mo</option>
-                      <option value="years">Yr</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {termUnit === "years"
-                      ? [1, 2, 3, 4, 5, 7].map((yr) => (
-                          <button
-                            key={yr}
-                            type="button"
-                            className={`text-[11px] px-2.5 py-1 rounded-md font-medium border transition-colors cursor-pointer ${
-                              term === yr
-                                ? "bg-blue-600 text-white border-blue-600"
-                                : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                            }`}
-                            onClick={() => setTerm(yr)}
-                          >
-                            {yr} {yr === 1 ? "Yr" : "Yrs"}
-                          </button>
-                        ))
-                      : [12, 24, 36, 48, 60, 84].map((m) => (
-                          <button
-                            key={m}
-                            type="button"
-                            className={`text-[11px] px-2.5 py-1 rounded-md font-medium border transition-colors cursor-pointer ${
-                              term === m
-                                ? "bg-blue-600 text-white border-blue-600"
-                                : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                            }`}
-                            onClick={() => setTerm(m)}
-                          >
-                            {m} Mo
-                          </button>
-                        ))}
-                  </div>
+                      ₹{amt >= 100000 ? `${amt / 100000}L` : amt}
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                {/* Field 5: Processing Fee */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <label className="text-slate-700" htmlFor="fee">
-                      Processing Fee (%)
-                    </label>
-                    <span className="text-slate-600 font-semibold text-xs">{fee}%</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input
-                      id="feeRange"
-                      type="range"
-                      min="0"
-                      max="5"
-                      step="0.1"
-                      value={fee}
-                      onChange={(e) => setFee(Number(e.target.value))}
-                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                    />
-                    <input
-                      id="fee"
-                      type="number"
-                      className="cw-input w-20 text-right font-medium text-xs py-1.5"
-                      value={fee}
-                      step="0.1"
-                      onChange={(e) => setFee(Number(e.target.value))}
-                    />
-                  </div>
+              {/* Parameter 3: Annual Interest Rate */}
+              <div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "4px",
+                  }}
+                >
+                  <label
+                    htmlFor="rate"
+                    style={{
+                      fontSize: "0.6875rem",
+                      fontWeight: 600,
+                      color: "var(--ink-muted)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.03em",
+                    }}
+                  >
+                    Annual Interest Rate (%)
+                  </label>
+                  <span
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: 700,
+                      color: "var(--accent)",
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    {rate}% p.a.
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <input
+                    id="rateRange"
+                    type="range"
+                    min="5"
+                    max="24"
+                    step="0.25"
+                    value={rate}
+                    onChange={(e) => setRate(Number(e.target.value))}
+                    style={{
+                      flex: 1,
+                      accentColor: "var(--accent)",
+                      height: "5px",
+                      cursor: "pointer",
+                    }}
+                  />
+                  <input
+                    id="rate"
+                    type="number"
+                    min="5"
+                    max="24"
+                    step="0.25"
+                    value={rate}
+                    onChange={(e) => setRate(Number(e.target.value))}
+                    style={{
+                      width: "75px",
+                      padding: "4px 8px",
+                      textAlign: "right",
+                      borderRadius: "6px",
+                      border: "1px solid var(--border)",
+                      background: "var(--surface-2)",
+                      color: "var(--ink)",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      fontFamily: "monospace",
+                    }}
+                  />
+                </div>
+                {/* Quick Chips for ROI */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "4px",
+                    marginTop: "6px",
+                  }}
+                >
+                  {[8.5, 9.5, 10.5, 11.75, 13.5, 15.0].map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setRate(r)}
+                      style={{
+                        padding: "2px 7px",
+                        fontSize: "0.6875rem",
+                        fontWeight: 600,
+                        borderRadius: "4px",
+                        border: "1px solid",
+                        borderColor: rate === r ? "var(--accent)" : "var(--border)",
+                        background:
+                          rate === r ? "rgba(13, 148, 136, 0.15)" : "var(--surface-2)",
+                        color: rate === r ? "var(--accent)" : "var(--ink-muted)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {r}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Parameter 4: Loan Tenure */}
+              <div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "4px",
+                  }}
+                >
+                  <label
+                    htmlFor="term"
+                    style={{
+                      fontSize: "0.6875rem",
+                      fontWeight: 600,
+                      color: "var(--ink-muted)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.03em",
+                    }}
+                  >
+                    Loan Tenure
+                  </label>
+                  <span
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: 700,
+                      color: "var(--accent)",
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    {term} {termUnit === "years" ? (term === 1 ? "Year" : "Years") : "Months"}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <input
+                    id="termRange"
+                    type="range"
+                    min="1"
+                    max={termUnit === "years" ? 30 : 360}
+                    step="1"
+                    value={term}
+                    onChange={(e) => setTerm(Number(e.target.value))}
+                    style={{
+                      flex: 1,
+                      accentColor: "var(--accent)",
+                      height: "5px",
+                      cursor: "pointer",
+                    }}
+                  />
+                  <input
+                    id="term"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={term}
+                    onChange={(e) => setTerm(Number(e.target.value))}
+                    style={{
+                      width: "60px",
+                      padding: "4px 8px",
+                      textAlign: "right",
+                      borderRadius: "6px",
+                      border: "1px solid var(--border)",
+                      background: "var(--surface-2)",
+                      color: "var(--ink)",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      fontFamily: "monospace",
+                    }}
+                  />
+                  <select
+                    value={termUnit}
+                    onChange={(e) => {
+                      const unit = e.target.value as "months" | "years";
+                      setTermUnit(unit);
+                      setTerm(unit === "years" ? 5 : 60);
+                    }}
+                    style={{
+                      width: "80px",
+                      padding: "4px 6px",
+                      borderRadius: "6px",
+                      border: "1px solid var(--border)",
+                      background: "var(--surface-2)",
+                      color: "var(--ink)",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      outline: "none",
+                    }}
+                  >
+                    <option value="months">Months</option>
+                    <option value="years">Years</option>
+                  </select>
+                </div>
+                {/* Quick Chips for Tenure */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "4px",
+                    marginTop: "6px",
+                  }}
+                >
+                  {termUnit === "years"
+                    ? [1, 2, 3, 5, 7, 10, 15, 20].map((yr) => (
+                        <button
+                          key={yr}
+                          type="button"
+                          onClick={() => setTerm(yr)}
+                          style={{
+                            padding: "2px 7px",
+                            fontSize: "0.6875rem",
+                            fontWeight: 600,
+                            borderRadius: "4px",
+                            border: "1px solid",
+                            borderColor: term === yr ? "var(--accent)" : "var(--border)",
+                            background:
+                              term === yr ? "rgba(13, 148, 136, 0.15)" : "var(--surface-2)",
+                            color: term === yr ? "var(--accent)" : "var(--ink-muted)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {yr}Y
+                        </button>
+                      ))
+                    : [12, 24, 36, 48, 60, 84, 120].map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setTerm(m)}
+                          style={{
+                            padding: "2px 7px",
+                            fontSize: "0.6875rem",
+                            fontWeight: 600,
+                            borderRadius: "4px",
+                            border: "1px solid",
+                            borderColor: term === m ? "var(--accent)" : "var(--border)",
+                            background:
+                              term === m ? "rgba(13, 148, 136, 0.15)" : "var(--surface-2)",
+                            color: term === m ? "var(--accent)" : "var(--ink-muted)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {m}M
+                        </button>
+                      ))}
+                </div>
+              </div>
+
+              {/* Parameter 5: Processing Fee */}
+              <div style={{ paddingTop: "2px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "4px",
+                  }}
+                >
+                  <label
+                    htmlFor="fee"
+                    style={{
+                      fontSize: "0.6875rem",
+                      fontWeight: 600,
+                      color: "var(--ink-muted)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.03em",
+                    }}
+                  >
+                    Processing Fee (%)
+                  </label>
+                  <span
+                    style={{
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      color: "var(--ink-muted)",
+                    }}
+                  >
+                    {fee}% (₹{formatWholeMoney(processingFee)})
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <input
+                    id="feeRange"
+                    type="range"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={fee}
+                    onChange={(e) => setFee(Number(e.target.value))}
+                    style={{
+                      flex: 1,
+                      accentColor: "var(--accent)",
+                      height: "5px",
+                      cursor: "pointer",
+                    }}
+                  />
+                  <input
+                    id="fee"
+                    type="number"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={fee}
+                    onChange={(e) => setFee(Number(e.target.value))}
+                    style={{
+                      width: "60px",
+                      padding: "4px 8px",
+                      textAlign: "right",
+                      borderRadius: "6px",
+                      border: "1px solid var(--border)",
+                      background: "var(--surface-2)",
+                      color: "var(--ink)",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      fontFamily: "monospace",
+                    }}
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Right Column: Calculation Results & Amortization (7 cols) */}
-            <div className="lg:col-span-7 space-y-5">
-              {/* Hero Monthly EMI Banner */}
-              <div className="cw-card p-4 sm:p-6 bg-gradient-to-r from-blue-600 to-indigo-700 text-white flex items-center justify-between shadow-md">
-                <div>
-                  <div className="text-[11px] sm:text-xs uppercase font-semibold tracking-wider text-blue-100">
-                    Estimated Monthly EMI
+            {/* Right Column: Hero EMI Card & Results Breakdown */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+              }}
+            >
+              {/* Guaranteed-Visible Hero Estimated Monthly EMI Card */}
+              <div
+                className="hero-emi-card-gradient"
+                style={{
+                  backgroundColor: "#1e3a8a",
+                  backgroundImage: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 45%, #2563eb 100%)",
+                  color: "#ffffff",
+                  borderRadius: "10px",
+                  padding: "16px 20px",
+                  boxShadow: "0 6px 20px -3px rgba(30, 58, 138, 0.45)",
+                  border: "1px solid rgba(255, 255, 255, 0.25)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
+                {/* Background decorative glow */}
+                <div
+                  style={{
+                    position: "absolute",
+                    right: "-20px",
+                    top: "-20px",
+                    width: "120px",
+                    height: "120px",
+                    background: "rgba(255, 255, 255, 0.08)",
+                    borderRadius: "50%",
+                    pointerEvents: "none",
+                  }}
+                />
+
+                <div style={{ position: "relative", zIndex: 1 }}>
+                  <div
+                    className="emi-badge-title"
+                    style={{
+                      fontSize: "0.6875rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      color: "#93c5fd",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <Sparkles size={12} style={{ color: "#60a5fa" }} />
+                    <span className="emi-badge-title">Estimated Monthly EMI</span>
                   </div>
-                  <div className="text-2xl sm:text-4xl font-extrabold tracking-tight mt-1">
+
+                  <div
+                    className="emi-amount-val"
+                    style={{
+                      fontSize: "2rem",
+                      fontWeight: 800,
+                      letterSpacing: "-0.03em",
+                      margin: "4px 0",
+                      color: "#ffffff",
+                      fontFamily:
+                        '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                      lineHeight: 1.1,
+                    }}
+                  >
                     ₹{formatMoney(emi, 2)}
+                    <span
+                      className="emi-period-lbl"
+                      style={{
+                        fontSize: "0.875rem",
+                        fontWeight: 500,
+                        color: "#bfdbfe",
+                        marginLeft: "4px",
+                      }}
+                    >
+                      / month
+                    </span>
                   </div>
-                  <div className="text-[11px] sm:text-xs text-blue-100 mt-1">
-                    for {term} {termUnit} at {rate}% per annum
+
+                  <div
+                    className="emi-sub-detail"
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#dbeafe",
+                      fontWeight: 500,
+                    }}
+                  >
+                    for {term} {termUnit} at {rate}% per annum • {loanType}
                   </div>
                 </div>
-                <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center shrink-0">
-                  <Wallet className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
+
+                <div
+                  style={{
+                    width: "48px",
+                    height: "48px",
+                    borderRadius: "12px",
+                    background: "rgba(255, 255, 255, 0.15)",
+                    backdropFilter: "blur(6px)",
+                    border: "1px solid rgba(255, 255, 255, 0.25)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#ffffff",
+                    flexShrink: 0,
+                    position: "relative",
+                    zIndex: 1,
+                  }}
+                >
+                  <Wallet size={24} />
                 </div>
               </div>
 
               {/* 3 KPI Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="cw-card p-4">
-                  <div className="text-xs font-medium text-slate-500">Principal Loan</div>
-                  <div className="text-lg font-bold text-slate-900 mt-1">
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: "10px",
+                }}
+              >
+                <div
+                  style={{
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    padding: "10px 12px",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "0.6875rem",
+                      color: "var(--ink-muted)",
+                      fontWeight: 600,
+                      display: "block",
+                    }}
+                  >
+                    Principal Loan
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "0.9375rem",
+                      fontWeight: 700,
+                      color: "var(--ink)",
+                      display: "block",
+                      marginTop: "2px",
+                      fontFamily: "monospace",
+                    }}
+                  >
                     ₹{formatWholeMoney(principal)}
-                  </div>
+                  </span>
                 </div>
-                <div className="cw-card p-4">
-                  <div className="text-xs font-medium text-slate-500">Total Interest</div>
-                  <div className="text-lg font-bold text-purple-600 mt-1">
+
+                <div
+                  style={{
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    padding: "10px 12px",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "0.6875rem",
+                      color: "var(--ink-muted)",
+                      fontWeight: 600,
+                      display: "block",
+                    }}
+                  >
+                    Total Interest
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "0.9375rem",
+                      fontWeight: 700,
+                      color: "#9333ea",
+                      display: "block",
+                      marginTop: "2px",
+                      fontFamily: "monospace",
+                    }}
+                  >
                     ₹{formatMoney(totalInterest, 2)}
-                  </div>
+                  </span>
                 </div>
-                <div className="cw-card p-4">
-                  <div className="text-xs font-medium text-slate-500">Total Payable</div>
-                  <div className="text-lg font-bold text-emerald-600 mt-1">
+
+                <div
+                  style={{
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    padding: "10px 12px",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "0.6875rem",
+                      color: "var(--ink-muted)",
+                      fontWeight: 600,
+                      display: "block",
+                    }}
+                  >
+                    Total Payable
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "0.9375rem",
+                      fontWeight: 700,
+                      color: "#059669",
+                      display: "block",
+                      marginTop: "2px",
+                      fontFamily: "monospace",
+                    }}
+                  >
                     ₹{formatMoney(totalPayment, 2)}
-                  </div>
+                  </span>
                 </div>
               </div>
 
-              {/* Payment Distribution Ratio Progress Bar */}
-              <div className="cw-card p-4 space-y-3">
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="text-slate-800 flex items-center gap-1.5">
-                    <PieChart className="w-3.5 h-3.5 text-blue-600" />
+              {/* Compact Ratio Progress Bar */}
+              <div
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  padding: "10px 12px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    fontSize: "0.6875rem",
+                    fontWeight: 600,
+                    marginBottom: "6px",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      color: "var(--ink)",
+                    }}
+                  >
+                    <PieChart size={13} style={{ color: "var(--accent)" }} />
                     <span>Payment Distribution Ratio</span>
                   </span>
-                  <span className="text-slate-500 text-[11px]">
-                    Principal: {principalRatio.toFixed(1)}% | Interest: {interestRatio.toFixed(1)}%
+                  <span style={{ color: "var(--ink-muted)", fontSize: "0.6875rem" }}>
+                    Principal {principalRatio.toFixed(1)}% | Interest {interestRatio.toFixed(1)}%
                   </span>
                 </div>
 
-                <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex">
+                <div
+                  style={{
+                    width: "100%",
+                    height: "8px",
+                    borderRadius: "4px",
+                    background: "var(--surface-2)",
+                    overflow: "hidden",
+                    display: "flex",
+                  }}
+                >
                   <div
-                    className="bg-blue-600 h-full transition-all duration-300"
-                    style={{ width: `${principalRatio}%` }}
+                    style={{
+                      width: `${principalRatio}%`,
+                      background: "#2563eb",
+                      transition: "width 0.3s ease",
+                    }}
+                    title={`Principal: ${principalRatio.toFixed(1)}%`}
                   />
                   <div
-                    className="bg-purple-500 h-full transition-all duration-300"
-                    style={{ width: `${interestRatio}%` }}
+                    style={{
+                      width: `${interestRatio}%`,
+                      background: "#9333ea",
+                      transition: "width 0.3s ease",
+                    }}
+                    title={`Interest: ${interestRatio.toFixed(1)}%`}
                   />
-                </div>
-
-                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                    <span>Principal (₹{formatWholeMoney(principal)})</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-                    <span>Interest (₹{formatMoney(totalInterest, 2)})</span>
-                  </div>
                 </div>
               </div>
 
-              {/* Action Toolbar */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
-                <span className="text-xs text-slate-500">
-                  Upfront Processing Fee:{" "}
-                  <strong className="text-slate-800">₹{formatWholeMoney(processingFee)}</strong>
-                </span>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <button
-                    className="cw-btn-primary flex-1 sm:flex-initial text-xs py-2 px-3 inline-flex items-center justify-center gap-1.5"
-                    type="button"
-                    onClick={saveCalculation}
-                    disabled={saving}
-                  >
-                    <BookmarkCheck className="w-3.5 h-3.5" />
-                    <span>{saving ? "Saving..." : "Save Calculation"}</span>
-                  </button>
-                  <button
-                    className="cw-btn-secondary flex-1 sm:flex-initial text-xs py-2 px-3 inline-flex items-center justify-center gap-1.5"
-                    type="button"
-                    onClick={printSchedule}
-                  >
-                    <Printer className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Print Schedule</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Amortization Schedule Table */}
-              <div className="cw-card p-0 overflow-hidden">
-                <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                  <div className="font-semibold text-sm text-slate-900 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-blue-600" />
-                    <span>Amortization Schedule ({schedule.length} Months)</span>
+              {/* Tab Switcher & Schedule View Card */}
+              <div
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "6px 10px",
+                    background: "var(--surface-2)",
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "4px" }}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("summary")}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: "0.6875rem",
+                        fontWeight: 600,
+                        borderRadius: "5px",
+                        border: "none",
+                        background:
+                          activeTab === "summary" ? "var(--surface)" : "transparent",
+                        color:
+                          activeTab === "summary" ? "var(--ink)" : "var(--ink-muted)",
+                        boxShadow:
+                          activeTab === "summary" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <ListFilter size={12} />
+                      <span>Key Breakdown</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("schedule")}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: "0.6875rem",
+                        fontWeight: 600,
+                        borderRadius: "5px",
+                        border: "none",
+                        background:
+                          activeTab === "schedule" ? "var(--surface)" : "transparent",
+                        color:
+                          activeTab === "schedule" ? "var(--ink)" : "var(--ink-muted)",
+                        boxShadow:
+                          activeTab === "schedule" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <Calendar size={12} />
+                      <span>Amortization Schedule ({schedule.length} Mo)</span>
+                    </button>
                   </div>
-                  <span className="text-xs text-slate-400">Detailed breakdown</span>
+
+                  <span
+                    style={{
+                      fontSize: "0.6875rem",
+                      color: "var(--ink-muted)",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Upfront Fee: ₹{formatWholeMoney(processingFee)}
+                  </span>
                 </div>
-                <div className="overflow-x-auto max-h-[380px] overflow-y-auto">
-                  <table className="cw-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: "65px", textAlign: "center" }}>Month</th>
-                        <th style={{ textAlign: "right" }}>EMI (₹)</th>
-                        <th style={{ textAlign: "right" }}>Principal (₹)</th>
-                        <th style={{ textAlign: "right" }}>Interest (₹)</th>
-                        <th style={{ textAlign: "right" }}>Remaining Balance (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody id="scheduleBody">
-                      {schedule.map((row) => (
-                        <tr key={row.month}>
-                          <td className="text-center font-bold text-blue-600">#{row.month}</td>
-                          <td className="text-right font-medium">₹{formatMoney(row.emi, 2)}</td>
-                          <td className="text-right text-emerald-600 font-medium">
-                            ₹{formatMoney(row.principal, 2)}
-                          </td>
-                          <td className="text-right text-purple-600 font-medium">
-                            ₹{formatMoney(row.interest, 2)}
-                          </td>
-                          <td className="text-right font-semibold text-slate-900">
-                            ₹{formatMoney(row.balance, 2)}
-                          </td>
+
+                {/* Tab 1: Key Breakdown Quick View */}
+                {activeTab === "summary" && (
+                  <div style={{ padding: "12px" }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: "8px",
+                        fontSize: "0.75rem",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: "6px",
+                          background: "var(--surface-2)",
+                          border: "1px solid var(--border)",
+                        }}
+                      >
+                        <span style={{ color: "var(--ink-muted)", display: "block" }}>
+                          Monthly Interest
+                        </span>
+                        <span style={{ fontWeight: 600, color: "var(--ink)" }}>
+                          {(rate / 12).toFixed(3)}% per month
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: "6px",
+                          background: "var(--surface-2)",
+                          border: "1px solid var(--border)",
+                        }}
+                      >
+                        <span style={{ color: "var(--ink-muted)", display: "block" }}>
+                          Upfront Fee + GST
+                        </span>
+                        <span style={{ fontWeight: 600, color: "var(--ink)" }}>
+                          ₹{formatWholeMoney(processingFee)} (18% GST incl.)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 10px",
+                        borderRadius: "6px",
+                        background: "rgba(13, 148, 136, 0.08)",
+                        border: "1px solid rgba(13, 148, 136, 0.2)",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <FileSpreadsheet size={15} style={{ color: "var(--accent)" }} />
+                        <span
+                          style={{
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                            color: "var(--ink)",
+                          }}
+                        >
+                          Complete Month-by-Month Amortization Ready
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("schedule")}
+                        style={{
+                          background: "var(--accent)",
+                          color: "#ffffff",
+                          border: "none",
+                          borderRadius: "4px",
+                          padding: "4px 8px",
+                          fontSize: "0.6875rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Open Table →
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 2: Full Month-by-Month Amortization Table */}
+                {activeTab === "schedule" && (
+                  <div
+                    style={{
+                      maxHeight: "260px",
+                      overflowY: "auto",
+                      overflowX: "auto",
+                    }}
+                  >
+                    <table
+                      style={{
+                        width: "100%",
+                        borderCollapse: "collapse",
+                        fontSize: "0.6875rem",
+                        color: "var(--ink)",
+                      }}
+                    >
+                      <thead
+                        style={{
+                          position: "sticky",
+                          top: 0,
+                          background: "var(--surface-2)",
+                          borderBottom: "1px solid var(--border)",
+                          zIndex: 2,
+                        }}
+                      >
+                        <tr>
+                          <th style={{ padding: "6px 8px", textAlign: "center" }}>Mo</th>
+                          <th style={{ padding: "6px 8px", textAlign: "right" }}>EMI (₹)</th>
+                          <th style={{ padding: "6px 8px", textAlign: "right" }}>Principal (₹)</th>
+                          <th style={{ padding: "6px 8px", textAlign: "right" }}>Interest (₹)</th>
+                          <th style={{ padding: "6px 8px", textAlign: "right" }}>Remaining (₹)</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {schedule.map((row) => (
+                          <tr
+                            key={row.month}
+                            style={{
+                              borderBottom: "1px solid var(--border)",
+                              height: "28px",
+                            }}
+                          >
+                            <td
+                              style={{
+                                textAlign: "center",
+                                fontWeight: 700,
+                                color: "var(--accent)",
+                                padding: "4px 8px",
+                              }}
+                            >
+                              #{row.month}
+                            </td>
+                            <td
+                              style={{
+                                textAlign: "right",
+                                fontFamily: "monospace",
+                                padding: "4px 8px",
+                              }}
+                            >
+                              ₹{formatMoney(row.emi, 2)}
+                            </td>
+                            <td
+                              style={{
+                                textAlign: "right",
+                                fontFamily: "monospace",
+                                color: "#059669",
+                                padding: "4px 8px",
+                              }}
+                            >
+                              ₹{formatMoney(row.principal, 2)}
+                            </td>
+                            <td
+                              style={{
+                                textAlign: "right",
+                                fontFamily: "monospace",
+                                color: "#9333ea",
+                                padding: "4px 8px",
+                              }}
+                            >
+                              ₹{formatMoney(row.interest, 2)}
+                            </td>
+                            <td
+                              style={{
+                                textAlign: "right",
+                                fontFamily: "monospace",
+                                fontWeight: 600,
+                                padding: "4px 8px",
+                              }}
+                            >
+                              ₹{formatMoney(row.balance, 2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* 3. Client Name & Phone Number Save Modal */}
+      {saveModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+            background: "rgba(0, 0, 0, 0.65)",
+            backdropFilter: "blur(4px)",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSaveModalOpen(false);
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "460px",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "12px",
+              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3)",
+              color: "var(--ink)",
+              overflow: "hidden",
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "14px 18px",
+                borderBottom: "1px solid var(--border)",
+                background: "var(--surface-2)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <BookmarkCheck size={18} style={{ color: "var(--accent)" }} />
+                <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 700 }}>
+                  Save Assessment to System
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSaveModalOpen(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--ink-muted)",
+                  cursor: "pointer",
+                  padding: "4px",
+                  display: "flex",
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleConfirmSave} style={{ padding: "16px 18px" }}>
+              {/* Assessment Preview Badge */}
+              <div
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: "8px",
+                  background: "rgba(13, 148, 136, 0.08)",
+                  border: "1px solid rgba(13, 148, 136, 0.2)",
+                  marginBottom: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  fontSize: "0.75rem",
+                }}
+              >
+                <div>
+                  <strong style={{ color: "var(--ink)", display: "block" }}>
+                    {loanType} • ₹{formatWholeMoney(principal)}
+                  </strong>
+                  <span style={{ color: "var(--ink-muted)", fontSize: "0.6875rem" }}>
+                    {term} {termUnit} @ {rate}% p.a.
+                  </span>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <span style={{ color: "var(--ink-muted)", fontSize: "0.6875rem", display: "block" }}>
+                    Monthly EMI
+                  </span>
+                  <strong style={{ color: "var(--accent)", fontSize: "0.875rem" }}>
+                    ₹{formatMoney(emi, 2)}
+                  </strong>
+                </div>
+              </div>
+
+              {saveError && (
+                <div
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    background: "rgba(239, 68, 68, 0.12)",
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    color: "#ef4444",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    marginBottom: "12px",
+                  }}
+                >
+                  {saveError}
+                </div>
+              )}
+
+              {/* Input 1: Client Full Name */}
+              <div style={{ marginBottom: "12px" }}>
+                <label
+                  htmlFor="clientNameInput"
+                  style={{
+                    display: "block",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    color: "var(--ink)",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Client Full Name <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <div style={{ position: "relative" }}>
+                  <User
+                    size={14}
+                    style={{
+                      position: "absolute",
+                      left: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "var(--ink-muted)",
+                    }}
+                  />
+                  <input
+                    id="clientNameInput"
+                    type="text"
+                    required
+                    placeholder="e.g. Rajesh Kumar"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px 8px 30px",
+                      borderRadius: "6px",
+                      border: "1px solid var(--border)",
+                      background: "var(--surface-2)",
+                      color: "var(--ink)",
+                      fontSize: "0.8125rem",
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Input 2: Client Phone Number */}
+              <div style={{ marginBottom: "16px" }}>
+                <label
+                  htmlFor="clientPhoneInput"
+                  style={{
+                    display: "block",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    color: "var(--ink)",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Client Contact Number <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <div style={{ position: "relative" }}>
+                  <Phone
+                    size={14}
+                    style={{
+                      position: "absolute",
+                      left: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "var(--ink-muted)",
+                    }}
+                  />
+                  <input
+                    id="clientPhoneInput"
+                    type="tel"
+                    required
+                    placeholder="e.g. 9876543210"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px 8px 30px",
+                      borderRadius: "6px",
+                      border: "1px solid var(--border)",
+                      background: "var(--surface-2)",
+                      color: "var(--ink)",
+                      fontSize: "0.8125rem",
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+                <span
+                  style={{
+                    fontSize: "0.6875rem",
+                    color: "var(--ink-muted)",
+                    marginTop: "3px",
+                    display: "block",
+                  }}
+                >
+                  Used to look up this assessment under your client records.
+                </span>
+              </div>
+
+              {/* Modal Actions */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  gap: "8px",
+                  paddingTop: "6px",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setSaveModalOpen(false)}
+                  disabled={saving}
+                  style={{
+                    padding: "7px 14px",
+                    fontSize: "0.75rem",
+                    fontWeight: 500,
+                    borderRadius: "6px",
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    color: "var(--ink)",
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  style={{
+                    padding: "7px 16px",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    borderRadius: "6px",
+                    background: "var(--accent)",
+                    border: "1px solid var(--accent)",
+                    color: "#ffffff",
+                    cursor: saving ? "not-allowed" : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  {saving ? (
+                    <>
+                      <div
+                        style={{
+                          width: "12px",
+                          height: "12px",
+                          border: "2px solid #ffffff",
+                          borderTopColor: "transparent",
+                          borderRadius: "50%",
+                          animation: "spin 0.8s linear infinite",
+                        }}
+                      />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <BookmarkCheck size={14} />
+                      <span>Confirm & Save</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }

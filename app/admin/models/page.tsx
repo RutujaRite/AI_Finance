@@ -29,6 +29,7 @@ import {
   Eye,
   EyeOff,
   LayoutGrid,
+  Home,
 } from "lucide-react";
 
 export type ModelCategory = "STT" | "LLM" | "TTS";
@@ -452,6 +453,17 @@ export default function AiModelsManagementPage() {
 
           {/* Action buttons */}
           <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => router.push("/home")}
+              title="Return to Application Homepage"
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", height: "36px", fontWeight: 600, background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" }}
+            >
+              <Home size={15} style={{ color: "#2563eb" }} />
+              Homepage
+            </button>
+
             <button
               type="button"
               className="btn btn-secondary btn-sm"

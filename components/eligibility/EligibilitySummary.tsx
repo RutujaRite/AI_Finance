@@ -55,8 +55,8 @@ export const EligibilitySummary: React.FC<EligibilitySummaryProps> = ({
           <div className="hero-card foir-hero-card hero-emerald">
             <div className="hero-top-row">
               <div className="hero-badge">
-                <ShieldCheck size={15} />
-                <span>FOIR Based Eligibility</span>
+                <ShieldCheck size={14} />
+                <span>FOIR Based Limit</span>
               </div>
               <span className="method-pill">PV Standard</span>
             </div>
@@ -67,25 +67,19 @@ export const EligibilitySummary: React.FC<EligibilitySummaryProps> = ({
               </div>
               <div className="hero-sub-amount">
                 {result.foirEligibility >= 100000 ? `₹${(result.foirEligibility / 100000).toFixed(2)} Lakhs` : ''} 
-                <span className="exact-excel-note"> (Exact Excel: {formatIndianRupees(result.foirEligibility, true)})</span>
+                <span className="exact-excel-note"> (Excel PV)</span>
               </div>
             </div>
 
             <div className="hero-meta-strip">
               <div className="meta-item">
-                <span className="meta-lbl">Final Eligible:</span>
-                <span className="meta-val font-mono">{formatIndianRupees(result.finalEligibleEmi)}/mo</span>
+                <span className="meta-lbl">Eligible EMI:</span>
+                <span className="meta-val font-mono">₹{formatIndianRupees(result.finalEligibleEmi)}/mo</span>
               </div>
               <div className="meta-item">
                 <span className="meta-lbl">Terms:</span>
-                <span className="meta-val font-mono">{roiPercent}% p.a. • {tenureMonths}m</span>
+                <span className="meta-val font-mono">{roiPercent}% • {tenureMonths}m</span>
               </div>
-            </div>
-
-            <div className="hero-footer-status">
-              <span className="status-msg text-emerald-100">
-                <CheckCircle2 size={14} /> Approved for institutional loan sanction
-              </span>
             </div>
           </div>
 
@@ -93,8 +87,8 @@ export const EligibilitySummary: React.FC<EligibilitySummaryProps> = ({
           <div className="hero-card multiplier-hero-card">
             <div className="hero-top-row">
               <div className="hero-badge">
-                <Sparkles size={15} />
-                <span>Multiplier Based Eligibility</span>
+                <Sparkles size={14} />
+                <span>Multiplier Based Limit</span>
               </div>
               <span className="method-pill bg-blue-subtle text-blue-900">{multiplier}x Multiple</span>
             </div>
@@ -105,24 +99,19 @@ export const EligibilitySummary: React.FC<EligibilitySummaryProps> = ({
               </div>
               <div className="hero-sub-amount text-blue-700">
                 {result.multiplierEligibility >= 100000 ? `₹${(result.multiplierEligibility / 100000).toFixed(2)} Lakhs` : ''}
+                <span className="exact-excel-note text-blue-600"> (Policy Cap)</span>
               </div>
             </div>
 
             <div className="hero-meta-strip bg-blue-subtle">
               <div className="meta-item">
-                <span className="meta-lbl text-blue-800">Considered Salary:</span>
-                <span className="meta-val font-mono text-blue-950">{formatIndianRupees(result.consideredSalary)}</span>
+                <span className="meta-lbl text-blue-800">Considered Pay:</span>
+                <span className="meta-val font-mono text-blue-950">₹{formatIndianRupees(result.consideredSalary)}</span>
               </div>
               <div className="meta-item">
                 <span className="meta-lbl text-blue-800">Multiple:</span>
-                <span className="meta-val font-mono text-blue-950">{multiplier}x of Considered Pay</span>
+                <span className="meta-val font-mono text-blue-950">{multiplier}x Salary</span>
               </div>
-            </div>
-
-            <div className="hero-footer-status">
-              <span className="status-msg text-blue-800">
-                <CheckCircle2 size={14} /> Policy cap based on salary multiplier
-              </span>
             </div>
           </div>
         </div>
@@ -141,23 +130,23 @@ export const EligibilitySummary: React.FC<EligibilitySummaryProps> = ({
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 16px 20px;
+          padding: 8px 14px;
           border-bottom: 1px solid #e2e8f0;
           background: #ffffff;
           flex-wrap: wrap;
-          gap: 10px;
+          gap: 8px;
         }
 
         .hdr-left {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
         }
 
         .icon-wrapper {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
           background: #eff6ff;
           color: #2563eb;
           display: flex;
@@ -166,39 +155,39 @@ export const EligibilitySummary: React.FC<EligibilitySummaryProps> = ({
         }
 
         .section-title {
-          font-size: 1.05rem;
+          font-size: 0.95rem;
           font-weight: 700;
           color: #0f172a;
           margin: 0;
         }
 
         .section-subtitle {
-          font-size: 0.78rem;
+          font-size: 0.72rem;
           color: #64748b;
-          margin-top: 2px;
+          margin-top: 1px;
         }
 
         .salary-pill {
-          padding: 4px 10px;
+          padding: 2px 8px;
           border-radius: 9999px;
-          font-size: 0.78rem;
+          font-size: 0.72rem;
           background: #f1f5f9;
           border: 1px solid #e2e8f0;
           color: #334155;
         }
 
         .summary-content {
-          padding: 18px 20px;
+          padding: 8px 12px;
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 8px;
           background: #fafcff;
         }
 
         .highlight-cards-row {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 14px;
+          gap: 8px;
         }
 
         @media (max-width: 900px) {
@@ -208,11 +197,11 @@ export const EligibilitySummary: React.FC<EligibilitySummaryProps> = ({
         }
 
         .hero-card {
-          border-radius: 12px;
-          padding: 18px 20px;
+          border-radius: 10px;
+          padding: 9px 12px;
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 5px;
           transition: transform 0.15s ease;
         }
 
@@ -220,13 +209,13 @@ export const EligibilitySummary: React.FC<EligibilitySummaryProps> = ({
           background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
           border: 1px solid #047857;
           color: #ffffff;
-          box-shadow: 0 4px 14px -2px rgba(6, 78, 59, 0.35);
+          box-shadow: 0 2px 8px -1px rgba(6, 78, 59, 0.3);
         }
 
         .multiplier-hero-card {
           background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
           border: 1.5px solid #93c5fd;
-          box-shadow: 0 4px 14px -2px rgba(37, 99, 235, 0.15);
+          box-shadow: 0 2px 8px -1px rgba(37, 99, 235, 0.12);
         }
 
         .hero-top-row {
@@ -238,8 +227,8 @@ export const EligibilitySummary: React.FC<EligibilitySummaryProps> = ({
         .hero-badge {
           display: flex;
           align-items: center;
-          gap: 6px;
-          font-size: 0.78rem;
+          gap: 5px;
+          font-size: 0.74rem;
           font-weight: 700;
           letter-spacing: 0.02em;
         }
@@ -248,16 +237,16 @@ export const EligibilitySummary: React.FC<EligibilitySummaryProps> = ({
         .multiplier-hero-card .hero-badge { color: #1e40af; }
 
         .method-pill {
-          font-size: 0.7rem;
+          font-size: 0.68rem;
           font-weight: 700;
-          padding: 2px 8px;
+          padding: 1px 6px;
           border-radius: 9999px;
           background: rgba(255, 255, 255, 0.2);
           color: #ffffff;
         }
 
         .hero-main-amount {
-          font-size: 2.1rem;
+          font-size: 1.45rem;
           font-weight: 800;
           letter-spacing: -0.02em;
           line-height: 1.1;
@@ -266,32 +255,32 @@ export const EligibilitySummary: React.FC<EligibilitySummaryProps> = ({
         .hero-emerald .hero-main-amount { color: #ffffff; }
 
         .hero-sub-amount {
-          font-size: 0.88rem;
+          font-size: 0.74rem;
           font-weight: 600;
           opacity: 0.92;
-          margin-top: 3px;
+          margin-top: 1px;
         }
 
         .hero-emerald .hero-sub-amount { color: #a7f3d0; }
 
         .exact-excel-note {
-          font-size: 0.78rem;
+          font-size: 0.7rem;
           opacity: 0.85;
           font-family: monospace;
         }
 
         .hero-meta-strip {
-          border-radius: 8px;
-          padding: 8px 10px;
+          border-radius: 6px;
+          padding: 4px 8px;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          background: rgba(255, 255, 255, 0.1);
-          font-size: 0.76rem;
+          background: rgba(255, 255, 255, 0.12);
+          font-size: 0.72rem;
         }
 
         .multiplier-hero-card .hero-meta-strip {
-          background: rgba(255, 255, 255, 0.6);
+          background: rgba(255, 255, 255, 0.65);
         }
 
         .meta-item {

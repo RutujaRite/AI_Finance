@@ -14,6 +14,7 @@ import {
   Activity,
   Cpu,
   Bot,
+  Home,
 } from "lucide-react";
 
 export type StudioNavTab = "instructions" | "knowledge" | "demo" | "tokens" | "models" | "settings";
@@ -184,14 +185,24 @@ export default function StudioSidebar({
           </div>
         </div>
 
-        {/* Exit back to AI Assistant pinned to bottom-left */}
-        <Link
-          href="/home?section=assistant"
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-blue-50/80 border border-slate-200/80 hover:border-blue-200 transition shadow-xs"
-        >
-          <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
-          <span>Exit to AI Assistant</span>
-        </Link>
+        {/* Return to Homepage & Assistant links */}
+        <div className="flex flex-col gap-1.5">
+          <Link
+            href="/home"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50/80 hover:bg-blue-100/80 border border-blue-200/80 hover:border-blue-300 transition shadow-2xs no-underline"
+            title="Return to Application Homepage"
+          >
+            <Home className="w-3.5 h-3.5 text-blue-600" />
+            <span>Return to Homepage</span>
+          </Link>
+          <Link
+            href="/home?section=assistant"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition shadow-xs no-underline"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+            <span>Exit to AI Assistant</span>
+          </Link>
+        </div>
       </div>
     </div>
   );

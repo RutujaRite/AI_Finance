@@ -360,6 +360,16 @@ export default function AdminNavigationPage() {
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button
               type="button"
+              className="btn btn-sm"
+              onClick={() => router.push("/home")}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, height: "34px", fontSize: "0.8125rem", background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", fontWeight: 600 }}
+              title="Return to Application Homepage"
+            >
+              <Home size={14} style={{ color: "#2563eb" }} />
+              <span>Homepage</span>
+            </button>
+            <button
+              type="button"
               className="btn btn-secondary btn-sm"
               onClick={() => router.push("/admin")}
               style={{ display: "inline-flex", alignItems: "center", gap: 6, height: "34px", fontSize: "0.8125rem" }}

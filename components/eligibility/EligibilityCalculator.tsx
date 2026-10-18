@@ -278,25 +278,23 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
           </div>
         )}
 
-        {/* 2. CUSTOMER INFORMATION CARD (Collapsible) */}
+        {/* 1. CUSTOMER INFORMATION (Collapsible & Compact) */}
         <CustomerInformation
           customerInfo={customerInfo}
           onChange={handleCustomerInfoChange}
         />
 
-        {/* 3. LOAN DETAILS TABLE (Editable with dynamic totals) */}
+        {/* 2. LOAN DETAILS – ADD / EDIT / DELETE ROWS (Collapsible & Compact) */}
         <LoanDetailsTable
           loans={loans}
           onAddLoan={handleAddLoan}
           onUpdateLoan={handleUpdateLoan}
           onDeleteLoan={handleDeleteLoan}
-          onLoadSampleLoans={handleLoadSampleLoans}
-          onLoadExcelDemo={handleLoadExcelDemo}
           onClearLoans={handleClearLoans}
         />
 
-        {/* 4. ELIGIBILITY INTELLIGENCE (Large section with 2 columns) */}
-        <section className="eligibility-intelligence-section">
+        {/* 3. CALCULATION BENCHMARKS & ELIGIBILITY SUMMARY ATTACHED WITH AMORTIZATION ENGINE */}
+        <section className="eligibility-intelligence-section" id="engine-section">
           <div className="intelligence-grid">
             {/* LEFT SIDE: CALCULATION BENCHMARKS */}
             <div className="intelligence-col">
@@ -315,26 +313,27 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
               />
             </div>
 
-            {/* RIGHT SIDE: ELIGIBILITY SUMMARY & REPAYMENT SCHEDULE */}
+            {/* RIGHT SIDE: ELIGIBILITY SUMMARY ATTACHED WITH REPAYMENT SCHEDULE & AMORTIZATION ENGINE */}
             <div className="intelligence-col">
-              <EligibilitySummary
-                salary={salary}
-                foirPercent={foirPercent}
-                roiPercent={roiPercent}
-                tenureMonths={tenureMonths}
-                multiplier={multiplier}
-                result={eligibilityResult}
-              />
+              <div className="attached-engine-container">
+                <EligibilitySummary
+                  salary={salary}
+                  foirPercent={foirPercent}
+                  roiPercent={roiPercent}
+                  tenureMonths={tenureMonths}
+                  multiplier={multiplier}
+                  result={eligibilityResult}
+                />
 
-              {/* REPAYMENT SCHEDULE & AMORTIZATION ENGINE */}
-              <RepaymentSchedule
-                salary={salary}
-                foirPercent={foirPercent}
-                roiPercent={roiPercent}
-                tenureMonths={tenureMonths}
-                result={eligibilityResult}
-                customerInfo={customerInfo}
-              />
+                <RepaymentSchedule
+                  salary={salary}
+                  foirPercent={foirPercent}
+                  roiPercent={roiPercent}
+                  tenureMonths={tenureMonths}
+                  result={eligibilityResult}
+                  customerInfo={customerInfo}
+                />
+              </div>
             </div>
           </div>
         </section>
@@ -373,18 +372,18 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
           max-width: 1240px;
           width: 100%;
           margin: 0 auto;
-          padding: 24px 20px 40px 20px;
+          padding: 16px 20px 32px 20px;
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 12px;
           box-sizing: border-box;
           overflow-x: hidden;
         }
 
         @media (max-width: 640px) {
           .calculator-container {
-            padding: 16px 12px 32px 12px;
-            gap: 14px;
+            padding: 12px 10px 24px 10px;
+            gap: 10px;
           }
         }
 
@@ -423,7 +422,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
           background: #fffbeb;
           border: 1px solid #fde68a;
           border-radius: 10px;
-          padding: 10px 16px;
+          padding: 8px 14px;
           display: flex;
           align-items: center;
           gap: 12px;
@@ -451,6 +450,30 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
           color: #b45309;
         }
 
+        .attached-engine-container {
+          display: flex;
+          flex-direction: column;
+          border-radius: 12px;
+          border: 1px solid #e2e8f0;
+          background: #ffffff;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+          overflow: hidden;
+        }
+
+        :global(.attached-engine-container .summary-box) {
+          border: none !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          border-bottom: 1px solid #e2e8f0 !important;
+        }
+
+        :global(.attached-engine-container .repayment-section-card) {
+          border: none !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          margin-top: 0 !important;
+        }
+
         .eligibility-intelligence-section {
           width: 100%;
           max-width: 100%;
@@ -460,7 +483,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
         .intelligence-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 20px;
+          gap: 12px;
           align-items: start;
           width: 100%;
           max-width: 100%;
@@ -476,7 +499,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
         .intelligence-col {
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 12px;
           min-width: 0;
           max-width: 100%;
           box-sizing: border-box;

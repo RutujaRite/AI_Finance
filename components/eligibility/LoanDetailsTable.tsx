@@ -1,16 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Plus, 
   Trash2, 
-  FileSpreadsheet, 
   RotateCcw, 
   Layers, 
   ArrowRightLeft, 
   AlertCircle,
   HelpCircle,
-  CheckCircle2
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { LoanRow, BalanceTransferOption } from '@/lib/eligibility/eligibilityTypes';
 import { formatIndianRupees } from '@/lib/eligibility/calculateEligibility';
@@ -20,7 +21,7 @@ interface LoanDetailsTableProps {
   onAddLoan: () => void;
   onUpdateLoan: (id: string, field: keyof LoanRow, value: any) => void;
   onDeleteLoan: (id: string) => void;
-  onLoadSampleLoans: () => void;
+  onLoadSampleLoans?: () => void;
   onLoadExcelDemo?: () => void;
   onClearLoans: () => void;
 }
@@ -65,6 +66,8 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
   onLoadExcelDemo,
   onClearLoans,
 }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   // Compute totals dynamically
   const totalSanction = loans.reduce((acc, r) => acc + (Number(r.sanctionAmount) || 0), 0);
   const totalOutstanding = loans.reduce((acc, r) => acc + (Number(r.outstanding) || 0), 0);
@@ -86,12 +89,23 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
     <section className="card loan-table-card">
       {/* Table Header */}
       <div className="table-header-bar">
-        <div className="table-header-left">
+        <div 
+          className="table-header-left"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          role="button"
+          tabIndex={0}
+          style={{ cursor: 'pointer' }}
+        >
           <div className="icon-wrapper">
             <Layers size={18} />
           </div>
           <div>
-            <h2 className="card-title">Loan Details – Add / Edit / Delete Rows</h2>
+            <div className="title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <h2 className="card-title">Loan Details – Add / Edit / Delete Rows</h2>
+              <span className="badge-tag">
+                {loans.length} Loans (₹{formatIndianRupees(totalOngoingObligations)}/mo)
+              </span>
+            </div>
             <p className="card-subtitle">
               Existing credit lines, EMIs, and balance transfer takeover or self closure decisions
             </p>
@@ -99,28 +113,6 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
         </div>
 
         <div className="table-header-actions">
-          <button
-            type="button"
-            className="tbl-btn tbl-btn-secondary"
-            onClick={onLoadSampleLoans}
-            title="Load 3-loan demo case matching screenshot (₹1L Salary, Aditya Birla, HDFC, ICICI)"
-          >
-            <FileSpreadsheet size={15} />
-            <span>Screenshot 1 Demo (3 Loans)</span>
-          </button>
-
-          {onLoadExcelDemo && (
-            <button
-              type="button"
-              className="tbl-btn tbl-btn-secondary"
-              onClick={onLoadExcelDemo}
-              title="Load 5-loan case from Excel Sheet (₹1.5L Salary, ₹19,500 Ongoing, 72m)"
-            >
-              <FileSpreadsheet size={15} />
-              <span>Excel Sheet Case (5 Loans)</span>
-            </button>
-          )}
-
           {loans.length > 0 && (
             <button
               type="button"
@@ -128,7 +120,7 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
               onClick={onClearLoans}
               title="Remove all rows"
             >
-              <RotateCcw size={15} />
+              <RotateCcw size={14} />
               <span>Clear</span>
             </button>
           )}
@@ -139,30 +131,42 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
             className="tbl-btn tbl-btn-add"
             onClick={onAddLoan}
           >
-            <Plus size={16} />
+            <Plus size={15} />
             <span>Add New Row</span>
+          </button>
+
+          <button
+            type="button"
+            className="tbl-btn tbl-btn-collapse"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            title={isCollapsed ? 'Expand Table' : 'Collapse Table'}
+          >
+            {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+            <span>{isCollapsed ? 'Expand' : 'Collapse'}</span>
           </button>
         </div>
       </div>
 
-      {/* Guide tags strip */}
-      <div className="guide-tags-strip">
-        <span className="guide-tag tag-bt-no">
-          <strong>BT = &quot;No&quot;:</strong> Active obligation — EMI deducted from borrowing limit
-        </span>
-        <span className="guide-tag tag-bt-yes">
-          <strong>BT = &quot;Yes&quot;:</strong> Balance Transfer — Outstanding taken over; EMI freed up!
-        </span>
-        <span className="guide-tag tag-bt-closure">
-          <strong>BT = &quot;Self Closure&quot;:</strong> Closed by applicant — EMI freed up!
-        </span>
-      </div>
+      {!isCollapsed && (
+        <>
+          {/* Guide tags strip */}
+          <div className="guide-tags-strip">
+            <span className="guide-tag tag-bt-no">
+              <strong>BT = &quot;No&quot;:</strong> Active obligation — EMI deducted from borrowing limit
+            </span>
+            <span className="guide-tag tag-bt-yes">
+              <strong>BT = &quot;Yes&quot;:</strong> Balance Transfer — Outstanding taken over; EMI freed up!
+            </span>
+            <span className="guide-tag tag-bt-closure">
+              <strong>BT = &quot;Self Closure&quot;:</strong> Closed by applicant — EMI freed up!
+            </span>
+          </div>
 
-      {/* Responsive Table Scroll Container */}
-      <div className="table-container">
-        <table className="loan-table">
-          <thead>
-            <tr>
+          {/* Responsive Table Scroll Container */}
+          <div className="table-container">
+            <table className="loan-table">
+              <thead>
+                <tr>
               <th style={{ width: '34px', textAlign: 'center' }}>#</th>
               <th style={{ minWidth: '105px', width: '105px' }}>Open Date</th>
               <th style={{ minWidth: '110px' }}>Type</th>
@@ -189,9 +193,6 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
                     <div className="empty-btns">
                       <button type="button" className="tbl-btn tbl-btn-add" onClick={onAddLoan}>
                         <Plus size={15} /> Add First Row
-                      </button>
-                      <button type="button" className="tbl-btn tbl-btn-secondary" onClick={onLoadSampleLoans}>
-                        <FileSpreadsheet size={15} /> Load Demo Portfolio
                       </button>
                     </div>
                   </div>
@@ -383,6 +384,8 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
           )}
         </table>
       </div>
+      </>
+      )}
 
       <style jsx>{`
         .loan-table-card {
@@ -400,11 +403,11 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 14px 18px;
+          padding: 10px 16px;
           background: #ffffff;
           border-bottom: 1px solid #e2e8f0;
           flex-wrap: wrap;
-          gap: 12px;
+          gap: 10px;
           box-sizing: border-box;
         }
 
@@ -415,9 +418,9 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
         }
 
         .icon-wrapper {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
           background: #eff6ff;
           color: #2563eb;
           display: flex;
@@ -426,16 +429,26 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
         }
 
         .card-title {
-          font-size: 1.05rem;
+          font-size: 0.95rem;
           font-weight: 700;
           color: #0f172a;
           margin: 0;
         }
 
         .card-subtitle {
-          font-size: 0.78rem;
+          font-size: 0.75rem;
           color: #64748b;
-          margin-top: 2px;
+          margin-top: 1px;
+        }
+
+        .badge-tag {
+          font-size: 0.72rem;
+          font-weight: 600;
+          color: #0d9488;
+          background: rgba(13, 148, 136, 0.08);
+          border: 1px solid rgba(13, 148, 136, 0.2);
+          padding: 2px 8px;
+          border-radius: 6px;
         }
 
         .table-header-actions {
@@ -483,6 +496,18 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
           transform: translateY(-1px);
         }
 
+        .tbl-btn-collapse {
+          background: #f8fafc;
+          border-color: #cbd5e1;
+          color: #475569;
+        }
+
+        .tbl-btn-collapse:hover {
+          background: #f1f5f9;
+          color: #0f172a;
+          border-color: #94a3b8;
+        }
+
         .guide-tags-strip {
           display: flex;
           align-items: center;
@@ -524,6 +549,8 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
           max-width: 100%;
           box-sizing: border-box;
           overflow-x: auto;
+          max-height: 230px;
+          overflow-y: auto;
           overscroll-behavior-x: contain;
           -webkit-overflow-scrolling: touch;
         }
@@ -535,14 +562,17 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
         }
 
         .loan-table th {
+          position: sticky;
+          top: 0;
+          z-index: 2;
           background: #f1f5f9;
           color: #475569;
           font-weight: 700;
-          padding: 8px 8px;
+          padding: 7px 8px;
           text-align: left;
           border-bottom: 1.5px solid #cbd5e1;
           white-space: nowrap;
-          font-size: 0.75rem;
+          font-size: 0.74rem;
           letter-spacing: 0.01em;
           box-sizing: border-box;
         }

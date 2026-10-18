@@ -48,6 +48,11 @@ export const CustomerInformation: React.FC<CustomerInformationProps> = ({
             <div className="title-row">
               <h2 className="card-title">Customer Information</h2>
               <span className="badge-tag">Applicant Profile</span>
+              {isCollapsed && customerInfo.name && (
+                <span className="applicant-summary-chip font-mono">
+                  {customerInfo.name} • {customerInfo.mobile || 'No Mobile'} • {customerInfo.company || 'Salaried'} • CIBIL: {customerInfo.cibilScore || '750'}
+                </span>
+              )}
             </div>
             <p className="card-subtitle">
               Personal, KYC and employer identification details
@@ -187,7 +192,7 @@ export const CustomerInformation: React.FC<CustomerInformationProps> = ({
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 14px 20px;
+          padding: 10px 16px;
           background: #ffffff;
           cursor: pointer;
           user-select: none;
@@ -205,9 +210,9 @@ export const CustomerInformation: React.FC<CustomerInformationProps> = ({
         }
 
         .icon-wrapper {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
           background: #eff6ff;
           color: #2563eb;
           display: flex;
@@ -219,10 +224,11 @@ export const CustomerInformation: React.FC<CustomerInformationProps> = ({
           display: flex;
           align-items: center;
           gap: 8px;
+          flex-wrap: wrap;
         }
 
         .card-title {
-          font-size: 1.05rem;
+          font-size: 0.95rem;
           font-weight: 700;
           color: #0f172a;
           margin: 0;
@@ -238,10 +244,20 @@ export const CustomerInformation: React.FC<CustomerInformationProps> = ({
           border: 1px solid #e2e8f0;
         }
 
+        .applicant-summary-chip {
+          font-size: 0.72rem;
+          font-weight: 600;
+          color: #0d9488;
+          background: rgba(13, 148, 136, 0.08);
+          border: 1px solid rgba(13, 148, 136, 0.2);
+          padding: 2px 8px;
+          border-radius: 6px;
+        }
+
         .card-subtitle {
-          font-size: 0.78rem;
+          font-size: 0.75rem;
           color: #64748b;
-          margin-top: 2px;
+          margin-top: 1px;
         }
 
         .header-right {

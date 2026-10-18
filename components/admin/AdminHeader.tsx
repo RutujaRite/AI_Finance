@@ -16,6 +16,8 @@ import {
   Bot,
   Users,
   MessageSquare,
+  Calculator,
+  FileText,
 } from "lucide-react";
 
 interface BreadcrumbItem {
@@ -79,10 +81,10 @@ export default function AdminHeader({
   return (
     <>
       {/* 1. TOP NAVIGATION BAR */}
-      <header className="flex items-center justify-between h-16 px-6 border-b border-slate-300 bg-white text-slate-800 sticky top-0 z-30 font-sans shadow-2xs">
-        {/* Left: Brand Group */}
+      <header className="flex items-center justify-between h-16 px-4 sm:px-6 border-b border-slate-300 bg-white text-slate-800 sticky top-0 z-30 font-sans shadow-2xs">
+        {/* Left: Brand Group & Main App Quick Links */}
         <div className="flex items-center gap-3">
-          <Link href="/admin" className="flex items-center gap-3 no-underline group">
+          <Link href="/admin" className="flex items-center gap-3 no-underline group" title="CreditWise Admin Overview">
             {/* Logo Icon */}
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0 group-hover:scale-105 transition-transform">
               <ShieldCheck className="w-5 h-5 text-white" />
@@ -103,76 +105,100 @@ export default function AdminHeader({
               </span>
             </div>
           </Link>
+
+          {/* Quick Nav directly to Main App Workspace */}
+          <nav className="hidden lg:flex items-center gap-1 ml-4 pl-4 border-l border-slate-200 text-xs">
+            <Link
+              href="/home"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-semibold text-blue-700 hover:text-blue-800 hover:bg-blue-50 transition-colors no-underline"
+              title="Go to Application Homepage"
+            >
+              <Home className="w-3.5 h-3.5 text-blue-600" />
+              <span>Homepage</span>
+            </Link>
+            <Link
+              href="/home?section=assistant"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors no-underline"
+              title="AI Assistant"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+              <span>AI Assistant</span>
+            </Link>
+            <Link
+              href="/home?section=emi"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors no-underline"
+              title="EMI Calculator"
+            >
+              <Calculator className="w-3.5 h-3.5 text-slate-400" />
+              <span>EMI Calc</span>
+            </Link>
+            <Link
+              href="/home?section=eligibility"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors no-underline"
+              title="Eligibility Calculator"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
+              <span>Eligibility</span>
+            </Link>
+          </nav>
         </div>
 
         {/* Right: Actions Group */}
-        <div className="flex items-center gap-2.5">
-          {/* Back to Workspace button (hidden on root /admin overview page) */}
-          {showBackToWorkspace && (
-            <button
-              type="button"
-              onClick={() => router.push("/home?section=assistant")}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 rounded-lg transition-all cursor-pointer shadow-2xs"
-              title="Return to AI Assistant"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 text-slate-600" />
-              <span className="hidden xs:inline">Back to Workspace</span>
-            </button>
-          )}
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          {/* Prominent Direct "Homepage" Header Link */}
+          <Link
+            href="/home"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-semibold text-blue-700 hover:text-white bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 rounded-xl transition-all cursor-pointer shadow-2xs no-underline group"
+            title="Exit Admin & Go to Application Homepage"
+          >
+            <Home className="w-3.5 h-3.5 text-blue-600 group-hover:text-white transition-colors" />
+            <span className="font-semibold">Homepage</span>
+          </Link>
 
           {/* Quick Return to Dashboard if on a sub-page */}
           {title && (
             <Link
               href="/admin"
-              className="inline-flex items-center gap-1.5 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 rounded-lg px-3 py-1.5 text-xs font-medium no-underline transition-all shadow-2xs"
+              className="inline-flex items-center gap-1.5 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 rounded-xl px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-medium no-underline transition-all shadow-2xs"
+              title="Return to Admin Overview Dashboard"
             >
               <LayoutGrid className="w-3.5 h-3.5 text-slate-600" />
-              <span className="hidden md:inline">Overview</span>
+              <span className="hidden md:inline">Admin Overview</span>
             </Link>
           )}
 
-          {/* Search Icon button - 40x40px hit target */}
+          {/* Search Icon button */}
           <button
             type="button"
             onClick={() => router.push("/admin/company-search")}
             title="Company Search"
-            className="h-10 w-10 rounded-xl text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+            className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
           >
             <Search className="w-4 h-4" />
           </button>
 
-          {/* Notification Bell - 40x40px hit target with indicator dot */}
+          {/* Notification Bell */}
           <div className="relative">
             <button
               type="button"
               title="Notifications"
-              className="h-10 w-10 rounded-xl text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+              className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
             >
               <Bell className="w-4 h-4" />
             </button>
             <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-blue-600 ring-2 ring-white" />
           </div>
 
-          {/* Direct "Back to Home" / "Main App" Header Button */}
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 bg-white hover:bg-slate-50 border border-slate-300 hover:border-blue-400 rounded-xl transition-all cursor-pointer shadow-2xs no-underline"
-            title="Exit Admin & Go to Home"
-          >
-            <Home className="w-3.5 h-3.5 text-blue-600" />
-            <span className="hidden sm:inline">Back to Home</span>
-          </Link>
-
-          {/* Admin Profile Dropdown - 40px height hit target */}
+          {/* Admin Profile Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
               type="button"
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="h-10 rounded-xl flex items-center gap-2.5 px-2.5 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 transition-all cursor-pointer shadow-2xs"
+              className="h-9 sm:h-10 rounded-xl flex items-center gap-2 px-2 sm:px-2.5 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 transition-all cursor-pointer shadow-2xs"
               aria-label="User profile menu"
             >
               {/* Circular Avatar */}
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
                 {userInitial}
               </div>
 
@@ -209,29 +235,22 @@ export default function AdminHeader({
                   </div>
                 </div>
 
-                {/* Back to Home / Main App with subtle divider */}
-                <div className="py-1 border-b border-gray-100">
+                {/* Return directly to Homepage */}
+                <div className="py-1 border-b border-gray-100 bg-blue-50/40">
                   <Link
-                    href="/"
+                    href="/home"
                     onClick={() => setProfileDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2.5 text-slate-700 hover:text-blue-600 hover:bg-blue-50/60 text-xs font-semibold no-underline transition-colors"
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-blue-700 hover:bg-blue-100/70 text-xs font-semibold no-underline transition-colors"
                   >
                     <Home className="w-4 h-4 text-blue-600" />
-                    <span>Back to Home</span>
-                    <span className="ml-auto text-[10px] font-normal text-slate-400">Main App</span>
+                    <span>Return to Homepage</span>
+                    <span className="ml-auto text-[10px] font-medium bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Main App</span>
                   </Link>
                 </div>
 
-                <div className="py-1">
-                  <Link
-                    href="/admin"
-                    onClick={() => setProfileDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-50 text-xs font-medium no-underline transition-colors"
-                  >
-                    <LayoutGrid className="w-4 h-4 text-blue-600" />
-                    <span>Admin Dashboard</span>
-                  </Link>
-
+                {/* Core App Navigation Shortcuts */}
+                <div className="py-1 border-b border-gray-100">
+                  <div className="px-4 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Main Application</div>
                   <Link
                     href="/home?section=assistant"
                     onClick={() => setProfileDropdownOpen(false)}
@@ -239,6 +258,46 @@ export default function AdminHeader({
                   >
                     <MessageSquare className="w-4 h-4 text-emerald-600" />
                     <span>AI Assistant Workspace</span>
+                  </Link>
+
+                  <Link
+                    href="/home?section=emi"
+                    onClick={() => setProfileDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-50 text-xs font-medium no-underline transition-colors"
+                  >
+                    <Calculator className="w-4 h-4 text-indigo-600" />
+                    <span>EMI Calculator</span>
+                  </Link>
+
+                  <Link
+                    href="/home?section=eligibility"
+                    onClick={() => setProfileDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-50 text-xs font-medium no-underline transition-colors"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-blue-600" />
+                    <span>Eligibility Calculator</span>
+                  </Link>
+
+                  <Link
+                    href="/home?section=policies"
+                    onClick={() => setProfileDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-50 text-xs font-medium no-underline transition-colors"
+                  >
+                    <FileText className="w-4 h-4 text-amber-600" />
+                    <span>Bank Policies</span>
+                  </Link>
+                </div>
+
+                {/* Admin Management Shortcuts */}
+                <div className="py-1">
+                  <div className="px-4 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Admin Suite</div>
+                  <Link
+                    href="/admin"
+                    onClick={() => setProfileDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2 text-slate-700 hover:text-slate-900 hover:bg-slate-50 text-xs font-medium no-underline transition-colors"
+                  >
+                    <LayoutGrid className="w-4 h-4 text-blue-600" />
+                    <span>Admin Dashboard</span>
                   </Link>
 
                   <Link
@@ -278,17 +337,29 @@ export default function AdminHeader({
 
       {/* 2. BREADCRUMBS & PAGE HEADER SECTION (Optional / Sub-pages) */}
       {showBreadcrumbs && (title || breadcrumbs.length > 0) && (
-        <section className="bg-white border-b border-slate-300 px-6 sm:px-8 py-4 sm:py-5 font-sans shadow-xs">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <section className="bg-white border-b border-slate-300 px-4 sm:px-8 py-3.5 sm:py-4 font-sans shadow-xs">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
             <div className="min-w-0 flex-1">
-              {/* Breadcrumb Navigation */}
+              {/* Breadcrumb Navigation: Homepage > Admin Overview > Subpage */}
               <nav aria-label="Breadcrumb" className="flex items-center flex-wrap gap-1.5 text-xs text-slate-500 mb-1.5">
                 <Link
-                  href="/admin"
-                  className="text-blue-600 font-semibold inline-flex items-center gap-1 hover:underline no-underline"
+                  href="/home"
+                  className="text-blue-600 hover:text-blue-700 font-semibold inline-flex items-center gap-1 hover:underline no-underline"
+                  title="Return to Main Application Homepage"
                 >
-                  <Home className="w-3.5 h-3.5" />
-                  <span>Admin</span>
+                  <Home className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Homepage</span>
+                </Link>
+
+                <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
+
+                <Link
+                  href="/admin"
+                  className="text-slate-600 hover:text-blue-600 font-medium inline-flex items-center gap-1 hover:underline no-underline"
+                  title="Admin Dashboard Overview"
+                >
+                  <LayoutGrid className="w-3 h-3 text-slate-500" />
+                  <span>Admin Overview</span>
                 </Link>
 
                 <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
@@ -328,15 +399,26 @@ export default function AdminHeader({
               )}
             </div>
 
-            <div className="flex items-center flex-wrap gap-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => router.push("/admin")}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 shadow-2xs rounded-lg transition-all cursor-pointer"
+            <div className="flex items-center flex-wrap gap-2 shrink-0">
+              {/* Direct Homepage Button in Subpage Action Bar */}
+              <Link
+                href="/home"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-semibold text-blue-700 hover:text-white bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 shadow-2xs rounded-lg transition-all no-underline cursor-pointer group"
+                title="Return directly to Application Homepage"
               >
-                <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
-                <span>Back to Overview</span>
-              </button>
+                <Home className="w-3.5 h-3.5 text-blue-600 group-hover:text-white transition-colors" />
+                <span>Go to Homepage</span>
+              </Link>
+
+              {/* Back to Admin Overview */}
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 shadow-2xs rounded-lg transition-all no-underline cursor-pointer"
+                title="Return to Admin Overview"
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
+                <span>Admin Overview</span>
+              </Link>
 
               {actions}
             </div>

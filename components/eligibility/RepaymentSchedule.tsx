@@ -67,7 +67,7 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
   result,
   customerInfo,
 }) => {
-  const [activeTab, setActiveTab] = useState<'yearly' | 'monthly'>('yearly');
+  const [activeTab, setActiveTab] = useState<'yearly' | 'monthly' | 'chart'>('yearly');
   const [expandedYears, setExpandedYears] = useState<Record<number, boolean>>({ 1: true });
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewZoom, setPreviewZoom] = useState<number>(0.85);
@@ -301,15 +301,15 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
               {formatIndianRupees(monthlyEmi)}
               <span className="metric-period">/mo</span>
             </span>
-            <span className="metric-sub">{tenure} Monthly Installments</span>
+            <span className="metric-sub">{tenure} Months</span>
           </div>
 
           <div className="metric-box">
-            <span className="metric-lbl">Total Interest Amount</span>
+            <span className="metric-lbl">Total Interest</span>
             <span className="metric-val font-mono text-purple-700">
               {formatIndianRupees(totalInterest)}
             </span>
-            <span className="metric-sub">@ {roiPercent}% p.a. Amortized</span>
+            <span className="metric-sub">@ {roiPercent}% p.a.</span>
           </div>
 
           <div className="metric-box">
@@ -317,107 +317,19 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
             <span className="metric-val font-mono text-amber-700">
               {formatIndianRupees(totalProcessingFees)}
             </span>
-            <span className="metric-sub">1.0% Loan Amount + 18% GST</span>
+            <span className="metric-sub">1.0% + 18% GST</span>
           </div>
 
           <div className="metric-box highlight-box">
-            <span className="metric-lbl">Total Payment Amount</span>
+            <span className="metric-lbl">Total Payment</span>
             <span className="metric-val font-mono text-blue-800">
               {formatIndianRupees(totalPayment)}
             </span>
-            <span className="metric-sub">Principal + Interest + Fees</span>
+            <span className="metric-sub">Principal + Int + Fees</span>
           </div>
         </div>
 
-        {/* 3. Cost Breakdown Donut Chart */}
-        <div className="cost-breakdown-card">
-          <div className="breakdown-header">
-            <div className="breakdown-title-group">
-              <PieChartIcon size={16} className="text-blue-600" />
-              <span className="breakdown-title">EMI & Total Cost Breakdown</span>
-            </div>
-            <span className="badge-soft">Institutional Amortization Model</span>
-          </div>
-
-          <div className="breakdown-body">
-            <div className="mini-donut-wrapper">
-              <svg viewBox="0 0 160 160" className="mini-donut-svg">
-                {/* SVG Segments */}
-                {(() => {
-                  let accum = 0;
-                  return pieData.map((slice) => {
-                    const startP = accum;
-                    const frac = slice.value / totalPayment;
-                    const endP = accum + frac;
-                    accum = endP;
-
-                    if (frac >= 0.999) {
-                      return (
-                        <circle
-                          key={slice.id}
-                          cx="80"
-                          cy="80"
-                          r="55"
-                          stroke={slice.color}
-                          strokeWidth="24"
-                          fill="transparent"
-                        />
-                      );
-                    }
-
-                    const sAngle = startP * 2 * Math.PI - Math.PI / 2;
-                    const eAngle = endP * 2 * Math.PI - Math.PI / 2;
-
-                    const x1 = 80 + 64 * Math.cos(sAngle);
-                    const y1 = 80 + 64 * Math.sin(sAngle);
-                    const x2 = 80 + 64 * Math.cos(eAngle);
-                    const y2 = 80 + 64 * Math.sin(eAngle);
-
-                    const x3 = 80 + 42 * Math.cos(eAngle);
-                    const y3 = 80 + 42 * Math.sin(eAngle);
-                    const x4 = 80 + 42 * Math.cos(sAngle);
-                    const y4 = 80 + 42 * Math.sin(sAngle);
-
-                    const largeArc = frac > 0.5 ? 1 : 0;
-                    const d = `M ${x1} ${y1} A 64 64 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A 42 42 0 ${largeArc} 0 ${x4} ${y4} Z`;
-
-                    return (
-                      <path
-                        key={slice.id}
-                        d={d}
-                        fill={slice.color}
-                        className="pie-slice-path"
-                      />
-                    );
-                  });
-                })()}
-              </svg>
-              <div className="mini-donut-center">
-                <span className="center-amount font-mono">{formatLakhsCrores(totalPayment)}</span>
-                <span className="center-tag">Total Outflow</span>
-              </div>
-            </div>
-
-            <div className="breakdown-legend">
-              {pieData.map((item) => (
-                <div key={item.id} className="legend-row">
-                  <div className="legend-label-col">
-                    <span className="dot" style={{ backgroundColor: item.color }} />
-                    <span className="lbl-text">{item.label}</span>
-                  </div>
-                  <div className="legend-val-col font-mono">
-                    <span className="val-text">{formatIndianRupees(item.value)}</span>
-                    <span className="pct-badge" style={{ color: item.color, backgroundColor: `${item.color}15` }}>
-                      {item.percent}%
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 4. Schedule Table View Tabs (Yearly vs Monthly) */}
+        {/* 3. Schedule Table View Tabs (Yearly vs Monthly vs Donut) */}
         <div className="table-nav-row">
           <div className="tab-pills">
             <button
@@ -425,26 +337,125 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
               className={`tab-pill ${activeTab === 'yearly' ? 'active' : ''}`}
               onClick={() => setActiveTab('yearly')}
             >
-              <span>Yearly Summary ({yearSummaries.length} Years)</span>
+              <span>Yearly Summary ({yearSummaries.length}Y)</span>
             </button>
             <button
               type="button"
               className={`tab-pill ${activeTab === 'monthly' ? 'active' : ''}`}
               onClick={() => setActiveTab('monthly')}
             >
-              <span>Monthly Schedule (All {schedule.length} Months)</span>
+              <span>Monthly Schedule ({schedule.length}M)</span>
+            </button>
+            <button
+              type="button"
+              className={`tab-pill ${activeTab === 'chart' ? 'active' : ''}`}
+              onClick={() => setActiveTab('chart')}
+            >
+              <PieChartIcon size={13} />
+              <span>Cost Donut Chart</span>
             </button>
           </div>
 
           <span className="table-hint text-slate-500">
             {activeTab === 'yearly' 
-              ? 'Click any year row to inspect its 12-month breakdown' 
-              : 'Continuous month-by-month repayment breakdown'}
+              ? 'Click year row to expand 12-month breakdown' 
+              : activeTab === 'monthly'
+              ? 'Continuous month-by-month repayment breakdown'
+              : 'Principal vs Interest vs Fees distribution'}
           </span>
         </div>
 
-        {/* 5. Schedule Data Table */}
-        <div className="table-responsive">
+        {/* 4. Cost Breakdown Donut Chart (Displayed only on 'chart' tab) */}
+        {activeTab === 'chart' ? (
+          <div className="cost-breakdown-card">
+            <div className="breakdown-header">
+              <div className="breakdown-title-group">
+                <PieChartIcon size={15} className="text-blue-600" />
+                <span className="breakdown-title">EMI & Total Cost Breakdown</span>
+              </div>
+              <span className="badge-soft">Institutional Amortization Model</span>
+            </div>
+
+            <div className="breakdown-body">
+              <div className="mini-donut-wrapper">
+                <svg viewBox="0 0 160 160" className="mini-donut-svg">
+                  {/* SVG Segments */}
+                  {(() => {
+                    let accum = 0;
+                    return pieData.map((slice) => {
+                      const startP = accum;
+                      const frac = slice.value / totalPayment;
+                      const endP = accum + frac;
+                      accum = endP;
+
+                      if (frac >= 0.999) {
+                        return (
+                          <circle
+                            key={slice.id}
+                            cx="80"
+                            cy="80"
+                            r="55"
+                            stroke={slice.color}
+                            strokeWidth="24"
+                            fill="transparent"
+                          />
+                        );
+                      }
+
+                      const sAngle = startP * 2 * Math.PI - Math.PI / 2;
+                      const eAngle = endP * 2 * Math.PI - Math.PI / 2;
+
+                      const x1 = 80 + 64 * Math.cos(sAngle);
+                      const y1 = 80 + 64 * Math.sin(sAngle);
+                      const x2 = 80 + 64 * Math.cos(eAngle);
+                      const y2 = 80 + 64 * Math.sin(eAngle);
+
+                      const x3 = 80 + 42 * Math.cos(eAngle);
+                      const y3 = 80 + 42 * Math.sin(eAngle);
+                      const x4 = 80 + 42 * Math.cos(sAngle);
+                      const y4 = 80 + 42 * Math.sin(sAngle);
+
+                      const largeArc = frac > 0.5 ? 1 : 0;
+                      const d = `M ${x1} ${y1} A 64 64 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A 42 42 0 ${largeArc} 0 ${x4} ${y4} Z`;
+
+                      return (
+                        <path
+                          key={slice.id}
+                          d={d}
+                          fill={slice.color}
+                          className="pie-slice-path"
+                        />
+                      );
+                    });
+                  })()}
+                </svg>
+                <div className="mini-donut-center">
+                  <span className="center-amount font-mono">{formatLakhsCrores(totalPayment)}</span>
+                  <span className="center-tag">Total Outflow</span>
+                </div>
+              </div>
+
+              <div className="breakdown-legend">
+                {pieData.map((item) => (
+                  <div key={item.id} className="legend-row">
+                    <div className="legend-label-col">
+                      <span className="dot" style={{ backgroundColor: item.color }} />
+                      <span className="lbl-text">{item.label}</span>
+                    </div>
+                    <div className="legend-val-col font-mono">
+                      <span className="val-text">{formatIndianRupees(item.value)}</span>
+                      <span className="pct-badge" style={{ color: item.color, backgroundColor: `${item.color}15` }}>
+                        {item.percent}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* 5. Schedule Data Table */
+          <div className="table-responsive">
           {activeTab === 'yearly' ? (
             <div className="yearly-table-container">
               <table className="schedule-table">
@@ -539,6 +550,7 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* 6. Printable Continuum Report Container (Rendered off-screen for downloads and visible on window.print()) */}
@@ -662,30 +674,30 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
           border-radius: 14px;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
           overflow: hidden;
-          margin-top: 16px;
+          margin-top: 0;
         }
 
         .repayment-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 16px 20px;
+          padding: 8px 14px;
           border-bottom: 1px solid #e2e8f0;
           background: #ffffff;
           flex-wrap: wrap;
-          gap: 12px;
+          gap: 8px;
         }
 
         .hdr-left {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
         }
 
         .icon-wrapper {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
           background: #eff6ff;
           color: #2563eb;
           display: flex;
@@ -694,32 +706,32 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
         }
 
         .section-title {
-          font-size: 1.05rem;
+          font-size: 0.95rem;
           font-weight: 700;
           color: #0f172a;
           margin: 0;
         }
 
         .section-subtitle {
-          font-size: 0.78rem;
+          font-size: 0.72rem;
           color: #64748b;
-          margin-top: 2px;
+          margin-top: 1px;
         }
 
         .header-actions {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           flex-wrap: wrap;
         }
 
         .rep-btn {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          padding: 8px 14px;
-          border-radius: 8px;
-          font-size: 0.82rem;
+          gap: 5px;
+          padding: 5px 10px;
+          border-radius: 6px;
+          font-size: 0.74rem;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.16s ease;
@@ -768,28 +780,28 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
         }
 
         .repayment-content {
-          padding: 20px;
+          padding: 10px 14px;
           display: flex;
           flex-direction: column;
-          gap: 18px;
+          gap: 8px;
           background: #fafcff;
         }
 
         /* 2. Metrics Grid */
         .metrics-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-          gap: 12px;
+          grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+          gap: 8px;
         }
 
         .metric-box {
           background: #ffffff;
           border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 12px 14px;
+          border-radius: 8px;
+          padding: 6px 10px;
           display: flex;
           flex-direction: column;
-          gap: 3px;
+          gap: 1px;
         }
 
         .highlight-box {
@@ -798,7 +810,7 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
         }
 
         .metric-lbl {
-          font-size: 0.72rem;
+          font-size: 0.68rem;
           font-weight: 600;
           color: #64748b;
           text-transform: uppercase;
@@ -806,19 +818,19 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
         }
 
         .metric-val {
-          font-size: 1.15rem;
+          font-size: 1.02rem;
           font-weight: 800;
         }
 
         .metric-period {
-          font-size: 0.75rem;
+          font-size: 0.72rem;
           font-weight: 600;
           color: #64748b;
           margin-left: 2px;
         }
 
         .metric-sub {
-          font-size: 0.7rem;
+          font-size: 0.68rem;
           color: #64748b;
         }
 
@@ -1009,30 +1021,30 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
         .table-responsive {
           background: #ffffff;
           border: 1px solid #e2e8f0;
-          border-radius: 10px;
+          border-radius: 8px;
           overflow: hidden;
-          max-height: 440px;
+          max-height: 230px;
           overflow-y: auto;
         }
 
         .schedule-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 0.78rem;
+          font-size: 0.76rem;
         }
 
         .schedule-table thead {
           position: sticky;
           top: 0;
           background: #f8fafc;
-          border-bottom: 1px solid #cbd5e1;
+          border-bottom: 1.5px solid #cbd5e1;
           z-index: 10;
         }
 
         .schedule-table th {
-          padding: 10px 12px;
+          padding: 6px 8px;
           text-align: left;
-          font-size: 0.72rem;
+          font-size: 0.70rem;
           font-weight: 700;
           color: #475569;
           text-transform: uppercase;
@@ -1040,7 +1052,7 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
         }
 
         .schedule-table td {
-          padding: 9px 12px;
+          padding: 5px 8px;
           border-bottom: 1px solid #f1f5f9;
           color: #1e293b;
         }

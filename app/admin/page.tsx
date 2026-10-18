@@ -28,6 +28,9 @@ import {
   Sparkles,
   Bot,
   Home,
+  MessageSquare,
+  Calculator,
+  FileText,
 } from "lucide-react";
 
 interface DashboardStats {
@@ -229,14 +232,55 @@ export default function AdminDashboardPage() {
 
             <div className="flex items-center gap-2.5">
               <Link
-                href="/"
-                className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 bg-white hover:bg-slate-50 border border-slate-300 hover:border-blue-400 rounded-xl transition-all shadow-2xs no-underline cursor-pointer"
-                title="Return to main application home page"
+                href="/home"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-98 rounded-xl transition-all shadow-xs no-underline cursor-pointer group"
+                title="Return directly to application homepage"
               >
-                <Home className="w-4 h-4 text-blue-600" />
-                <span>Go to Home</span>
+                <Home className="w-4 h-4 text-white" />
+                <span>Return to Homepage</span>
               </Link>
             </div>
+          </div>
+        </section>
+
+        {/* Quick Return to Workspace Ribbon */}
+        <section className="mb-6 bg-white border border-slate-200/90 rounded-xl p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-slate-600">
+            <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+              <Home className="w-4 h-4 text-blue-600" />
+              Main Workspace:
+            </span>
+            <span className="hidden sm:inline text-slate-500">Jump directly to workspace calculators &amp; features</span>
+          </div>
+          <div className="flex items-center flex-wrap gap-2">
+            <Link
+              href="/home?section=assistant"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-lg font-medium transition-colors no-underline"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+              <span>AI Assistant</span>
+            </Link>
+            <Link
+              href="/home?section=emi"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-lg font-medium transition-colors no-underline"
+            >
+              <Calculator className="w-3.5 h-3.5 text-indigo-600" />
+              <span>EMI Calculator</span>
+            </Link>
+            <Link
+              href="/home?section=eligibility"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-lg font-medium transition-colors no-underline"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+              <span>Eligibility Calculator</span>
+            </Link>
+            <Link
+              href="/home?section=policies"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-lg font-medium transition-colors no-underline"
+            >
+              <FileText className="w-3.5 h-3.5 text-amber-600" />
+              <span>Bank Policies</span>
+            </Link>
           </div>
         </section>
 
