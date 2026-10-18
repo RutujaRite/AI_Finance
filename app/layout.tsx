@@ -5,6 +5,7 @@
 
 import type { Metadata } from "next";
 import Script from "next/script";
+import { cookies } from "next/headers";
 import "./globals.css";
 import RouteLoaderWrapper from "@/components/RouteLoaderWrapper";
 
@@ -124,13 +125,23 @@ const jsonLdSchema = {
   ]
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const themeCookie = cookieStore.get("theme")?.value;
+  const initialTheme = themeCookie === "dark" ? "dark" : "light";
+
   return (
-    <html lang="en" data-bs-theme="light" suppressHydrationWarning>
+    <html
+      lang="en"
+      data-bs-theme={initialTheme}
+      data-theme={initialTheme}
+      className={initialTheme === "dark" ? "dark" : ""}
+      suppressHydrationWarning
+    >
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -146,17 +157,29 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var saved = localStorage.getItem('theme');
-                  var theme = saved === 'dark' ? 'dark' : 'light';
-                  document.documentElement.setAttribute('data-bs-theme', theme);
-                  document.documentElement.setAttribute('data-theme', theme);
+                  var saved = localStorage.getItem('theme') || localStorage.getItem('finai-theme');
+                  if (!saved) {
+                    var m = document.cookie.match(/(?:^|; )theme=([^;]*)/);
+                    if (m) saved = decodeURIComponent(m[1]);
+                  }
+                  var t = (saved === 'dark') ? 'dark' : (saved === 'light' ? 'light' : null);
+                  if (!t) {
+                    t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+                  }
+                  document.documentElement.setAttribute('data-bs-theme', t);
+                  document.documentElement.setAttribute('data-theme', t);
+                  if (t === 'dark') {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
                 } catch(e) {}
               })();
             `,
           }}
         />
       </head>
-      <body className="bg-slate-50 text-slate-900 min-h-screen antialiased font-sans">
+      <body className="min-h-screen antialiased font-sans">
         {children}
         <RouteLoaderWrapper />
         <Script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js" strategy="lazyOnload" />

@@ -214,6 +214,14 @@ export default function HomePage() {
     localStorage.setItem('theme', nextTheme);
     document.documentElement.setAttribute('data-theme', nextTheme);
     document.documentElement.setAttribute('data-bs-theme', nextTheme);
+    if (nextTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    try {
+      document.cookie = `theme=${nextTheme}; path=/; max-age=31536000; SameSite=Lax`;
+    } catch (e) {}
   };
 
   // Auth Handlers

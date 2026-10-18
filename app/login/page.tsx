@@ -54,6 +54,14 @@ export default function LoginPage() {
       localStorage.setItem("finai-theme", next)
       document.documentElement.setAttribute("data-theme", next)
       document.documentElement.setAttribute("data-bs-theme", next)
+      if (next === "dark") {
+        document.documentElement.classList.add("dark")
+      } else {
+        document.documentElement.classList.remove("dark")
+      }
+      try {
+        document.cookie = `theme=${next}; path=/; max-age=31536000; SameSite=Lax`
+      } catch (e) {}
     }
   }
 

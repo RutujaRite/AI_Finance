@@ -186,3 +186,58 @@ export async function PUT(req: NextRequest) {
   conversations.set(id, existing);
   return NextResponse.json({ success: true });
 }
+
+export async function DELETE(req: NextRequest) {
+  const userId = await getAuthenticatedUserId(req);
+  if (!userId) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const client = await pool.connect();
+  try {
+    const userConvs = await client.query(
+      `SELECT id FROM assistant_conversations WHERE user_id = $1`,
+      [userId]
+    );
+    const convIds = userConvs.rows.map((r: any) => Number(r.id)).filter(Number.isFinite);
+
+    if (convIds.length > 0) {
+      const convIdStrs = convIds.map(String);
+      try {
+        await client.query(
+          `DELETE FROM assistant_conversation_states WHERE conversation_id = ANY($1::varchar[])`,
+          [convIdStrs]
+        );
+      } catch (stateErr) {
+        console.warn("Could not batch delete assistant_conversation_states:", stateErr);
+      }
+
+      await client.query(
+        `DELETE FROM assistant_messages WHERE conversation_id = ANY($1::int[])`,
+        [convIds]
+      );
+      await client.query(
+        `DELETE FROM assistant_conversations WHERE user_id = $1`,
+        [userId]
+      );
+
+      try {
+        const { clearEligibilityState } = await import("@/lib/dynamicEligibilityEngine");
+        for (const id of convIds) {
+          await clearEligibilityState(String(id));
+        }
+      } catch {}
+
+      for (const id of convIds) {
+        conversations.delete(String(id));
+      }
+    }
+
+    return NextResponse.json({ success: true, count: convIds.length });
+  } catch (err: any) {
+    console.error("Clear all conversations error:", err);
+    return NextResponse.json({ success: false, error: "Failed to clear conversations" }, { status: 500 });
+  } finally {
+    client.release();
+  }
+}

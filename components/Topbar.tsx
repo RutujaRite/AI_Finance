@@ -64,11 +64,20 @@ export default function Topbar({
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const current =
+      const saved =
+        (localStorage.getItem("theme") as "light" | "dark") ||
+        (localStorage.getItem("finai-theme") as "light" | "dark") ||
         (document.documentElement.getAttribute("data-theme") as "light" | "dark") ||
         (document.documentElement.getAttribute("data-bs-theme") as "light" | "dark") ||
         "light"
-      setTheme(current)
+      setTheme(saved)
+      document.documentElement.setAttribute("data-theme", saved)
+      document.documentElement.setAttribute("data-bs-theme", saved)
+      if (saved === "dark") {
+        document.documentElement.classList.add("dark")
+      } else {
+        document.documentElement.classList.remove("dark")
+      }
     }
 
     const closeDropdown = () => {
@@ -98,9 +107,15 @@ export default function Topbar({
     if (typeof document !== "undefined") {
       document.documentElement.setAttribute("data-theme", nextTheme)
       document.documentElement.setAttribute("data-bs-theme", nextTheme)
+      if (nextTheme === "dark") {
+        document.documentElement.classList.add("dark")
+      } else {
+        document.documentElement.classList.remove("dark")
+      }
       try {
         localStorage.setItem("theme", nextTheme)
         localStorage.setItem("finai-theme", nextTheme)
+        document.cookie = `theme=${nextTheme}; path=/; max-age=31536000; SameSite=Lax`
       } catch (e) {}
     }
   }

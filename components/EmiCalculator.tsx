@@ -29,6 +29,11 @@ import {
   RotateCcw,
   ListFilter,
   FileSpreadsheet,
+  FolderClock,
+  Search,
+  Trash2,
+  ArrowRightCircle,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function EmiCalculator({
@@ -53,10 +58,16 @@ export default function EmiCalculator({
   const [schedule, setSchedule] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // Client Details Save Modal State
+  // Saved Calculations State
+  const [savedCalculations, setSavedCalculations] = useState<any[]>([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+  const [savedDrawerOpen, setSavedDrawerOpen] = useState(false);
+  const [savedSearchQuery, setSavedSearchQuery] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // Save Modal State
   const [saveModalOpen, setSaveModalOpen] = useState(false);
-  const [clientName, setClientName] = useState("");
-  const [clientPhone, setClientPhone] = useState("");
+  const [calculationName, setCalculationName] = useState("");
   const [saveError, setSaveError] = useState("");
   const [saveSuccessToast, setSaveSuccessToast] = useState<string | null>(null);
 
@@ -138,24 +149,39 @@ export default function EmiCalculator({
     setSchedule(rows);
   }
 
+  async function fetchSavedCalculations() {
+    try {
+      setLoadingSaved(true);
+      const res = await fetch("/api/emi/saved");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.calculations)) {
+          setSavedCalculations(data.calculations);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch saved calculations", e);
+    } finally {
+      setLoadingSaved(false);
+    }
+  }
+
+  useEffect(() => {
+    if (user) {
+      fetchSavedCalculations();
+    }
+  }, [user]);
+
   function openSaveModal() {
     setSaveError("");
+    const defaultName = `${loanType} • ₹${formatWholeMoney(principal)} - #${savedCalculations.length + 1}`;
+    setCalculationName(defaultName);
     setSaveModalOpen(true);
   }
 
   async function handleConfirmSave(e?: React.FormEvent) {
     if (e) e.preventDefault();
-    const trimmedName = clientName.trim();
-    const trimmedPhone = clientPhone.trim();
-
-    if (!trimmedName) {
-      setSaveError("Please enter the client's full name.");
-      return;
-    }
-    if (!trimmedPhone || trimmedPhone.length < 8) {
-      setSaveError("Please enter a valid client contact number.");
-      return;
-    }
+    const trimmedName = calculationName.trim() || `${loanType} • ₹${formatWholeMoney(principal)}`;
 
     setSaving(true);
     setSaveError("");
@@ -173,8 +199,7 @@ export default function EmiCalculator({
         totalPayment,
         processingFeeAmount: processingFee,
         schedule,
-        clientName: trimmedName,
-        clientPhone: trimmedPhone,
+        calculationName: trimmedName,
       };
 
       const res = await fetch("/api/emi/save", {
@@ -187,9 +212,9 @@ export default function EmiCalculator({
 
       if (res.ok && data?.success) {
         setSaveModalOpen(false);
-        setClientName("");
-        setClientPhone("");
-        setSaveSuccessToast(`Assessment saved for ${trimmedName}!`);
+        setCalculationName("");
+        await fetchSavedCalculations();
+        setSaveSuccessToast(data.message || `Calculation saved as "${trimmedName}"!`);
         setTimeout(() => setSaveSuccessToast(null), 4000);
       } else {
         setSaveError(data?.error || "Failed to save calculation. Please try again.");
@@ -201,23 +226,67 @@ export default function EmiCalculator({
     }
   }
 
-  function printSchedule() {
-    const data = computeAndRender();
+  function loadCalculation(calc: any) {
+    if (!calc) return;
+    setLoanType(calc.loanType || "Personal Loan");
+    setPrincipal(Number(calc.principal) || 500000);
+    setRate(Number(calc.annualRate) || 9.5);
+    setFee(Number(calc.feePercent) || 0.5);
+    if (calc.monthsOrYears === "years") {
+      setTermUnit("years");
+      setTerm(Math.max(1, Math.round((Number(calc.termMonths) || 60) / 12)));
+    } else {
+      setTermUnit("months");
+      setTerm(Number(calc.termMonths) || 60);
+    }
+    setSavedDrawerOpen(false);
+    setSaveSuccessToast(`Loaded "${calc.calculationName}" into calculator`);
+    setTimeout(() => setSaveSuccessToast(null), 3000);
+  }
+
+  async function handleDeleteSaved(id: number, name: string) {
+    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+    try {
+      setDeletingId(id);
+      const res = await fetch(`/api/emi/saved?id=${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.success) {
+        setSavedCalculations((prev) => prev.filter((c) => c.id !== id));
+        setSaveSuccessToast(`Deleted "${name}"`);
+        setTimeout(() => setSaveSuccessToast(null), 3000);
+      } else {
+        alert(data?.error || "Failed to delete calculation");
+      }
+    } catch {
+      alert("Network error while deleting");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  function printSchedule(targetData?: any) {
+    const data = targetData || computeAndRender();
     const printWindow = window.open("", "emi-print-preview", "width=1100,height=800");
     if (!printWindow) {
       alert("Please allow pop-ups to print the schedule.");
       return;
     }
 
+    const calcTitle = data.calculationName
+      ? `CreditWise Loan Statement • ${data.calculationName}`
+      : "CreditWise Loan Amortization Schedule";
+
     const details = [
+      ["Calculation Name", data.calculationName || data.loanType || "EMI Assessment"],
       ["Loan Amount Disbursed", "₹" + formatWholeMoney(data.principal)],
-      ["Current Interest (%)", Number(data.annualRate).toFixed(2)],
-      ["Processing Fee", "₹" + formatWholeMoney(data.processingFeeAmount)],
+      ["Current Interest (%)", Number(data.annualRate).toFixed(2) + "%"],
+      ["Processing Fee", "₹" + formatWholeMoney(data.processingFeeAmount || 0)],
       ["Frequency", "Monthly"],
-      ["Loan Type", data.loanType],
+      ["Loan Type", data.loanType || "Personal Loan"],
       ["Tenure", `${data.termMonths} Months (${(data.termMonths / 12).toFixed(1)} Yrs)`],
       ["Monthly EMI", "₹" + formatMoney(data.emi, 2)],
       ["Total Interest", "₹" + formatMoney(data.totalInterest, 2)],
+      ["Total Payment", "₹" + formatMoney(data.totalPayment || (Number(data.principal) + Number(data.totalInterest)), 2)],
     ];
 
     const detailMarkup = details
@@ -227,9 +296,11 @@ export default function EmiCalculator({
       )
       .join("");
 
-    const scheduleRows = schedule
+    const activeSchedule = Array.isArray(data.schedule) && data.schedule.length > 0 ? data.schedule : schedule;
+
+    const scheduleRows = activeSchedule
       .map(
-        (r) =>
+        (r: any) =>
           `<tr>
             <td style="text-align:center;font-weight:bold;color:#2563EB">#${r.month}</td>
             <td style="text-align:right">₹${formatMoney(r.emi, 2)}</td>
@@ -241,8 +312,12 @@ export default function EmiCalculator({
       .join("");
 
     const documentHtml =
-      '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Loan Amortization Schedule</title><style>' +
-      '@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#0F172A;font-family:Arial,sans-serif;background:#fff}.print-page{max-width:1120px;margin:0 auto;padding:18px 22px}.print-title{margin:0 0 16px;color:#2563EB;font-size:24px;font-weight:700;text-align:center}.loan-details{margin-bottom:20px;border:2px solid #2563EB;border-radius:8px}.loan-details-heading{margin:-14px auto 10px;width:max-content;padding:0 16px;color:#2563EB;background:#fff;font-size:16px;text-align:center;font-weight:700}.details-grid{display:grid;grid-template-columns:1fr 1fr}.detail-item{display:grid;grid-template-columns:220px 20px 1fr;padding:10px 14px;border-bottom:1px solid #E2E8F0;align-items:center;font-size:14px}.detail-item:nth-child(odd){border-right:1px solid #E2E8F0}.detail-item:nth-last-child(-n+2){border-bottom:0}.detail-label{color:#475569}.detail-value{font-weight:600}.schedule-title{margin:0 0 10px;color:#0F172A;font-size:18px;font-weight:700}.schedule-table{width:100%;border-collapse:collapse;font-size:12px}.schedule-table th{padding:8px 10px;color:#fff;background:#2563EB;text-align:right}.schedule-table th:first-child{text-align:center}.schedule-table td{padding:7px 10px;border-bottom:1px solid #E2E8F0}.schedule-table tbody tr:nth-child(even){background:#F8FAFC}@media print{.print-page{padding:0}.loan-details{break-inside:avoid}.schedule-table thead{display:table-header-group}}</style></head><body><main class="print-page"><h1 class="print-title">CreditWise Loan Amortization Schedule</h1><section class="loan-details"><div class="loan-details-heading">Loan Assessment Summary</div><div class="details-grid">' +
+      '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>' +
+      calcTitle +
+      '</title><style>' +
+      '@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#0F172A;font-family:Arial,sans-serif;background:#fff}.print-page{max-width:1120px;margin:0 auto;padding:18px 22px}.print-title{margin:0 0 16px;color:#2563EB;font-size:24px;font-weight:700;text-align:center}.loan-details{margin-bottom:20px;border:2px solid #2563EB;border-radius:8px}.loan-details-heading{margin:-14px auto 10px;width:max-content;padding:0 16px;color:#2563EB;background:#fff;font-size:16px;text-align:center;font-weight:700}.details-grid{display:grid;grid-template-columns:1fr 1fr}.detail-item{display:grid;grid-template-columns:220px 20px 1fr;padding:10px 14px;border-bottom:1px solid #E2E8F0;align-items:center;font-size:14px}.detail-item:nth-child(odd){border-right:1px solid #E2E8F0}.detail-item:nth-last-child(-n+2){border-bottom:0}.detail-label{color:#475569}.detail-value{font-weight:600}.schedule-title{margin:0 0 10px;color:#0F172A;font-size:18px;font-weight:700}.schedule-table{width:100%;border-collapse:collapse;font-size:12px}.schedule-table th{padding:8px 10px;color:#fff;background:#2563EB;text-align:right}.schedule-table th:first-child{text-align:center}.schedule-table td{padding:7px 10px;border-bottom:1px solid #E2E8F0}.schedule-table tbody tr:nth-child(even){background:#F8FAFC}@media print{.print-page{padding:0}.loan-details{break-inside:avoid}.schedule-table thead{display:table-header-group}}</style></head><body><main class="print-page"><h1 class="print-title">' +
+      calcTitle +
+      '</h1><section class="loan-details"><div class="loan-details-heading">Loan Assessment Summary</div><div class="details-grid">' +
       detailMarkup +
       '</div></section><h2 class="schedule-title">Month-by-Month Amortization Schedule</h2><table class="schedule-table"><thead><tr><th>Month</th><th>EMI (₹)</th><th>Principal (₹)</th><th>Interest (₹)</th><th>Remaining Balance (₹)</th></tr></thead><tbody>' +
       scheduleRows +
@@ -405,6 +480,42 @@ export default function EmiCalculator({
 
             {/* Header Right Action Group */}
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <button
+                type="button"
+                onClick={() => setSavedDrawerOpen(true)}
+                title="View, download, and manage saved calculations"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "5px 11px",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  borderRadius: "6px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  color: "var(--ink)",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <FolderClock size={14} style={{ color: "var(--accent)" }} />
+                <span>Saved Calculations</span>
+                <span
+                  style={{
+                    fontSize: "0.6875rem",
+                    padding: "1px 6px",
+                    borderRadius: "10px",
+                    background: savedCalculations.length >= 10 ? "rgba(239, 68, 68, 0.15)" : "var(--surface-2)",
+                    color: savedCalculations.length >= 10 ? "#ef4444" : "var(--accent)",
+                    fontWeight: 700,
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  {savedCalculations.length}/10
+                </span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleReset}
@@ -1600,35 +1711,36 @@ export default function EmiCalculator({
         </div>
       </div>
 
-      {/* 3. Client Name & Phone Number Save Modal */}
+
+      {/* 1. Save Calculation Modal */}
       {saveModalOpen && (
         <div
+          className="modal-backdrop"
           style={{
             position: "fixed",
             inset: 0,
+            background: "rgba(0, 0, 0, 0.6)",
+            backdropFilter: "blur(2px)",
             zIndex: 9999,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             padding: "16px",
-            background: "rgba(0, 0, 0, 0.65)",
-            backdropFilter: "blur(4px)",
           }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setSaveModalOpen(false);
-          }}
+          onClick={() => setSaveModalOpen(false)}
         >
           <div
             style={{
               width: "100%",
               maxWidth: "460px",
               background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: "12px",
-              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3)",
               color: "var(--ink)",
+              borderRadius: "12px",
+              border: "1px solid var(--border)",
+              boxShadow: "var(--shadow-xl)",
               overflow: "hidden",
             }}
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div
@@ -1644,7 +1756,7 @@ export default function EmiCalculator({
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <BookmarkCheck size={18} style={{ color: "var(--accent)" }} />
                 <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 700 }}>
-                  Save Assessment to System
+                  Save EMI Calculation
                 </h3>
               </div>
               <button
@@ -1672,7 +1784,7 @@ export default function EmiCalculator({
                   borderRadius: "8px",
                   background: "rgba(13, 148, 136, 0.08)",
                   border: "1px solid rgba(13, 148, 136, 0.2)",
-                  marginBottom: "14px",
+                  marginBottom: "12px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -1697,6 +1809,34 @@ export default function EmiCalculator({
                 </div>
               </div>
 
+              {/* 10/10 Storage Capacity Notice */}
+              {savedCalculations.length >= 10 && (
+                <div
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: "8px",
+                    background: "rgba(245, 158, 11, 0.12)",
+                    border: "1px solid rgba(245, 158, 11, 0.35)",
+                    color: "var(--warning, #d97706)",
+                    fontSize: "0.75rem",
+                    marginBottom: "14px",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "8px",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: "2px" }} />
+                  <div>
+                    <strong>Storage limit reached (10/10)</strong>
+                    <div style={{ fontSize: "0.6875rem", opacity: 0.9, marginTop: "2px" }}>
+                      Saving will automatically replace your oldest calculation (
+                      <em>{savedCalculations[savedCalculations.length - 1]?.calculationName || "Oldest item"}</em>).
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {saveError && (
                 <div
                   style={{
@@ -1714,57 +1854,10 @@ export default function EmiCalculator({
                 </div>
               )}
 
-              {/* Input 1: Client Full Name */}
-              <div style={{ marginBottom: "12px" }}>
-                <label
-                  htmlFor="clientNameInput"
-                  style={{
-                    display: "block",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    color: "var(--ink)",
-                    marginBottom: "4px",
-                  }}
-                >
-                  Client Full Name <span style={{ color: "#ef4444" }}>*</span>
-                </label>
-                <div style={{ position: "relative" }}>
-                  <User
-                    size={14}
-                    style={{
-                      position: "absolute",
-                      left: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "var(--ink-muted)",
-                    }}
-                  />
-                  <input
-                    id="clientNameInput"
-                    type="text"
-                    required
-                    placeholder="e.g. Rajesh Kumar"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "8px 10px 8px 30px",
-                      borderRadius: "6px",
-                      border: "1px solid var(--border)",
-                      background: "var(--surface-2)",
-                      color: "var(--ink)",
-                      fontSize: "0.8125rem",
-                      outline: "none",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Input 2: Client Phone Number */}
+              {/* Calculation Name Input */}
               <div style={{ marginBottom: "16px" }}>
                 <label
-                  htmlFor="clientPhoneInput"
+                  htmlFor="calcNameInput"
                   style={{
                     display: "block",
                     fontSize: "0.75rem",
@@ -1773,10 +1866,10 @@ export default function EmiCalculator({
                     marginBottom: "4px",
                   }}
                 >
-                  Client Contact Number <span style={{ color: "#ef4444" }}>*</span>
+                  Calculation Name / Tag <span style={{ color: "#ef4444" }}>*</span>
                 </label>
                 <div style={{ position: "relative" }}>
-                  <Phone
+                  <BookmarkCheck
                     size={14}
                     style={{
                       position: "absolute",
@@ -1787,12 +1880,12 @@ export default function EmiCalculator({
                     }}
                   />
                   <input
-                    id="clientPhoneInput"
-                    type="tel"
+                    id="calcNameInput"
+                    type="text"
                     required
-                    placeholder="e.g. 9876543210"
-                    value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
+                    placeholder="e.g. Dream Home 50L, Car Loan Option 1"
+                    value={calculationName}
+                    onChange={(e) => setCalculationName(e.target.value)}
                     style={{
                       width: "100%",
                       padding: "8px 10px 8px 30px",
@@ -1814,7 +1907,7 @@ export default function EmiCalculator({
                     display: "block",
                   }}
                 >
-                  Used to look up this assessment under your client records.
+                  A unique, recognizable label to identify and reload this calculation later.
                 </span>
               </div>
 
@@ -1886,6 +1979,348 @@ export default function EmiCalculator({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Saved Calculations Slide-over Drawer */}
+      {savedDrawerOpen && (
+        <div
+          className="modal-backdrop"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.65)",
+            backdropFilter: "blur(4px)",
+            zIndex: 9999,
+            display: "flex",
+            justifyContent: "flex-end",
+          }}
+          onClick={() => setSavedDrawerOpen(false)}
+        >
+          <div
+            style={{
+              width: "min(540px, 100vw)",
+              height: "100%",
+              background: "var(--surface)",
+              color: "var(--ink)",
+              borderLeft: "1px solid var(--border)",
+              boxShadow: "var(--shadow-xl)",
+              display: "flex",
+              flexDirection: "column",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "16px 20px",
+                borderBottom: "1px solid var(--border)",
+                background: "var(--surface-2)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <FolderClock size={20} style={{ color: "var(--accent)" }} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "var(--ink)" }}>
+                    Saved Calculations
+                  </h3>
+                  <span style={{ fontSize: "0.75rem", color: "var(--ink-muted)" }}>
+                    {savedCalculations.length}/10 stored • Oldest replaced automatically on limit
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSavedDrawerOpen(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--ink-muted)",
+                  cursor: "pointer",
+                  padding: "6px",
+                  display: "flex",
+                  borderRadius: "6px",
+                }}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Search and Storage Bar */}
+            <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
+              <div style={{ position: "relative", marginBottom: "8px" }}>
+                <Search
+                  size={14}
+                  style={{
+                    position: "absolute",
+                    left: "10px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--ink-muted)",
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Search saved calculations by name..."
+                  value={savedSearchQuery}
+                  onChange={(e) => setSavedSearchQuery(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px 8px 32px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface-2)",
+                    color: "var(--ink)",
+                    fontSize: "0.8125rem",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+                {savedSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSavedSearchQuery("")}
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      color: "var(--ink-muted)",
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+
+              {/* Storage capacity bar */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "0.6875rem", color: "var(--ink-muted)", marginBottom: "4px" }}>
+                <span>Storage capacity</span>
+                <span style={{ fontWeight: 600, color: savedCalculations.length >= 10 ? "#ef4444" : "var(--ink)" }}>
+                  {savedCalculations.length} of 10 slots used
+                </span>
+              </div>
+              <div style={{ width: "100%", height: "4px", background: "var(--border)", borderRadius: "2px", overflow: "hidden" }}>
+                <div
+                  style={{
+                    width: `${(savedCalculations.length / 10) * 100}%`,
+                    height: "100%",
+                    background: savedCalculations.length >= 10 ? "#ef4444" : "var(--accent)",
+                    transition: "width 0.3s ease",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Calculations List */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
+              {loadingSaved ? (
+                <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--ink-muted)" }}>
+                  <div
+                    style={{
+                      width: "24px",
+                      height: "24px",
+                      border: "2px solid var(--border)",
+                      borderTopColor: "var(--accent)",
+                      borderRadius: "50%",
+                      animation: "spin 0.8s linear infinite",
+                      margin: "0 auto 10px auto",
+                    }}
+                  />
+                  <span>Loading calculations...</span>
+                </div>
+              ) : savedCalculations.filter((c: any) =>
+                  (c.calculationName || "").toLowerCase().includes(savedSearchQuery.toLowerCase()) ||
+                  (c.loanType || "").toLowerCase().includes(savedSearchQuery.toLowerCase())
+                ).length === 0 ? (
+                <div style={{ textAlign: "center", padding: "48px 20px", color: "var(--ink-muted)" }}>
+                  <FolderClock size={36} style={{ margin: "0 auto 12px auto", opacity: 0.4 }} />
+                  <p style={{ margin: "0 0 6px 0", fontWeight: 600, color: "var(--ink)", fontSize: "0.9375rem" }}>
+                    {savedSearchQuery ? "No matching calculations found" : "No saved calculations yet"}
+                  </p>
+                  <p style={{ margin: 0, fontSize: "0.75rem", maxWidth: "280px", marginInline: "auto" }}>
+                    {savedSearchQuery
+                      ? "Try searching with a different term."
+                      : "Click 'Save Calculation' in the toolbar to bookmark your EMI assessments here."}
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {savedCalculations
+                    .filter((c: any) =>
+                      (c.calculationName || "").toLowerCase().includes(savedSearchQuery.toLowerCase()) ||
+                      (c.loanType || "").toLowerCase().includes(savedSearchQuery.toLowerCase())
+                    )
+                    .map((calc: any) => (
+                      <div
+                        key={calc.id}
+                        style={{
+                          padding: "14px 16px",
+                          borderRadius: "10px",
+                          background: "var(--surface-2)",
+                          border: "1px solid var(--border)",
+                          transition: "all 0.15s ease",
+                          boxShadow: "var(--shadow-xs)",
+                        }}
+                      >
+                        {/* Top Row: Name and Date */}
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px", marginBottom: "8px" }}>
+                          <div>
+                            <h4 style={{ margin: 0, fontSize: "0.875rem", fontWeight: 700, color: "var(--ink)", lineHeight: 1.3 }}>
+                              {calc.calculationName}
+                            </h4>
+                            <span style={{ fontSize: "0.6875rem", color: "var(--ink-muted)" }}>
+                              Saved {new Date(calc.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          <span
+                            style={{
+                              fontSize: "0.6875rem",
+                              fontWeight: 600,
+                              padding: "2px 8px",
+                              borderRadius: "12px",
+                              background: "rgba(13, 148, 136, 0.1)",
+                              color: "var(--accent)",
+                              border: "1px solid rgba(13, 148, 136, 0.2)",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {calc.loanType}
+                          </span>
+                        </div>
+
+                        {/* Financial Metrics Grid */}
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: "8px",
+                            padding: "10px 12px",
+                            borderRadius: "8px",
+                            background: "var(--surface)",
+                            border: "1px solid var(--border)",
+                            marginBottom: "12px",
+                            fontSize: "0.75rem",
+                          }}
+                        >
+                          <div>
+                            <span style={{ color: "var(--ink-muted)", fontSize: "0.6875rem", display: "block" }}>
+                              Loan Amount
+                            </span>
+                            <strong style={{ color: "var(--ink)", fontSize: "0.8125rem" }}>
+                              ₹{formatWholeMoney(calc.principal)}
+                            </strong>
+                          </div>
+                          <div>
+                            <span style={{ color: "var(--ink-muted)", fontSize: "0.6875rem", display: "block" }}>
+                              Tenure & Rate
+                            </span>
+                            <strong style={{ color: "var(--ink)", fontSize: "0.8125rem" }}>
+                              {calc.termMonths} Mo @ {Number(calc.annualRate).toFixed(1)}%
+                            </strong>
+                          </div>
+                          <div>
+                            <span style={{ color: "var(--ink-muted)", fontSize: "0.6875rem", display: "block" }}>
+                              Monthly EMI
+                            </span>
+                            <strong style={{ color: "var(--accent)", fontSize: "0.875rem" }}>
+                              ₹{formatMoney(calc.emi, 2)}
+                            </strong>
+                          </div>
+                          <div>
+                            <span style={{ color: "var(--ink-muted)", fontSize: "0.6875rem", display: "block" }}>
+                              Total Interest
+                            </span>
+                            <strong style={{ color: "var(--ink)", fontSize: "0.8125rem" }}>
+                              ₹{formatWholeMoney(calc.totalInterest)}
+                            </strong>
+                          </div>
+                        </div>
+
+                        {/* Card Action Buttons */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <button
+                              type="button"
+                              onClick={() => printSchedule(calc)}
+                              title="Download or print repayment schedule statement"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                padding: "5px 10px",
+                                borderRadius: "6px",
+                                background: "var(--accent)",
+                                color: "#ffffff",
+                                border: "none",
+                                fontSize: "0.75rem",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+                              }}
+                            >
+                              <Printer size={13} />
+                              <span>Download Statement</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => loadCalculation(calc)}
+                              title="Load parameters into active calculator"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                padding: "5px 10px",
+                                borderRadius: "6px",
+                                background: "var(--surface)",
+                                color: "var(--ink)",
+                                border: "1px solid var(--border)",
+                                fontSize: "0.75rem",
+                                fontWeight: 500,
+                                cursor: "pointer",
+                              }}
+                            >
+                              <ArrowRightCircle size={13} style={{ color: "var(--accent)" }} />
+                              <span>Load</span>
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSaved(calc.id, calc.calculationName)}
+                            disabled={deletingId === calc.id}
+                            title="Delete saved calculation"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              padding: "5px 8px",
+                              borderRadius: "6px",
+                              background: "transparent",
+                              color: "var(--ink-muted)",
+                              border: "1px solid transparent",
+                              fontSize: "0.75rem",
+                              cursor: deletingId === calc.id ? "not-allowed" : "pointer",
+                            }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

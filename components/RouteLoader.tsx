@@ -46,46 +46,42 @@ export default function RouteLoader() {
     }
   }, []);
 
+  // Only reveal progress bar if navigation takes longer than THRESHOLD (300ms)
+  // Only reveal full centered modal if navigation genuinely takes > 850ms
+  const PROGRESS_THRESHOLD_MS = 300;
+  const MODAL_THRESHOLD_MS = 850;
+
   // Completes and smoothly dismisses the loader
   const stopLoading = useCallback(() => {
-    if (pendingStartTimerRef.current) {
-      clearTimeout(pendingStartTimerRef.current);
-      pendingStartTimerRef.current = null;
-    }
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-    if (modalTimerRef.current) {
-      clearTimeout(modalTimerRef.current);
-      modalTimerRef.current = null;
-    }
+    clearAllTimers();
 
-    // Complete top bar to 100% only if it was navigating
-    setProgress((prev) => (prev > 0 ? 100 : 0));
-
-    // Smooth fade-out transition
-    finishTimeoutRef.current = setTimeout(() => {
-      setIsNavigating(false);
-      setShowModal(false);
-      setProgress(0);
-      setDestinationHint("");
-      clearAllTimers();
-    }, 240);
+    setIsNavigating((prevNav) => {
+      if (!prevNav) {
+        setShowModal(false);
+        setProgress(0);
+        return false;
+      }
+      setProgress(100);
+      finishTimeoutRef.current = setTimeout(() => {
+        setIsNavigating(false);
+        setShowModal(false);
+        setProgress(0);
+        setDestinationHint("");
+      }, 100);
+      return false;
+    });
   }, [clearAllTimers]);
 
-  // Starts the loading animation safely outside of React's useInsertionEffect
+  // Starts the loading animation ONLY for operations taking longer than the threshold
   const startLoading = useCallback((hint?: string) => {
     clearAllTimers();
 
-    // In Next.js 15 / React 19, pushState / replaceState runs inside useInsertionEffect.
-    // Scheduling state updates synchronously inside useInsertionEffect throws:
-    // "useInsertionEffect must not schedule updates."
-    // We defer state updates to the next macrotask via setTimeout so React is never in an effect phase.
+    // Do NOT display loader immediately. Wait 300ms.
+    // If route completes within 300ms, stopLoading() cancels this timer, skipping the loader entirely.
     pendingStartTimerRef.current = setTimeout(() => {
       pendingStartTimerRef.current = null;
       setIsNavigating(true);
-      setProgress(18);
+      setProgress(24);
       if (hint) {
         setDestinationHint(hint);
       }
@@ -93,23 +89,23 @@ export default function RouteLoader() {
       // Step 1: Smoothly advance top progress bar while waiting
       progressIntervalRef.current = setInterval(() => {
         setProgress((prev) => {
-          if (prev < 40) return prev + 12;
-          if (prev < 75) return prev + 6;
-          if (prev < 90) return prev + 1.5;
+          if (prev < 45) return prev + 10;
+          if (prev < 75) return prev + 5;
+          if (prev < 90) return prev + 1.2;
           return prev;
         });
-      }, 180);
+      }, 150);
 
-      // Step 2: If page switching takes more than 120ms, reveal the centered loading badge/icon
+      // Step 2: Only reveal centered modal if operation takes longer than 850ms
       modalTimerRef.current = setTimeout(() => {
         setShowModal(true);
-      }, 120);
+      }, MODAL_THRESHOLD_MS - PROGRESS_THRESHOLD_MS);
 
-      // Step 3: Absolute safety timeout — auto dismiss after 7 seconds
+      // Step 3: Absolute safety timeout — auto dismiss after 3 seconds
       maxSafetyTimerRef.current = setTimeout(() => {
         stopLoading();
-      }, 7000);
-    }, 0);
+      }, 3000);
+    }, PROGRESS_THRESHOLD_MS);
   }, [clearAllTimers, stopLoading]);
 
   // Route change completion listener (when pathname or searchParams change)
@@ -204,9 +200,18 @@ export default function RouteLoader() {
       return result;
     };
 
+    let lastRecordedPathname = typeof window !== "undefined" ? window.location.pathname : "";
+
     // 3. Browser Back / Forward navigation
     const handlePopState = () => {
-      startLoading("Navigating...");
+      // If pathname did not change (e.g. query parameter change like ?section=...), skip loader
+      if (typeof window !== "undefined" && window.location.pathname === lastRecordedPathname) {
+        return;
+      }
+      if (typeof window !== "undefined") {
+        lastRecordedPathname = window.location.pathname;
+      }
+      startLoading("Loading...");
     };
 
     // 4. Custom events for direct programmatic control
