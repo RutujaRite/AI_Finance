@@ -620,6 +620,127 @@ export const CalculationBenchmarks: React.FC<CalculationBenchmarksProps> = ({
         .text-amber-700 { color: #b45309; }
         .w-full { width: 100%; }
         .flex-1 { flex: 1; }
+
+        /* Dark Theme Support for CalculationBenchmarks */
+        :global([data-theme="dark"]) .benchmarks-box,
+        :global([data-bs-theme="dark"]) .benchmarks-box,
+        :global(.dark) .benchmarks-box {
+          background: var(--surface) !important;
+          border-color: var(--border) !important;
+        }
+
+        :global([data-theme="dark"]) .benchmarks-header,
+        :global([data-bs-theme="dark"]) .benchmarks-header,
+        :global(.dark) .benchmarks-header {
+          background: var(--surface) !important;
+          border-color: var(--border) !important;
+        }
+
+        :global([data-theme="dark"]) .section-title,
+        :global([data-bs-theme="dark"]) .section-title,
+        :global(.dark) .section-title {
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .section-subtitle,
+        :global([data-bs-theme="dark"]) .section-subtitle,
+        :global(.dark) .section-subtitle {
+          color: #94a3b8 !important;
+        }
+
+        :global([data-theme="dark"]) .benchmarks-content,
+        :global([data-bs-theme="dark"]) .benchmarks-content,
+        :global(.dark) .benchmarks-content {
+          background: #090d16 !important;
+        }
+
+        :global([data-theme="dark"]) .param-card,
+        :global([data-bs-theme="dark"]) .param-card,
+        :global(.dark) .param-card {
+          background: #0f172a !important;
+          border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        :global([data-theme="dark"]) .param-title,
+        :global([data-bs-theme="dark"]) .param-title,
+        :global(.dark) .param-title {
+          color: #cbd5e1 !important;
+        }
+
+        :global([data-theme="dark"]) .input-with-symbol,
+        :global([data-bs-theme="dark"]) .input-with-symbol,
+        :global(.dark) .input-with-symbol {
+          background: #090d16 !important;
+          border-color: rgba(255, 255, 255, 0.15) !important;
+        }
+
+        :global([data-theme="dark"]) .param-num-input,
+        :global([data-bs-theme="dark"]) .param-num-input,
+        :global(.dark) .param-num-input {
+          background: transparent !important;
+          color: #ffffff !important;
+        }
+
+        :global([data-theme="dark"]) .quick-chip,
+        :global([data-bs-theme="dark"]) .quick-chip,
+        :global(.dark) .quick-chip {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+          color: #cbd5e1 !important;
+        }
+
+        :global([data-theme="dark"]) .quick-chip:hover,
+        :global([data-bs-theme="dark"]) .quick-chip:hover,
+        :global(.dark) .quick-chip:hover {
+          background: #334155 !important;
+          color: #ffffff !important;
+        }
+
+        :global([data-theme="dark"]) .quick-chip.active,
+        :global([data-bs-theme="dark"]) .quick-chip.active,
+        :global(.dark) .quick-chip.active {
+          background: #2563eb !important;
+          border-color: #2563eb !important;
+          color: #ffffff !important;
+        }
+
+        :global([data-theme="dark"]) .reset-btn,
+        :global([data-bs-theme="dark"]) .reset-btn,
+        :global(.dark) .reset-btn {
+          background: var(--surface-2) !important;
+          border-color: var(--border) !important;
+          color: var(--ink-soft) !important;
+        }
+
+        :global([data-theme="dark"]) .text-blue-700,
+        :global([data-bs-theme="dark"]) .text-blue-700,
+        :global(.dark) .text-blue-700 {
+          color: #60a5fa !important;
+        }
+
+        :global([data-theme="dark"]) .text-emerald-700,
+        :global([data-bs-theme="dark"]) .text-emerald-700,
+        :global(.dark) .text-emerald-700 {
+          color: #34d399 !important;
+        }
+
+        :global([data-theme="dark"]) .text-indigo-700,
+        :global([data-bs-theme="dark"]) .text-indigo-700,
+        :global(.dark) .text-indigo-700 {
+          color: #818cf8 !important;
+        }
+
+        :global([data-theme="dark"]) .text-purple-700,
+        :global([data-bs-theme="dark"]) .text-purple-700,
+        :global(.dark) .text-purple-700 {
+          color: #c084fc !important;
+        }
+
+        :global([data-theme="dark"]) .text-amber-700,
+        :global([data-bs-theme="dark"]) .text-amber-700,
+        :global(.dark) .text-amber-700 {
+          color: #fbbf24 !important;
+        }
       `}</style>
     </div>
   );

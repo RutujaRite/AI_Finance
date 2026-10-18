@@ -238,6 +238,50 @@ export const EligibilityHeader: React.FC<EligibilityHeaderProps> = ({
             display: none !important;
           }
         }
+
+        /* Dark Theme Support for EligibilityHeader */
+        :global([data-theme="dark"]) .eligibility-header-card,
+        :global([data-bs-theme="dark"]) .eligibility-header-card,
+        :global(.dark) .eligibility-header-card {
+          background: var(--surface) !important;
+          border-color: var(--border) !important;
+        }
+
+        :global([data-theme="dark"]) .header-title,
+        :global([data-bs-theme="dark"]) .header-title,
+        :global(.dark) .header-title {
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .header-subtitle,
+        :global([data-bs-theme="dark"]) .header-subtitle,
+        :global(.dark) .header-subtitle {
+          color: #94a3b8 !important;
+        }
+
+        :global([data-theme="dark"]) .header-icon-box,
+        :global([data-bs-theme="dark"]) .header-icon-box,
+        :global(.dark) .header-icon-box {
+          background: #1e3a5f !important;
+          border-color: #2563eb !important;
+          color: #60a5fa !important;
+        }
+
+        :global([data-theme="dark"]) .badge-pill,
+        :global([data-bs-theme="dark"]) .badge-pill,
+        :global(.dark) .badge-pill {
+          background: #1e3a5f !important;
+          border-color: #2563eb !important;
+          color: #93c5fd !important;
+        }
+
+        :global([data-theme="dark"]) .hdr-btn-secondary,
+        :global([data-bs-theme="dark"]) .hdr-btn-secondary,
+        :global(.dark) .hdr-btn-secondary {
+          background: var(--surface-2) !important;
+          border-color: var(--border) !important;
+          color: var(--ink-soft) !important;
+        }
       `}</style>
     </header>
   );

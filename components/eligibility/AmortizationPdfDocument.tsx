@@ -746,42 +746,44 @@ export const AmortizationPdfDocument: React.FC<AmortizationPdfProps> = ({
         }
 
         .schedule-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 11px;
-          border: 1px solid #e2e8f0;
-          background: #ffffff;
+          width: 100% !important;
+          border-collapse: collapse !important;
+          font-size: 11px !important;
+          border: 1px solid #cbd5e1 !important;
+          background: #ffffff !important;
         }
 
         .schedule-table th {
-          background: #ffffff;
-          padding: 6px 8px;
-          font-size: 11.5px;
-          font-weight: 700;
-          color: #1e293b;
-          border: 1px solid #e2e8f0;
-          text-align: center;
+          background: #f1f5f9 !important;
+          padding: 6px 8px !important;
+          font-size: 11.5px !important;
+          font-weight: 700 !important;
+          color: #0f172a !important;
+          border: 1px solid #cbd5e1 !important;
+          text-align: center !important;
         }
 
         .schedule-table td {
-          padding: 5px 8px;
-          color: #334155;
-          border: 1px solid #e2e8f0;
-          text-align: center;
+          padding: 5px 8px !important;
+          color: #1e293b !important;
+          background: #ffffff !important;
+          border: 1px solid #cbd5e1 !important;
+          text-align: center !important;
+          font-weight: 500 !important;
         }
 
-        .col-month { width: 18%; }
-        .col-principal { width: 27%; }
-        .col-interest { width: 27%; }
-        .col-balance { width: 28%; }
+        .col-month { width: 18% !important; }
+        .col-principal { width: 27% !important; color: #1d4ed8 !important; font-weight: 600 !important; }
+        .col-interest { width: 27% !important; color: #7c3aed !important; font-weight: 600 !important; }
+        .col-balance { width: 28% !important; color: #047857 !important; font-weight: 700 !important; }
 
         .year-summary-row td {
-          background: #f8fafc;
+          background: #f8fafc !important;
           font-weight: 700 !important;
           color: #0f172a !important;
-          padding: 6px 8px;
-          border-top: 1.5px solid #cbd5e1;
-          border-bottom: 1.5px solid #cbd5e1;
+          padding: 6px 8px !important;
+          border-top: 1.5px solid #cbd5e1 !important;
+          border-bottom: 1.5px solid #cbd5e1 !important;
         }
 
         .multi-table-page {

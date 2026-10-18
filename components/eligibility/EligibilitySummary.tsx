@@ -309,6 +309,77 @@ export const EligibilitySummary: React.FC<EligibilitySummaryProps> = ({
         .text-blue-950 { color: #172554; }
         .bg-blue-subtle { background: rgba(219, 234, 254, 0.7); }
         .font-mono { font-family: monospace; }
+
+        /* Dark Theme Support for EligibilitySummary */
+        :global([data-theme="dark"]) .summary-box,
+        :global([data-bs-theme="dark"]) .summary-box,
+        :global(.dark) .summary-box {
+          background: var(--surface) !important;
+          border-color: var(--border) !important;
+        }
+
+        :global([data-theme="dark"]) .summary-header,
+        :global([data-bs-theme="dark"]) .summary-header,
+        :global(.dark) .summary-header {
+          background: var(--surface) !important;
+          border-color: var(--border) !important;
+        }
+
+        :global([data-theme="dark"]) .section-title,
+        :global([data-bs-theme="dark"]) .section-title,
+        :global(.dark) .section-title {
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .section-subtitle,
+        :global([data-bs-theme="dark"]) .section-subtitle,
+        :global(.dark) .section-subtitle {
+          color: #94a3b8 !important;
+        }
+
+        :global([data-theme="dark"]) .salary-pill,
+        :global([data-bs-theme="dark"]) .salary-pill,
+        :global(.dark) .salary-pill {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+          color: #cbd5e1 !important;
+        }
+
+        :global([data-theme="dark"]) .summary-content,
+        :global([data-bs-theme="dark"]) .summary-content,
+        :global(.dark) .summary-content {
+          background: #090d16 !important;
+        }
+
+        :global([data-theme="dark"]) .text-blue-900,
+        :global([data-bs-theme="dark"]) .text-blue-900,
+        :global(.dark) .text-blue-900 {
+          color: #ffffff !important;
+        }
+
+        :global([data-theme="dark"]) .text-blue-700,
+        :global([data-bs-theme="dark"]) .text-blue-700,
+        :global(.dark) .text-blue-700 {
+          color: #93c5fd !important;
+        }
+
+        :global([data-theme="dark"]) .text-blue-800,
+        :global([data-bs-theme="dark"]) .text-blue-800,
+        :global(.dark) .text-blue-800 {
+          color: #bfdbfe !important;
+        }
+
+        :global([data-theme="dark"]) .text-blue-950,
+        :global([data-bs-theme="dark"]) .text-blue-950,
+        :global(.dark) .text-blue-950 {
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .bg-blue-subtle,
+        :global([data-bs-theme="dark"]) .bg-blue-subtle,
+        :global(.dark) .bg-blue-subtle {
+          background: rgba(30, 58, 138, 0.4) !important;
+        }
       `}</style>
     </div>
   );

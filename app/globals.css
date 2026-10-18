@@ -7560,19 +7560,13 @@ html, body {
 /* Tables */
 [data-theme="dark"] .loan-table,
 [data-bs-theme="dark"] .loan-table,
-.dark .loan-table,
-[data-theme="dark"] .schedule-table,
-[data-bs-theme="dark"] .schedule-table,
-.dark .schedule-table {
+.dark .loan-table {
     color: var(--ink) !important;
 }
 
 [data-theme="dark"] .loan-table th,
 [data-bs-theme="dark"] .loan-table th,
-.dark .loan-table th,
-[data-theme="dark"] .schedule-table th,
-[data-bs-theme="dark"] .schedule-table th,
-.dark .schedule-table th {
+.dark .loan-table th {
     background: var(--surface-2) !important;
     color: var(--ink-muted) !important;
     border-bottom: 1.5px solid var(--border) !important;
@@ -7583,7 +7577,10 @@ html, body {
 .dark .loan-row,
 [data-theme="dark"] .year-row,
 [data-bs-theme="dark"] .year-row,
-.dark .year-row {
+.dark .year-row,
+[data-theme="dark"] .yearly-summary-row,
+[data-bs-theme="dark"] .yearly-summary-row,
+.dark .yearly-summary-row {
     background: var(--surface) !important;
     border-bottom-color: var(--border) !important;
 }
@@ -7593,28 +7590,36 @@ html, body {
 .dark .loan-row:hover,
 [data-theme="dark"] .year-row:hover,
 [data-bs-theme="dark"] .year-row:hover,
-.dark .year-row:hover {
+.dark .year-row:hover,
+[data-theme="dark"] .yearly-summary-row:hover,
+[data-bs-theme="dark"] .yearly-summary-row:hover,
+.dark .yearly-summary-row:hover {
     background: var(--surface-2) !important;
 }
 
 [data-theme="dark"] .month-row,
 [data-bs-theme="dark"] .month-row,
-.dark .month-row {
+.dark .month-row,
+[data-theme="dark"] .monthly-sub-row,
+[data-bs-theme="dark"] .monthly-sub-row,
+.dark .monthly-sub-row,
+[data-theme="dark"] .monthly-data-row,
+[data-bs-theme="dark"] .monthly-data-row,
+.dark .monthly-data-row {
     background: var(--surface-2) !important;
     border-bottom-color: var(--border) !important;
 }
 
 [data-theme="dark"] .month-row:hover,
 [data-bs-theme="dark"] .month-row:hover,
-.dark .month-row:hover {
+.dark .month-row:hover,
+[data-theme="dark"] .monthly-sub-row:hover,
+[data-bs-theme="dark"] .monthly-sub-row:hover,
+.dark .monthly-sub-row:hover,
+[data-theme="dark"] .monthly-data-row:hover,
+[data-bs-theme="dark"] .monthly-data-row:hover,
+.dark .monthly-data-row:hover {
     background: var(--surface-elevated) !important;
-}
-
-[data-theme="dark"] .schedule-table td,
-[data-bs-theme="dark"] .schedule-table td,
-.dark .schedule-table td {
-    border-bottom-color: var(--border) !important;
-    color: var(--ink) !important;
 }
 
 [data-theme="dark"] .totals-row,
@@ -7622,6 +7627,75 @@ html, body {
 .dark .totals-row {
     background: var(--surface-2) !important;
     border-top: 2px solid var(--border) !important;
+}
+
+/* Printable / PDF Isolation: NEVER allow dark theme overrides to penetrate printable reports or PDF pages */
+#printable-assessment-report,
+#printable-assessment-report *,
+.pdf-page,
+.pdf-page *,
+.print-only-container,
+.print-only-container *,
+.print-page,
+.print-page * {
+    color-scheme: light !important;
+}
+
+[data-theme="dark"] #printable-assessment-report,
+[data-bs-theme="dark"] #printable-assessment-report,
+.dark #printable-assessment-report,
+[data-theme="dark"] .pdf-page,
+[data-bs-theme="dark"] .pdf-page,
+.dark .pdf-page,
+[data-theme="dark"] .print-only-container,
+[data-bs-theme="dark"] .print-only-container,
+.dark .print-only-container {
+    background: #ffffff !important;
+    color: #0f172a !important;
+}
+
+[data-theme="dark"] #printable-assessment-report .schedule-table,
+[data-bs-theme="dark"] #printable-assessment-report .schedule-table,
+.dark #printable-assessment-report .schedule-table,
+[data-theme="dark"] .pdf-page .schedule-table,
+[data-bs-theme="dark"] .pdf-page .schedule-table,
+.dark .pdf-page .schedule-table {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #1e293b !important;
+}
+
+[data-theme="dark"] #printable-assessment-report .schedule-table th,
+[data-bs-theme="dark"] #printable-assessment-report .schedule-table th,
+.dark #printable-assessment-report .schedule-table th,
+[data-theme="dark"] .pdf-page .schedule-table th,
+[data-bs-theme="dark"] .pdf-page .schedule-table th,
+.dark .pdf-page .schedule-table th {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] #printable-assessment-report .schedule-table td,
+[data-bs-theme="dark"] #printable-assessment-report .schedule-table td,
+.dark #printable-assessment-report .schedule-table td,
+[data-theme="dark"] .pdf-page .schedule-table td,
+[data-bs-theme="dark"] .pdf-page .schedule-table td,
+.dark .pdf-page .schedule-table td {
+    background: #ffffff !important;
+    color: #1e293b !important;
+    border-color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] #printable-assessment-report .year-summary-row td,
+[data-bs-theme="dark"] #printable-assessment-report .year-summary-row td,
+.dark #printable-assessment-report .year-summary-row td,
+[data-theme="dark"] .pdf-page .year-summary-row td,
+[data-bs-theme="dark"] .pdf-page .year-summary-row td,
+.dark .pdf-page .year-summary-row td {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
 }
 
 /* Multiplier Hero Card */

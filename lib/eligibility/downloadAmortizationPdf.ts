@@ -53,6 +53,19 @@ export async function downloadAmortizationPdfFromElement(
       logging: false,
       backgroundColor: '#ffffff',
       windowWidth: 1200,
+      onclone: (clonedDoc: Document) => {
+        // Strip any dark mode classes/attributes so the captured PDF is ALWAYS rendered in crisp, high-contrast light mode
+        clonedDoc.documentElement.removeAttribute('data-theme');
+        clonedDoc.documentElement.removeAttribute('data-bs-theme');
+        clonedDoc.documentElement.classList.remove('dark');
+        if (clonedDoc.body) {
+          clonedDoc.body.removeAttribute('data-theme');
+          clonedDoc.body.removeAttribute('data-bs-theme');
+          clonedDoc.body.classList.remove('dark');
+          clonedDoc.body.style.backgroundColor = '#ffffff';
+          clonedDoc.body.style.color = '#0f172a';
+        }
+      },
     });
 
     const imgData = canvas.toDataURL('image/jpeg', 0.95);

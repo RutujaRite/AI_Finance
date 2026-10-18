@@ -37,6 +37,7 @@ export default function HomePage() {
   const [deleteModalConv, setDeleteModalConv] = useState<any | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [clearHistoryModalOpen, setClearHistoryModalOpen] = useState(false)
+  const [isClearingHistory, setIsClearingHistory] = useState(false)
   const [messageActions, setMessageActions] = useState<Record<string, { liked: boolean; disliked: boolean }>>({})
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -811,6 +812,35 @@ export default function HomePage() {
     } finally {
       setIsDeleting(false)
       setDeleteModalConv(null)
+    }
+  }
+
+  async function confirmClearAllHistory() {
+    if (isClearingHistory) return
+    setIsClearingHistory(true)
+
+    try {
+      const res = await fetch("/api/conversations", {
+        method: "DELETE",
+        credentials: "include",
+      })
+      if (!res.ok) {
+        console.error("Failed to delete conversations from server:", res.status)
+      }
+    } catch (e) {
+      console.error("Error clearing conversations from server:", e)
+    } finally {
+      setMessages([])
+      setConversations([])
+      setActiveConversationId(null)
+      activeConvIdRef.current = null
+      messagesByConvRef.current = {}
+      try {
+        localStorage.removeItem(STORAGE_KEY)
+      } catch {}
+      setIsClearingHistory(false)
+      setClearHistoryModalOpen(false)
+      await newConversation()
     }
   }
 
@@ -2798,9 +2828,27 @@ export default function HomePage() {
         />
         <aside className={`chat-sidebar ${sidebarOpen ? "open" : "closed"}`} id="chatSidebar">
           <div className="chat-sidebar-header">
-            <button className="chat-new-chat-btn" id="chatNewConversation" onClick={newConversation}>
-              <i className="bi bi-plus-lg" /> New Chat
-            </button>
+            <div style={{ position: "relative", width: "100%" }}>
+              <i className="bi bi-search" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "0.75rem", color: "var(--ink-muted)" }} />
+              <input
+                type="text"
+                className="chat-search-input"
+                placeholder="Search conversations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ paddingLeft: "28px" }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--ink-muted)", cursor: "pointer", fontSize: "0.75rem", padding: 0 }}
+                  title="Clear search"
+                >
+                  <i className="bi bi-x-circle-fill" />
+                </button>
+              )}
+            </div>
           </div>
           <div className="chat-list" id="chatConversationList">
             {filteredConversations().length === 0 ? (
@@ -2963,72 +3011,21 @@ export default function HomePage() {
               ))
             )}
           </div>
-          <div className="chat-search-box">
-            <div style={{ position: "relative", width: "100%" }}>
-              <i className="bi bi-search" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "0.75rem", color: "var(--ink-muted)" }} />
-              <input
-                type="text"
-                className="chat-search-input"
-                placeholder="Search conversations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ paddingLeft: "28px" }}
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--ink-muted)", cursor: "pointer", fontSize: "0.75rem", padding: 0 }}
-                  title="Clear search"
-                >
-                  <i className="bi bi-x-circle-fill" />
-                </button>
-              )}
-            </div>
-          </div>
           <div className="chat-sidebar-footer">
-            {isAdmin && (
+            <button className="chat-new-chat-btn" id="chatNewConversation" onClick={newConversation}>
+              <i className="bi bi-plus-lg" /> New Chat
+            </button>
+            <div style={{ display: "flex", justifyContent: "center", width: "100%", marginTop: "2px" }}>
               <button
                 type="button"
-                className="chat-sidebar-admin-btn"
-                onClick={() => router.push("/admin")}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  width: "100%",
-                  padding: "0.5rem 0.75rem",
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius-md)",
-                  color: "var(--ink)",
-                  fontSize: "0.8125rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  marginBottom: "0.5rem",
-                }}
-                title="Open Admin Workspace in full page"
+                id="clearHistoryBtn"
+                onClick={() => setClearHistoryModalOpen(true)}
+                title="Clear all chat history"
               >
-                <i className="bi bi-shield-lock" style={{ color: "var(--accent)" }} />
-                <span>Admin Workspace</span>
-                <i className="bi bi-box-arrow-up-right" style={{ marginLeft: "auto", fontSize: "0.75rem", color: "var(--ink-muted)" }} />
+                <i className="bi bi-trash3" />
+                <span>Clear History</span>
               </button>
-            )}
-            <div className="chat-sidebar-profile" onClick={() => router.push("/profile")}>
-              <div className="chat-avatar-sm">{(user.name || user.email || "U").charAt(0).toUpperCase()}</div>
-              <div className="chat-sidebar-profile-info">
-                <div className="chat-sidebar-profile-name">{user.name || "User"}</div>
-                <div className="chat-sidebar-profile-email">{user.email || ""}</div>
-              </div>
             </div>
-            <button
-              id="clearHistoryBtn"
-              onClick={() => {
-                setClearHistoryModalOpen(true)
-              }}
-            >
-              <i className="bi bi-trash3" style={{ marginRight: "0.25rem" }} /> Clear History
-            </button>
           </div>
         </aside>
 
@@ -3422,7 +3419,9 @@ export default function HomePage() {
         <div
           className="modal-backdrop"
           style={{ zIndex: 9999 }}
-          onClick={() => setClearHistoryModalOpen(false)}
+          onClick={() => {
+            if (!isClearingHistory) setClearHistoryModalOpen(false)
+          }}
         >
           <div
             className="modal-content"
@@ -3430,31 +3429,34 @@ export default function HomePage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <h5 className="modal-title" style={{ fontSize: "1rem", fontWeight: 600 }}>
-                Clear all chat history?
+              <h5 className="modal-title" style={{ fontSize: "1rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <i className="bi bi-exclamation-triangle-fill" style={{ color: "var(--danger, #dc2626)" }} />
+                <span>Clear all chat history?</span>
               </h5>
               <button
                 type="button"
+                disabled={isClearingHistory}
                 onClick={() => setClearHistoryModalOpen(false)}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-muted)", fontSize: "1.1rem", padding: 0 }}
+                style={{ background: "none", border: "none", cursor: isClearingHistory ? "not-allowed" : "pointer", color: "var(--ink-muted)", fontSize: "1.1rem", padding: 0 }}
                 aria-label="Close"
               >
                 <i className="bi bi-x-lg" />
               </button>
             </div>
             <div className="modal-body" style={{ color: "var(--ink-soft)", fontSize: "0.875rem", lineHeight: 1.5 }}>
-              All your conversations and messages will be permanently cleared from this device.
+              All your conversations and message history will be permanently deleted from the database. This action cannot be undone.
             </div>
             <div className="modal-footer" style={{ borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
               <button
                 type="button"
                 className="btn btn-outline-secondary"
+                disabled={isClearingHistory}
                 onClick={() => setClearHistoryModalOpen(false)}
                 style={{
                   padding: "0.4rem 0.85rem",
                   fontSize: "0.8125rem",
                   borderRadius: "var(--radius-md)",
-                  cursor: "pointer",
+                  cursor: isClearingHistory ? "not-allowed" : "pointer",
                 }}
               >
                 Cancel
@@ -3462,13 +3464,8 @@ export default function HomePage() {
               <button
                 type="button"
                 className="btn btn-danger"
-                onClick={() => {
-                  setMessages([])
-                  setConversations([])
-                  setActiveConversationId(null)
-                  localStorage.removeItem(STORAGE_KEY)
-                  setClearHistoryModalOpen(false)
-                }}
+                disabled={isClearingHistory}
+                onClick={confirmClearAllHistory}
                 style={{
                   padding: "0.4rem 0.85rem",
                   fontSize: "0.8125rem",
@@ -3476,10 +3473,23 @@ export default function HomePage() {
                   background: "var(--danger, #dc2626)",
                   color: "#ffffff",
                   border: "none",
-                  cursor: "pointer",
+                  cursor: isClearingHistory ? "not-allowed" : "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
                 }}
               >
-                Clear All
+                {isClearingHistory ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm" role="status" style={{ width: "0.85rem", height: "0.85rem", borderWidth: "2px" }} />
+                    <span>Clearing...</span>
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-trash3-fill" />
+                    <span>Clear All History</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

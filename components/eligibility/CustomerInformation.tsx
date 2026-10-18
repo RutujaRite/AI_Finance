@@ -378,6 +378,72 @@ export const CustomerInformation: React.FC<CustomerInformationProps> = ({
         .font-mono {
           font-family: monospace;
         }
+
+        /* Dark Theme Support for CustomerInformation */
+        :global([data-theme="dark"]) .customer-info-card,
+        :global([data-bs-theme="dark"]) .customer-info-card,
+        :global(.dark) .customer-info-card {
+          background: var(--surface) !important;
+          border-color: var(--border) !important;
+        }
+
+        :global([data-theme="dark"]) .card-header-clickable,
+        :global([data-bs-theme="dark"]) .card-header-clickable,
+        :global(.dark) .card-header-clickable {
+          background: var(--surface) !important;
+          border-color: var(--border) !important;
+        }
+
+        :global([data-theme="dark"]) .card-title,
+        :global([data-bs-theme="dark"]) .card-title,
+        :global(.dark) .card-title {
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .card-subtitle,
+        :global([data-bs-theme="dark"]) .card-subtitle,
+        :global(.dark) .card-subtitle {
+          color: #94a3b8 !important;
+        }
+
+        :global([data-theme="dark"]) .card-body,
+        :global([data-bs-theme="dark"]) .card-body,
+        :global(.dark) .card-body {
+          background: #090d16 !important;
+          border-color: var(--border) !important;
+        }
+
+        :global([data-theme="dark"]) .field-label,
+        :global([data-bs-theme="dark"]) .field-label,
+        :global(.dark) .field-label {
+          color: #cbd5e1 !important;
+        }
+
+        :global([data-theme="dark"]) .field-icon,
+        :global([data-bs-theme="dark"]) .field-icon,
+        :global(.dark) .field-icon {
+          color: #94a3b8 !important;
+        }
+
+        :global([data-theme="dark"]) .styled-input,
+        :global([data-theme="dark"]) .styled-textarea,
+        :global([data-bs-theme="dark"]) .styled-input,
+        :global([data-bs-theme="dark"]) .styled-textarea,
+        :global(.dark) .styled-input,
+        :global(.dark) .styled-textarea {
+          background: #0f172a !important;
+          border-color: rgba(255, 255, 255, 0.15) !important;
+          color: #ffffff !important;
+        }
+
+        :global([data-theme="dark"]) .collapse-hint,
+        :global([data-theme="dark"]) .collapse-icon-btn,
+        :global([data-bs-theme="dark"]) .collapse-hint,
+        :global([data-bs-theme="dark"]) .collapse-icon-btn,
+        :global(.dark) .collapse-hint,
+        :global(.dark) .collapse-icon-btn {
+          color: #94a3b8 !important;
+        }
       `}</style>
     </section>
   );

@@ -498,11 +498,11 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
                               <span className="year-badge">Year {yr.year}</span>
                               <span className="month-range">Months {(yr.year - 1) * 12 + 1}–{Math.min(tenure, yr.year * 12)}</span>
                             </td>
-                            <td className="text-right font-mono">{formatIndianRupees(yr.openingBalance)}</td>
-                            <td className="text-right font-mono font-semibold text-slate-800">{formatIndianRupees(yr.totalEmi)}</td>
-                            <td className="text-right font-mono text-blue-700">{formatIndianRupees(yr.totalPrincipal)}</td>
-                            <td className="text-right font-mono text-purple-700">{formatIndianRupees(yr.totalInterest)}</td>
-                            <td className="text-right font-mono font-bold text-emerald-800">{formatIndianRupees(yr.closingBalance)}</td>
+                            <td className="text-right font-mono col-opening font-semibold">{formatIndianRupees(yr.openingBalance)}</td>
+                            <td className="text-right font-mono col-emi font-semibold">{formatIndianRupees(yr.totalEmi)}</td>
+                            <td className="text-right font-mono col-principal font-semibold">{formatIndianRupees(yr.totalPrincipal)}</td>
+                            <td className="text-right font-mono col-interest font-semibold">{formatIndianRupees(yr.totalInterest)}</td>
+                            <td className="text-right font-mono col-balance font-bold">{formatIndianRupees(yr.closingBalance)}</td>
                             <td className="text-center">
                               <button
                                 type="button"
@@ -519,11 +519,11 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
                               <td className="month-sub-col">
                                 <span className="sub-indent">↳ Month {m.month} (M{m.monthInYear})</span>
                               </td>
-                              <td className="text-right font-mono text-slate-500">{formatIndianRupees(m.openingBalance)}</td>
-                              <td className="text-right font-mono text-slate-700">{formatIndianRupees(m.emi)}</td>
-                              <td className="text-right font-mono text-blue-600">{formatIndianRupees(m.principal)}</td>
-                              <td className="text-right font-mono text-purple-600">{formatIndianRupees(m.interest)}</td>
-                              <td className="text-right font-mono font-semibold text-slate-900">{formatIndianRupees(m.closingBalance)}</td>
+                              <td className="text-right font-mono col-opening">{formatIndianRupees(m.openingBalance)}</td>
+                              <td className="text-right font-mono col-emi font-semibold">{formatIndianRupees(m.emi)}</td>
+                              <td className="text-right font-mono col-principal font-semibold">{formatIndianRupees(m.principal)}</td>
+                              <td className="text-right font-mono col-interest font-semibold">{formatIndianRupees(m.interest)}</td>
+                              <td className="text-right font-mono col-balance font-bold">{formatIndianRupees(m.closingBalance)}</td>
                               <td />
                             </tr>
                           ))}
@@ -548,16 +548,16 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
                   </thead>
                   <tbody>
                     {schedule.map((m) => (
-                      <tr key={`full-m-${m.month}`} className={m.month % 12 === 0 ? 'year-boundary-row' : ''}>
-                        <td className="font-semibold">
+                      <tr key={`full-m-${m.month}`} className={`monthly-data-row ${m.month % 12 === 0 ? 'year-boundary-row' : ''}`}>
+                        <td className="font-semibold col-month-name">
                           Month {m.month}
                           {m.month % 12 === 0 && <span className="milestone-badge">Year {m.month / 12} End</span>}
                         </td>
-                        <td className="text-right font-mono text-slate-600">{formatIndianRupees(m.openingBalance)}</td>
-                        <td className="text-right font-mono font-semibold text-slate-900">{formatIndianRupees(m.emi)}</td>
-                        <td className="text-right font-mono text-blue-700">{formatIndianRupees(m.principal)}</td>
-                        <td className="text-right font-mono text-purple-700">{formatIndianRupees(m.interest)}</td>
-                        <td className="text-right font-mono font-bold text-emerald-800">{formatIndianRupees(m.closingBalance)}</td>
+                        <td className="text-right font-mono col-opening">{formatIndianRupees(m.openingBalance)}</td>
+                        <td className="text-right font-mono col-emi font-semibold">{formatIndianRupees(m.emi)}</td>
+                        <td className="text-right font-mono col-principal font-semibold">{formatIndianRupees(m.principal)}</td>
+                        <td className="text-right font-mono col-interest font-semibold">{formatIndianRupees(m.interest)}</td>
+                        <td className="text-right font-mono col-balance font-bold">{formatIndianRupees(m.closingBalance)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1046,9 +1046,11 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
         }
 
         /* 5. Schedule Table */
-        .table-responsive {
+        .table-responsive,
+        .yearly-table-container,
+        .monthly-table-container {
           background: #ffffff;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #cbd5e1;
           border-radius: 8px;
           overflow: hidden;
           max-height: 480px;
@@ -1058,31 +1060,31 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
         .schedule-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 0.76rem;
+          font-size: 0.78rem;
         }
 
         .schedule-table thead {
           position: sticky;
           top: 0;
-          background: #f8fafc;
-          border-bottom: 1.5px solid #cbd5e1;
+          background: #f1f5f9;
+          border-bottom: 2px solid #cbd5e1;
           z-index: 10;
         }
 
         .schedule-table th {
-          padding: 6px 8px;
+          padding: 8px 10px;
           text-align: left;
-          font-size: 0.70rem;
+          font-size: 0.72rem;
           font-weight: 700;
-          color: #475569;
+          color: #1e293b;
           text-transform: uppercase;
           letter-spacing: 0.02em;
         }
 
         .schedule-table td {
-          padding: 5px 8px;
-          border-bottom: 1px solid #f1f5f9;
-          color: #1e293b;
+          padding: 6px 10px;
+          border-bottom: 1px solid #e2e8f0;
+          color: #0f172a;
         }
 
         .yearly-summary-row {
@@ -1095,6 +1097,10 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
           background: #f8fafc;
         }
 
+        .yearly-summary-row td {
+          font-weight: 600;
+        }
+
         .year-title {
           display: flex;
           align-items: center;
@@ -1103,23 +1109,24 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
 
         .year-badge {
           background: #eff6ff;
-          color: #2563eb;
-          font-size: 0.72rem;
-          padding: 2px 7px;
+          color: #1d4ed8;
+          font-size: 0.74rem;
+          padding: 2px 8px;
           border-radius: 6px;
           font-weight: 700;
+          border: 1px solid #bfdbfe;
         }
 
         .month-range {
-          font-size: 0.7rem;
-          color: #64748b;
-          font-weight: 500;
+          font-size: 0.72rem;
+          color: #475569;
+          font-weight: 600;
         }
 
         .expand-btn {
           background: none;
           border: none;
-          color: #64748b;
+          color: #475569;
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -1127,27 +1134,72 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
         }
 
         .monthly-sub-row {
-          background: #fafcff;
+          background: #f8fafc;
+        }
+
+        .monthly-sub-row:hover {
+          background: #f1f5f9;
         }
 
         .month-sub-col {
-          padding-left: 24px !important;
-          color: #475569;
+          padding-left: 20px !important;
+          color: #0f172a;
+          font-weight: 600;
         }
 
         .sub-indent {
-          color: #94a3b8;
+          color: #334155;
+          font-weight: 600;
           margin-right: 4px;
+        }
+
+        .monthly-data-row {
+          background: #ffffff;
+        }
+
+        .monthly-data-row:hover {
+          background: #f8fafc;
+        }
+
+        .col-month-name {
+          color: #0f172a;
+          font-weight: 600;
+        }
+
+        /* High-contrast accessible cell values */
+        .col-opening {
+          color: #334155;
+          font-weight: 500;
+        }
+
+        .col-emi {
+          color: #0f172a;
+          font-weight: 700;
+        }
+
+        .col-principal {
+          color: #1d4ed8;
+          font-weight: 600;
+        }
+
+        .col-interest {
+          color: #7c3aed;
+          font-weight: 600;
+        }
+
+        .col-balance {
+          color: #047857;
+          font-weight: 700;
         }
 
         .year-boundary-row {
           background: #eff6ff !important;
-          border-bottom: 2px solid #bfdbfe;
+          border-bottom: 2px solid #93c5fd;
         }
 
         .milestone-badge {
           font-size: 0.65rem;
-          background: #2563eb;
+          background: #1d4ed8;
           color: #ffffff;
           padding: 1px 6px;
           border-radius: 4px;
@@ -1161,6 +1213,178 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
         .text-purple-700 { color: #7e22ce; }
         .text-amber-700 { color: #b45309; }
         .text-blue-800 { color: #1e40af; }
+
+        /* Full Dark Theme Support for RepaymentSchedule */
+        :global([data-theme="dark"]) .repayment-section-card,
+        :global([data-bs-theme="dark"]) .repayment-section-card,
+        :global(.dark) .repayment-section-card {
+          background: var(--surface) !important;
+          border-color: var(--border) !important;
+        }
+
+        :global([data-theme="dark"]) .repayment-header,
+        :global([data-bs-theme="dark"]) .repayment-header,
+        :global(.dark) .repayment-header {
+          background: var(--surface) !important;
+          border-color: var(--border) !important;
+        }
+
+        :global([data-theme="dark"]) .section-title,
+        :global([data-bs-theme="dark"]) .section-title,
+        :global(.dark) .section-title {
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .section-subtitle,
+        :global([data-bs-theme="dark"]) .section-subtitle,
+        :global(.dark) .section-subtitle {
+          color: #94a3b8 !important;
+        }
+
+        :global([data-theme="dark"]) .table-responsive,
+        :global([data-theme="dark"]) .yearly-table-container,
+        :global([data-theme="dark"]) .monthly-table-container,
+        :global([data-bs-theme="dark"]) .table-responsive,
+        :global([data-bs-theme="dark"]) .yearly-table-container,
+        :global([data-bs-theme="dark"]) .monthly-table-container,
+        :global(.dark) .table-responsive,
+        :global(.dark) .yearly-table-container,
+        :global(.dark) .monthly-table-container {
+          background: #0b1120 !important;
+          border-color: #1e293b !important;
+        }
+
+        :global([data-theme="dark"]) .schedule-table thead,
+        :global([data-bs-theme="dark"]) .schedule-table thead,
+        :global(.dark) .schedule-table thead {
+          background: #111c30 !important;
+          border-bottom-color: #1e293b !important;
+        }
+
+        :global([data-theme="dark"]) .schedule-table th,
+        :global([data-bs-theme="dark"]) .schedule-table th,
+        :global(.dark) .schedule-table th {
+          color: #cbd5e1 !important;
+        }
+
+        :global([data-theme="dark"]) .schedule-table td,
+        :global([data-bs-theme="dark"]) .schedule-table td,
+        :global(.dark) .schedule-table td {
+          border-bottom-color: #1e293b !important;
+        }
+
+        :global([data-theme="dark"]) .yearly-summary-row,
+        :global([data-bs-theme="dark"]) .yearly-summary-row,
+        :global(.dark) .yearly-summary-row {
+          background: #152238 !important;
+          border-bottom-color: #1e293b !important;
+        }
+
+        :global([data-theme="dark"]) .yearly-summary-row:hover,
+        :global([data-bs-theme="dark"]) .yearly-summary-row:hover,
+        :global(.dark) .yearly-summary-row:hover {
+          background: #1a2a46 !important;
+        }
+
+        :global([data-theme="dark"]) .year-badge,
+        :global([data-bs-theme="dark"]) .year-badge,
+        :global(.dark) .year-badge {
+          background: #1e3a5f !important;
+          color: #93c5fd !important;
+          border-color: #2563eb !important;
+        }
+
+        :global([data-theme="dark"]) .month-range,
+        :global([data-bs-theme="dark"]) .month-range,
+        :global(.dark) .month-range {
+          color: #94a3b8 !important;
+        }
+
+        :global([data-theme="dark"]) .expand-btn,
+        :global([data-bs-theme="dark"]) .expand-btn,
+        :global(.dark) .expand-btn {
+          color: #94a3b8 !important;
+        }
+
+        :global([data-theme="dark"]) .monthly-sub-row,
+        :global([data-bs-theme="dark"]) .monthly-sub-row,
+        :global(.dark) .monthly-sub-row {
+          background: #0b1120 !important;
+          border-bottom-color: #162032 !important;
+        }
+
+        :global([data-theme="dark"]) .monthly-sub-row:hover,
+        :global([data-bs-theme="dark"]) .monthly-sub-row:hover,
+        :global(.dark) .monthly-sub-row:hover {
+          background: #111a2c !important;
+        }
+
+        :global([data-theme="dark"]) .month-sub-col,
+        :global([data-bs-theme="dark"]) .month-sub-col,
+        :global(.dark) .month-sub-col {
+          color: #f1f5f9 !important;
+        }
+
+        :global([data-theme="dark"]) .sub-indent,
+        :global([data-bs-theme="dark"]) .sub-indent,
+        :global(.dark) .sub-indent {
+          color: #94a3b8 !important;
+        }
+
+        :global([data-theme="dark"]) .monthly-data-row,
+        :global([data-bs-theme="dark"]) .monthly-data-row,
+        :global(.dark) .monthly-data-row {
+          background: #0b1120 !important;
+        }
+
+        :global([data-theme="dark"]) .monthly-data-row:hover,
+        :global([data-bs-theme="dark"]) .monthly-data-row:hover,
+        :global(.dark) .monthly-data-row:hover {
+          background: #111a2c !important;
+        }
+
+        :global([data-theme="dark"]) .col-month-name,
+        :global([data-bs-theme="dark"]) .col-month-name,
+        :global(.dark) .col-month-name {
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .col-opening,
+        :global([data-bs-theme="dark"]) .col-opening,
+        :global(.dark) .col-opening {
+          color: #cbd5e1 !important;
+        }
+
+        :global([data-theme="dark"]) .col-emi,
+        :global([data-bs-theme="dark"]) .col-emi,
+        :global(.dark) .col-emi {
+          color: #ffffff !important;
+        }
+
+        :global([data-theme="dark"]) .col-principal,
+        :global([data-bs-theme="dark"]) .col-principal,
+        :global(.dark) .col-principal {
+          color: #60a5fa !important;
+        }
+
+        :global([data-theme="dark"]) .col-interest,
+        :global([data-bs-theme="dark"]) .col-interest,
+        :global(.dark) .col-interest {
+          color: #c084fc !important;
+        }
+
+        :global([data-theme="dark"]) .col-balance,
+        :global([data-bs-theme="dark"]) .col-balance,
+        :global(.dark) .col-balance {
+          color: #34d399 !important;
+        }
+
+        :global([data-theme="dark"]) .year-boundary-row,
+        :global([data-bs-theme="dark"]) .year-boundary-row,
+        :global(.dark) .year-boundary-row {
+          background: #112340 !important;
+          border-bottom-color: #1e3a5f !important;
+        }
 
         /* Preview Modal */
         .preview-modal-backdrop {
