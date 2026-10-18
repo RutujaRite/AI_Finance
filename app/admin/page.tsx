@@ -207,25 +207,25 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-blue-500/20 selection:text-blue-700">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-500/20 selection:text-blue-700 transition-colors">
       {/* 1. TOP NAVIGATION */}
       <AdminHeader user={user} showBreadcrumbs={false} showBackToWorkspace={false} />
 
       {/* 2. PAGE CONTAINER */}
-      <div className="max-w-7xl mx-auto px-6 py-10 w-full flex-1 flex flex-col">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 w-full flex-1 flex flex-col">
         {/* Header Section */}
-        <section className="mb-8">
+        <section className="mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 m-0">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white m-0">
                   Admin Overview
                 </h1>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                   Central Control
                 </span>
               </div>
-              <p className="text-sm text-slate-600 mt-1.5 m-0 leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1.5 m-0 leading-relaxed">
                 Manage platform lender policies, company database, managers, and system users.
               </p>
             </div>
@@ -233,7 +233,7 @@ export default function AdminDashboardPage() {
             <div className="flex items-center gap-2.5">
               <Link
                 href="/home"
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-98 rounded-xl transition-all shadow-xs no-underline cursor-pointer group"
+                className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-98 rounded-xl transition-all shadow-xs no-underline cursor-pointer group"
                 title="Return directly to application homepage"
               >
                 <Home className="w-4 h-4 text-white" />
@@ -244,99 +244,99 @@ export default function AdminDashboardPage() {
         </section>
 
         {/* Quick Return to Workspace Ribbon */}
-        <section className="mb-6 bg-white border border-slate-200/90 rounded-xl p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-slate-600">
-            <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-              <Home className="w-4 h-4 text-blue-600" />
+        <section className="mb-6 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+            <span className="font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
+              <Home className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               Main Workspace:
             </span>
-            <span className="hidden sm:inline text-slate-500">Jump directly to workspace calculators &amp; features</span>
+            <span className="hidden sm:inline text-slate-500 dark:text-slate-400">Jump directly to workspace calculators &amp; features</span>
           </div>
           <div className="flex items-center flex-wrap gap-2">
             <Link
               href="/home?section=assistant"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-lg font-medium transition-colors no-underline"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 border border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 rounded-lg font-medium transition-colors no-underline"
             >
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>AI Assistant</span>
             </Link>
             <Link
               href="/home?section=emi"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-lg font-medium transition-colors no-underline"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 border border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 rounded-lg font-medium transition-colors no-underline"
             >
-              <Calculator className="w-3.5 h-3.5 text-indigo-600" />
+              <Calculator className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
               <span>EMI Calculator</span>
             </Link>
             <Link
               href="/home?section=eligibility"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-lg font-medium transition-colors no-underline"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 border border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 rounded-lg font-medium transition-colors no-underline"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span>Eligibility Calculator</span>
             </Link>
             <Link
               href="/home?section=policies"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-lg font-medium transition-colors no-underline"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 border border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 rounded-lg font-medium transition-colors no-underline"
             >
-              <FileText className="w-3.5 h-3.5 text-amber-600" />
+              <FileText className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               <span>Bank Policies</span>
             </Link>
           </div>
         </section>
 
         {/* 3. 4-COLUMN KPI SUMMARY STRIP */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white border border-slate-300 rounded-xl p-4 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-center gap-3.5 group cursor-default">
-            <div className="w-10 h-10 rounded-lg bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl p-3.5 sm:p-4 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-center gap-3 sm:gap-3.5 group cursor-default">
+            <div className="w-10 h-10 rounded-lg bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
               <Building2 className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-medium text-slate-500 truncate">Total Records</div>
-              <div className="text-lg font-bold text-slate-900 tracking-tight tabular-nums mt-0.5">
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">Total Records</div>
+              <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight tabular-nums mt-0.5">
                 {stats.companyRecords > 0 ? stats.companyRecords.toLocaleString() : "533,000+"}
               </div>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-300 rounded-xl p-4 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-center gap-3.5 group cursor-default">
-            <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+          <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl p-3.5 sm:p-4 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-center gap-3 sm:gap-3.5 group cursor-default">
+            <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-medium text-slate-500 truncate">Active Lenders</div>
-              <div className="text-lg font-bold text-slate-900 tracking-tight tabular-nums mt-0.5">
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">Active Lenders</div>
+              <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight tabular-nums mt-0.5">
                 {stats.lendersCount ? `${stats.lendersCount} Lenders` : "23 Lenders"}
               </div>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-300 rounded-xl p-4 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-center gap-3.5 group cursor-default">
-            <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+          <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl p-3.5 sm:p-4 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-center gap-3 sm:gap-3.5 group cursor-default">
+            <div className="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
               <Users className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-medium text-slate-500 truncate">Directory Status</div>
-              <div className="text-lg font-bold text-slate-900 tracking-tight tabular-nums mt-0.5">
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">Directory Status</div>
+              <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight tabular-nums mt-0.5">
                 {stats.bankManagersCount > 0 ? `${stats.bankManagersCount} Contacts` : "Verified"}
               </div>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-300 rounded-xl p-4 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-center gap-3.5 group cursor-default">
-            <div className="w-10 h-10 rounded-lg bg-purple-50 border border-purple-200 text-purple-600 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+          <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl p-3.5 sm:p-4 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-center gap-3 sm:gap-3.5 group cursor-default">
+            <div className="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
               <UserCheck className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-medium text-slate-500 truncate">Platform Users</div>
-              <div className="text-lg font-bold text-slate-900 tracking-tight tabular-nums mt-0.5">
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">Platform Users</div>
+              <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight tabular-nums mt-0.5">
                 {stats.totalUsers > 0 ? `${stats.totalUsers.toLocaleString()} Users` : "2 Users"}
               </div>
             </div>
           </div>
         </div>
 
-        {/* 4. MODULE CARDS (5 CORE MODULES IN ENTERPRISE LIGHT GRID) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+        {/* 4. MODULE CARDS (5 CORE MODULES IN ENTERPRISE LIGHT/DARK GRID) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10">
           {moduleCards.map((card) => {
             const Icon = card.icon;
             return (
@@ -344,7 +344,7 @@ export default function AdminDashboardPage() {
                 key={card.id}
                 id={card.id}
                 href={card.href}
-                className="bg-white rounded-xl border border-slate-300 shadow-xs hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-6 flex flex-col justify-between group no-underline text-left cursor-pointer"
+                className="bg-white dark:bg-slate-900 rounded-xl border border-slate-300 dark:border-slate-800 shadow-xs hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 sm:p-6 flex flex-col justify-between group no-underline text-left cursor-pointer"
               >
                 <div>
                   {/* Card Header: 48x48px tinted icon container + metric pill badge */}
@@ -359,66 +359,67 @@ export default function AdminDashboardPage() {
 
                   {/* Card Body */}
                   <div className="mt-5">
-                    <h2 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors m-0">
+                    <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors m-0">
                       {card.title}
                     </h2>
-                    <p className="mt-1.5 text-sm text-slate-600 leading-relaxed m-0">
+                    <p className="mt-1.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed m-0">
                       {card.desc}
                     </p>
                   </div>
                 </div>
 
                 {/* Card Footer: specific module action label + animated arrow */}
-                <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors">
+                <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {card.action}
                   </span>
-                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-1 transition-transform" />
                 </div>
               </Link>
             );
           })}
         </div>
 
-        {/* 5. RECENT ACTIVITY TABLE (ENTERPRISE LIGHT) */}
+        {/* 5. RECENT ACTIVITY TABLE & MOBILE CARDS */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 m-0">
-              <Activity className="w-4 h-4 text-blue-600" />
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 m-0">
+              <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span>Platform Core Modules</span>
             </h2>
-            <span className="text-xs text-slate-500 font-medium">Live operational status</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Live operational status</span>
           </div>
 
-          <div className="rounded-xl bg-white border border-slate-300 overflow-hidden shadow-xs">
+          {/* Desktop Multi-column Table */}
+          <div className="hidden md:block rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 border-b border-slate-300 text-slate-700 text-xs font-bold uppercase tracking-wider">
+                  <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold uppercase tracking-wider">
                     <th className="py-3.5 px-6 font-bold" style={{ width: "42%" }}>Module Section</th>
                     <th className="py-3.5 px-6 font-bold" style={{ width: "33%" }}>Last Synchronized</th>
                     <th className="py-3.5 px-6 font-bold text-center" style={{ width: "25%" }}>Operational Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {/* Row 1: Company data */}
-                  <tr className="border-b border-slate-200 hover:bg-blue-50/50 transition-colors">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 border border-sky-200 flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800 flex items-center justify-center shrink-0">
                           <Building2 className="w-5 h-5" />
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-900 text-sm">Company Master Data</div>
-                          <div className="text-xs text-slate-500">Employer categorization directory</div>
+                          <div className="font-semibold text-slate-900 dark:text-white text-sm">Company Master Data</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">Employer categorization directory</div>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-6 text-sm text-slate-600 font-mono">
+                    <td className="py-4 px-6 text-sm text-slate-600 dark:text-slate-400 font-mono">
                       {formatRelativeDate(activities.companyData?.lastUpdated, "Today")}
                     </td>
                     <td className="py-4 px-6 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         Live &amp; Active
                       </span>
@@ -426,23 +427,23 @@ export default function AdminDashboardPage() {
                   </tr>
 
                   {/* Row 2: Bank policies */}
-                  <tr className="border-b border-slate-200 hover:bg-blue-50/50 transition-colors">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center shrink-0">
                           <ShieldCheck className="w-5 h-5" />
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-900 text-sm">Bank Policies &amp; Matrices</div>
-                          <div className="text-xs text-slate-500">Multi-bank credit guidelines</div>
+                          <div className="font-semibold text-slate-900 dark:text-white text-sm">Bank Policies &amp; Matrices</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">Multi-bank credit guidelines</div>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-6 text-sm text-slate-600 font-mono">
+                    <td className="py-4 px-6 text-sm text-slate-600 dark:text-slate-400 font-mono">
                       {formatRelativeDate(activities.bankPolicies?.lastUpdated, "Yesterday")}
                     </td>
                     <td className="py-4 px-6 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         Live &amp; Active
                       </span>
@@ -450,23 +451,23 @@ export default function AdminDashboardPage() {
                   </tr>
 
                   {/* Row 3: AI Agent Studio */}
-                  <tr className="border-b border-slate-200 hover:bg-blue-50/50 transition-colors">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
                           <Bot className="w-5 h-5" />
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-900 text-sm">AI Agent Studio</div>
-                          <div className="text-xs text-slate-500">Prompts, guardrails &amp; RAG policies</div>
+                          <div className="font-semibold text-slate-900 dark:text-white text-sm">AI Agent Studio</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">Prompts, guardrails &amp; RAG policies</div>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-6 text-sm text-slate-600 font-mono">
+                    <td className="py-4 px-6 text-sm text-slate-600 dark:text-slate-400 font-mono">
                       Today
                     </td>
                     <td className="py-4 px-6 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         Live &amp; Active
                       </span>
@@ -474,23 +475,23 @@ export default function AdminDashboardPage() {
                   </tr>
 
                   {/* Row 4: User accounts */}
-                  <tr className="border-b border-slate-200 last:border-0 hover:bg-blue-50/50 transition-colors">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 last:border-0 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 border border-purple-200 flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 flex items-center justify-center shrink-0">
                           <UserCheck className="w-5 h-5" />
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-900 text-sm">User Authentication &amp; Roles</div>
-                          <div className="text-xs text-slate-500">Client logins and privileges</div>
+                          <div className="font-semibold text-slate-900 dark:text-white text-sm">User Authentication &amp; Roles</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">Client logins and privileges</div>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-6 text-sm text-slate-600 font-mono">
+                    <td className="py-4 px-6 text-sm text-slate-600 dark:text-slate-400 font-mono">
                       {formatRelativeDate(activities.userAccounts?.lastUpdated, "Today")}
                     </td>
                     <td className="py-4 px-6 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         Live &amp; Active
                       </span>
@@ -498,6 +499,89 @@ export default function AdminDashboardPage() {
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Adaptive Mobile Cards for Screen Widths <= 768px */}
+          <div className="md:hidden space-y-3">
+            {/* Mobile Card 1 */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl p-4 shadow-xs">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800 flex items-center justify-center shrink-0">
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <div className="font-semibold text-slate-900 dark:text-white text-sm">Company Master Data</div>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <span>Employer Directory</span>
+                <span className="font-mono">{formatRelativeDate(activities.companyData?.lastUpdated, "Today")}</span>
+              </div>
+            </div>
+
+            {/* Mobile Card 2 */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl p-4 shadow-xs">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div className="font-semibold text-slate-900 dark:text-white text-sm">Bank Policies &amp; Matrices</div>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <span>Multi-bank Guidelines</span>
+                <span className="font-mono">{formatRelativeDate(activities.bankPolicies?.lastUpdated, "Yesterday")}</span>
+              </div>
+            </div>
+
+            {/* Mobile Card 3 */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl p-4 shadow-xs">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
+                    <Bot className="w-4 h-4" />
+                  </div>
+                  <div className="font-semibold text-slate-900 dark:text-white text-sm">AI Agent Studio</div>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <span>RAG Guardrails</span>
+                <span className="font-mono">Today</span>
+              </div>
+            </div>
+
+            {/* Mobile Card 4 */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl p-4 shadow-xs">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 flex items-center justify-center shrink-0">
+                    <UserCheck className="w-4 h-4" />
+                  </div>
+                  <div className="font-semibold text-slate-900 dark:text-white text-sm">User Authentication</div>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <span>Client Logins</span>
+                <span className="font-mono">{formatRelativeDate(activities.userAccounts?.lastUpdated, "Today")}</span>
+              </div>
             </div>
           </div>
         </div>
