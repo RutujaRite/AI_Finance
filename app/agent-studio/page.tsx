@@ -503,9 +503,9 @@ function AgentStudioContent() {
       {/* 1. Global Admin Topbar & Breadcrumbs without sidebar */}
       <AdminHeader
         user={user}
-        title="AI Agent Studio"
+        title="AI Agent Configuration"
         description="Configure agent prompts, guardrails, policy knowledge bases, and test simulations."
-        breadcrumbs={[{ label: "AI Agent Studio" }]}
+        breadcrumbs={[{ label: "AI Agent Configuration" }]}
         actions={
           <div className="flex items-center gap-2">
             {/* Agent Dropdown Selector in Top Bar */}
@@ -628,7 +628,7 @@ function AgentStudioContent() {
               <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
-              <span>Studio Navigation</span>
+              <span>Configuration Navigation</span>
             </button>
             <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
               {activeTab === "instructions" ? "AI Instructions" : activeTab === "knowledge" ? "Knowledge Base" : activeTab === "demo" ? "Agent Test / Demo" : activeTab === "tokens" ? "Token Analytics" : activeTab === "models" ? "Model Configuration" : "Settings"}
@@ -1028,7 +1028,7 @@ function AgentStudioContent() {
 
 export default function AgentStudioPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400">Loading Agent Studio...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400">Loading AI Agent Configuration...</div>}>
       <AgentStudioContent />
     </Suspense>
   );

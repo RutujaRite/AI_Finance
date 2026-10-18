@@ -784,7 +784,7 @@ export default function StudioMainView({
             <i className="bi bi-arrow-left text-lg" />
           </button>
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-slate-500 font-medium">AI Agent Studio</span>
+            <span className="text-slate-500 font-medium">AI Agent Configuration</span>
             <span className="text-slate-300">›</span>
             <span className="text-slate-900 font-bold text-base">{currentAgent.name}</span>
           </div>

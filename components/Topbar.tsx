@@ -250,12 +250,12 @@ export default function Topbar({
     },
     {
       id: "agent-studio",
-      label: "AI Agent Studio",
-      shortLabel: "Agent Studio",
+      label: "AI Agent Configuration",
+      shortLabel: "Agent Config",
       href: "/agent-studio",
       iconClass: "bi bi-robot",
       description: "Persona, instructions & RAG demo",
-      badge: "Studio",
+      badge: "Config",
     },
     {
       id: "users",

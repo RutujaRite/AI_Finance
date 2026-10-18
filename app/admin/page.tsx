@@ -169,7 +169,7 @@ export default function AdminDashboardPage() {
     },
     {
       id: "card-ai-agent-studio",
-      title: "AI Agent Studio",
+      title: "AI Agent Configuration",
       metric: "Studio & Models",
       desc: "Configure AI instructions, prompts, guardrails and knowledge documents",
       action: "Configure agent intelligence",
@@ -402,7 +402,7 @@ export default function AdminDashboardPage() {
                           <Bot className="w-5 h-5" />
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-900 dark:text-white text-sm">AI Agent Studio</div>
+                          <div className="font-semibold text-slate-900 dark:text-white text-sm">AI Agent Configuration</div>
                           <div className="text-xs text-slate-500 dark:text-slate-400">Prompts, guardrails &amp; RAG policies</div>
                         </div>
                       </div>
@@ -495,7 +495,7 @@ export default function AdminDashboardPage() {
                   <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
                     <Bot className="w-4 h-4" />
                   </div>
-                  <div className="font-semibold text-slate-900 dark:text-white text-sm">AI Agent Studio</div>
+                  <div className="font-semibold text-slate-900 dark:text-white text-sm">AI Agent Configuration</div>
                 </div>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

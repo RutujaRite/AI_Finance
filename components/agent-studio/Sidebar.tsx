@@ -83,7 +83,7 @@ export default function Sidebar({
               <Bot className="w-4 h-4" />
             </div>
             <span className="font-bold text-[#101D45] text-base tracking-tight">
-              Agent Studio
+              AI Agent Configuration
             </span>
           </div>
 

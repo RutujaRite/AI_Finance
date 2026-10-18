@@ -320,7 +320,7 @@ export default function AdminHeader({
                     className="flex items-center gap-2.5 px-4 py-2 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-medium no-underline transition-colors"
                   >
                     <Bot className="w-4 h-4 text-sky-600" />
-                    <span>AI Agent Studio</span>
+                    <span>AI Agent Configuration</span>
                   </Link>
                 </div>
 
@@ -544,7 +544,7 @@ export default function AdminHeader({
                 className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors no-underline"
               >
                 <Bot className="w-4 h-4 text-pink-600" />
-                <span>AI Agent Studio</span>
+                <span>AI Agent Configuration</span>
               </Link>
               <Link
                 href="/admin/users"

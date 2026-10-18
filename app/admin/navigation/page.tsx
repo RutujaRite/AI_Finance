@@ -46,7 +46,7 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
   {
     id: "admin-ai-agent-studio",
     path: "/admin/ai-agent-studio",
-    label: "AI Agent Studio (Model Config)",
+    label: "AI Agent Configuration (Model Config)",
     category: "Admin Suite",
     roles: ["Admin"],
     iconType: "sliders",
@@ -57,13 +57,13 @@ const SYSTEM_ROUTES: NavRouteItem[] = [
   {
     id: "agent-studio",
     path: "/agent-studio",
-    label: "AI Agent Studio Workspace",
+    label: "AI Agent Configuration Workspace",
     category: "Admin Suite",
     roles: ["Admin"],
     iconType: "bot",
     status: "Protected",
     description: "Multi-agent persona builder, business instructions, live demo & RAG knowledge manager",
-    badge: "Studio",
+    badge: "Config",
   },
   {
     id: "admin-models",
@@ -392,7 +392,7 @@ export default function AdminNavigationPage() {
               }}
             >
               <Bot size={14} />
-              <span>Agent Studio</span>
+              <span>AI Agent Configuration</span>
             </button>
           </div>
         </div>

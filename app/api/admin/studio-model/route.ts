@@ -116,8 +116,8 @@ export async function GET(req: NextRequest) {
 
     const connectedUsage = [
       {
-        id: "ai-agent-studio",
-        name: "AI Agent Studio",
+        id: "ai-agent-configuration",
+        name: "AI Agent Configuration",
         status: "Active",
         description: "Uses the configured LLM for agent creation, testing and deployment.",
         model: modelIdentifier,

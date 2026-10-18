@@ -76,7 +76,7 @@ export default function SettingsView({
         <div className="cn-page-header">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              Studio Settings
+              Configuration Settings
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
               Configure persistent vector stores, database connections, and deployment lifecycle.

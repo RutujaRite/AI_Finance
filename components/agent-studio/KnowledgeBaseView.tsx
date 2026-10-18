@@ -321,14 +321,14 @@ export default function KnowledgeBaseView({
   return (
     <div className="w-full min-h-full bg-slate-50 flex-1 overflow-y-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Top Navigation Bar: Back to AI Agent Studio */}
+        {/* Top Navigation Bar: Back to AI Agent Configuration */}
         <div className="flex items-center justify-between pb-1">
           <button
             onClick={onNavigateToInstructions}
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-blue-400 hover:bg-blue-50/60 text-xs font-semibold text-slate-700 hover:text-blue-600 transition shadow-xs cursor-pointer group"
           >
             <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:text-blue-600 transition-transform group-hover:-translate-x-0.5" />
-            <span>← Back to AI Agent Studio</span>
+            <span>← Back to AI Agent Configuration</span>
           </button>
 
           <span className="text-xs font-medium text-slate-500 bg-slate-100/80 px-2.5 py-1 rounded-full border border-slate-200/60">

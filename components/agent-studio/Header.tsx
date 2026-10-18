@@ -36,7 +36,7 @@ export default function Header({
       <div>
         <div className="flex items-center gap-2.5">
           <h1 className="text-xl font-bold text-slate-800 tracking-tight">
-            AI Agent Studio
+            AI Agent Configuration
           </h1>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200/80">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />

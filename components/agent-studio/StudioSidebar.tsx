@@ -137,7 +137,7 @@ export default function StudioSidebar({
             </div>
             <div>
               <div className="text-slate-900 font-bold text-sm leading-tight tracking-tight">
-                AI Agent Studio
+                AI Agent Configuration
               </div>
               <div className="text-slate-400 text-[11px] font-medium mt-0.5">
                 CreditWise Architecture
