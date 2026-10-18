@@ -18,6 +18,11 @@ import {
   MessageSquare,
   Calculator,
   FileText,
+  Menu,
+  X,
+  Building,
+  Cpu,
+  Sparkles,
 } from "lucide-react";
 
 interface BreadcrumbItem {
@@ -46,6 +51,7 @@ export default function AdminHeader({
 }: AdminHeaderProps) {
   const router = useRouter();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -81,32 +87,43 @@ export default function AdminHeader({
   return (
     <>
       {/* 1. TOP NAVIGATION BAR */}
-      <header className="flex items-center justify-between h-16 px-4 sm:px-6 border-b border-slate-300 bg-white text-slate-800 sticky top-0 z-30 font-sans shadow-2xs">
-        {/* Left: Brand Group & Main App Quick Links */}
-        <div className="flex items-center gap-3">
-          <Link href="/admin" className="flex items-center gap-3 no-underline group" title="CreditWise Admin Overview">
+      <header className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-6 border-b border-slate-300 bg-white text-slate-800 sticky top-0 z-30 font-sans shadow-2xs">
+        {/* Left: Hamburger + Brand Group */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* YouTube-style Hamburger Button on far left (Visible on mobile/tablet) */}
+          <button
+            type="button"
+            onClick={() => setMobileDrawerOpen(true)}
+            className="lg:hidden p-1.5 text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center shrink-0 cursor-pointer"
+            aria-label="Open Admin Navigation Menu"
+            title="Admin Menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          <Link href="/admin" className="flex items-center gap-2 sm:gap-2.5 no-underline group" title="CreditWise Admin Overview">
             {/* Logo Icon */}
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0 group-hover:scale-105 transition-transform">
-              <ShieldCheck className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0 group-hover:scale-105 transition-transform">
+              <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
 
             {/* Brand text & Badge */}
             <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-900 text-base tracking-tight">
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-slate-900 text-sm sm:text-base tracking-tight">
                   CreditWise AI
                 </span>
-                <span className="px-2 py-0.5 text-xs font-semibold rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-blue-50 text-blue-700 border border-blue-200 uppercase">
                   Admin
                 </span>
               </div>
-              <span className="text-xs text-slate-500 hidden sm:inline">
+              <span className="text-[10px] text-slate-500 hidden sm:inline">
                 Financial SaaS Management Suite
               </span>
             </div>
           </Link>
 
-          {/* Quick Nav directly to Main App Workspace */}
+          {/* Quick Nav directly to Main App Workspace (Desktop only) */}
           <nav className="hidden lg:flex items-center gap-1 ml-4 pl-4 border-l border-slate-200 text-xs">
             <Link
               href="/home"
@@ -143,38 +160,26 @@ export default function AdminHeader({
           </nav>
         </div>
 
-        {/* Right: Actions Group */}
+        {/* Right: Actions Group (YouTube-style) */}
         <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Prominent Direct "Homepage" Header Link */}
+          {/* YouTube-style "+ Homepage" Pill Button */}
           <Link
             href="/home"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-semibold text-blue-700 hover:text-white bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 rounded-xl transition-all cursor-pointer shadow-2xs no-underline group"
+            className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-semibold rounded-full bg-slate-900 text-white hover:bg-blue-600 transition-all shadow-xs no-underline shrink-0"
             title="Exit Admin & Go to Application Homepage"
           >
-            <Home className="w-3.5 h-3.5 text-blue-600 group-hover:text-white transition-colors" />
+            <Home className="w-3.5 h-3.5 text-white" />
             <span className="font-semibold">Homepage</span>
           </Link>
 
-          {/* Quick Return to Dashboard if on a sub-page */}
-          {title && (
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-1.5 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 rounded-xl px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-medium no-underline transition-all shadow-2xs"
-              title="Return to Admin Overview Dashboard"
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-slate-600" />
-              <span className="hidden md:inline">Admin Overview</span>
-            </Link>
-          )}
-
-          {/* Search Icon button */}
+          {/* Search Icon button (hidden on narrow mobile) */}
           <button
             type="button"
             onClick={() => router.push("/admin/company-search")}
             title="Company Search"
-            className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+            className="hidden sm:flex h-8 w-8 sm:h-9 sm:w-9 rounded-full text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-300 items-center justify-center transition-all cursor-pointer shadow-2xs"
           >
-            <Search className="w-4 h-4" />
+            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
 
           {/* Notification Bell */}
@@ -182,41 +187,23 @@ export default function AdminHeader({
             <button
               type="button"
               title="Notifications"
-              className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+              className="h-8 w-8 sm:h-9 sm:w-9 rounded-full text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-300 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
             >
-              <Bell className="w-4 h-4" />
+              <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-blue-600 ring-2 ring-white" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-600 ring-2 ring-white" />
           </div>
 
-          {/* Admin Profile Dropdown */}
+          {/* YouTube-style Circular Admin Profile Avatar on FAR RIGHT */}
           <div className="relative" ref={dropdownRef}>
             <button
               type="button"
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="h-9 sm:h-10 rounded-xl flex items-center gap-2 px-2 sm:px-2.5 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 transition-all cursor-pointer shadow-2xs"
+              className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center text-xs font-bold ring-2 ring-slate-200 hover:ring-blue-400 transition-all cursor-pointer shadow-xs shrink-0"
               aria-label="User profile menu"
+              title={`${userName} (Administrator)`}
             >
-              {/* Circular Avatar */}
-              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
-                {userInitial}
-              </div>
-
-              {/* Two-line Stack: Name & Role */}
-              <div className="hidden sm:flex flex-col text-left leading-tight">
-                <span className="text-sm font-semibold text-slate-800">
-                  {userName}
-                </span>
-                <span className="text-xs text-slate-500">
-                  Administrator
-                </span>
-              </div>
-
-              <ChevronDown
-                className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
-                  profileDropdownOpen ? "rotate-180" : ""
-                }`}
-              />
+              {userInitial}
             </button>
 
             {/* Dropdown Menu */}
@@ -425,6 +412,162 @@ export default function AdminHeader({
           </div>
         </section>
       )}
+      {/* Off-canvas mobile navigation drawer backdrop */}
+      {mobileDrawerOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 transition-opacity"
+          onClick={() => setMobileDrawerOpen(false)}
+        />
+      )}
+
+      {/* Off-canvas mobile navigation drawer */}
+      <aside
+        className={`fixed top-0 left-0 bottom-0 w-[280px] sm:w-[320px] max-w-[85vw] bg-white text-slate-800 z-50 shadow-2xl flex flex-col transition-transform duration-250 ease-out font-sans ${
+          mobileDrawerOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Drawer Header */}
+        <div className="flex items-center justify-between p-4 border-b border-slate-200">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs">
+              <ShieldCheck className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <div className="font-bold text-slate-900 text-sm">CreditWise AI</div>
+              <div className="text-[10px] text-blue-600 font-semibold uppercase tracking-wider">Admin Management</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMobileDrawerOpen(false)}
+            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+            aria-label="Close Menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Drawer Links */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-4">
+          <div>
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">Admin Management Tools</div>
+            <div className="space-y-0.5">
+              <Link
+                href="/admin"
+                onClick={() => setMobileDrawerOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-colors no-underline"
+              >
+                <LayoutGrid className="w-4 h-4 text-blue-600" />
+                <span>Admin Dashboard</span>
+              </Link>
+              <Link
+                href="/admin/bank-policy"
+                onClick={() => setMobileDrawerOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-colors no-underline"
+              >
+                <FileText className="w-4 h-4 text-indigo-600" />
+                <span>Bank Policy Guidelines</span>
+              </Link>
+              <Link
+                href="/admin/company-search"
+                onClick={() => setMobileDrawerOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-colors no-underline"
+              >
+                <Building className="w-4 h-4 text-emerald-600" />
+                <span>Company Categorization</span>
+              </Link>
+              <Link
+                href="/admin/bank-managers"
+                onClick={() => setMobileDrawerOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-colors no-underline"
+              >
+                <Users className="w-4 h-4 text-amber-600" />
+                <span>Official Bank Managers</span>
+              </Link>
+              <Link
+                href="/admin/ai-model"
+                onClick={() => setMobileDrawerOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-colors no-underline"
+              >
+                <Cpu className="w-4 h-4 text-purple-600" />
+                <span>AI Model Settings</span>
+              </Link>
+              <Link
+                href="/agent-studio"
+                onClick={() => setMobileDrawerOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-colors no-underline"
+              >
+                <Bot className="w-4 h-4 text-pink-600" />
+                <span>AI Agent Studio</span>
+              </Link>
+              <Link
+                href="/admin/users"
+                onClick={() => setMobileDrawerOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-colors no-underline"
+              >
+                <Users className="w-4 h-4 text-cyan-600" />
+                <span>Users Management</span>
+              </Link>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-200">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">Main App Navigation</div>
+            <div className="space-y-0.5">
+              <Link
+                href="/home"
+                onClick={() => setMobileDrawerOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors no-underline"
+              >
+                <Home className="w-4 h-4 text-blue-600" />
+                <span>Application Homepage</span>
+              </Link>
+              <Link
+                href="/home?section=assistant"
+                onClick={() => setMobileDrawerOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-colors no-underline"
+              >
+                <MessageSquare className="w-4 h-4 text-slate-400" />
+                <span>AI Loan Assistant</span>
+              </Link>
+              <Link
+                href="/home?section=emi"
+                onClick={() => setMobileDrawerOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-colors no-underline"
+              >
+                <Calculator className="w-4 h-4 text-slate-400" />
+                <span>EMI Calculator</span>
+              </Link>
+              <Link
+                href="/home?section=eligibility"
+                onClick={() => setMobileDrawerOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-colors no-underline"
+              >
+                <ShieldCheck className="w-4 h-4 text-slate-400" />
+                <span>Eligibility Calculator</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Drawer Footer with Logout */}
+        <div className="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
+              {userInitial}
+            </div>
+            <div className="truncate text-xs font-semibold text-slate-800">{userName}</div>
+          </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
     </>
   );
 }

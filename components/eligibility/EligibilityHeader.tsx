@@ -1,13 +1,14 @@
 'use client';
 
 import React from 'react';
-import { Calculator, Bookmark, FolderOpen, Printer, Download, Sparkles } from 'lucide-react';
+import { Calculator, Bookmark, FolderOpen, Printer, Download, Sparkles, FileSpreadsheet } from 'lucide-react';
 
 interface EligibilityHeaderProps {
   savedCount: number;
   onOpenSavedRecords: () => void;
   onSaveData: () => void;
   onExportPdf?: () => void;
+  onExportExcel?: () => void;
 }
 
 export const EligibilityHeader: React.FC<EligibilityHeaderProps> = ({
@@ -15,6 +16,7 @@ export const EligibilityHeader: React.FC<EligibilityHeaderProps> = ({
   onOpenSavedRecords,
   onSaveData,
   onExportPdf,
+  onExportExcel,
 }) => {
   return (
     <header className="eligibility-header-card">
@@ -34,6 +36,19 @@ export const EligibilityHeader: React.FC<EligibilityHeaderProps> = ({
       </div>
 
       <div className="header-actions">
+        {/* Download Excel Button */}
+        {onExportExcel && (
+          <button
+            type="button"
+            onClick={onExportExcel}
+            className="hdr-btn hdr-btn-excel"
+            title="Download comprehensive calculations and live loan details in Excel (.xlsx)"
+          >
+            <FileSpreadsheet size={16} />
+            <span>Download Excel</span>
+          </button>
+        )}
+
         {/* 1. Saved Records */}
         <button
           type="button"
@@ -176,6 +191,20 @@ export const EligibilityHeader: React.FC<EligibilityHeaderProps> = ({
           background: #059669;
           transform: translateY(-1px);
           box-shadow: 0 4px 8px rgba(16, 185, 129, 0.35);
+        }
+
+        /* Excel button */
+        .hdr-btn-excel {
+          background: #0284c7;
+          border-color: #0369a1;
+          color: #ffffff;
+          box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25);
+        }
+
+        .hdr-btn-excel:hover {
+          background: #0369a1;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(2, 132, 199, 0.35);
         }
 
         /* Blue primary button for export */

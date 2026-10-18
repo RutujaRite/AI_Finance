@@ -2,27 +2,28 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  CalendarClock, 
-  Printer, 
-  ChevronDown, 
-  ChevronUp, 
-  FileText, 
-  User, 
-  Phone, 
-  Mail, 
-  CreditCard, 
-  Building, 
-  IndianRupee, 
-  Percent, 
-  Coins, 
-  ShieldCheck, 
+import {
+  CalendarClock,
+  Printer,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  User,
+  Phone,
+  Mail,
+  CreditCard,
+  Building,
+  IndianRupee,
+  Percent,
+  Coins,
+  ShieldCheck,
   ArrowRight,
   Eye,
   Download,
   Loader2,
   CheckCircle2,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  FileSpreadsheet
 } from 'lucide-react';
 import { CustomerInfo, EligibilityResult } from '@/lib/eligibility/eligibilityTypes';
 import { formatIndianRupees, formatLakhsCrores } from '@/lib/eligibility/calculateEligibility';
@@ -36,6 +37,7 @@ interface RepaymentScheduleProps {
   tenureMonths: number;
   result: EligibilityResult;
   customerInfo: CustomerInfo;
+  onExportExcel?: () => void;
 }
 
 interface MonthItem {
@@ -66,6 +68,7 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
   tenureMonths,
   result,
   customerInfo,
+  onExportExcel,
 }) => {
   const [activeTab, setActiveTab] = useState<'yearly' | 'monthly' | 'chart'>('yearly');
   const [expandedYears, setExpandedYears] = useState<Record<number, boolean>>({ 1: true });
@@ -255,6 +258,18 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
         </div>
 
         <div className="header-actions">
+          {onExportExcel && (
+            <button
+              type="button"
+              onClick={onExportExcel}
+              className="rep-btn rep-btn-excel"
+              title="Download live loan portfolio and amortization schedule in Excel (.xlsx)"
+            >
+              <FileSpreadsheet size={15} />
+              <span>Download Excel</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setPreviewModalOpen(true)}
@@ -357,11 +372,11 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
           </div>
 
           <span className="table-hint text-slate-500">
-            {activeTab === 'yearly' 
-              ? 'Click year row to expand 12-month breakdown' 
+            {activeTab === 'yearly'
+              ? 'Click year row to expand 12-month breakdown'
               : activeTab === 'monthly'
-              ? 'Continuous month-by-month repayment breakdown'
-              : 'Principal vs Interest vs Fees distribution'}
+                ? 'Continuous month-by-month repayment breakdown'
+                : 'Principal vs Interest vs Fees distribution'}
           </span>
         </div>
 
@@ -456,100 +471,100 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
         ) : (
           /* 5. Schedule Data Table */
           <div className="table-responsive">
-          {activeTab === 'yearly' ? (
-            <div className="yearly-table-container">
-              <table className="schedule-table">
-                <thead>
-                  <tr>
-                    <th>Year / Milestone</th>
-                    <th className="text-right">Opening Balance</th>
-                    <th className="text-right">Total EMI Paid</th>
-                    <th className="text-right">Principal Paid</th>
-                    <th className="text-right">Interest Paid</th>
-                    <th className="text-right">Remaining Balance</th>
-                    <th className="text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {yearSummaries.map((yr) => {
-                    const isExpanded = !!expandedYears[yr.year];
-                    return (
-                      <React.Fragment key={`yr-${yr.year}`}>
-                        <tr 
-                          className="yearly-summary-row"
-                          onClick={() => toggleYear(yr.year)}
-                        >
-                          <td className="year-title font-semibold">
-                            <span className="year-badge">Year {yr.year}</span>
-                            <span className="month-range">Months {(yr.year - 1) * 12 + 1}–{Math.min(tenure, yr.year * 12)}</span>
-                          </td>
-                          <td className="text-right font-mono">{formatIndianRupees(yr.openingBalance)}</td>
-                          <td className="text-right font-mono font-semibold text-slate-800">{formatIndianRupees(yr.totalEmi)}</td>
-                          <td className="text-right font-mono text-blue-700">{formatIndianRupees(yr.totalPrincipal)}</td>
-                          <td className="text-right font-mono text-purple-700">{formatIndianRupees(yr.totalInterest)}</td>
-                          <td className="text-right font-mono font-bold text-emerald-800">{formatIndianRupees(yr.closingBalance)}</td>
-                          <td className="text-center">
-                            <button 
-                              type="button" 
-                              className="expand-btn"
-                              aria-label={isExpanded ? 'Collapse year' : 'Expand year'}
-                            >
-                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                            </button>
-                          </td>
-                        </tr>
-
-                        {isExpanded && yr.months.map((m) => (
-                          <tr key={`m-${m.month}`} className="monthly-sub-row">
-                            <td className="month-sub-col">
-                              <span className="sub-indent">↳ Month {m.month} (M{m.monthInYear})</span>
-                            </td>
-                            <td className="text-right font-mono text-slate-500">{formatIndianRupees(m.openingBalance)}</td>
-                            <td className="text-right font-mono text-slate-700">{formatIndianRupees(m.emi)}</td>
-                            <td className="text-right font-mono text-blue-600">{formatIndianRupees(m.principal)}</td>
-                            <td className="text-right font-mono text-purple-600">{formatIndianRupees(m.interest)}</td>
-                            <td className="text-right font-mono font-semibold text-slate-900">{formatIndianRupees(m.closingBalance)}</td>
-                            <td />
-                          </tr>
-                        ))}
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="monthly-table-container">
-              <table className="schedule-table">
-                <thead>
-                  <tr>
-                    <th>Month #</th>
-                    <th className="text-right">Opening Balance</th>
-                    <th className="text-right">Monthly EMI</th>
-                    <th className="text-right">Principal Paid</th>
-                    <th className="text-right">Interest Paid</th>
-                    <th className="text-right">Remaining Balance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {schedule.map((m) => (
-                    <tr key={`full-m-${m.month}`} className={m.month % 12 === 0 ? 'year-boundary-row' : ''}>
-                      <td className="font-semibold">
-                        Month {m.month}
-                        {m.month % 12 === 0 && <span className="milestone-badge">Year {m.month / 12} End</span>}
-                      </td>
-                      <td className="text-right font-mono text-slate-600">{formatIndianRupees(m.openingBalance)}</td>
-                      <td className="text-right font-mono font-semibold text-slate-900">{formatIndianRupees(m.emi)}</td>
-                      <td className="text-right font-mono text-blue-700">{formatIndianRupees(m.principal)}</td>
-                      <td className="text-right font-mono text-purple-700">{formatIndianRupees(m.interest)}</td>
-                      <td className="text-right font-mono font-bold text-emerald-800">{formatIndianRupees(m.closingBalance)}</td>
+            {activeTab === 'yearly' ? (
+              <div className="yearly-table-container">
+                <table className="schedule-table">
+                  <thead>
+                    <tr>
+                      <th>Year / Milestone</th>
+                      <th className="text-right">Opening Balance</th>
+                      <th className="text-right">Total EMI Paid</th>
+                      <th className="text-right">Principal Paid</th>
+                      <th className="text-right">Interest Paid</th>
+                      <th className="text-right">Remaining Balance</th>
+                      <th className="text-center">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                  </thead>
+                  <tbody>
+                    {yearSummaries.map((yr) => {
+                      const isExpanded = !!expandedYears[yr.year];
+                      return (
+                        <React.Fragment key={`yr-${yr.year}`}>
+                          <tr
+                            className="yearly-summary-row"
+                            onClick={() => toggleYear(yr.year)}
+                          >
+                            <td className="year-title font-semibold">
+                              <span className="year-badge">Year {yr.year}</span>
+                              <span className="month-range">Months {(yr.year - 1) * 12 + 1}–{Math.min(tenure, yr.year * 12)}</span>
+                            </td>
+                            <td className="text-right font-mono">{formatIndianRupees(yr.openingBalance)}</td>
+                            <td className="text-right font-mono font-semibold text-slate-800">{formatIndianRupees(yr.totalEmi)}</td>
+                            <td className="text-right font-mono text-blue-700">{formatIndianRupees(yr.totalPrincipal)}</td>
+                            <td className="text-right font-mono text-purple-700">{formatIndianRupees(yr.totalInterest)}</td>
+                            <td className="text-right font-mono font-bold text-emerald-800">{formatIndianRupees(yr.closingBalance)}</td>
+                            <td className="text-center">
+                              <button
+                                type="button"
+                                className="expand-btn"
+                                aria-label={isExpanded ? 'Collapse year' : 'Expand year'}
+                              >
+                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              </button>
+                            </td>
+                          </tr>
+
+                          {isExpanded && yr.months.map((m) => (
+                            <tr key={`m-${m.month}`} className="monthly-sub-row">
+                              <td className="month-sub-col">
+                                <span className="sub-indent">↳ Month {m.month} (M{m.monthInYear})</span>
+                              </td>
+                              <td className="text-right font-mono text-slate-500">{formatIndianRupees(m.openingBalance)}</td>
+                              <td className="text-right font-mono text-slate-700">{formatIndianRupees(m.emi)}</td>
+                              <td className="text-right font-mono text-blue-600">{formatIndianRupees(m.principal)}</td>
+                              <td className="text-right font-mono text-purple-600">{formatIndianRupees(m.interest)}</td>
+                              <td className="text-right font-mono font-semibold text-slate-900">{formatIndianRupees(m.closingBalance)}</td>
+                              <td />
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="monthly-table-container">
+                <table className="schedule-table">
+                  <thead>
+                    <tr>
+                      <th>Month #</th>
+                      <th className="text-right">Opening Balance</th>
+                      <th className="text-right">Monthly EMI</th>
+                      <th className="text-right">Principal Paid</th>
+                      <th className="text-right">Interest Paid</th>
+                      <th className="text-right">Remaining Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {schedule.map((m) => (
+                      <tr key={`full-m-${m.month}`} className={m.month % 12 === 0 ? 'year-boundary-row' : ''}>
+                        <td className="font-semibold">
+                          Month {m.month}
+                          {m.month % 12 === 0 && <span className="milestone-badge">Year {m.month / 12} End</span>}
+                        </td>
+                        <td className="text-right font-mono text-slate-600">{formatIndianRupees(m.openingBalance)}</td>
+                        <td className="text-right font-mono font-semibold text-slate-900">{formatIndianRupees(m.emi)}</td>
+                        <td className="text-right font-mono text-blue-700">{formatIndianRupees(m.principal)}</td>
+                        <td className="text-right font-mono text-purple-700">{formatIndianRupees(m.interest)}</td>
+                        <td className="text-right font-mono font-bold text-emerald-800">{formatIndianRupees(m.closingBalance)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -586,18 +601,18 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
 
               <div className="modal-actions-group">
                 <div className="zoom-pill">
-                  <button 
-                    type="button" 
-                    className="zoom-btn" 
+                  <button
+                    type="button"
+                    className="zoom-btn"
                     onClick={() => setPreviewZoom((z) => Math.max(0.5, Number((z - 0.1).toFixed(2))))}
                     title="Zoom Out"
                   >
                     –
                   </button>
                   <span className="zoom-text">{Math.round(previewZoom * 100)}%</span>
-                  <button 
-                    type="button" 
-                    className="zoom-btn" 
+                  <button
+                    type="button"
+                    className="zoom-btn"
                     onClick={() => setPreviewZoom((z) => Math.min(1.2, Number((z + 0.1).toFixed(2))))}
                     title="Zoom In"
                   >
@@ -642,7 +657,7 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
             </div>
 
             <div className="preview-modal-scroll-continuum">
-              <div 
+              <div
                 className="preview-scale-wrapper"
                 style={{ transform: `scale(${previewZoom})`, transformOrigin: 'top center' }}
               >
@@ -748,6 +763,19 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
           background: #dbeafe;
           border-color: #93c5fd;
           color: #1e40af;
+        }
+
+        .rep-btn-excel {
+          background: #0284c7;
+          border-color: #0369a1;
+          color: #ffffff;
+        }
+
+        .rep-btn-excel:hover {
+          background: #0369a1;
+          border-color: #075985;
+          color: #ffffff;
+          transform: translateY(-1px);
         }
 
         .rep-btn-download {
@@ -1023,7 +1051,7 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
           border: 1px solid #e2e8f0;
           border-radius: 8px;
           overflow: hidden;
-          max-height: 230px;
+          max-height: 480px;
           overflow-y: auto;
         }
 

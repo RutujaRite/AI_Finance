@@ -1207,6 +1207,73 @@ export default function PoliciesView({
           color: #475569;
           padding: 0 8px;
         }
+
+        @media (max-width: 768px) {
+          .bp-header-card {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            padding: 12px 14px !important;
+            gap: 12px !important;
+          }
+          .bp-header-left {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            width: 100% !important;
+            gap: 10px !important;
+          }
+          .bp-tab-pill-group {
+            width: 100% !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+          }
+          .bp-tab-pill {
+            justify-content: center !important;
+          }
+          .bp-header-right {
+            width: 100% !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            gap: 8px !important;
+          }
+          .bp-refresh-btn {
+            flex: 1 !important;
+            justify-content: center !important;
+          }
+          .bp-toolbar-card {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            padding: 12px 14px !important;
+            gap: 10px !important;
+          }
+          .bp-toolbar-controls {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            width: 100% !important;
+            gap: 8px !important;
+          }
+          .bp-search-box {
+            width: 100% !important;
+          }
+          .bp-filter-select {
+            width: 100% !important;
+          }
+          .bp-table-scroll {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+          .bp-table {
+            min-width: 700px !important;
+          }
+          .bp-footer {
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 10px !important;
+          }
+          .bp-pagination {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+        }
       `}</style>
 
       {!embedded && <Topbar user={user} />}

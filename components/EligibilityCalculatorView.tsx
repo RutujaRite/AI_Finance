@@ -55,7 +55,8 @@ export default function EligibilityCalculatorView({
       <style jsx>{`
         .eligibility-calculator-view-root {
           min-height: 100vh;
-          background: #f1f5f9;
+          background: var(--bg);
+          color: var(--ink);
           width: 100%;
           max-width: 100%;
           overflow-x: hidden;

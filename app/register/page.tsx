@@ -121,6 +121,7 @@ export default function RegisterPage() {
     >
       {/* Top Navbar */}
       <header
+        className="auth-top-header"
         style={{
           position: "absolute",
           top: 0,
@@ -171,6 +172,7 @@ export default function RegisterPage() {
               CreditWise<span style={{ color: "#2563eb" }}>AI</span>
             </div>
             <div
+              className="brand-subtitle"
               style={{
                 fontSize: "0.6875rem",
                 color: theme === "dark" ? "#94a3b8" : "#64748b",
@@ -209,6 +211,7 @@ export default function RegisterPage() {
 
           <a
             href="/"
+            className="auth-back-link"
             style={{
               fontSize: "0.8125rem",
               fontWeight: 600,
@@ -231,6 +234,7 @@ export default function RegisterPage() {
 
       {/* Main Content */}
       <div
+        className="auth-main-container"
         style={{
           flex: 1,
           display: "flex",
@@ -333,6 +337,7 @@ export default function RegisterPage() {
 
         {/* Right Side: Registration Card */}
         <div
+          className="auth-card"
           style={{
             flex: "0 1 440px",
             width: "100%",

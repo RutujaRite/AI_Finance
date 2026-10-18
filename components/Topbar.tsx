@@ -325,9 +325,6 @@ export default function Topbar({
     if (isAdminRouteActive) {
       if (onSectionChange) {
         onSectionChange("assistant")
-        try {
-          window.history.pushState(null, "", "/home?section=assistant")
-        } catch {}
       } else {
         router.push("/home?section=assistant")
       }
@@ -340,24 +337,29 @@ export default function Topbar({
 
   return (
     <>
-      <header className="app-topbar">
-      {/* Brand & Sidebar Toggle */}
-      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        {onToggleSidebar && activeSection === "assistant" && (
-          <button
-            className={`chat-sidebar-toggle ${sidebarOpen ? "open" : "closed"}`}
-            id="chatSidebarToggle"
-            onClick={onToggleSidebar}
-            aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-            type="button"
-            title={sidebarOpen ? "Close sidebar (Ctrl+Shift+S)" : "Open sidebar (Ctrl+Shift+S)"}
-          >
-            <i className="bi bi-layout-sidebar-inset" style={{ fontSize: "1.125rem", lineHeight: 1 }} />
-          </button>
-        )}
+      <header className="app-topbar yt-topbar">
+      {/* 1. Left Group: YouTube-style Hamburger Button + Brand with Badge */}
+      <div className="yt-topbar-left" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        {/* Hamburger Menu on the FAR LEFT */}
+        <button
+          type="button"
+          className="yt-hamburger-btn cw-touch-target"
+          onClick={() => {
+            if (activeSection === "assistant" && onToggleSidebar && typeof window !== "undefined" && window.innerWidth > 900) {
+              onToggleSidebar()
+            } else {
+              setMobileDrawerOpen(true)
+            }
+          }}
+          aria-label="Navigation Menu"
+          title="Navigation menu"
+        >
+          <i className="bi bi-list" style={{ fontSize: "1.35rem", lineHeight: 1 }} />
+        </button>
 
+        {/* Brand Logo with IN / Admin badge */}
         <a
-          className="brand"
+          className="brand yt-brand"
           href="/home?section=assistant"
           onClick={(e) => {
             if (onSectionChange) {
@@ -368,34 +370,33 @@ export default function Topbar({
               router.push("/home?section=assistant")
             }
           }}
-          style={{ textDecoration: "none" }}
+          style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "8px" }}
         >
-          <span className="brand-mark">
+          <span className="brand-mark yt-brand-mark">
             <i className="bi bi-shield-check" />
           </span>
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
               <span className="brand-text">CreditWise<span style={{ color: "var(--accent)" }}>AI</span></span>
-              {isAdmin && (
-                <span
-                  style={{
-                    fontSize: "0.625rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                    padding: "2px 6px",
-                    borderRadius: "4px",
-                    background: "rgba(139, 92, 246, 0.15)",
-                    color: "#8b5cf6",
-                    border: "1px solid rgba(139, 92, 246, 0.3)",
-                  }}
-                >
-                  Admin
-                </span>
-              )}
+              <span
+                className="yt-country-badge"
+                style={{
+                  fontSize: "0.625rem",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  padding: "1px 5px",
+                  borderRadius: "4px",
+                  background: isAdmin ? "rgba(139, 92, 246, 0.15)" : "rgba(37, 99, 235, 0.12)",
+                  color: isAdmin ? "#8b5cf6" : "#2563eb",
+                  border: isAdmin ? "1px solid rgba(139, 92, 246, 0.3)" : "1px solid rgba(37, 99, 235, 0.25)",
+                }}
+              >
+                {isAdmin ? "Admin" : "IN"}
+              </span>
             </div>
-            <span style={{ fontSize: "0.6875rem", color: "var(--ink-muted)", fontWeight: 500, letterSpacing: "0.01em" }}>
-              {isAdminRouteActive ? "Admin Management Suite" : "Financial Intelligence"}
+            <span className="yt-brand-sub" style={{ fontSize: "0.6875rem", color: "var(--ink-muted)", fontWeight: 500, letterSpacing: "0.01em" }}>
+              {isAdminRouteActive ? "Admin Suite" : "Financial Intelligence"}
             </span>
           </div>
         </a>
@@ -420,9 +421,6 @@ export default function Topbar({
               item.onClick(e)
             } else if (onSectionChange && item.section && (effectivePath === "/home" || effectivePath === "/")) {
               onSectionChange(item.section)
-              try {
-                window.history.pushState(null, "", item.href)
-              } catch {}
             } else {
               router.push(item.href)
             }
@@ -480,12 +478,45 @@ export default function Topbar({
         )}
       </nav>
 
-      {/* Topbar Right Controls: Theme + Profile + Mobile Hamburger */}
-      <div className="topbar-actions">
+      {/* Topbar Right Controls: YouTube-style "+ Create" Pill + Theme + Circular Profile Avatar on FAR RIGHT */}
+      <div className="topbar-actions yt-topbar-right" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        {/* YouTube-style "+ Create" / "+ New" Pill Button */}
+        <button
+          type="button"
+          className="yt-create-pill-btn"
+          onClick={() => {
+            if (activeSection === "assistant") {
+              const newChatBtn = document.getElementById("newChatBtn")
+              if (newChatBtn) newChatBtn.click()
+              else router.push("/home?section=assistant&new=true")
+            } else if (activeSection === "eligibility") {
+              // Trigger add new loan row
+              const addRowBtn = document.querySelector(".tbl-btn-add") as HTMLButtonElement | null
+              if (addRowBtn) addRowBtn.click()
+            } else if (activeSection === "emi") {
+              router.push("/home?section=emi")
+            } else {
+              router.push("/home?section=assistant")
+            }
+          }}
+          title={
+            activeSection === "assistant"
+              ? "New Chat"
+              : activeSection === "eligibility"
+              ? "Add Loan Row"
+              : "Quick Action"
+          }
+        >
+          <i className="bi bi-plus" style={{ fontSize: "1.15rem", lineHeight: 1 }} />
+          <span className="yt-create-label">
+            {activeSection === "assistant" ? "New Chat" : activeSection === "eligibility" ? "Add Loan" : "Create"}
+          </span>
+        </button>
+
         {/* Dark / Light theme toggle */}
         <button
           type="button"
-          className="theme-toggle-btn"
+          className="theme-toggle-btn yt-theme-btn"
           onClick={toggleTheme}
           aria-label="Toggle dark/light theme"
           title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -493,34 +524,23 @@ export default function Topbar({
           <i className={theme === "dark" ? "bi bi-sun-fill" : "bi bi-moon-stars-fill"} />
         </button>
 
-        {/* Mobile Hamburger Drawer Toggle (visible on screens <= 900px) */}
-        <button
-          type="button"
-          className="topbar-mobile-hamburger cw-touch-target"
-          onClick={() => setMobileDrawerOpen(true)}
-          aria-label="Open mobile navigation menu"
-          title="Open menu"
-        >
-          <i className="bi bi-list" style={{ fontSize: "1.35rem" }} />
-        </button>
-
-        {/* Profile menu */}
+        {/* YouTube-style Circular Profile Avatar on the FAR RIGHT */}
         <div
-          className="profile-menu"
-          role="button"
-          tabIndex={0}
-          onClick={(e) => {
-            e.stopPropagation()
-            setProfileOpen((prev) => !prev)
-          }}
+          className="yt-profile-avatar-wrapper"
           style={{ position: "relative" }}
         >
-          <div className="profile-avatar">{userInitial}</div>
-          <div style={{ display: "flex", flexDirection: "column", textAlign: "left", lineHeight: 1.15 }}>
-            <span className="profile-menu-label" style={{ fontWeight: 600 }}>{displayName}</span>
-            <span style={{ fontSize: "0.6875rem", color: "var(--ink-muted)" }}>{displayRole}</span>
-          </div>
-          <i className={`bi bi-chevron-down caret ${profileOpen ? "open" : ""}`} style={{ fontSize: "0.75rem", transition: "transform 0.2s ease" }} />
+          <button
+            type="button"
+            className="yt-avatar-circle-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              setProfileOpen((prev) => !prev)
+            }}
+            aria-label="User Account Menu"
+            title={`${displayName} (${displayRole})`}
+          >
+            <div className="profile-avatar yt-profile-avatar">{userInitial}</div>
+          </button>
 
           {/* Elevated Dropdown */}
           <div
@@ -709,9 +729,6 @@ export default function Topbar({
               item.onClick(e)
             } else if (onSectionChange && item.section && (effectivePath === "/home" || effectivePath === "/")) {
               onSectionChange(item.section)
-              try {
-                window.history.pushState(null, "", item.href)
-              } catch {}
             } else {
               router.push(item.href)
             }

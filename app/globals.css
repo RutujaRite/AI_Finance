@@ -2085,10 +2085,12 @@ body:has(.chat-page) {
 .chat-message-content {
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .chat-message.user .chat-message-content {
-    max-width: 85%;
+    max-width: 82%;
+    min-width: fit-content;
     align-items: flex-end;
 }
 
@@ -2128,13 +2130,18 @@ body:has(.chat-page) {
 .chat-message.user .chat-message-bubble {
     background: linear-gradient(135deg, #0B1220 0%, #13233A 100%);
     color: #FFFFFF;
-    border-radius: 15px;
-    border-bottom-right-radius: 4px;
-    padding: 0.5rem 0.95rem;
+    border-radius: 16px 16px 4px 16px;
+    padding: 0.65rem 1.05rem;
     font-size: 0.9375rem; /* 15px readable body text */
-    line-height: 1.48;
+    line-height: 1.5;
     word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
     display: inline-block;
+    min-width: 52px;
+    max-width: 100%;
+    width: fit-content;
+    box-sizing: border-box;
     box-shadow: var(--shadow-sm);
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -2547,10 +2554,23 @@ body:has(.chat-page) {
 
 @media (max-width: 640px) {
     .chat-messages {
-        padding: 0.5rem 0.65rem;
+        padding: 0.5rem 0.65rem 1rem 0.65rem !important;
     }
     .chat-composer {
-        padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom, 0px)) 0.5rem;
+        padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom, 0px)) 0.5rem !important;
+    }
+    .chat-message.user .chat-avatar {
+        display: none !important;
+    }
+    .chat-message.user .chat-message-content {
+        max-width: 88% !important;
+        min-width: fit-content !important;
+    }
+    .chat-message.user .chat-bubble,
+    .chat-message.user .chat-message-bubble {
+        min-width: 44px !important;
+        font-size: 0.9rem !important;
+        padding: 0.55rem 0.9rem !important;
     }
     .chat-prompt-chips {
         flex-wrap: nowrap;
@@ -2569,12 +2589,12 @@ body:has(.chat-page) {
         flex-shrink: 0;
     }
     .chat-bubble {
-        max-width: 90%;
+        max-width: 100% !important;
         font-size: 0.875rem;
     }
     .chat-send-btn {
-        width: 32px;
-        height: 32px;
+        width: 36px !important;
+        height: 36px !important;
     }
 }
 
@@ -3022,22 +3042,30 @@ body:has(.chat-page) {
 }
 
 /* Responsive adjustments */
+/* Responsive adjustments for Tablets (<= 900px) */
 @media (max-width: 900px) {
-    .app-topbar {
-        padding: 0 0.875rem;
+    .app-topbar,
+    .topbar {
+        padding: 0 0.875rem !important;
     }
-    .app-topbar .nav-menu {
+    .app-topbar .nav-menu,
+    .topbar .nav-menu {
         display: none !important;
     }
     .topbar-mobile-hamburger {
         display: inline-flex !important;
     }
     .app-topbar-user-name,
-    .profile-menu-label {
-        display: none !important;
-    }
+    .profile-menu-label,
+    .profile-menu-role,
+    .profile-menu-info,
     .profile-menu .caret {
         display: none !important;
+    }
+    .profile-menu {
+        padding: 4px !important;
+        border: none !important;
+        background: transparent !important;
     }
     .dashboard-home-view,
     .emi-page-wrapper,
@@ -3046,6 +3074,251 @@ body:has(.chat-page) {
     .admin-page,
     .profile-page {
         padding: 0.875rem;
+    }
+}
+
+/* Comprehensive Responsive Adjustments for Mobile Viewports (<= 768px) */
+@media (max-width: 768px) {
+    /* Hide profile menu from topbar completely on mobile; fully available in mobile hamburger drawer */
+    .profile-menu {
+        display: none !important;
+    }
+    .topbar,
+    .app-topbar {
+        padding: 0 0.5rem !important;
+        height: 58px !important;
+    }
+    .topbar-left {
+        gap: 0.35rem !important;
+        min-width: 0 !important;
+    }
+    .brand {
+        gap: 0.4rem !important;
+        min-width: 0 !important;
+    }
+    .brand-title {
+        font-size: 1.05rem !important;
+        white-space: nowrap !important;
+    }
+    .brand-subtitle {
+        display: none !important;
+    }
+    .brand-logo {
+        width: 34px !important;
+        height: 34px !important;
+        border-radius: 9px !important;
+    }
+    .admin-badge {
+        font-size: 0.6rem !important;
+        padding: 1px 5px !important;
+    }
+    .topbar-actions {
+        gap: 0.35rem !important;
+        flex-shrink: 0 !important;
+    }
+    .theme-toggle-btn {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 9px !important;
+    }
+    .topbar-mobile-hamburger {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 9px !important;
+    }
+
+    /* Eligibility Calculator Mobile Optimizations */
+    .eligibility-calculator-view-root {
+        padding: 0 !important;
+    }
+    .calculator-container {
+        padding: 8px 8px 24px 8px !important;
+        gap: 8px !important;
+    }
+    .eligibility-header-card {
+        padding: 12px 14px !important;
+        border-radius: 12px !important;
+        gap: 10px !important;
+    }
+    .header-actions {
+        width: 100% !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+    }
+    .hdr-btn {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 8px 10px !important;
+        font-size: 0.78rem !important;
+    }
+    .customer-info-card .card-body {
+        padding: 12px 10px !important;
+    }
+    .customer-info-card .fields-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+    .styled-input,
+    .styled-textarea {
+        font-size: 0.9rem !important;
+        padding: 8px 12px !important;
+    }
+    .table-container {
+        max-height: 280px !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    .loan-table th,
+    .loan-table td {
+        padding: 6px 6px !important;
+        font-size: 0.75rem !important;
+    }
+    .benchmarks-box .benchmarks-content {
+        padding: 8px 10px !important;
+    }
+    .benchmarks-box .param-card {
+        padding: 8px 10px !important;
+    }
+    .benchmarks-box .slider-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 6px !important;
+    }
+    .benchmarks-box .input-with-symbol {
+        width: 100% !important;
+        justify-content: space-between !important;
+    }
+    .benchmarks-box .param-num-input {
+        width: 100% !important;
+        text-align: right !important;
+    }
+    .summary-box .highlight-cards-row {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+    .repayment-section-card .metrics-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 6px !important;
+    }
+    .intelligence-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .steps-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .concepts-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* EMI Calculator Mobile Optimizations */
+    .emi-calc-wrapper {
+        padding: 8px 8px 24px 8px !important;
+    }
+    .hero-emi-card-gradient {
+        padding: 1.25rem 1rem !important;
+        border-radius: 14px !important;
+    }
+    .emi-actions-row {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+    }
+    .emi-actions-row button {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+    /* Chat & Eligibility Table Touch-Scrolling */
+    .chat-bubble .table-responsive-wrapper,
+    .table-responsive-wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        margin: 0.5rem 0 !important;
+        border-radius: 8px !important;
+    }
+    .chat-bubble table {
+        min-width: 500px !important;
+    }
+
+    /* Policy Modal Mobile Adaptations */
+    .edit-policy-modal {
+        width: 95vw !important;
+        max-height: 90vh !important;
+        border-radius: 12px !important;
+    }
+    .edit-policy-footer {
+        flex-direction: column-reverse !important;
+        gap: 0.65rem !important;
+        align-items: stretch !important;
+        padding: 0.75rem 1rem !important;
+    }
+    .edit-policy-footer > div,
+    .edit-policy-footer button {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+}
+
+/* Very Small Mobile Screens (<= 480px) */
+@media (max-width: 480px) {
+    .brand-title-ai {
+        font-size: 1rem !important;
+    }
+    .sidebar-toggle-btn {
+        width: 34px !important;
+        height: 34px !important;
+    }
+    .admin-badge {
+        display: none !important;
+    }
+    .chat-messages {
+        padding: 0.4rem 0.5rem 0.8rem 0.5rem !important;
+    }
+    .chat-message.user .chat-message-content {
+        max-width: 92% !important;
+    }
+    .topbar,
+    .app-topbar {
+        padding: 0 0.35rem !important;
+    }
+    .header-actions {
+        grid-template-columns: 1fr !important;
+    }
+    .emi-actions-row {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Authentication (Login / Register) Mobile Responsiveness */
+@media (max-width: 960px) {
+    .desktop-auth-hero {
+        display: none !important;
+    }
+    .auth-main-container {
+        padding: 85px 16px 36px 16px !important;
+        gap: 0 !important;
+        justify-content: center !important;
+    }
+    .auth-card {
+        padding: 1.5rem 1.25rem !important;
+        border-radius: 16px !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .auth-top-header {
+        padding: 0 1rem !important;
+        height: 60px !important;
+    }
+    .auth-top-header .brand-subtitle {
+        display: none !important;
+    }
+    .auth-back-link {
+        padding: 0.35rem 0.65rem !important;
+        font-size: 0.75rem !important;
     }
 }
 
@@ -5486,11 +5759,18 @@ html, body {
     background: linear-gradient(135deg, #0B1220 0%, #13233A 100%) !important;
     color: #ffffff !important;
     border-radius: 16px 16px 4px 16px !important;
-    padding: 0.75rem 1.15rem !important;
+    padding: 0.65rem 1.05rem !important;
     box-shadow: 0 4px 12px rgba(11, 18, 32, 0.15) !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
     font-size: 0.9375rem !important;
-    line-height: 1.55 !important;
+    line-height: 1.5 !important;
+    min-width: 52px !important;
+    max-width: 100% !important;
+    width: fit-content !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    white-space: pre-wrap !important;
+    box-sizing: border-box !important;
 }
 
 [data-theme="dark"] .chat-message.user .chat-bubble,
@@ -6468,5 +6748,778 @@ html, body {
 .hero-emi-card-gradient .emi-sub-detail {
     color: #dbeafe !important;
 }
+
+/* ==========================================================================
+   Eligibility Calculator Dark Theme Mode
+   ========================================================================== */
+[data-theme="dark"] .eligibility-calculator-view-root,
+[data-bs-theme="dark"] .eligibility-calculator-view-root,
+.dark .eligibility-calculator-view-root,
+[data-theme="dark"] .calculator-layout-wrapper,
+[data-bs-theme="dark"] .calculator-layout-wrapper,
+.dark .calculator-layout-wrapper {
+    background-color: var(--bg) !important;
+    color: var(--ink) !important;
+}
+
+/* Containers and Main Section Cards */
+[data-theme="dark"] .eligibility-header-card,
+[data-bs-theme="dark"] .eligibility-header-card,
+.dark .eligibility-header-card,
+[data-theme="dark"] .customer-info-card,
+[data-bs-theme="dark"] .customer-info-card,
+.dark .customer-info-card,
+[data-theme="dark"] .loan-table-card,
+[data-bs-theme="dark"] .loan-table-card,
+.dark .loan-table-card,
+[data-theme="dark"] .benchmarks-box,
+[data-bs-theme="dark"] .benchmarks-box,
+.dark .benchmarks-box,
+[data-theme="dark"] .summary-box,
+[data-bs-theme="dark"] .summary-box,
+.dark .summary-box,
+[data-theme="dark"] .repayment-section-card,
+[data-bs-theme="dark"] .repayment-section-card,
+.dark .repayment-section-card,
+[data-theme="dark"] .calculation-logic-card,
+[data-bs-theme="dark"] .calculation-logic-card,
+.dark .calculation-logic-card,
+[data-theme="dark"] .breakdown-card,
+[data-bs-theme="dark"] .breakdown-card,
+.dark .breakdown-card,
+[data-theme="dark"] .pie-chart-card,
+[data-bs-theme="dark"] .pie-chart-card,
+.dark .pie-chart-card,
+[data-theme="dark"] .how-it-works-card,
+[data-bs-theme="dark"] .how-it-works-card,
+.dark .how-it-works-card,
+[data-theme="dark"] .quick-calculators-section .calc-card,
+[data-bs-theme="dark"] .quick-calculators-section .calc-card,
+.dark .quick-calculators-section .calc-card,
+[data-theme="dark"] .attached-engine-container,
+[data-bs-theme="dark"] .attached-engine-container,
+.dark .attached-engine-container,
+[data-theme="dark"] .modal-card,
+[data-bs-theme="dark"] .modal-card,
+.dark .modal-card,
+[data-theme="dark"] .preview-modal-card,
+[data-bs-theme="dark"] .preview-modal-card,
+.dark .preview-modal-card {
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+    color: var(--ink) !important;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Headers & Subheaders */
+[data-theme="dark"] .card-header-clickable,
+[data-bs-theme="dark"] .card-header-clickable,
+.dark .card-header-clickable,
+[data-theme="dark"] .table-header-bar,
+[data-bs-theme="dark"] .table-header-bar,
+.dark .table-header-bar,
+[data-theme="dark"] .benchmarks-header,
+[data-bs-theme="dark"] .benchmarks-header,
+.dark .benchmarks-header,
+[data-theme="dark"] .summary-header,
+[data-bs-theme="dark"] .summary-header,
+.dark .summary-header,
+[data-theme="dark"] .repayment-header,
+[data-bs-theme="dark"] .repayment-header,
+.dark .repayment-header,
+[data-theme="dark"] .card-header-bar,
+[data-bs-theme="dark"] .card-header-bar,
+.dark .card-header-bar,
+[data-theme="dark"] .chart-header,
+[data-bs-theme="dark"] .chart-header,
+.dark .chart-header,
+[data-theme="dark"] .breakdown-card .card-header,
+[data-bs-theme="dark"] .breakdown-card .card-header,
+.dark .breakdown-card .card-header,
+[data-theme="dark"] .modal-header,
+[data-bs-theme="dark"] .modal-header,
+.dark .modal-header,
+[data-theme="dark"] .preview-modal-header,
+[data-bs-theme="dark"] .preview-modal-header,
+.dark .preview-modal-header {
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .card-header-clickable:hover,
+[data-bs-theme="dark"] .card-header-clickable:hover,
+.dark .card-header-clickable:hover,
+[data-theme="dark"] .card-header-bar:hover,
+[data-bs-theme="dark"] .card-header-bar:hover,
+.dark .card-header-bar:hover {
+    background: var(--surface-2) !important;
+}
+
+/* Card Bodies and Content Strips */
+[data-theme="dark"] .card-body,
+[data-bs-theme="dark"] .card-body,
+.dark .card-body,
+[data-theme="dark"] .benchmarks-content,
+[data-bs-theme="dark"] .benchmarks-content,
+.dark .benchmarks-content,
+[data-theme="dark"] .summary-content,
+[data-bs-theme="dark"] .summary-content,
+.dark .summary-content,
+[data-theme="dark"] .repayment-content,
+[data-bs-theme="dark"] .repayment-content,
+.dark .repayment-content,
+[data-theme="dark"] .chart-body,
+[data-bs-theme="dark"] .chart-body,
+.dark .chart-body,
+[data-theme="dark"] .modal-body,
+[data-bs-theme="dark"] .modal-body,
+.dark .modal-body,
+[data-theme="dark"] .modal-footer,
+[data-bs-theme="dark"] .modal-footer,
+.dark .modal-footer {
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+    color: var(--ink) !important;
+}
+
+/* Titles and Headings */
+[data-theme="dark"] .header-title,
+[data-bs-theme="dark"] .header-title,
+.dark .header-title,
+[data-theme="dark"] .card-title,
+[data-bs-theme="dark"] .card-title,
+.dark .card-title,
+[data-theme="dark"] .section-title,
+[data-bs-theme="dark"] .section-title,
+.dark .section-title,
+[data-theme="dark"] .card-heading,
+[data-bs-theme="dark"] .card-heading,
+.dark .card-heading,
+[data-theme="dark"] .param-title,
+[data-bs-theme="dark"] .param-title,
+.dark .param-title,
+[data-theme="dark"] .modal-title,
+[data-bs-theme="dark"] .modal-title,
+.dark .modal-title,
+[data-theme="dark"] .preview-modal-title,
+[data-bs-theme="dark"] .preview-modal-title,
+.dark .preview-modal-title,
+[data-theme="dark"] .center-title,
+[data-bs-theme="dark"] .center-title,
+.dark .center-title,
+[data-theme="dark"] .step-title,
+[data-bs-theme="dark"] .step-title,
+.dark .step-title,
+[data-theme="dark"] .concept-title,
+[data-bs-theme="dark"] .concept-title,
+.dark .concept-title,
+[data-theme="dark"] .faqs-heading,
+[data-bs-theme="dark"] .faqs-heading,
+.dark .faqs-heading,
+[data-theme="dark"] .breakdown-title,
+[data-bs-theme="dark"] .breakdown-title,
+.dark .breakdown-title,
+[data-theme="dark"] .applicant-name,
+[data-bs-theme="dark"] .applicant-name,
+.dark .applicant-name,
+[data-theme="dark"] .totals-label,
+[data-bs-theme="dark"] .totals-label,
+.dark .totals-label {
+    color: var(--ink) !important;
+}
+
+/* Subtitles, hints, and secondary descriptions */
+[data-theme="dark"] .header-subtitle,
+[data-bs-theme="dark"] .header-subtitle,
+.dark .header-subtitle,
+[data-theme="dark"] .card-subtitle,
+[data-bs-theme="dark"] .card-subtitle,
+.dark .card-subtitle,
+[data-theme="dark"] .section-subtitle,
+[data-bs-theme="dark"] .section-subtitle,
+.dark .section-subtitle,
+[data-theme="dark"] .collapse-hint,
+[data-bs-theme="dark"] .collapse-hint,
+.dark .collapse-hint,
+[data-theme="dark"] .toggle-hint,
+[data-bs-theme="dark"] .toggle-hint,
+.dark .toggle-hint,
+[data-theme="dark"] .card-desc,
+[data-bs-theme="dark"] .card-desc,
+.dark .card-desc,
+[data-theme="dark"] .modal-subtitle,
+[data-bs-theme="dark"] .modal-subtitle,
+.dark .modal-subtitle,
+[data-theme="dark"] .preview-modal-subtitle,
+[data-bs-theme="dark"] .preview-modal-subtitle,
+.dark .preview-modal-subtitle,
+[data-theme="dark"] .center-subtitle,
+[data-bs-theme="dark"] .center-subtitle,
+.dark .center-subtitle,
+[data-theme="dark"] .item-desc,
+[data-bs-theme="dark"] .item-desc,
+.dark .item-desc,
+[data-theme="dark"] .concept-text,
+[data-bs-theme="dark"] .concept-text,
+.dark .concept-text,
+[data-theme="dark"] .step-desc,
+[data-bs-theme="dark"] .step-desc,
+.dark .step-desc,
+[data-theme="dark"] .step-expl,
+[data-bs-theme="dark"] .step-expl,
+.dark .step-expl,
+[data-theme="dark"] .faq-a-text,
+[data-bs-theme="dark"] .faq-a-text,
+.dark .faq-a-text,
+[data-theme="dark"] .empty-desc,
+[data-bs-theme="dark"] .empty-desc,
+.dark .empty-desc,
+[data-theme="dark"] .metric-lbl,
+[data-bs-theme="dark"] .metric-lbl,
+.dark .metric-lbl,
+[data-theme="dark"] .metric-period,
+[data-bs-theme="dark"] .metric-period,
+.dark .metric-period,
+[data-theme="dark"] .metric-sub,
+[data-bs-theme="dark"] .metric-sub,
+.dark .metric-sub,
+[data-theme="dark"] .breakdown-subtitle,
+[data-bs-theme="dark"] .breakdown-subtitle,
+.dark .breakdown-subtitle,
+[data-theme="dark"] .record-timestamp,
+[data-bs-theme="dark"] .record-timestamp,
+.dark .record-timestamp,
+[data-theme="dark"] .chips-label,
+[data-bs-theme="dark"] .chips-label,
+.dark .chips-label {
+    color: var(--ink-muted) !important;
+}
+
+/* Badges & Pills */
+[data-theme="dark"] .badge-tag,
+[data-bs-theme="dark"] .badge-tag,
+.dark .badge-tag,
+[data-theme="dark"] .salary-pill,
+[data-bs-theme="dark"] .salary-pill,
+.dark .salary-pill,
+[data-theme="dark"] .card-badge,
+[data-bs-theme="dark"] .card-badge,
+.dark .card-badge,
+[data-theme="dark"] .company-badge,
+[data-bs-theme="dark"] .company-badge,
+.dark .company-badge {
+    background: var(--surface-2) !important;
+    border-color: var(--border) !important;
+    color: var(--ink-soft) !important;
+}
+
+[data-theme="dark"] .badge-pill,
+[data-bs-theme="dark"] .badge-pill,
+.dark .badge-pill {
+    background: rgba(59, 130, 246, 0.15) !important;
+    color: #60a5fa !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Sub-Cards, Inner Cards, Param Cards */
+[data-theme="dark"] .param-card,
+[data-bs-theme="dark"] .param-card,
+.dark .param-card,
+[data-theme="dark"] .step-card,
+[data-bs-theme="dark"] .step-card,
+.dark .step-card,
+[data-theme="dark"] .metric-box,
+[data-bs-theme="dark"] .metric-box,
+.dark .metric-box,
+[data-theme="dark"] .cost-breakdown-card,
+[data-bs-theme="dark"] .cost-breakdown-card,
+.dark .cost-breakdown-card,
+[data-theme="dark"] .cost-item,
+[data-bs-theme="dark"] .cost-item,
+.dark .cost-item,
+[data-theme="dark"] .schedule-table-card,
+[data-bs-theme="dark"] .schedule-table-card,
+.dark .schedule-table-card,
+[data-theme="dark"] .legend-card,
+[data-bs-theme="dark"] .legend-card,
+.dark .legend-card,
+[data-theme="dark"] .concept-box,
+[data-bs-theme="dark"] .concept-box,
+.dark .concept-box,
+[data-theme="dark"] .faq-item,
+[data-bs-theme="dark"] .faq-item,
+.dark .faq-item,
+[data-theme="dark"] .calc-result-box,
+[data-bs-theme="dark"] .calc-result-box,
+.dark .calc-result-box,
+[data-theme="dark"] .record-item,
+[data-bs-theme="dark"] .record-item,
+.dark .record-item,
+[data-theme="dark"] .figure-chip,
+[data-bs-theme="dark"] .figure-chip,
+.dark .figure-chip,
+[data-theme="dark"] .pos-audit-strip,
+[data-bs-theme="dark"] .pos-audit-strip,
+.dark .pos-audit-strip {
+    background: var(--surface-2) !important;
+    border-color: var(--border) !important;
+    color: var(--ink) !important;
+}
+
+[data-theme="dark"] .salary-special-card,
+[data-bs-theme="dark"] .salary-special-card,
+.dark .salary-special-card {
+    background: var(--surface-2) !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+}
+
+[data-theme="dark"] .obligations-card,
+[data-bs-theme="dark"] .obligations-card,
+.dark .obligations-card {
+    background: var(--surface-2) !important;
+    border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+[data-theme="dark"] .highlight-box,
+[data-bs-theme="dark"] .highlight-box,
+.dark .highlight-box {
+    background: rgba(59, 130, 246, 0.15) !important;
+    border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+[data-theme="dark"] .highlight-step,
+[data-bs-theme="dark"] .highlight-step,
+.dark .highlight-step {
+    background: rgba(16, 185, 129, 0.12) !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+[data-theme="dark"] .highlight-step-blue,
+[data-bs-theme="dark"] .highlight-step-blue,
+.dark .highlight-step-blue {
+    background: rgba(59, 130, 246, 0.12) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+[data-theme="dark"] .legend-card:hover,
+[data-bs-theme="dark"] .legend-card:hover,
+.dark .legend-card:hover,
+[data-theme="dark"] .legend-card-active,
+[data-bs-theme="dark"] .legend-card-active,
+.dark .legend-card-active,
+[data-theme="dark"] .record-item:hover,
+[data-bs-theme="dark"] .record-item:hover,
+.dark .record-item:hover {
+    background: var(--surface-elevated) !important;
+    border-color: rgba(59, 130, 246, 0.45) !important;
+}
+
+[data-theme="dark"] .faq-question-btn,
+[data-bs-theme="dark"] .faq-question-btn,
+.dark .faq-question-btn {
+    background: var(--surface-2) !important;
+    color: var(--ink) !important;
+}
+
+[data-theme="dark"] .faq-question-btn:hover,
+[data-bs-theme="dark"] .faq-question-btn:hover,
+.dark .faq-question-btn:hover {
+    background: var(--surface-elevated) !important;
+}
+
+[data-theme="dark"] .faq-answer-panel,
+[data-bs-theme="dark"] .faq-answer-panel,
+.dark .faq-answer-panel {
+    background: var(--surface) !important;
+    border-top-color: var(--border) !important;
+}
+
+/* Inputs, Selects, and Textareas */
+[data-theme="dark"] .styled-input,
+[data-bs-theme="dark"] .styled-input,
+.dark .styled-input,
+[data-theme="dark"] .styled-textarea,
+[data-bs-theme="dark"] .styled-textarea,
+.dark .styled-textarea,
+[data-theme="dark"] .styled-select,
+[data-bs-theme="dark"] .styled-select,
+.dark .styled-select,
+[data-theme="dark"] .tbl-input,
+[data-bs-theme="dark"] .tbl-input,
+.dark .tbl-input,
+[data-theme="dark"] .tbl-select,
+[data-bs-theme="dark"] .tbl-select,
+.dark .tbl-select,
+[data-theme="dark"] .input-with-symbol,
+[data-bs-theme="dark"] .input-with-symbol,
+.dark .input-with-symbol,
+[data-theme="dark"] .input-wrapper,
+[data-bs-theme="dark"] .input-wrapper,
+.dark .input-wrapper {
+    background: var(--surface-2) !important;
+    border-color: var(--border) !important;
+    color: var(--ink) !important;
+}
+
+[data-theme="dark"] .styled-input:focus,
+[data-bs-theme="dark"] .styled-input:focus,
+.dark .styled-input:focus,
+[data-theme="dark"] .styled-textarea:focus,
+[data-bs-theme="dark"] .styled-textarea:focus,
+.dark .styled-textarea:focus,
+[data-theme="dark"] .tbl-input:focus,
+[data-bs-theme="dark"] .tbl-input:focus,
+.dark .tbl-input:focus,
+[data-theme="dark"] .tbl-select:focus,
+[data-bs-theme="dark"] .tbl-select:focus,
+.dark .tbl-select:focus,
+[data-theme="dark"] .input-with-symbol:focus-within,
+[data-bs-theme="dark"] .input-with-symbol:focus-within,
+.dark .input-with-symbol:focus-within,
+[data-theme="dark"] .input-wrapper:focus-within,
+[data-bs-theme="dark"] .input-wrapper:focus-within,
+.dark .input-wrapper:focus-within {
+    border-color: #3b82f6 !important;
+    background: var(--surface-elevated) !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+}
+
+[data-theme="dark"] .param-num-input,
+[data-bs-theme="dark"] .param-num-input,
+.dark .param-num-input {
+    background: transparent !important;
+    color: var(--ink) !important;
+}
+
+[data-theme="dark"] .field-label,
+[data-bs-theme="dark"] .field-label,
+.dark .field-label,
+[data-theme="dark"] .input-label,
+[data-bs-theme="dark"] .input-label,
+.dark .input-label,
+[data-theme="dark"] .cost-label,
+[data-bs-theme="dark"] .cost-label,
+.dark .cost-label,
+[data-theme="dark"] .chip-lbl,
+[data-bs-theme="dark"] .chip-lbl,
+.dark .chip-lbl,
+[data-theme="dark"] .meta-lbl,
+[data-bs-theme="dark"] .meta-lbl,
+.dark .meta-lbl,
+[data-theme="dark"] .formula-label,
+[data-bs-theme="dark"] .formula-label,
+.dark .formula-label {
+    color: var(--ink-soft) !important;
+}
+
+[data-theme="dark"] .field-icon,
+[data-bs-theme="dark"] .field-icon,
+.dark .field-icon,
+[data-theme="dark"] .prefix-sym,
+[data-bs-theme="dark"] .prefix-sym,
+.dark .prefix-sym,
+[data-theme="dark"] .suffix-sym,
+[data-bs-theme="dark"] .suffix-sym,
+.dark .suffix-sym,
+[data-theme="dark"] .sym-prefix,
+[data-bs-theme="dark"] .sym-prefix,
+.dark .sym-prefix,
+[data-theme="dark"] .sym-suffix,
+[data-bs-theme="dark"] .sym-suffix,
+.dark .sym-suffix {
+    color: var(--ink-muted) !important;
+}
+
+/* Tables */
+[data-theme="dark"] .loan-table,
+[data-bs-theme="dark"] .loan-table,
+.dark .loan-table,
+[data-theme="dark"] .schedule-table,
+[data-bs-theme="dark"] .schedule-table,
+.dark .schedule-table {
+    color: var(--ink) !important;
+}
+
+[data-theme="dark"] .loan-table th,
+[data-bs-theme="dark"] .loan-table th,
+.dark .loan-table th,
+[data-theme="dark"] .schedule-table th,
+[data-bs-theme="dark"] .schedule-table th,
+.dark .schedule-table th {
+    background: var(--surface-2) !important;
+    color: var(--ink-muted) !important;
+    border-bottom: 1.5px solid var(--border) !important;
+}
+
+[data-theme="dark"] .loan-row,
+[data-bs-theme="dark"] .loan-row,
+.dark .loan-row,
+[data-theme="dark"] .year-row,
+[data-bs-theme="dark"] .year-row,
+.dark .year-row {
+    background: var(--surface) !important;
+    border-bottom-color: var(--border) !important;
+}
+
+[data-theme="dark"] .loan-row:hover,
+[data-bs-theme="dark"] .loan-row:hover,
+.dark .loan-row:hover,
+[data-theme="dark"] .year-row:hover,
+[data-bs-theme="dark"] .year-row:hover,
+.dark .year-row:hover {
+    background: var(--surface-2) !important;
+}
+
+[data-theme="dark"] .month-row,
+[data-bs-theme="dark"] .month-row,
+.dark .month-row {
+    background: var(--surface-2) !important;
+    border-bottom-color: var(--border) !important;
+}
+
+[data-theme="dark"] .month-row:hover,
+[data-bs-theme="dark"] .month-row:hover,
+.dark .month-row:hover {
+    background: var(--surface-elevated) !important;
+}
+
+[data-theme="dark"] .schedule-table td,
+[data-bs-theme="dark"] .schedule-table td,
+.dark .schedule-table td {
+    border-bottom-color: var(--border) !important;
+    color: var(--ink) !important;
+}
+
+[data-theme="dark"] .totals-row,
+[data-bs-theme="dark"] .totals-row,
+.dark .totals-row {
+    background: var(--surface-2) !important;
+    border-top: 2px solid var(--border) !important;
+}
+
+/* Multiplier Hero Card */
+[data-theme="dark"] .multiplier-hero-card,
+[data-bs-theme="dark"] .multiplier-hero-card,
+.dark .multiplier-hero-card {
+    background: linear-gradient(135deg, #13233a 0%, #1e3a5f 100%) !important;
+    border: 1.5px solid rgba(59, 130, 246, 0.45) !important;
+    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="dark"] .multiplier-hero-card .hero-badge,
+[data-bs-theme="dark"] .multiplier-hero-card .hero-badge,
+.dark .multiplier-hero-card .hero-badge {
+    color: #93c5fd !important;
+}
+
+[data-theme="dark"] .multiplier-hero-card .hero-main-amount,
+[data-bs-theme="dark"] .multiplier-hero-card .hero-main-amount,
+.dark .multiplier-hero-card .hero-main-amount {
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .multiplier-hero-card .hero-sub-amount,
+[data-bs-theme="dark"] .multiplier-hero-card .hero-sub-amount,
+.dark .multiplier-hero-card .hero-sub-amount {
+    color: #93c5fd !important;
+}
+
+[data-theme="dark"] .multiplier-hero-card .method-pill,
+[data-bs-theme="dark"] .multiplier-hero-card .method-pill,
+.dark .multiplier-hero-card .method-pill {
+    background: rgba(59, 130, 246, 0.25) !important;
+    color: #bfdbfe !important;
+}
+
+[data-theme="dark"] .multiplier-hero-card .hero-meta-strip,
+[data-bs-theme="dark"] .multiplier-hero-card .hero-meta-strip,
+.dark .multiplier-hero-card .hero-meta-strip {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .multiplier-hero-card .meta-lbl,
+[data-bs-theme="dark"] .multiplier-hero-card .meta-lbl,
+.dark .multiplier-hero-card .meta-lbl {
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .multiplier-hero-card .meta-val,
+[data-bs-theme="dark"] .multiplier-hero-card .meta-val,
+.dark .multiplier-hero-card .meta-val {
+    color: #f8fafc !important;
+}
+
+/* Quick chips, Action buttons, Range sliders */
+[data-theme="dark"] .quick-chip,
+[data-bs-theme="dark"] .quick-chip,
+.dark .quick-chip,
+[data-theme="dark"] .hdr-btn-secondary,
+[data-bs-theme="dark"] .hdr-btn-secondary,
+.dark .hdr-btn-secondary,
+[data-theme="dark"] .hdr-action-btn,
+[data-bs-theme="dark"] .hdr-action-btn,
+.dark .hdr-action-btn,
+[data-theme="dark"] .rep-btn-print,
+[data-bs-theme="dark"] .rep-btn-print,
+.dark .rep-btn-print,
+[data-theme="dark"] .rep-tab-btn,
+[data-bs-theme="dark"] .rep-tab-btn,
+.dark .rep-tab-btn,
+[data-theme="dark"] .reset-btn,
+[data-bs-theme="dark"] .reset-btn,
+.dark .reset-btn,
+[data-theme="dark"] .btn-done,
+[data-bs-theme="dark"] .btn-done,
+.dark .btn-done,
+[data-theme="dark"] .modal-btn-print,
+[data-bs-theme="dark"] .modal-btn-print,
+.dark .modal-btn-print {
+    background: var(--surface-2) !important;
+    border-color: var(--border) !important;
+    color: var(--ink-soft) !important;
+}
+
+[data-theme="dark"] .quick-chip:hover,
+[data-bs-theme="dark"] .quick-chip:hover,
+.dark .quick-chip:hover,
+[data-theme="dark"] .hdr-btn-secondary:hover,
+[data-bs-theme="dark"] .hdr-btn-secondary:hover,
+.dark .hdr-btn-secondary:hover,
+[data-theme="dark"] .hdr-action-btn:hover,
+[data-bs-theme="dark"] .hdr-action-btn:hover,
+.dark .hdr-action-btn:hover,
+[data-theme="dark"] .rep-btn-print:hover,
+[data-bs-theme="dark"] .rep-btn-print:hover,
+.dark .rep-btn-print:hover,
+[data-theme="dark"] .rep-tab-btn:hover,
+[data-bs-theme="dark"] .rep-tab-btn:hover,
+.dark .rep-tab-btn:hover,
+[data-theme="dark"] .reset-btn:hover,
+[data-bs-theme="dark"] .reset-btn:hover,
+.dark .reset-btn:hover,
+[data-theme="dark"] .btn-done:hover,
+[data-bs-theme="dark"] .btn-done:hover,
+.dark .btn-done:hover,
+[data-theme="dark"] .modal-btn-print:hover,
+[data-bs-theme="dark"] .modal-btn-print:hover,
+.dark .modal-btn-print:hover {
+    background: var(--surface-elevated) !important;
+    border-color: var(--border-strong) !important;
+    color: var(--ink) !important;
+}
+
+[data-theme="dark"] .quick-chip.active,
+[data-bs-theme="dark"] .quick-chip.active,
+.dark .quick-chip.active,
+[data-theme="dark"] .rep-tab-btn.active,
+[data-bs-theme="dark"] .rep-tab-btn.active,
+.dark .rep-tab-btn.active {
+    background: #2563eb !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .styled-range,
+[data-bs-theme="dark"] .styled-range,
+.dark .styled-range {
+    background: var(--border) !important;
+}
+
+/* Formula code tags & Step walkthrough */
+[data-theme="dark"] .step-formula code,
+[data-bs-theme="dark"] .step-formula code,
+.dark .step-formula code,
+[data-theme="dark"] .formula-box,
+[data-bs-theme="dark"] .formula-box,
+.dark .formula-box {
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+    color: #93c5fd !important;
+}
+
+/* Pie Chart components */
+[data-theme="dark"] .toggle-switch,
+[data-bs-theme="dark"] .toggle-switch,
+.dark .toggle-switch {
+    background: var(--surface-2) !important;
+    border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .toggle-switch .toggle-btn,
+[data-bs-theme="dark"] .toggle-switch .toggle-btn,
+.dark .toggle-switch .toggle-btn {
+    color: var(--ink-muted) !important;
+}
+
+[data-theme="dark"] .toggle-switch .toggle-btn-active,
+[data-bs-theme="dark"] .toggle-switch .toggle-btn-active,
+.dark .toggle-switch .toggle-btn-active {
+    background: var(--surface-elevated) !important;
+    color: #60a5fa !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .item-val,
+[data-bs-theme="dark"] .item-val,
+.dark .item-val,
+[data-theme="dark"] .item-label,
+[data-bs-theme="dark"] .item-label,
+.dark .item-label,
+[data-theme="dark"] .chip-val,
+[data-bs-theme="dark"] .chip-val,
+.dark .chip-val,
+[data-theme="dark"] .cost-value,
+[data-bs-theme="dark"] .cost-value,
+.dark .cost-value,
+[data-theme="dark"] .result-val,
+[data-bs-theme="dark"] .result-val,
+.dark .result-val,
+[data-theme="dark"] .metric-val,
+[data-bs-theme="dark"] .metric-val,
+.dark .metric-val {
+    color: var(--ink) !important;
+}
+
+[data-theme="dark"] .chart-insight-strip,
+[data-bs-theme="dark"] .chart-insight-strip,
+.dark .chart-insight-strip {
+    background: rgba(16, 185, 129, 0.12) !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+    color: #34d399 !important;
+}
+
+[data-theme="dark"] .external-tools-card,
+[data-bs-theme="dark"] .external-tools-card,
+.dark .external-tools-card {
+    background: linear-gradient(135deg, #111b2e 0%, #16243d 100%) !important;
+    border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+[data-theme="dark"] .feature-line,
+[data-bs-theme="dark"] .feature-line,
+.dark .feature-line {
+    color: var(--ink-soft) !important;
+}
+
+/* Color utility overrides in dark mode */
+[data-theme="dark"] .text-slate-900,
+[data-bs-theme="dark"] .text-slate-900,
+.dark .text-slate-900 {
+    color: var(--ink) !important;
+}
+
+[data-theme="dark"] .text-blue-700,
+[data-bs-theme="dark"] .text-blue-700,
+.dark .text-blue-700,
+[data-theme="dark"] .text-blue-800,
+[data-bs-theme="dark"] .text-blue-800,
+.dark .text-blue-800,
+[data-theme="dark"] .text-blue-900,
+[data-bs-theme="dark"] .text-blue-900,
+.dark .text-blue-900 {
+    color: #60a5fa !important;
+}
+
 
 

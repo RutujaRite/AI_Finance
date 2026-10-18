@@ -28,6 +28,7 @@ import {
   createDefaultLoanRow,
   validateEligibilityInput
 } from '@/lib/eligibility/eligibilityValidation';
+import { downloadEligibilityExcel } from '@/lib/eligibility/downloadEligibilityExcel';
 
 interface EligibilityCalculatorProps {
   user?: any;
@@ -235,6 +236,26 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
     window.print();
   };
 
+  // Export Comprehensive Excel Handler
+  const handleExportExcel = () => {
+    try {
+      downloadEligibilityExcel({
+        customerInfo,
+        salary,
+        foirPercent,
+        roiPercent,
+        tenureMonths,
+        multiplier,
+        loans,
+        result: eligibilityResult,
+      });
+      showToast('Downloading comprehensive Excel eligibility assessment (.xlsx)...');
+    } catch (err) {
+      console.error('Failed to export Excel:', err);
+      showToast('Failed to generate Excel report. Please try again.');
+    }
+  };
+
   return (
     <div className="calculator-layout-wrapper">
       {/* Toast Notification */}
@@ -259,6 +280,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
           savedCount={savedRecords.length}
           onOpenSavedRecords={() => setIsSavedModalOpen(true)}
           onSaveData={handleSaveData}
+          onExportExcel={handleExportExcel}
         />
 
         {/* Validation warnings banner if applicable */}
@@ -291,6 +313,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
           onUpdateLoan={handleUpdateLoan}
           onDeleteLoan={handleDeleteLoan}
           onClearLoans={handleClearLoans}
+          onExportExcel={handleExportExcel}
         />
 
         {/* 3. CALCULATION BENCHMARKS & ELIGIBILITY SUMMARY ATTACHED WITH AMORTIZATION ENGINE */}
@@ -332,6 +355,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
                   tenureMonths={tenureMonths}
                   result={eligibilityResult}
                   customerInfo={customerInfo}
+                  onExportExcel={handleExportExcel}
                 />
               </div>
             </div>
@@ -358,8 +382,8 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
           min-height: 100vh;
           display: flex;
           flex-direction: column;
-          background-color: #f1f5f9;
-          color: #0f172a;
+          background-color: var(--bg);
+          color: var(--ink);
           font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
           width: 100%;
           max-width: 100%;
@@ -454,8 +478,8 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
           display: flex;
           flex-direction: column;
           border-radius: 12px;
-          border: 1px solid #e2e8f0;
-          background: #ffffff;
+          border: 1px solid var(--border);
+          background: var(--surface);
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
           overflow: hidden;
         }
@@ -464,7 +488,7 @@ export const EligibilityCalculator: React.FC<EligibilityCalculatorProps> = ({
           border: none !important;
           border-radius: 0 !important;
           box-shadow: none !important;
-          border-bottom: 1px solid #e2e8f0 !important;
+          border-bottom: 1px solid var(--border) !important;
         }
 
         :global(.attached-engine-container .repayment-section-card) {

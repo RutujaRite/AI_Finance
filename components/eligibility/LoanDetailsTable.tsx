@@ -1,17 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  RotateCcw, 
-  Layers, 
-  ArrowRightLeft, 
+import {
+  Plus,
+  Trash2,
+  RotateCcw,
+  Layers,
+  ArrowRightLeft,
   AlertCircle,
   HelpCircle,
   CheckCircle2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  FileSpreadsheet
 } from 'lucide-react';
 import { LoanRow, BalanceTransferOption } from '@/lib/eligibility/eligibilityTypes';
 import { formatIndianRupees } from '@/lib/eligibility/calculateEligibility';
@@ -24,6 +25,7 @@ interface LoanDetailsTableProps {
   onLoadSampleLoans?: () => void;
   onLoadExcelDemo?: () => void;
   onClearLoans: () => void;
+  onExportExcel?: () => void;
 }
 
 const COMMON_LOAN_TYPES = [
@@ -65,6 +67,7 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
   onLoadSampleLoans,
   onLoadExcelDemo,
   onClearLoans,
+  onExportExcel,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -89,7 +92,7 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
     <section className="card loan-table-card">
       {/* Table Header */}
       <div className="table-header-bar">
-        <div 
+        <div
           className="table-header-left"
           onClick={() => setIsCollapsed(!isCollapsed)}
           role="button"
@@ -113,6 +116,18 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
         </div>
 
         <div className="table-header-actions">
+          {onExportExcel && (
+            <button
+              type="button"
+              className="tbl-btn tbl-btn-excel"
+              onClick={onExportExcel}
+              title="Export live loan portfolio and eligibility calculations to Excel"
+            >
+              <FileSpreadsheet size={14} />
+              <span>Excel</span>
+            </button>
+          )}
+
           {loans.length > 0 && (
             <button
               type="button"
@@ -167,224 +182,222 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
             <table className="loan-table">
               <thead>
                 <tr>
-              <th style={{ width: '34px', textAlign: 'center' }}>#</th>
-              <th style={{ minWidth: '105px', width: '105px' }}>Open Date</th>
-              <th style={{ minWidth: '110px' }}>Type</th>
-              <th style={{ minWidth: '130px' }}>Bank Name</th>
-              <th style={{ minWidth: '105px', textAlign: 'right' }}>Sanction Amt (₹)</th>
-              <th style={{ minWidth: '105px', textAlign: 'right' }}>Outstanding (₹)</th>
-              <th style={{ minWidth: '95px', textAlign: 'right' }}>EMI (₹)</th>
-              <th style={{ minWidth: '125px' }}>Balance Transfer</th>
-              <th style={{ minWidth: '100px' }}>REMARK</th>
-              <th style={{ minWidth: '100px' }}>Additional Info</th>
-              <th style={{ width: '44px', textAlign: 'center' }}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loans.length === 0 ? (
-              <tr>
-                <td colSpan={11} className="empty-state-cell">
-                  <div className="empty-box">
-                    <CheckCircle2 size={32} className="text-emerald-500 mb-1" />
-                    <p className="empty-title">Zero Existing Loans</p>
-                    <p className="empty-desc">
-                      No current obligations added. 100% of FOIR capacity is available for borrowing.
-                    </p>
-                    <div className="empty-btns">
-                      <button type="button" className="tbl-btn tbl-btn-add" onClick={onAddLoan}>
-                        <Plus size={15} /> Add First Row
-                      </button>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              loans.map((row, idx) => (
-                <tr 
-                  key={row.id} 
-                  className={`loan-row ${
-                    row.balanceTransfer === 'Yes' 
-                      ? 'row-transfer-yes' 
-                      : row.balanceTransfer === 'Self Closure' 
-                      ? 'row-transfer-closure' 
-                      : ''
-                  }`}
-                >
-                  {/* # */}
-                  <td className="row-num">{idx + 1}</td>
-
-                  {/* 1. Open Date */}
-                  <td>
-                    <input
-                      type="date"
-                      className="tbl-input font-mono"
-                      value={row.openDate}
-                      onChange={(e) => onUpdateLoan(row.id, 'openDate', e.target.value)}
-                    />
-                  </td>
-
-                  {/* 2. Type */}
-                  <td>
-                    <select
-                      className="tbl-select"
-                      value={row.type}
-                      onChange={(e) => onUpdateLoan(row.id, 'type', e.target.value)}
-                    >
-                      {COMMON_LOAN_TYPES.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
-                  </td>
-
-                  {/* 3. Bank Name */}
-                  <td>
-                    <input
-                      type="text"
-                      list={`banks-${row.id}`}
-                      className="tbl-input"
-                      placeholder="e.g. HDFC Bank"
-                      value={row.bankName}
-                      onChange={(e) => onUpdateLoan(row.id, 'bankName', e.target.value)}
-                    />
-                    <datalist id={`banks-${row.id}`}>
-                      {COMMON_BANKS.map((b) => (
-                        <option key={b} value={b} />
-                      ))}
-                    </datalist>
-                  </td>
-
-                  {/* 4. Sanction Amt */}
-                  <td>
-                    <input
-                      type="number"
-                      min="0"
-                      step="5000"
-                      className="tbl-input text-right font-mono"
-                      placeholder="0"
-                      value={row.sanctionAmount === 0 ? '' : row.sanctionAmount}
-                      onChange={(e) => onUpdateLoan(row.id, 'sanctionAmount', Number(e.target.value) || 0)}
-                    />
-                  </td>
-
-                  {/* 5. Outstanding */}
-                  <td>
-                    <input
-                      type="number"
-                      min="0"
-                      step="5000"
-                      className="tbl-input text-right font-mono font-semibold"
-                      placeholder="0"
-                      value={row.outstanding === 0 ? '' : row.outstanding}
-                      onChange={(e) => onUpdateLoan(row.id, 'outstanding', Number(e.target.value) || 0)}
-                    />
-                  </td>
-
-                  {/* 6. EMI */}
-                  <td>
-                    <input
-                      type="number"
-                      min="0"
-                      step="100"
-                      className="tbl-input text-right font-mono font-semibold"
-                      placeholder="0"
-                      value={row.emi === 0 ? '' : row.emi}
-                      onChange={(e) => onUpdateLoan(row.id, 'emi', Number(e.target.value) || 0)}
-                    />
-                  </td>
-
-                  {/* 7. Balance Transfer */}
-                  <td>
-                    <select
-                      className={`tbl-select bt-dropdown ${
-                        row.balanceTransfer === 'Yes' 
-                          ? 'bt-yes' 
-                          : row.balanceTransfer === 'Self Closure' 
-                          ? 'bt-closure' 
-                          : 'bt-no'
-                      }`}
-                      value={row.balanceTransfer}
-                      onChange={(e) => onUpdateLoan(row.id, 'balanceTransfer', e.target.value as BalanceTransferOption)}
-                    >
-                      <option value="No">No (Ongoing Debt)</option>
-                      <option value="Yes">Yes (BT Takeover)</option>
-                      <option value="Self Closure">Self Closure</option>
-                    </select>
-                  </td>
-
-                  {/* 8. REMARK */}
-                  <td>
-                    <input
-                      type="text"
-                      className="tbl-input"
-                      placeholder="Remarks..."
-                      value={row.remark}
-                      onChange={(e) => onUpdateLoan(row.id, 'remark', e.target.value)}
-                    />
-                  </td>
-
-                  {/* 9. Additional Info */}
-                  <td>
-                    <input
-                      type="text"
-                      className="tbl-input"
-                      placeholder="Tenure, info..."
-                      value={row.additionalInfo}
-                      onChange={(e) => onUpdateLoan(row.id, 'additionalInfo', e.target.value)}
-                    />
-                  </td>
-
-                  {/* 10. Action (Red Delete Button) */}
-                  <td style={{ textAlign: 'center' }}>
-                    <button
-                      type="button"
-                      className="btn-delete"
-                      onClick={() => onDeleteLoan(row.id)}
-                      title="Delete row"
-                      aria-label="Delete loan row"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
+                  <th style={{ width: '34px', textAlign: 'center' }}>#</th>
+                  <th style={{ minWidth: '105px', width: '105px' }}>Open Date</th>
+                  <th style={{ minWidth: '110px' }}>Type</th>
+                  <th style={{ minWidth: '130px' }}>Bank Name</th>
+                  <th style={{ minWidth: '105px', textAlign: 'right' }}>Sanction Amt (₹)</th>
+                  <th style={{ minWidth: '105px', textAlign: 'right' }}>Outstanding (₹)</th>
+                  <th style={{ minWidth: '95px', textAlign: 'right' }}>EMI (₹)</th>
+                  <th style={{ minWidth: '125px' }}>Balance Transfer</th>
+                  <th style={{ minWidth: '100px' }}>REMARK</th>
+                  <th style={{ minWidth: '100px' }}>Additional Info</th>
+                  <th style={{ width: '44px', textAlign: 'center' }}>Action</th>
                 </tr>
-              ))
-            )}
-          </tbody>
+              </thead>
+              <tbody>
+                {loans.length === 0 ? (
+                  <tr>
+                    <td colSpan={11} className="empty-state-cell">
+                      <div className="empty-box">
+                        <CheckCircle2 size={32} className="text-emerald-500 mb-1" />
+                        <p className="empty-title">Zero Existing Loans</p>
+                        <p className="empty-desc">
+                          No current obligations added. 100% of FOIR capacity is available for borrowing.
+                        </p>
+                        <div className="empty-btns">
+                          <button type="button" className="tbl-btn tbl-btn-add" onClick={onAddLoan}>
+                            <Plus size={15} /> Add First Row
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  loans.map((row, idx) => (
+                    <tr
+                      key={row.id}
+                      className={`loan-row ${row.balanceTransfer === 'Yes'
+                          ? 'row-transfer-yes'
+                          : row.balanceTransfer === 'Self Closure'
+                            ? 'row-transfer-closure'
+                            : ''
+                        }`}
+                    >
+                      {/* # */}
+                      <td className="row-num">{idx + 1}</td>
 
-          {/* Dynamic Totals Footer */}
-          {loans.length > 0 && (
-            <tfoot>
-              <tr className="totals-row">
-                <td colSpan={4} className="totals-label">
-                  <strong>Total Portfolio Sum ({loans.length} {loans.length === 1 ? 'Row' : 'Rows'})</strong>
-                </td>
-                <td className="totals-val text-right">
-                  <strong>{formatIndianRupees(totalSanction)}</strong>
-                </td>
-                <td className="totals-val text-right font-bold text-blue-700">
-                  <strong>{formatIndianRupees(totalOutstanding)}</strong>
-                </td>
-                <td className="totals-val text-right font-bold text-slate-900">
-                  <strong>{formatIndianRupees(totalEmi)}</strong>
-                </td>
-                <td colSpan={4} className="totals-pills-cell">
-                  <div className="totals-pills">
-                    <span className="stat-pill pill-blue">
-                      Ongoing Obligations: <strong>{formatIndianRupees(totalOngoingObligations)}</strong>
-                    </span>
-                    <span className="stat-pill pill-green">
-                      BT POS: <strong>{formatIndianRupees(totalBtPos)}</strong>
-                    </span>
-                    <span className="stat-pill pill-amber">
-                      Self Closure POS: <strong>{formatIndianRupees(totalSelfClosurePos)}</strong>
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            </tfoot>
-          )}
-        </table>
-      </div>
-      </>
+                      {/* 1. Open Date */}
+                      <td>
+                        <input
+                          type="date"
+                          className="tbl-input font-mono"
+                          value={row.openDate}
+                          onChange={(e) => onUpdateLoan(row.id, 'openDate', e.target.value)}
+                        />
+                      </td>
+
+                      {/* 2. Type */}
+                      <td>
+                        <select
+                          className="tbl-select"
+                          value={row.type}
+                          onChange={(e) => onUpdateLoan(row.id, 'type', e.target.value)}
+                        >
+                          {COMMON_LOAN_TYPES.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      </td>
+
+                      {/* 3. Bank Name */}
+                      <td>
+                        <input
+                          type="text"
+                          list={`banks-${row.id}`}
+                          className="tbl-input"
+                          placeholder="e.g. HDFC Bank"
+                          value={row.bankName}
+                          onChange={(e) => onUpdateLoan(row.id, 'bankName', e.target.value)}
+                        />
+                        <datalist id={`banks-${row.id}`}>
+                          {COMMON_BANKS.map((b) => (
+                            <option key={b} value={b} />
+                          ))}
+                        </datalist>
+                      </td>
+
+                      {/* 4. Sanction Amt */}
+                      <td>
+                        <input
+                          type="number"
+                          min="0"
+                          step="5000"
+                          className="tbl-input text-right font-mono"
+                          placeholder="0"
+                          value={row.sanctionAmount === 0 ? '' : row.sanctionAmount}
+                          onChange={(e) => onUpdateLoan(row.id, 'sanctionAmount', Number(e.target.value) || 0)}
+                        />
+                      </td>
+
+                      {/* 5. Outstanding */}
+                      <td>
+                        <input
+                          type="number"
+                          min="0"
+                          step="5000"
+                          className="tbl-input text-right font-mono font-semibold"
+                          placeholder="0"
+                          value={row.outstanding === 0 ? '' : row.outstanding}
+                          onChange={(e) => onUpdateLoan(row.id, 'outstanding', Number(e.target.value) || 0)}
+                        />
+                      </td>
+
+                      {/* 6. EMI */}
+                      <td>
+                        <input
+                          type="number"
+                          min="0"
+                          step="100"
+                          className="tbl-input text-right font-mono font-semibold"
+                          placeholder="0"
+                          value={row.emi === 0 ? '' : row.emi}
+                          onChange={(e) => onUpdateLoan(row.id, 'emi', Number(e.target.value) || 0)}
+                        />
+                      </td>
+
+                      {/* 7. Balance Transfer */}
+                      <td>
+                        <select
+                          className={`tbl-select bt-dropdown ${row.balanceTransfer === 'Yes'
+                              ? 'bt-yes'
+                              : row.balanceTransfer === 'Self Closure'
+                                ? 'bt-closure'
+                                : 'bt-no'
+                            }`}
+                          value={row.balanceTransfer}
+                          onChange={(e) => onUpdateLoan(row.id, 'balanceTransfer', e.target.value as BalanceTransferOption)}
+                        >
+                          <option value="No">No (Ongoing Debt)</option>
+                          <option value="Yes">Yes (BT Takeover)</option>
+                          <option value="Self Closure">Self Closure</option>
+                        </select>
+                      </td>
+
+                      {/* 8. REMARK */}
+                      <td>
+                        <input
+                          type="text"
+                          className="tbl-input"
+                          placeholder="Remarks..."
+                          value={row.remark}
+                          onChange={(e) => onUpdateLoan(row.id, 'remark', e.target.value)}
+                        />
+                      </td>
+
+                      {/* 9. Additional Info */}
+                      <td>
+                        <input
+                          type="text"
+                          className="tbl-input"
+                          placeholder="Tenure, info..."
+                          value={row.additionalInfo}
+                          onChange={(e) => onUpdateLoan(row.id, 'additionalInfo', e.target.value)}
+                        />
+                      </td>
+
+                      {/* 10. Action (Red Delete Button) */}
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          className="btn-delete"
+                          onClick={() => onDeleteLoan(row.id)}
+                          title="Delete row"
+                          aria-label="Delete loan row"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+
+              {/* Dynamic Totals Footer */}
+              {loans.length > 0 && (
+                <tfoot>
+                  <tr className="totals-row">
+                    <td colSpan={4} className="totals-label">
+                      <strong>Total Portfolio Sum ({loans.length} {loans.length === 1 ? 'Row' : 'Rows'})</strong>
+                    </td>
+                    <td className="totals-val text-right">
+                      <strong>{formatIndianRupees(totalSanction)}</strong>
+                    </td>
+                    <td className="totals-val text-right font-bold text-blue-700">
+                      <strong>{formatIndianRupees(totalOutstanding)}</strong>
+                    </td>
+                    <td className="totals-val text-right font-bold text-slate-900">
+                      <strong>{formatIndianRupees(totalEmi)}</strong>
+                    </td>
+                    <td colSpan={4} className="totals-pills-cell">
+                      <div className="totals-pills">
+                        <span className="stat-pill pill-blue">
+                          Ongoing Obligations: <strong>{formatIndianRupees(totalOngoingObligations)}</strong>
+                        </span>
+                        <span className="stat-pill pill-green">
+                          BT POS: <strong>{formatIndianRupees(totalBtPos)}</strong>
+                        </span>
+                        <span className="stat-pill pill-amber">
+                          Self Closure POS: <strong>{formatIndianRupees(totalSelfClosurePos)}</strong>
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </>
       )}
 
       <style jsx>{`
@@ -483,6 +496,18 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
           border-color: #94a3b8;
         }
 
+        .tbl-btn-excel {
+          background: #0284c7;
+          border-color: #0369a1;
+          color: #ffffff;
+          box-shadow: 0 1px 2px rgba(2, 132, 199, 0.2);
+        }
+
+        .tbl-btn-excel:hover {
+          background: #0369a1;
+          transform: translateY(-1px);
+        }
+
         /* Green button for positive/add actions */
         .tbl-btn-add {
           background: #10b981;
@@ -549,8 +574,7 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
           max-width: 100%;
           box-sizing: border-box;
           overflow-x: auto;
-          max-height: 230px;
-          overflow-y: auto;
+          overflow-y: visible;
           overscroll-behavior-x: contain;
           -webkit-overflow-scrolling: touch;
         }
@@ -754,6 +778,284 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
         .font-bold { font-weight: 700; }
         .text-blue-700 { color: #1d4ed8; }
         .text-slate-900 { color: #0f172a; }
+
+        .desktop-table-container {
+          display: block;
+        }
+
+        .mobile-cards-container {
+          display: none;
+        }
+
+        .mobile-loans-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .mobile-loan-card {
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 12px 14px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+          transition: all 0.15s ease;
+        }
+
+        .card-transfer-yes {
+          border-left: 4px solid #10b981 !important;
+          background: rgba(16, 185, 129, 0.03);
+        }
+
+        .card-transfer-closure {
+          border-left: 4px solid #f59e0b !important;
+          background: rgba(245, 158, 11, 0.03);
+        }
+
+        .mobile-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 10px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid #f1f5f9;
+        }
+
+        .mobile-card-title-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .card-idx-badge {
+          background: #eff6ff;
+          color: #2563eb;
+          font-weight: 700;
+          font-size: 0.72rem;
+          padding: 2px 7px;
+          border-radius: 6px;
+        }
+
+        .card-bank-name {
+          font-size: 0.88rem;
+          font-weight: 700;
+          color: #0f172a;
+        }
+
+        .mobile-card-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+        }
+
+        .mobile-input-group {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .mobile-input-group.full-col {
+          grid-column: span 2;
+        }
+
+        .mobile-field-lbl {
+          font-size: 0.70rem;
+          font-weight: 600;
+          color: #64748b;
+          margin-bottom: 3px;
+        }
+
+        .mobile-totals-summary-card {
+          background: #f8fafc;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 12px 14px;
+          margin-top: 4px;
+        }
+
+        .mobile-totals-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 0.84rem;
+          color: #0f172a;
+          margin-bottom: 8px;
+        }
+
+        .mobile-totals-stats {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          margin-bottom: 10px;
+        }
+
+        .mobile-add-btn {
+          width: 100% !important;
+          justify-content: center !important;
+          padding: 9px !important;
+        }
+
+        /* Dark Theme Styling for LoanDetailsTable */
+        :global([data-theme="dark"]) .loan-table-card,
+        :global([data-bs-theme="dark"]) .loan-table-card,
+        :global(.dark) .loan-table-card {
+          background: var(--surface) !important;
+          border-color: var(--border) !important;
+        }
+        :global([data-theme="dark"]) .table-header-bar,
+        :global([data-bs-theme="dark"]) .table-header-bar,
+        :global(.dark) .table-header-bar {
+          background: var(--surface) !important;
+          border-color: var(--border) !important;
+        }
+        :global([data-theme="dark"]) .card-title,
+        :global([data-bs-theme="dark"]) .card-title,
+        :global(.dark) .card-title {
+          color: #f8fafc !important;
+        }
+        :global([data-theme="dark"]) .card-subtitle,
+        :global([data-bs-theme="dark"]) .card-subtitle,
+        :global(.dark) .card-subtitle {
+          color: #94a3b8 !important;
+        }
+        :global([data-theme="dark"]) .guide-tags-strip,
+        :global([data-bs-theme="dark"]) .guide-tags-strip,
+        :global(.dark) .guide-tags-strip {
+          background: #0f172a !important;
+          border-color: rgba(255, 255, 255, 0.08) !important;
+        }
+        :global([data-theme="dark"]) .tbl-input,
+        :global([data-theme="dark"]) .tbl-select,
+        :global([data-bs-theme="dark"]) .tbl-input,
+        :global([data-bs-theme="dark"]) .tbl-select,
+        :global(.dark) .tbl-input,
+        :global(.dark) .tbl-select {
+          background: #090d16 !important;
+          border-color: rgba(255, 255, 255, 0.12) !important;
+          color: #ffffff !important;
+        }
+        :global([data-theme="dark"]) .tbl-btn-secondary,
+        :global([data-theme="dark"]) .tbl-btn-collapse,
+        :global([data-bs-theme="dark"]) .tbl-btn-secondary,
+        :global([data-bs-theme="dark"]) .tbl-btn-collapse,
+        :global(.dark) .tbl-btn-secondary,
+        :global(.dark) .tbl-btn-collapse {
+          background: var(--surface-2) !important;
+          border-color: var(--border) !important;
+          color: var(--ink-soft) !important;
+        }
+        :global([data-theme="dark"]) .loan-table th,
+        :global([data-bs-theme="dark"]) .loan-table th,
+        :global(.dark) .loan-table th {
+          background: #1e293b !important;
+          border-bottom-color: #334155 !important;
+          color: #94a3b8 !important;
+        }
+        :global([data-theme="dark"]) .loan-row td,
+        :global([data-bs-theme="dark"]) .loan-row td,
+        :global(.dark) .loan-row td {
+          border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+        }
+        :global([data-theme="dark"]) .loan-row:hover,
+        :global([data-bs-theme="dark"]) .loan-row:hover,
+        :global(.dark) .loan-row:hover {
+          background-color: #111827 !important;
+        }
+        :global([data-theme="dark"]) .totals-row,
+        :global([data-bs-theme="dark"]) .totals-row,
+        :global(.dark) .totals-row {
+          background: #0f172a !important;
+          border-top-color: #334155 !important;
+        }
+        :global([data-theme="dark"]) .totals-label,
+        :global([data-bs-theme="dark"]) .totals-label,
+        :global(.dark) .totals-label {
+          color: #f8fafc !important;
+        }
+        :global([data-theme="dark"]) .mobile-loan-card,
+        :global([data-bs-theme="dark"]) .mobile-loan-card,
+        :global(.dark) .mobile-loan-card {
+          background: #111827 !important;
+          border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+        :global([data-theme="dark"]) .mobile-card-header,
+        :global([data-bs-theme="dark"]) .mobile-card-header,
+        :global(.dark) .mobile-card-header {
+          border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+        }
+        :global([data-theme="dark"]) .card-bank-name,
+        :global([data-bs-theme="dark"]) .card-bank-name,
+        :global(.dark) .card-bank-name {
+          color: #ffffff !important;
+        }
+        :global([data-theme="dark"]) .mobile-field-lbl,
+        :global([data-bs-theme="dark"]) .mobile-field-lbl,
+        :global(.dark) .mobile-field-lbl {
+          color: #94a3b8 !important;
+        }
+        :global([data-theme="dark"]) .mobile-totals-summary-card,
+        :global([data-bs-theme="dark"]) .mobile-totals-summary-card,
+        :global(.dark) .mobile-totals-summary-card {
+          background: #0f172a !important;
+          border-color: rgba(255, 255, 255, 0.12) !important;
+        }
+        :global([data-theme="dark"]) .mobile-totals-header,
+        :global([data-bs-theme="dark"]) .mobile-totals-header,
+        :global(.dark) .mobile-totals-header {
+          color: #f8fafc !important;
+        }
+        :global([data-theme="dark"]) .text-slate-900,
+        :global([data-bs-theme="dark"]) .text-slate-900,
+        :global(.dark) .text-slate-900 {
+          color: #ffffff !important;
+        }
+        :global([data-theme="dark"]) .text-blue-700,
+        :global([data-bs-theme="dark"]) .text-blue-700,
+        :global(.dark) .text-blue-700 {
+          color: #60a5fa !important;
+        }
+
+        /* Mobile Responsive Viewport Switching */
+        @media (max-width: 768px) {
+          .table-header-bar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            padding: 10px 12px !important;
+            gap: 8px !important;
+          }
+          .table-header-left {
+            width: 100% !important;
+            justify-content: space-between !important;
+          }
+          .table-header-actions {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            width: 100% !important;
+            gap: 6px !important;
+          }
+          .tbl-btn {
+            width: 100% !important;
+            justify-content: center !important;
+            padding: 8px 10px !important;
+            font-size: 0.78rem !important;
+          }
+          .guide-tags-strip {
+            padding: 6px 12px !important;
+            gap: 6px !important;
+          }
+          .guide-tag {
+            font-size: 0.68rem !important;
+            padding: 2px 6px !important;
+          }
+          .desktop-table-container {
+            display: none !important;
+          }
+          .mobile-cards-container {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 10px !important;
+            padding: 10px 12px 14px 12px !important;
+          }
+        }
       `}</style>
     </section>
   );
