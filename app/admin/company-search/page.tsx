@@ -1,17 +1,8 @@
-/**
- * Dedicated Company Search Management Page (Admin Only)
- * Standalone page accessible at /admin/company-search
- * - Upload company categorization lists (CSV/Excel)
- * - Ingest and manage corporate employer records in PostgreSQL
- * - Download original uploaded company spreadsheets
- * - Delete company lists with cascaded record removal
- * - Uses: /api/auth/verify, /api/bank/files, /api/bank/files/[id], /api/bank/files/[id]/download
- */
-
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import * as XLSX from "xlsx";
 import AdminHeader from "@/components/admin/AdminHeader";
 import ModernSearchBar from "@/components/ui/ModernSearchBar";
 import {
@@ -217,22 +208,41 @@ export default function CompanySearchPage() {
     }
   }
 
+  // 7. Export Company Files List to Excel
+  const exportCompanyFilesToExcel = () => {
+    if (filteredFiles.length === 0) return;
+
+    const exportData = filteredFiles.map((f, idx) => ({
+      "Sr No": idx + 1,
+      "File Name": f.file_name || "N/A",
+      "Bank / Lender": f.bank_name || "Corporate Master",
+      "Ingested Records": Number(f.record_count) || 0,
+      "Upload Date": f.uploaded_at ? new Date(f.uploaded_at).toLocaleDateString("en-IN") : "N/A",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Company Files");
+
+    const maxProps = ["Sr No", "File Name", "Bank / Lender", "Ingested Records", "Upload Date"];
+    worksheet["!cols"] = maxProps.map((key) => {
+      let maxLen = key.length;
+      exportData.forEach((row: any) => {
+        const val = String(row[key] ?? "");
+        if (val.length > maxLen) maxLen = val.length;
+      });
+      return { wch: Math.min(Math.max(maxLen + 4, 12), 40) };
+    });
+
+    const filename = `Company_Spreadsheets_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(workbook, filename);
+  };
+
   if (authLoading || !user) {
     return (
-      <main
-        style={{
-          padding: 48,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "100vh",
-          gap: 12,
-          background: "#f8fafc",
-        }}
-      >
-        <div className="spinner-border text-primary" style={{ width: 36, height: 36 }} role="status"></div>
-        <p style={{ color: "#64748b", fontWeight: 500, fontSize: "0.9rem" }}>
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-12 text-center">
+        <RotateCw className="w-8 h-8 text-blue-600 animate-spin mb-3" />
+        <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
           Verifying administrator access...
         </p>
       </main>
@@ -240,7 +250,7 @@ export default function CompanySearchPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans transition-colors duration-200">
       {/* 1. TOP HEADER & BREADCRUMBS */}
       <AdminHeader
         user={user}
@@ -250,88 +260,42 @@ export default function CompanySearchPage() {
       />
 
       {/* 2. MAIN CONTAINER */}
-      <main className="cw-admin-container">
+      <main className="cw-admin-container py-6">
         {/* Metric Cards Row */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            gap: "16px",
-            marginBottom: "24px",
-          }}
-        >
-          <div className="cw-card" style={{ padding: "18px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                background: "#eff6ff",
-                border: "1px solid #dbeafe",
-                color: "#2563eb",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <Building2 style={{ width: 22, height: 22 }} />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="cw-card p-4 sm:p-5 flex items-center gap-3.5 shadow-sm border border-slate-200 dark:border-slate-800">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+              <div className="text-xl font-extrabold text-slate-900 dark:text-white">
                 {totalCompanyRecords > 0 ? totalCompanyRecords.toLocaleString() : "533,000+"}
               </div>
-              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Company Records Ingested</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Company Records Ingested</div>
             </div>
           </div>
 
-          <div className="cw-card" style={{ padding: "18px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                background: "#f5f3ff",
-                border: "1px solid #ede9fe",
-                color: "#7c3aed",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <FileSpreadsheet style={{ width: 22, height: 22 }} />
+          <div className="cw-card p-4 sm:p-5 flex items-center gap-3.5 shadow-sm border border-slate-200 dark:border-slate-800">
+            <div className="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+              <FileSpreadsheet className="w-5 h-5" />
             </div>
             <div>
-              <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+              <div className="text-xl font-extrabold text-slate-900 dark:text-white">
                 {files.length}
               </div>
-              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Spreadsheet Files</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Spreadsheet Files</div>
             </div>
           </div>
 
-          <div className="cw-card" style={{ padding: "18px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                background: "#ecfdf5",
-                border: "1px solid #d1fae5",
-                color: "#059669",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <CheckCircle2 style={{ width: 22, height: 22 }} />
+          <div className="cw-card p-4 sm:p-5 flex items-center gap-3.5 shadow-sm border border-slate-200 dark:border-slate-800">
+            <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+              <div className="text-xl font-extrabold text-slate-900 dark:text-white">
                 CSV / XLSX
               </div>
-              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Supported Formats</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Supported Formats</div>
             </div>
           </div>
         </div>
@@ -339,32 +303,24 @@ export default function CompanySearchPage() {
         {/* Action Message Alert */}
         {fileMessage && (
           <div
-            style={{
-              padding: "12px 18px",
-              borderRadius: "10px",
-              marginBottom: "20px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-              background: fileMessage.includes("✓") || fileMessage.includes("success") ? "#ecfdf5" : "#fef2f2",
-              border: `1px solid ${fileMessage.includes("✓") || fileMessage.includes("success") ? "#a7f3d0" : "#fecaca"}`,
-              color: fileMessage.includes("✓") || fileMessage.includes("success") ? "#065f46" : "#b91c1c",
-            }}
+            className={`p-4 rounded-xl mb-5 flex items-center justify-between text-sm font-medium transition-all ${
+              fileMessage.includes("✓") || fileMessage.includes("success")
+                ? "bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                : "bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300"
+            }`}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div className="flex items-center gap-2.5">
               {fileMessage.includes("✓") || fileMessage.includes("success") ? (
-                <CheckCircle2 style={{ width: 18, height: 18, flexShrink: 0 }} />
+                <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
               ) : (
-                <AlertCircle style={{ width: 18, height: 18, flexShrink: 0 }} />
+                <AlertCircle className="w-5 h-5 shrink-0 text-red-600 dark:text-red-400" />
               )}
               <span>{fileMessage}</span>
             </div>
             <button
               type="button"
               onClick={() => setFileMessage("")}
-              style={{ border: "none", background: "none", cursor: "pointer", color: "currentColor", fontSize: "1rem" }}
+              className="border-0 bg-transparent cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base"
             >
               ✕
             </button>
@@ -373,17 +329,11 @@ export default function CompanySearchPage() {
 
         {/* Drag & Drop Upload Card */}
         <div
-          className="cw-card"
-          style={{
-            padding: "32px 24px",
-            textAlign: "center",
-            marginBottom: "24px",
-            cursor: "pointer",
-            background: isDragOver ? "#eff6ff" : "#ffffff",
-            borderColor: isDragOver ? "#2563eb" : "#cbd5e1",
-            borderStyle: "dashed",
-            borderWidth: 2,
-          }}
+          className={`cw-card p-6 sm:p-8 text-center mb-6 cursor-pointer border-2 border-dashed transition-all shadow-sm ${
+            isDragOver
+              ? "bg-blue-50/80 dark:bg-blue-950/40 border-blue-500 dark:border-blue-400"
+              : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600"
+          }`}
           onDragOver={(e) => {
             e.preventDefault();
             setIsDragOver(true);
@@ -411,62 +361,35 @@ export default function CompanySearchPage() {
             }}
           />
 
-          <div
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: "50%",
-              background: "#eff6ff",
-              border: "1px solid #dbeafe",
-              color: "#2563eb",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 12px auto",
-            }}
-          >
-            <UploadCloud style={{ width: 24, height: 24 }} />
+          <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-3">
+            <UploadCloud className="w-6 h-6" />
           </div>
 
-          <h3 style={{ margin: "0 0 4px 0", fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
+          <h3 className="m-0 mb-1 text-base font-bold text-slate-900 dark:text-white">
             {uploading ? "Ingesting company spreadsheet..." : "Upload Company Data Spreadsheet"}
           </h3>
-          <p style={{ margin: 0, fontSize: "0.8125rem", color: "#64748b" }}>
+          <p className="m-0 text-xs text-slate-500 dark:text-slate-400">
             Drag &amp; drop a CSV or Excel file here, or click to browse. Max file size: 50 MB.
           </p>
         </div>
 
         {/* Search & Filter Toolbar */}
-        <div
-          className="cw-card"
-          style={{
-            padding: "14px 18px",
-            marginBottom: "18px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: "14px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-            <span
-              className="cw-badge cw-badge-info"
-              style={{ fontSize: "0.8125rem", padding: "5px 12px" }}
-            >
+        <div className="cw-card p-4 mb-5 flex items-center justify-between flex-wrap gap-3 shadow-sm border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="cw-badge cw-badge-info text-xs py-1.5 px-3">
               <span>Spreadsheets:</span>
-              <strong style={{ marginLeft: 4 }}>{filteredFiles.length}</strong>
+              <strong className="ml-1">{filteredFiles.length}</strong>
             </span>
 
             <ModernSearchBar
               value={searchQuery}
               onChange={setSearchQuery}
               placeholder="Search spreadsheets..."
-              width={280}
+              width={260}
             />
 
             <select
-              className="cw-select"
+              className="cw-select text-xs py-1.5 px-2.5"
               value={selectedBank}
               onChange={(e) => setSelectedBank(e.target.value)}
             >
@@ -479,7 +402,7 @@ export default function CompanySearchPage() {
             </select>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div className="flex items-center gap-2">
             {(searchQuery || selectedBank !== "all") && (
               <button
                 type="button"
@@ -487,7 +410,7 @@ export default function CompanySearchPage() {
                   setSearchQuery("");
                   setSelectedBank("all");
                 }}
-                className="cw-btn-secondary"
+                className="cw-btn-secondary text-xs"
               >
                 Reset Filters
               </button>
@@ -496,18 +419,30 @@ export default function CompanySearchPage() {
             <button
               type="button"
               className="cw-btn-secondary"
+              onClick={exportCompanyFilesToExcel}
+              disabled={filteredFiles.length === 0}
+              title="Export company spreadsheets directory to Excel"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Export Excel</span>
+            </button>
+
+            <button
+              type="button"
+              className="cw-btn-secondary"
               onClick={loadFiles}
               disabled={loadingFiles}
             >
-              <RotateCw style={{ width: 14, height: 14 }} className={loadingFiles ? "animate-spin text-blue-600" : ""} />
+              <RotateCw className={`w-3.5 h-3.5 ${loadingFiles ? "animate-spin text-blue-600" : ""}`} />
               <span>Refresh</span>
             </button>
           </div>
         </div>
 
-        {/* Uploaded Spreadsheets Table */}
-        <div className="cw-card">
-          <div className="cw-table-container">
+        {/* Uploaded Spreadsheets Container */}
+        <div className="cw-card shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+          {/* Desktop Table: Hidden on Mobile */}
+          <div className="hidden md:block cw-table-container border-0">
             <table className="cw-table">
               <thead>
                 <tr>
@@ -531,7 +466,9 @@ export default function CompanySearchPage() {
                   <tr>
                     <td colSpan={6} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
                       <FileSpreadsheet style={{ width: 36, height: 36, color: "#94a3b8", margin: "0 auto 8px" }} />
-                      <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", color: "#1e293b", fontWeight: 600 }}>No Spreadsheets Found</h4>
+                      <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", fontWeight: 600 }} className="text-slate-900 dark:text-white">
+                        No Spreadsheets Found
+                      </h4>
                       <p style={{ margin: 0, fontSize: "0.8125rem" }}>
                         {searchQuery ? "No spreadsheets match your search." : "Upload a company spreadsheet to ingest employer records."}
                       </p>
@@ -552,8 +489,8 @@ export default function CompanySearchPage() {
                                 width: 30,
                                 height: 30,
                                 borderRadius: 8,
-                                background: "#ecfdf5",
-                                border: "1px solid #d1fae5",
+                                background: "rgba(5, 150, 105, 0.1)",
+                                border: "1px solid rgba(5, 150, 105, 0.2)",
                                 color: "#059669",
                                 display: "flex",
                                 alignItems: "center",
@@ -563,13 +500,13 @@ export default function CompanySearchPage() {
                             >
                               <FileSpreadsheet style={{ width: 16, height: 16 }} />
                             </div>
-                            <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.875rem" }}>{f.file_name}</span>
+                            <span style={{ fontWeight: 600, fontSize: "0.875rem" }}>{f.file_name}</span>
                           </div>
                         </td>
                         <td style={{ textAlign: "left" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             <Landmark style={{ width: 15, height: 15, color: "#64748b" }} />
-                            <span style={{ fontWeight: 600, color: "#334155" }}>{f.bank_name || "Corporate Master"}</span>
+                            <span style={{ fontWeight: 600 }}>{f.bank_name || "Corporate Master"}</span>
                           </div>
                         </td>
                         <td style={{ textAlign: "center" }}>
@@ -594,10 +531,9 @@ export default function CompanySearchPage() {
                             <button
                               type="button"
                               onClick={() => handleDeleteFile(f.id, f.file_name)}
-                              className="cw-action-btn"
+                              className="cw-action-btn text-red-600 hover:text-red-700"
                               title="Delete spreadsheet"
                               aria-label={`Delete ${f.file_name}`}
-                              style={{ color: "#dc2626" }}
                             >
                               <Trash2 style={{ width: 14, height: 14 }} />
                             </button>
@@ -609,6 +545,77 @@ export default function CompanySearchPage() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Adaptive Mobile Card List (Visible on screens <= 768px) */}
+          <div className="md:hidden divide-y divide-slate-200 dark:divide-slate-800">
+            {loadingFiles ? (
+              <div className="p-8 text-center text-slate-500">
+                <RotateCw className="w-6 h-6 mx-auto mb-2 animate-spin text-blue-600" />
+                <p className="text-sm">Loading company spreadsheets...</p>
+              </div>
+            ) : filteredFiles.length === 0 ? (
+              <div className="p-8 text-center text-slate-500">
+                <FileSpreadsheet className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-white">No Spreadsheets Found</h4>
+                <p className="text-xs text-slate-500">
+                  {searchQuery ? "No spreadsheets match your search." : "No spreadsheets uploaded yet."}
+                </p>
+              </div>
+            ) : (
+              filteredFiles.map((f, idx) => (
+                <div key={f.id || idx} className="p-4 bg-white dark:bg-slate-900 flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 mt-0.5">
+                        <FileSpreadsheet className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-slate-900 dark:text-white text-sm break-all">
+                          {f.file_name}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          <Landmark className="w-3.5 h-3.5 shrink-0" />
+                          <span className="font-medium truncate">{f.bank_name || "Corporate Master"}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-slate-400 shrink-0">#{idx + 1}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <span className="cw-badge cw-badge-info text-[11px]">
+                        {(Number(f.record_count) || 0).toLocaleString()} records
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {f.uploaded_at ? new Date(f.uploaded_at).toLocaleDateString() : "—"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`/api/bank/files/${f.id}/download`}
+                        className="cw-action-btn"
+                        title="Download file"
+                        aria-label={`Download ${f.file_name}`}
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteFile(f.id, f.file_name)}
+                        className="cw-action-btn text-red-600 hover:text-red-700"
+                        title="Delete file"
+                        aria-label={`Delete ${f.file_name}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </main>
