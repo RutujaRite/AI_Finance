@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import * as XLSX from "xlsx";
 import AdminHeader from "@/components/admin/AdminHeader";
 import {
   Mic,
@@ -30,6 +31,7 @@ import {
   EyeOff,
   LayoutGrid,
   Home,
+  Download,
 } from "lucide-react";
 
 export type ModelCategory = "STT" | "LLM" | "TTS";
@@ -217,6 +219,40 @@ export default function AiModelsManagementPage() {
     });
   }, [models, selectedTab, providerFilter, searchQuery]);
 
+  // Export AI Models to Excel
+  const exportModelsToExcel = () => {
+    if (filteredModels.length === 0) return;
+
+    const exportData = filteredModels.map((m, idx) => ({
+      "Sr No": idx + 1,
+      "Model Name": m.model_name,
+      "Category": m.category,
+      "Provider": m.provider,
+      "API Key Type": m.has_custom_api_key ? "Custom Secret Key" : "Inherited Env Key",
+      "Status": m.is_active ? "Active" : "Inactive",
+      "Baseline Default": m.is_default ? "Yes" : "No",
+      "Model ID": m.id,
+      "Updated At": m.updated_at ? new Date(m.updated_at).toLocaleString("en-IN") : "N/A",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "AI Models");
+
+    const maxProps = ["Sr No", "Model Name", "Category", "Provider", "API Key Type", "Status", "Baseline Default", "Model ID", "Updated At"];
+    worksheet["!cols"] = maxProps.map((key) => {
+      let maxLen = key.length;
+      exportData.forEach((row: any) => {
+        const val = String(row[key] ?? "");
+        if (val.length > maxLen) maxLen = val.length;
+      });
+      return { wch: Math.min(Math.max(maxLen + 4, 12), 40) };
+    });
+
+    const filename = `AI_Models_Directory_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(workbook, filename);
+  };
+
   /* ---------------- Actions ---------------- */
 
   async function handleActivateModel(id: number) {
@@ -395,7 +431,7 @@ export default function AiModelsManagementPage() {
   }
 
   return (
-    <div className="home-body admin-fullpage-layout" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg, #f8fafc)", width: "100%" }}>
+    <div className="home-body admin-fullpage-layout min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-200 w-full">
       <AdminHeader
         user={user}
         title="AI Model Configuration"
@@ -440,13 +476,13 @@ export default function AiModelsManagementPage() {
         <div className="page-header" style={{ marginBottom: "24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
-              <h1 className="page-title" style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "10px", color: "var(--ink, #0f172a)" }}>
+              <h1 className="page-title text-slate-900 dark:text-white" style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "10px" }}>
                 <Cpu size={24} style={{ color: "var(--color-primary-blue, #2563eb)" }} />
                 AI Models Management
               </h1>
               <span className="badge badge-primary" style={{ fontSize: "0.75rem", padding: "4px 8px" }}>Dynamic Routing</span>
             </div>
-            <p className="page-subtitle" style={{ margin: 0, color: "var(--ink-soft, #64748b)", fontSize: "0.875rem" }}>
+            <p className="page-subtitle text-slate-500 dark:text-slate-400" style={{ margin: 0, fontSize: "0.875rem" }}>
               Configure, deploy, and dynamically route Speech-to-Text, LLM Reasoning, and Voice Synthesis engines
             </p>
           </div>
@@ -473,6 +509,18 @@ export default function AiModelsManagementPage() {
             >
               <LayoutGrid size={15} />
               Dashboard
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={exportModelsToExcel}
+              disabled={filteredModels.length === 0 || loading}
+              title="Export AI models directory to Excel spreadsheet"
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", height: "36px", fontWeight: 500 }}
+            >
+              <Download size={15} className="text-emerald-600 dark:text-emerald-400" />
+              Export Excel
             </button>
 
             <button
@@ -1298,212 +1346,321 @@ export default function AiModelsManagementPage() {
               )}
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                <thead>
-                  <tr style={{ background: "#f8fafc", borderBottom: "1px solid var(--border, #e2e8f0)", fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                    <th style={{ padding: "12px 20px", fontWeight: 600 }}>Model Name &amp; ID</th>
-                    <th style={{ padding: "12px 16px", fontWeight: 600 }}>Category</th>
-                    <th style={{ padding: "12px 16px", fontWeight: 600 }}>Provider</th>
-                    <th style={{ padding: "12px 16px", fontWeight: 600 }}>API Key</th>
-                    <th style={{ padding: "12px 16px", fontWeight: 600 }}>Status</th>
-                    <th style={{ padding: "12px 20px", fontWeight: 600, textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredModels.map((m) => {
-                    const isSTT = m.category === "STT";
-                    const isLLM = m.category === "LLM";
-                    const isTTS = m.category === "TTS";
+            <>
+              {/* Desktop Table: Hidden on Mobile */}
+              <div className="hidden md:block overflow-x-auto">
+                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc", borderBottom: "1px solid var(--border, #e2e8f0)", fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      <th style={{ padding: "12px 20px", fontWeight: 600 }}>Model Name &amp; ID</th>
+                      <th style={{ padding: "12px 16px", fontWeight: 600 }}>Category</th>
+                      <th style={{ padding: "12px 16px", fontWeight: 600 }}>Provider</th>
+                      <th style={{ padding: "12px 16px", fontWeight: 600 }}>API Key</th>
+                      <th style={{ padding: "12px 16px", fontWeight: 600 }}>Status</th>
+                      <th style={{ padding: "12px 20px", fontWeight: 600, textAlign: "right" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredModels.map((m) => {
+                      const isSTT = m.category === "STT";
+                      const isLLM = m.category === "LLM";
+                      const isTTS = m.category === "TTS";
 
-                    return (
-                      <tr
-                        key={m.id}
-                        style={{
-                          borderBottom: "1px solid var(--border, #e2e8f0)",
-                          background: m.is_active ? "rgba(37, 99, 235, 0.02)" : "transparent",
-                          transition: "background 0.15s ease",
-                        }}
-                      >
-                        {/* Model name & ID */}
-                        <td style={{ padding: "14px 20px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                            <div
+                      return (
+                        <tr
+                          key={m.id}
+                          style={{
+                            borderBottom: "1px solid var(--border, #e2e8f0)",
+                            background: m.is_active ? "rgba(37, 99, 235, 0.02)" : "transparent",
+                            transition: "background 0.15s ease",
+                          }}
+                        >
+                          {/* Model name & ID */}
+                          <td style={{ padding: "14px 20px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                              <div
+                                style={{
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: "8px",
+                                  background: isSTT ? "#eff6ff" : isLLM ? "#f5f3ff" : "#fff7ed",
+                                  color: isSTT ? "#2563eb" : isLLM ? "#7c3aed" : "#ea580c",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {isSTT ? <Mic size={15} /> : isLLM ? <Cpu size={15} /> : <Volume2 size={15} />}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--ink, #0f172a)", wordBreak: "break-all" }}>
+                                  {m.model_name}
+                                </div>
+                                <div style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", display: "flex", gap: "8px", marginTop: "2px" }}>
+                                  <span>ID: #{m.id}</span>
+                                  {m.is_default && (
+                                    <span style={{ color: "#2563eb", fontWeight: 600 }}>• Baseline Default</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Category */}
+                          <td style={{ padding: "14px 16px" }}>
+                            <span
                               style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: "8px",
-                                background: isSTT ? "#eff6ff" : isLLM ? "#f5f3ff" : "#fff7ed",
-                                color: isSTT ? "#2563eb" : isLLM ? "#7c3aed" : "#ea580c",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                flexShrink: 0,
+                                display: "inline-block",
+                                padding: "3px 8px",
+                                borderRadius: "6px",
+                                fontSize: "0.75rem",
+                                fontWeight: 700,
+                                letterSpacing: "0.03em",
+                                background: isSTT ? "#dbeafe" : isLLM ? "#ede9fe" : "#ffedd5",
+                                color: isSTT ? "#1e40af" : isLLM ? "#5b21b6" : "#9a3412",
                               }}
                             >
-                              {isSTT ? <Mic size={15} /> : isLLM ? <Cpu size={15} /> : <Volume2 size={15} />}
+                              {m.category}
+                            </span>
+                          </td>
+
+                          {/* Provider */}
+                          <td style={{ padding: "14px 16px" }}>
+                            <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--ink, #0f172a)" }}>
+                              {m.provider}
+                            </span>
+                          </td>
+
+                          {/* API Key Status */}
+                          <td style={{ padding: "14px 16px" }}>
+                            {m.has_custom_api_key ? (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  fontSize: "0.75rem",
+                                  color: "#059669",
+                                  fontWeight: 500,
+                                }}
+                              >
+                                <ShieldCheck size={14} /> Custom Secret
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  fontSize: "0.75rem",
+                                  color: "var(--ink-soft, #64748b)",
+                                }}
+                              >
+                                <Sliders size={14} /> Inherited Env
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Status */}
+                          <td style={{ padding: "14px 16px" }}>
+                            {m.is_active ? (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  padding: "3px 9px",
+                                  borderRadius: "20px",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 600,
+                                  background: "#dcfce7",
+                                  color: "#15803d",
+                                  border: "1px solid #bbf7d0",
+                                }}
+                              >
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }}></span>
+                                Active
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  padding: "3px 9px",
+                                  borderRadius: "20px",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 500,
+                                  background: "#f1f5f9",
+                                  color: "#64748b",
+                                }}
+                              >
+                                Inactive
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          <td style={{ padding: "14px 20px", textAlign: "right" }}>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                              <button
+                                type="button"
+                                className="btn btn-sm"
+                                style={{
+                                  padding: "4px 10px",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 600,
+                                  background: m.is_active ? "#f1f5f9" : "var(--color-primary-blue, #2563eb)",
+                                  color: m.is_active ? "#94a3b8" : "#ffffff",
+                                  borderColor: m.is_active ? "#e2e8f0" : "var(--color-primary-blue, #2563eb)",
+                                  cursor: m.is_active ? "default" : "pointer",
+                                  height: "30px",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                }}
+                                disabled={m.is_active || actionLoading}
+                                onClick={() => !m.is_active && handleActivateModel(m.id)}
+                              >
+                                {m.is_active ? "Active" : "Activate"}
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                style={{ width: "30px", height: "30px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                                title="Edit model"
+                                disabled={actionLoading}
+                                onClick={() => handleOpenEdit(m)}
+                              >
+                                <Pencil size={13} />
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                style={{ width: "30px", height: "30px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#ef4444" }}
+                                title="Delete model"
+                                disabled={actionLoading}
+                                onClick={() => handleOpenDelete(m)}
+                              >
+                                <Trash2 size={13} />
+                              </button>
                             </div>
-                            <div>
-                              <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--ink, #0f172a)", wordBreak: "break-all" }}>
-                                {m.model_name}
-                              </div>
-                              <div style={{ fontSize: "0.75rem", color: "var(--ink-soft, #64748b)", display: "flex", gap: "8px", marginTop: "2px" }}>
-                                <span>ID: #{m.id}</span>
-                                {m.is_default && (
-                                  <span style={{ color: "#2563eb", fontWeight: 600 }}>• Baseline Default</span>
-                                )}
-                              </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card List: screens <= 768px */}
+              <div className="md:hidden divide-y divide-slate-200 dark:divide-slate-800">
+                {filteredModels.map((m) => {
+                  const isSTT = m.category === "STT";
+                  const isLLM = m.category === "LLM";
+                  const isTTS = m.category === "TTS";
+
+                  return (
+                    <div key={m.id} className="p-4 bg-white dark:bg-slate-900 flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                              isSTT
+                                ? "bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
+                                : isLLM
+                                ? "bg-purple-50 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800"
+                                : "bg-amber-50 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                            }`}
+                          >
+                            {isSTT ? <Mic size={16} /> : isLLM ? <Cpu size={16} /> : <Volume2 size={16} />}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-slate-900 dark:text-white text-sm break-all">
+                              {m.model_name}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                              <span>{m.provider}</span>
+                              <span>•</span>
+                              <span>#{m.id}</span>
+                              {m.is_default && <span className="text-blue-600 dark:text-blue-400 font-semibold">• Baseline</span>}
                             </div>
                           </div>
-                        </td>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                            isSTT
+                              ? "bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300"
+                              : isLLM
+                              ? "bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300"
+                              : "bg-orange-100 dark:bg-orange-950/80 text-orange-700 dark:text-orange-300"
+                          }`}
+                        >
+                          {m.category}
+                        </span>
+                      </div>
 
-                        {/* Category */}
-                        <td style={{ padding: "14px 16px" }}>
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "3px 8px",
-                              borderRadius: "6px",
-                              fontSize: "0.75rem",
-                              fontWeight: 700,
-                              letterSpacing: "0.03em",
-                              background: isSTT ? "#dbeafe" : isLLM ? "#ede9fe" : "#ffedd5",
-                              color: isSTT ? "#1e40af" : isLLM ? "#5b21b6" : "#9a3412",
-                            }}
-                          >
-                            {m.category}
-                          </span>
-                        </td>
-
-                        {/* Provider */}
-                        <td style={{ padding: "14px 16px" }}>
-                          <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--ink, #0f172a)" }}>
-                            {m.provider}
-                          </span>
-                        </td>
-
-                        {/* API Key Status */}
-                        <td style={{ padding: "14px 16px" }}>
-                          {m.has_custom_api_key ? (
-                            <span
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "4px",
-                                fontSize: "0.75rem",
-                                color: "#059669",
-                                fontWeight: 500,
-                              }}
-                            >
-                              <ShieldCheck size={14} /> Custom Secret
-                            </span>
-                          ) : (
-                            <span
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "4px",
-                                fontSize: "0.75rem",
-                                color: "var(--ink-soft, #64748b)",
-                              }}
-                            >
-                              <Sliders size={14} /> Inherited Env
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Status */}
-                        <td style={{ padding: "14px 16px" }}>
+                      <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-2">
                           {m.is_active ? (
-                            <span
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                padding: "3px 9px",
-                                borderRadius: "20px",
-                                fontSize: "0.75rem",
-                                fontWeight: 600,
-                                background: "#dcfce7",
-                                color: "#15803d",
-                                border: "1px solid #bbf7d0",
-                              }}
-                            >
-                              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }}></span>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                               Active
                             </span>
                           ) : (
-                            <span
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                padding: "3px 9px",
-                                borderRadius: "20px",
-                                fontSize: "0.75rem",
-                                fontWeight: 500,
-                                background: "#f1f5f9",
-                                color: "#64748b",
-                              }}
-                            >
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
                               Inactive
                             </span>
                           )}
-                        </td>
+                          <span className="text-[11px] text-slate-500">
+                            {m.has_custom_api_key ? "Secret Key" : "Env Key"}
+                          </span>
+                        </div>
 
-                        {/* Actions */}
-                        <td style={{ padding: "14px 20px", textAlign: "right" }}>
-                          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                            <button
-                              type="button"
-                              className="btn btn-sm"
-                              style={{
-                                padding: "4px 10px",
-                                fontSize: "0.75rem",
-                                fontWeight: 600,
-                                background: m.is_active ? "#f1f5f9" : "var(--color-primary-blue, #2563eb)",
-                                color: m.is_active ? "#94a3b8" : "#ffffff",
-                                borderColor: m.is_active ? "#e2e8f0" : "var(--color-primary-blue, #2563eb)",
-                                cursor: m.is_active ? "default" : "pointer",
-                                height: "30px",
-                                display: "inline-flex",
-                                alignItems: "center",
-                              }}
-                              disabled={m.is_active || actionLoading}
-                              onClick={() => !m.is_active && handleActivateModel(m.id)}
-                            >
-                              {m.is_active ? "Active" : "Activate"}
-                            </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            className="btn btn-sm text-xs px-2.5 py-1"
+                            style={{
+                              background: m.is_active ? "#f1f5f9" : "#2563eb",
+                              color: m.is_active ? "#94a3b8" : "#ffffff",
+                              borderColor: m.is_active ? "#e2e8f0" : "#2563eb",
+                              cursor: m.is_active ? "default" : "pointer",
+                            }}
+                            disabled={m.is_active || actionLoading}
+                            onClick={() => !m.is_active && handleActivateModel(m.id)}
+                          >
+                            {m.is_active ? "Active" : "Activate"}
+                          </button>
 
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
-                              style={{ width: "30px", height: "30px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
-                              title="Edit model"
-                              disabled={actionLoading}
-                              onClick={() => handleOpenEdit(m)}
-                            >
-                              <Pencil size={13} />
-                            </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm p-1.5"
+                            title="Edit model"
+                            disabled={actionLoading}
+                            onClick={() => handleOpenEdit(m)}
+                          >
+                            <Pencil size={13} />
+                          </button>
 
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
-                              style={{ width: "30px", height: "30px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#ef4444" }}
-                              title="Delete model"
-                              disabled={actionLoading}
-                              onClick={() => handleOpenDelete(m)}
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm p-1.5 text-red-600"
+                            title="Delete model"
+                            disabled={actionLoading}
+                            onClick={() => handleOpenDelete(m)}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       </main>
