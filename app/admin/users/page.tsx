@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import AdminHeader from "@/components/admin/AdminHeader";
 import ModernSearchBar from "@/components/ui/ModernSearchBar";
 import ModernStatusBadge from "@/components/ui/ModernStatusBadge";
+import * as XLSX from "xlsx";
 import {
   Users,
   UserCheck,
@@ -26,6 +27,7 @@ import {
   CheckCircle2,
   AlertCircle,
   LayoutGrid,
+  Download,
 } from "lucide-react";
 
 interface UserAccount {
@@ -192,6 +194,25 @@ export default function AllUsersAdminPage() {
     const inactive = total - active;
     return { total, admins, standard, active, inactive };
   }, [users]);
+
+  // Export Users to Excel (.xlsx)
+  const exportUsersToExcel = useCallback(() => {
+    if (!filteredUsers || filteredUsers.length === 0) return;
+    const exportData = filteredUsers.map((u, idx) => ({
+      "S.No": idx + 1,
+      "User ID": u.id,
+      "Account Name": u.name || "System User",
+      "Email Address": u.email,
+      "Role": String(u.role || "").toLowerCase() === "admin" ? "Admin" : "DSA Agent",
+      "Account Status": u.status || "active",
+      "Joined Date": formatDate(u.created_at),
+      "Last Login": formatDate(u.last_login),
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Users Directory");
+    XLSX.writeFile(workbook, `CreditWise_Users_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }, [filteredUsers]);
 
   // Create User
   function openAddModal() {
@@ -376,7 +397,7 @@ export default function AllUsersAdminPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#f8fafc", width: "100%", fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
       {/* 1. TOP HEADER & BREADCRUMBS */}
       <AdminHeader
         user={currentUser}
@@ -429,58 +450,58 @@ export default function AllUsersAdminPage() {
         )}
 
         {/* Overview Metric Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px", marginBottom: "24px" }}>
-          <div className="cw-card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#eff6ff", border: "1px solid #dbeafe", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Users style={{ width: 22, height: 22 }} />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <div className="cw-card p-4 flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5" />
             </div>
             <div>
-              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Total Accounts
               </div>
-              <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+              <div className="text-xl font-extrabold text-slate-900 dark:text-white">
                 {stats.total}
               </div>
             </div>
           </div>
 
-          <div className="cw-card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f5f3ff", border: "1px solid #ede9fe", color: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Shield style={{ width: 22, height: 22 }} />
+          <div className="cw-card p-4 flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+              <Shield className="w-5 h-5" />
             </div>
             <div>
-              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Administrators
               </div>
-              <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+              <div className="text-xl font-extrabold text-slate-900 dark:text-white">
                 {stats.admins}
               </div>
             </div>
           </div>
 
-          <div className="cw-card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#ecfdf5", border: "1px solid #d1fae5", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <UserCheck style={{ width: 22, height: 22 }} />
+          <div className="cw-card p-4 flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <UserCheck className="w-5 h-5" />
             </div>
             <div>
-              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Active Users
               </div>
-              <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+              <div className="text-xl font-extrabold text-slate-900 dark:text-white">
                 {stats.active}
               </div>
             </div>
           </div>
 
-          <div className="cw-card" style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <UserX style={{ width: 22, height: 22 }} />
+          <div className="cw-card p-4 flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+              <UserX className="w-5 h-5" />
             </div>
             <div>
-              <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Inactive
               </div>
-              <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+              <div className="text-xl font-extrabold text-slate-900 dark:text-white">
                 {stats.inactive}
               </div>
             </div>
@@ -488,138 +509,103 @@ export default function AllUsersAdminPage() {
         </div>
 
         {/* Toolbar & Filter Bar */}
-        <div
-          className="cw-card"
-          style={{
-            padding: "14px 18px",
-            marginBottom: "18px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: "14px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+        <div className="cw-card p-3.5 sm:p-4 mb-4 flex items-center justify-between flex-wrap gap-3.5">
+          <div className="flex items-center gap-3 flex-wrap">
             <ModernSearchBar
               value={searchQuery}
               onChange={setSearchQuery}
               placeholder="Search by name, email or ID..."
-              width={280}
+              width={260}
             />
 
             {/* Role Filter Pills */}
-            <div style={{ display: "inline-flex", background: "#f1f5f9", borderRadius: 8, padding: 3, gap: 3, border: "1px solid #cbd5e1" }}>
+            <div className="inline-flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1 border border-slate-300 dark:border-slate-700">
               <button
                 type="button"
                 onClick={() => setRoleFilter("ALL")}
-                style={{
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  border: roleFilter === "ALL" ? "1px solid #cbd5e1" : "1px solid transparent",
-                  background: roleFilter === "ALL" ? "#ffffff" : "transparent",
-                  color: roleFilter === "ALL" ? "#2563eb" : "#64748b",
-                  cursor: "pointer",
-                  boxShadow: roleFilter === "ALL" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
-                }}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-colors ${
+                  roleFilter === "ALL"
+                    ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
               >
                 All Roles
               </button>
               <button
                 type="button"
                 onClick={() => setRoleFilter("ADMIN")}
-                style={{
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  border: roleFilter === "ADMIN" ? "1px solid #cbd5e1" : "1px solid transparent",
-                  background: roleFilter === "ADMIN" ? "#ffffff" : "transparent",
-                  color: roleFilter === "ADMIN" ? "#7c3aed" : "#64748b",
-                  cursor: "pointer",
-                  boxShadow: roleFilter === "ADMIN" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
-                }}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-colors ${
+                  roleFilter === "ADMIN"
+                    ? "bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
               >
                 Admins ({stats.admins})
               </button>
               <button
                 type="button"
                 onClick={() => setRoleFilter("USER")}
-                style={{
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  border: roleFilter === "USER" ? "1px solid #cbd5e1" : "1px solid transparent",
-                  background: roleFilter === "USER" ? "#ffffff" : "transparent",
-                  color: roleFilter === "USER" ? "#059669" : "#64748b",
-                  cursor: "pointer",
-                  boxShadow: roleFilter === "USER" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
-                }}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-colors ${
+                  roleFilter === "USER"
+                    ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
               >
                 DSA Agents ({stats.standard})
               </button>
             </div>
 
             {/* Status Filter Pills */}
-            <div style={{ display: "inline-flex", background: "#f1f5f9", borderRadius: 8, padding: 3, gap: 3, border: "1px solid #cbd5e1" }}>
+            <div className="inline-flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1 border border-slate-300 dark:border-slate-700">
               <button
                 type="button"
                 onClick={() => setStatusFilter("ALL")}
-                style={{
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  border: statusFilter === "ALL" ? "1px solid #cbd5e1" : "1px solid transparent",
-                  background: statusFilter === "ALL" ? "#ffffff" : "transparent",
-                  color: statusFilter === "ALL" ? "#0f172a" : "#64748b",
-                  cursor: "pointer",
-                  boxShadow: statusFilter === "ALL" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
-                }}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-colors ${
+                  statusFilter === "ALL"
+                    ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
               >
                 All Status
               </button>
               <button
                 type="button"
                 onClick={() => setStatusFilter("ACTIVE")}
-                style={{
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  border: statusFilter === "ACTIVE" ? "1px solid #cbd5e1" : "1px solid transparent",
-                  background: statusFilter === "ACTIVE" ? "#ffffff" : "transparent",
-                  color: statusFilter === "ACTIVE" ? "#16a34a" : "#64748b",
-                  cursor: "pointer",
-                  boxShadow: statusFilter === "ACTIVE" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
-                }}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-colors ${
+                  statusFilter === "ACTIVE"
+                    ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
               >
                 Active
               </button>
               <button
                 type="button"
                 onClick={() => setStatusFilter("INACTIVE")}
-                style={{
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  border: statusFilter === "INACTIVE" ? "1px solid #cbd5e1" : "1px solid transparent",
-                  background: statusFilter === "INACTIVE" ? "#ffffff" : "transparent",
-                  color: statusFilter === "INACTIVE" ? "#dc2626" : "#64748b",
-                  cursor: "pointer",
-                  boxShadow: statusFilter === "INACTIVE" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
-                }}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-colors ${
+                  statusFilter === "INACTIVE"
+                    ? "bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
               >
                 Inactive
               </button>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div className="flex items-center gap-2.5">
+            {/* Export Excel Button */}
+            <button
+              type="button"
+              className="cw-btn-secondary"
+              onClick={exportUsersToExcel}
+              disabled={filteredUsers.length === 0}
+              title="Export users directory to Excel spreadsheet"
+            >
+              <Download style={{ width: 14, height: 14 }} className="text-emerald-600 dark:text-emerald-400" />
+              <span>Export Excel</span>
+            </button>
+
             <button
               type="button"
               className="cw-btn-secondary"
@@ -641,9 +627,10 @@ export default function AllUsersAdminPage() {
           </div>
         </div>
 
-        {/* Users Table Card */}
+        {/* Users Data Container */}
         <div className="cw-card">
-          <div className="cw-table-container">
+          {/* Desktop Table: Hidden on Mobile */}
+          <div className="hidden md:block cw-table-container border-0">
             <table className="cw-table">
               <thead>
                 <tr>
@@ -669,7 +656,7 @@ export default function AllUsersAdminPage() {
                   <tr>
                     <td colSpan={8} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
                       <Users style={{ width: 36, height: 36, color: "#94a3b8", margin: "0 auto 8px" }} />
-                      <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", color: "#0f172a", fontWeight: 600 }}>No Accounts Match Query</h4>
+                      <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", color: "inherit", fontWeight: 600 }}>No Accounts Match Query</h4>
                       <p style={{ margin: 0, fontSize: "0.8125rem" }}>Try adjusting your search criteria or resetting filters.</p>
                     </td>
                   </tr>
@@ -703,12 +690,12 @@ export default function AllUsersAdminPage() {
                             >
                               {initials}
                             </div>
-                            <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.875rem" }}>
+                            <span style={{ fontWeight: 600, fontSize: "0.875rem" }}>
                               {u.name || "System User"}
                             </span>
                           </div>
                         </td>
-                        <td style={{ textAlign: "left", color: "#475569", fontFamily: "ui-monospace, monospace", fontSize: "0.8125rem" }}>
+                        <td style={{ textAlign: "left", fontFamily: "ui-monospace, monospace", fontSize: "0.8125rem" }}>
                           {u.email}
                         </td>
                         <td style={{ textAlign: "center" }}>
@@ -756,12 +743,95 @@ export default function AllUsersAdminPage() {
             </table>
           </div>
 
+          {/* Adaptive Mobile Card List (Visible on screens <= 768px) */}
+          <div className="md:hidden divide-y divide-slate-200 dark:divide-slate-800">
+            {loading ? (
+              <div className="p-8 text-center text-slate-500">
+                <RotateCw className="w-6 h-6 mx-auto mb-2 animate-spin text-blue-600" />
+                <p className="text-sm">Loading user directory...</p>
+              </div>
+            ) : paginatedUsers.length === 0 ? (
+              <div className="p-8 text-center text-slate-500">
+                <Users className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-white">No Accounts Match Query</h4>
+                <p className="text-xs text-slate-500">Try adjusting your search criteria.</p>
+              </div>
+            ) : (
+              paginatedUsers.map((u) => {
+                const isAdmin = String(u.role || "").toLowerCase() === "admin";
+                const initials = getUserInitials(u.name, u.email);
+
+                return (
+                  <div key={u.id} className="p-4 bg-white dark:bg-slate-900 flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                            isAdmin
+                              ? "bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                              : "bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                          }`}
+                        >
+                          {initials}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-slate-900 dark:text-white text-sm">
+                            {u.name || "System User"}
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400 font-mono truncate max-w-[200px]">
+                            {u.email}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold text-slate-400">#{u.id}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <span className={`cw-badge ${isAdmin ? "cw-badge-warning" : "cw-badge-info"}`}>
+                          {isAdmin ? "Admin" : "DSA Agent"}
+                        </span>
+                        <ModernStatusBadge status={u.status} />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="cw-action-btn"
+                          onClick={() => openEditModal(u)}
+                          title="Edit user"
+                          aria-label={`Edit ${u.email}`}
+                        >
+                          <Pencil style={{ width: 14, height: 14 }} />
+                        </button>
+                        <button
+                          type="button"
+                          className="cw-action-btn text-red-600 hover:text-red-700"
+                          onClick={() => openDeleteModal(u)}
+                          title="Delete user"
+                          aria-label={`Delete ${u.email}`}
+                        >
+                          <Trash2 style={{ width: 14, height: 14 }} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1.5 rounded-lg">
+                      <span>Joined: {formatDate(u.created_at)}</span>
+                      <span>Last login: {formatDate(u.last_login)}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
           {/* Pagination Footer */}
           {filteredUsers.length > 0 && (
             <div
               style={{
                 padding: "14px 20px",
-                borderTop: "1px solid #f1f5f9",
+                borderTop: "1px solid var(--border)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -788,7 +858,7 @@ export default function AllUsersAdminPage() {
                   <span>Previous</span>
                 </button>
 
-                <span style={{ fontWeight: 600, padding: "0 8px", color: "#0f172a" }}>
+                <span style={{ fontWeight: 600, padding: "0 8px" }}>
                   {currentPage} / {totalPages}
                 </span>
 
@@ -814,8 +884,8 @@ export default function AllUsersAdminPage() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
-            backdropFilter: "blur(3px)",
+            background: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
             zIndex: 1050,
             display: "flex",
             alignItems: "center",
@@ -825,18 +895,18 @@ export default function AllUsersAdminPage() {
           onClick={() => setShowAddModal(false)}
         >
           <div
-            className="cw-card"
+            className="cw-card shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
             style={{ width: "100%", maxWidth: 480, overflow: "hidden" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="cw-card-header">
-              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
+            <div className="cw-card-header flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+              <h3 className="text-slate-900 dark:text-white font-bold text-base m-0">
                 Create New User Account
               </h3>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                style={{ background: "none", border: "none", fontSize: "1.2rem", color: "#64748b", cursor: "pointer" }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-transparent border-0 text-xl cursor-pointer p-1 leading-none"
               >
                 &times;
               </button>
@@ -844,13 +914,13 @@ export default function AllUsersAdminPage() {
 
             <form onSubmit={handleCreateUser} style={{ padding: 22 }}>
               {createError && (
-                <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", fontSize: "0.8125rem" }}>
+                <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-xs">
                   {createError}
                 </div>
               )}
 
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Full Name
                 </label>
                 <input
@@ -863,7 +933,7 @@ export default function AllUsersAdminPage() {
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Email Address *
                 </label>
                 <input
@@ -877,7 +947,7 @@ export default function AllUsersAdminPage() {
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Password *
                 </label>
                 <input
@@ -893,7 +963,7 @@ export default function AllUsersAdminPage() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Role
                   </label>
                   <select
@@ -908,7 +978,7 @@ export default function AllUsersAdminPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Status
                   </label>
                   <select
@@ -950,8 +1020,8 @@ export default function AllUsersAdminPage() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
-            backdropFilter: "blur(3px)",
+            background: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
             zIndex: 1050,
             display: "flex",
             alignItems: "center",
@@ -961,18 +1031,18 @@ export default function AllUsersAdminPage() {
           onClick={() => setShowEditModal(false)}
         >
           <div
-            className="cw-card"
+            className="cw-card shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
             style={{ width: "100%", maxWidth: 480, overflow: "hidden" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="cw-card-header">
-              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
+            <div className="cw-card-header flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+              <h3 className="text-slate-900 dark:text-white font-bold text-base m-0">
                 Edit Account #{editUser.id}
               </h3>
               <button
                 type="button"
                 onClick={() => setShowEditModal(false)}
-                style={{ background: "none", border: "none", fontSize: "1.2rem", color: "#64748b", cursor: "pointer" }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-transparent border-0 text-xl cursor-pointer p-1 leading-none"
               >
                 &times;
               </button>
@@ -980,13 +1050,13 @@ export default function AllUsersAdminPage() {
 
             <form onSubmit={handleUpdateUser} style={{ padding: 22 }}>
               {editError && (
-                <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", fontSize: "0.8125rem" }}>
+                <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-xs">
                   {editError}
                 </div>
               )}
 
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Full Name
                 </label>
                 <input
@@ -998,7 +1068,7 @@ export default function AllUsersAdminPage() {
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Email Address *
                 </label>
                 <input
@@ -1011,7 +1081,7 @@ export default function AllUsersAdminPage() {
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Reset Password (leave blank to keep current)
                 </label>
                 <input
@@ -1026,7 +1096,7 @@ export default function AllUsersAdminPage() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Role
                   </label>
                   <select
@@ -1041,7 +1111,7 @@ export default function AllUsersAdminPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Status
                   </label>
                   <select
@@ -1083,8 +1153,8 @@ export default function AllUsersAdminPage() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
-            backdropFilter: "blur(3px)",
+            background: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
             zIndex: 1050,
             display: "flex",
             alignItems: "center",
@@ -1094,35 +1164,25 @@ export default function AllUsersAdminPage() {
           onClick={() => setShowDeleteModal(false)}
         >
           <div
-            className="cw-card"
+            className="cw-card shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
             style={{ width: "100%", maxWidth: 440, padding: 24, textAlign: "center" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: "50%",
-                background: "#fef2f2",
-                color: "#dc2626",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 14px auto",
-              }}
+              className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-3"
             >
               <Trash2 style={{ width: 22, height: 22 }} />
             </div>
 
-            <h3 style={{ margin: "0 0 6px 0", fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>
+            <h3 className="text-slate-900 dark:text-white font-bold text-lg mb-1.5 mt-0">
               Delete Account?
             </h3>
-            <p style={{ margin: "0 0 16px 0", fontSize: "0.875rem", color: "#64748b" }}>
-              Are you sure you want to delete user account <strong>{userToDelete.email}</strong>? This action cannot be undone.
+            <p className="text-slate-600 dark:text-slate-400 text-sm mb-4">
+              Are you sure you want to delete user account <strong className="text-slate-900 dark:text-white">{userToDelete.email}</strong>? This action cannot be undone.
             </p>
 
             {deleteError && (
-              <div style={{ marginBottom: 14, padding: "8px 12px", borderRadius: 8, background: "#fef2f2", color: "#b91c1c", fontSize: "0.8125rem" }}>
+              <div className="mb-4 p-2 rounded-lg bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-xs">
                 {deleteError}
               </div>
             )}

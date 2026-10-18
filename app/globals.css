@@ -6537,6 +6537,188 @@ html, body {
 }
 
 /* ==========================================================================
+   CreditWise Modern FinTech SaaS Dark Mode Primitives (.cw-* & .bp-*)
+   ========================================================================== */
+[data-theme="dark"] .cw-card,
+[data-bs-theme="dark"] .cw-card,
+.dark .cw-card,
+[data-theme="dark"] .bp-header-card,
+[data-bs-theme="dark"] .bp-header-card,
+.dark .bp-header-card {
+    background: #0f172a;
+    border-color: #1e293b;
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .cw-card:hover,
+[data-bs-theme="dark"] .cw-card:hover,
+.dark .cw-card:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.25);
+}
+
+[data-theme="dark"] .cw-card-header,
+[data-bs-theme="dark"] .cw-card-header,
+.dark .cw-card-header {
+    background: #0f172a;
+    border-bottom-color: #1e293b;
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .cw-card-body,
+[data-bs-theme="dark"] .cw-card-body,
+.dark .cw-card-body {
+    background: #0f172a;
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .cw-table-container,
+[data-bs-theme="dark"] .cw-table-container,
+.dark .cw-table-container {
+    background: #0f172a;
+    border-color: #1e293b;
+}
+
+[data-theme="dark"] .cw-table,
+[data-bs-theme="dark"] .cw-table,
+.dark .cw-table {
+    background: #0f172a;
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .cw-table thead th,
+[data-bs-theme="dark"] .cw-table thead th,
+.dark .cw-table thead th {
+    background: #1e293b;
+    color: #cbd5e1;
+    border-bottom: 1px solid #334155;
+}
+
+[data-theme="dark"] .cw-table tbody tr,
+[data-bs-theme="dark"] .cw-table tbody tr,
+.dark .cw-table tbody tr {
+    background: #0f172a;
+    border-bottom-color: #1e293b;
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .cw-table tbody tr:hover,
+[data-bs-theme="dark"] .cw-table tbody tr:hover,
+.dark .cw-table tbody tr:hover {
+    background: #1e293b;
+}
+
+[data-theme="dark"] .cw-table tbody td,
+[data-bs-theme="dark"] .cw-table tbody td,
+.dark .cw-table tbody td {
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .cw-input,
+[data-bs-theme="dark"] .cw-input,
+.dark .cw-input,
+[data-theme="dark"] .cw-select,
+[data-bs-theme="dark"] .cw-select,
+.dark .cw-select {
+    background: #1e293b;
+    border-color: #334155;
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .cw-input:hover,
+[data-bs-theme="dark"] .cw-input:hover,
+.dark .cw-input:hover,
+[data-theme="dark"] .cw-select:hover,
+[data-bs-theme="dark"] .cw-select:hover,
+.dark .cw-select:hover {
+    border-color: #475569;
+}
+
+[data-theme="dark"] .cw-btn-secondary,
+[data-bs-theme="dark"] .cw-btn-secondary,
+.dark .cw-btn-secondary,
+[data-theme="dark"] .bp-refresh-btn,
+[data-bs-theme="dark"] .bp-refresh-btn,
+.dark .bp-refresh-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .cw-btn-secondary:hover:not(:disabled),
+[data-bs-theme="dark"] .cw-btn-secondary:hover:not(:disabled),
+.dark .cw-btn-secondary:hover:not(:disabled),
+[data-theme="dark"] .bp-refresh-btn:hover:not(:disabled),
+[data-bs-theme="dark"] .bp-refresh-btn:hover:not(:disabled),
+.dark .bp-refresh-btn:hover:not(:disabled) {
+    background: #334155;
+    border-color: #475569;
+    color: #60a5fa;
+}
+
+[data-theme="dark"] .cw-action-btn,
+[data-bs-theme="dark"] .cw-action-btn,
+.dark .cw-action-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .cw-action-btn:hover,
+[data-bs-theme="dark"] .cw-action-btn:hover,
+.dark .cw-action-btn:hover {
+    background: #334155;
+    color: #ffffff;
+}
+
+[data-theme="dark"] .bp-tab-pill-group,
+[data-bs-theme="dark"] .bp-tab-pill-group,
+.dark .bp-tab-pill-group {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .bp-tab-pill,
+[data-bs-theme="dark"] .bp-tab-pill,
+.dark .bp-tab-pill {
+    background: #0f172a;
+    border-color: #1e293b;
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .bp-tab-pill:hover:not(.active),
+[data-bs-theme="dark"] .bp-tab-pill:hover:not(.active),
+.dark .bp-tab-pill:hover:not(.active) {
+    background: #1e293b;
+    color: #ffffff;
+    border-color: #475569;
+}
+
+[data-theme="dark"] .bp-tab-pill.active,
+[data-bs-theme="dark"] .bp-tab-pill.active,
+.dark .bp-tab-pill.active {
+    background: rgba(37, 99, 235, 0.2);
+    border-color: #3b82f6;
+    color: #93c5fd;
+}
+
+[data-theme="dark"] .bp-tab-pill-count,
+[data-bs-theme="dark"] .bp-tab-pill-count,
+.dark .bp-tab-pill-count {
+    background: #1e293b;
+    color: #94a3b8;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .bp-tab-pill.active .bp-tab-pill-count,
+[data-bs-theme="dark"] .bp-tab-pill.active .bp-tab-pill-count,
+.dark .bp-tab-pill.active .bp-tab-pill-count {
+    background: #1e3a8a;
+    color: #bfdbfe;
+    border-color: #2563eb;
+}
+
+/* ==========================================================================
    26. Global Responsive Design System & Mobile Primitives
    ========================================================================== */
 
