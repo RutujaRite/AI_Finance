@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import * as XLSX from "xlsx";
 import AdminHeader from "@/components/admin/AdminHeader";
 import ModernSearchBar from "@/components/ui/ModernSearchBar";
 import {
@@ -168,17 +169,50 @@ export default function BankManagersDedicatedPage() {
     );
   }, [files, searchFileQuery]);
 
+  // Export File Directory to Excel
+  const exportFilesToExcel = () => {
+    if (filteredFiles.length === 0) return;
+
+    const exportData = filteredFiles.map((file, idx) => ({
+      "Sr No": idx + 1,
+      "Bank Name": file.bank_name || "N/A",
+      "File Name": file.file_name || "N/A",
+      "Contacts Count": file.record_count || 0,
+      "File Size (Bytes)": file.file_size_bytes || 0,
+      "Formatted Size": formatFileSize(file.file_size_bytes),
+      "Created At": file.created_at ? new Date(file.created_at).toLocaleString("en-IN") : "N/A",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Bank Managers Directory");
+
+    // Auto-fit column widths
+    const maxProps = ["Sr No", "Bank Name", "File Name", "Contacts Count", "File Size (Bytes)", "Formatted Size", "Created At"];
+    worksheet["!cols"] = maxProps.map((key) => {
+      let maxLen = key.length;
+      exportData.forEach((row: any) => {
+        const val = String(row[key] ?? "");
+        if (val.length > maxLen) maxLen = val.length;
+      });
+      return { wch: Math.min(Math.max(maxLen + 4, 12), 40) };
+    });
+
+    const filename = `Bank_Managers_Directory_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(workbook, filename);
+  };
+
   if (!user) {
     return (
-      <main style={{ padding: 48, textAlign: "center", minHeight: "100vh", background: "#f8fafc", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <div className="spinner-border text-primary" role="status" />
-        <p style={{ color: "#64748b", marginTop: 12, fontSize: "0.875rem" }}>Loading Contact and Location Bank Manager workspace...</p>
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-12 text-center">
+        <RotateCw className="w-8 h-8 text-blue-600 animate-spin mb-3" />
+        <p className="text-slate-500 dark:text-slate-400 text-sm">Loading Contact and Location Bank Manager workspace...</p>
       </main>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans transition-colors duration-200">
       {/* 1. TOP HEADER & BREADCRUMBS */}
       <AdminHeader
         user={user}
@@ -188,112 +222,86 @@ export default function BankManagersDedicatedPage() {
       />
 
       {/* 2. MAIN CONTAINER */}
-      <main className="cw-admin-container">
+      <main className="cw-admin-container py-6">
         {/* Upload Message Toast */}
         {uploadMsg && (
           <div
-            style={{
-              padding: "12px 18px",
-              borderRadius: "10px",
-              marginBottom: "20px",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-              background: uploadMsg.type === "success" ? "#ecfdf5" : "#fef2f2",
-              border: `1px solid ${uploadMsg.type === "success" ? "#a7f3d0" : "#fecaca"}`,
-              color: uploadMsg.type === "success" ? "#065f46" : "#b91c1c",
-            }}
+            className={`p-4 rounded-xl mb-5 flex items-center gap-3 text-sm font-medium transition-all ${
+              uploadMsg.type === "success"
+                ? "bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                : "bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300"
+            }`}
           >
-            {uploadMsg.type === "success" ? <CheckCircle2 style={{ width: 18, height: 18, flexShrink: 0 }} /> : <AlertCircle style={{ width: 18, height: 18, flexShrink: 0 }} />}
+            {uploadMsg.type === "success" ? (
+              <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <AlertCircle className="w-5 h-5 shrink-0 text-red-600 dark:text-red-400" />
+            )}
             <span>{uploadMsg.text}</span>
           </div>
         )}
 
         {/* Upload Form Card */}
-        <div className="cw-card" style={{ marginBottom: "24px" }}>
-          <div className="cw-card-header">
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: "#eff6ff",
-                  border: "1px solid #dbeafe",
-                  color: "#2563eb",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <UploadCloud style={{ width: 18, height: 18 }} />
+        <div className="cw-card mb-6 shadow-sm border border-slate-200 dark:border-slate-800">
+          <div className="cw-card-header border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <UploadCloud className="w-5 h-5" />
               </div>
               <div>
-                <h2 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 700, color: "#0f172a" }}>
+                <h2 className="m-0 text-sm font-bold text-slate-900 dark:text-white">
                   Upload Manager Spreadsheet
                 </h2>
-                <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
                   Upload official Excel or CSV spreadsheets containing bank manager branch listings.
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="cw-card-body">
+          <div className="cw-card-body p-4 sm:p-6">
             <form onSubmit={handleUploadSubmit}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr auto",
-                  gap: "16px",
-                  alignItems: "flex-end",
-                }}
-              >
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end">
                 <div>
-                  <label style={{ display: "block", fontWeight: 600, fontSize: "0.8125rem", color: "#334155", marginBottom: "6px" }}>
+                  <label className="block font-semibold text-xs text-slate-700 dark:text-slate-300 mb-1.5">
                     Bank Name
                   </label>
                   <input
                     type="text"
-                    className="cw-input"
+                    className="cw-input h-10 w-full"
                     placeholder="e.g. HDFC Bank, Axis Bank, ICICI Bank"
                     value={bankName}
                     onChange={(e) => setBankName(e.target.value)}
-                    style={{ height: 40 }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontWeight: 600, fontSize: "0.8125rem", color: "#334155", marginBottom: "6px" }}>
+                  <label className="block font-semibold text-xs text-slate-700 dark:text-slate-300 mb-1.5">
                     Spreadsheet File (.xlsx, .xls, .csv)
                   </label>
                   <input
                     id="bmFileInput"
                     type="file"
-                    className="cw-input"
+                    className="cw-input h-10 w-full py-1.5 px-3 text-xs"
                     accept=".xlsx,.xls,.csv"
                     onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    style={{ height: 40, padding: "6px 10px" }}
                   />
                 </div>
 
                 <div>
                   <button
                     type="submit"
-                    className="cw-btn-primary"
+                    className="cw-btn-primary h-10 w-full md:w-auto px-5 flex items-center justify-center gap-2"
                     disabled={isUploading}
-                    style={{ height: 40, padding: "0 22px" }}
                   >
                     {isUploading ? (
                       <>
-                        <RotateCw style={{ width: 16, height: 16 }} className="animate-spin" />
+                        <RotateCw className="w-4 h-4 animate-spin" />
                         <span>Uploading...</span>
                       </>
                     ) : (
                       <>
-                        <UploadCloud style={{ width: 16, height: 16 }} />
+                        <UploadCloud className="w-4 h-4" />
                         <span>Upload &amp; Parse</span>
                       </>
                     )}
@@ -305,49 +313,49 @@ export default function BankManagersDedicatedPage() {
         </div>
 
         {/* Toolbar Card */}
-        <div
-          className="cw-card"
-          style={{
-            padding: "14px 18px",
-            marginBottom: "18px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: "14px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-            <span
-              className="cw-badge cw-badge-info"
-              style={{ fontSize: "0.8125rem", padding: "5px 12px" }}
-            >
+        <div className="cw-card p-4 mb-5 flex items-center justify-between flex-wrap gap-3 shadow-sm border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="cw-badge cw-badge-info text-xs py-1.5 px-3">
               <span>Total Spreadsheets:</span>
-              <strong style={{ marginLeft: 4 }}>{files.length}</strong>
+              <strong className="ml-1">{files.length}</strong>
             </span>
 
             <ModernSearchBar
               value={searchFileQuery}
               onChange={setSearchFileQuery}
               placeholder="Search by bank or filename..."
-              width={300}
+              width={280}
             />
           </div>
 
-          <button
-            type="button"
-            className="cw-btn-secondary"
-            onClick={fetchFiles}
-            disabled={isLoadingFiles}
-          >
-            <RotateCw style={{ width: 14, height: 14 }} className={isLoadingFiles ? "animate-spin text-blue-600" : ""} />
-            <span>Refresh</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="cw-btn-secondary"
+              onClick={exportFilesToExcel}
+              disabled={filteredFiles.length === 0}
+              title="Export bank managers directory to Excel spreadsheet"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Export Excel</span>
+            </button>
+
+            <button
+              type="button"
+              className="cw-btn-secondary"
+              onClick={fetchFiles}
+              disabled={isLoadingFiles}
+            >
+              <RotateCw className={`w-3.5 h-3.5 ${isLoadingFiles ? "animate-spin text-blue-600" : ""}`} />
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
 
-        {/* Files List Table */}
-        <div className="cw-card">
-          <div className="cw-table-container">
+        {/* Files List Container */}
+        <div className="cw-card shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+          {/* Desktop Table: Hidden on Mobile */}
+          <div className="hidden md:block cw-table-container border-0">
             <table className="cw-table">
               <thead>
                 <tr>
@@ -371,7 +379,9 @@ export default function BankManagersDedicatedPage() {
                   <tr>
                     <td colSpan={6} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
                       <FileSpreadsheet style={{ width: 36, height: 36, color: "#94a3b8", margin: "0 auto 8px" }} />
-                      <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", color: "#1e293b", fontWeight: 600 }}>No Spreadsheets Found</h4>
+                      <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", fontWeight: 600 }} className="text-slate-900 dark:text-white">
+                        No Spreadsheets Found
+                      </h4>
                       <p style={{ margin: 0, fontSize: "0.8125rem" }}>
                         {searchFileQuery ? "No spreadsheets match your search." : "No bank manager spreadsheets uploaded yet."}
                       </p>
@@ -392,8 +402,8 @@ export default function BankManagersDedicatedPage() {
                                 width: 30,
                                 height: 30,
                                 borderRadius: 8,
-                                background: "#ecfdf5",
-                                border: "1px solid #d1fae5",
+                                background: "rgba(5, 150, 105, 0.1)",
+                                border: "1px solid rgba(5, 150, 105, 0.2)",
                                 color: "#059669",
                                 display: "flex",
                                 alignItems: "center",
@@ -403,7 +413,7 @@ export default function BankManagersDedicatedPage() {
                             >
                               <FileSpreadsheet style={{ width: 16, height: 16 }} />
                             </div>
-                            <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.875rem" }} title={file.file_name}>
+                            <span style={{ fontWeight: 600, fontSize: "0.875rem" }} title={file.file_name}>
                               {file.file_name}
                             </span>
                           </div>
@@ -411,7 +421,7 @@ export default function BankManagersDedicatedPage() {
                         <td style={{ textAlign: "left" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             <Building2 style={{ width: 15, height: 15, color: "#64748b" }} />
-                            <span style={{ fontWeight: 600, color: "#334155" }}>{file.bank_name || "Lender File"}</span>
+                            <span style={{ fontWeight: 600 }}>{file.bank_name || "Lender File"}</span>
                           </div>
                         </td>
                         <td style={{ textAlign: "center" }}>
@@ -437,10 +447,9 @@ export default function BankManagersDedicatedPage() {
                             <button
                               type="button"
                               onClick={() => handleDeleteFile(file.id, file.file_name)}
-                              className="cw-action-btn"
+                              className="cw-action-btn text-red-600 hover:text-red-700"
                               title="Delete file"
                               aria-label={`Delete ${file.file_name}`}
-                              style={{ color: "#dc2626" }}
                             >
                               <Trash2 style={{ width: 14, height: 14 }} />
                             </button>
@@ -452,6 +461,78 @@ export default function BankManagersDedicatedPage() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Adaptive Mobile Card List (Visible on screens <= 768px) */}
+          <div className="md:hidden divide-y divide-slate-200 dark:divide-slate-800">
+            {isLoadingFiles ? (
+              <div className="p-8 text-center text-slate-500">
+                <RotateCw className="w-6 h-6 mx-auto mb-2 animate-spin text-blue-600" />
+                <p className="text-sm">Loading manager spreadsheets...</p>
+              </div>
+            ) : filteredFiles.length === 0 ? (
+              <div className="p-8 text-center text-slate-500">
+                <FileSpreadsheet className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-white">No Spreadsheets Found</h4>
+                <p className="text-xs text-slate-500">
+                  {searchFileQuery ? "No spreadsheets match your search." : "No spreadsheets uploaded yet."}
+                </p>
+              </div>
+            ) : (
+              filteredFiles.map((file, idx) => (
+                <div key={file.id || idx} className="p-4 bg-white dark:bg-slate-900 flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                        <FileSpreadsheet className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-slate-900 dark:text-white text-sm break-all">
+                          {file.file_name}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          <Building2 className="w-3.5 h-3.5 shrink-0" />
+                          <span className="font-medium truncate">{file.bank_name || "Lender File"}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-slate-400 shrink-0">#{idx + 1}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <span className="cw-badge cw-badge-info text-[11px]">
+                        {file.record_count ? `${file.record_count.toLocaleString()} contacts` : "Ingested"}
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-mono">
+                        {formatFileSize(file.file_size_bytes)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`/api/bank-managers/files?id=${file.id}&download=true`}
+                        download={file.file_name}
+                        className="cw-action-btn"
+                        title="Download file"
+                        aria-label={`Download ${file.file_name}`}
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteFile(file.id, file.file_name)}
+                        className="cw-action-btn text-red-600 hover:text-red-700"
+                        title="Delete file"
+                        aria-label={`Delete ${file.file_name}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </main>
