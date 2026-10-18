@@ -52,20 +52,9 @@ export default function BankPolicyDedicatedPage() {
 
   if (loading || !user) {
     return (
-      <main
-        style={{
-          padding: 48,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "100vh",
-          gap: 12,
-          background: "#f8fafc",
-        }}
-      >
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-12 text-center">
         <div className="spinner-border text-primary" style={{ width: 36, height: 36 }} role="status"></div>
-        <p style={{ color: "#64748b", fontWeight: 500, fontSize: "0.9rem" }}>
+        <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mt-3">
           Verifying administrator access...
         </p>
       </main>
@@ -73,7 +62,7 @@ export default function BankPolicyDedicatedPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-sans transition-colors duration-200">
       {/* 1. TOP HEADER & BREADCRUMBS (NO SIDEBAR) */}
       <AdminHeader
         user={user}
@@ -83,7 +72,7 @@ export default function BankPolicyDedicatedPage() {
       />
 
       {/* 2. MAIN BANK POLICY MODULE CONTENT */}
-      <main className="cw-admin-container">
+      <main className="cw-admin-container py-6">
         <PoliciesView embedded={true} user={user} />
       </main>
     </div>

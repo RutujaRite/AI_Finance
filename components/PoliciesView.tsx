@@ -7,6 +7,7 @@
 
 import { useEffect, useState, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import * as XLSX from "xlsx"
 import Topbar from "./Topbar"
 import {
   Eye,
@@ -734,6 +735,59 @@ export default function PoliciesView({
   const startFileIndex = totalFilteredFiles === 0 ? 0 : (validCurrentFilePage - 1) * PAGE_SIZE
   const endFileIndex = Math.min(startFileIndex + PAGE_SIZE, totalFilteredFiles)
   const paginatedFiles = filteredPolicyFiles.slice(startFileIndex, endFileIndex)
+
+  // Export Bank Policies to Excel
+  const exportPoliciesToExcel = () => {
+    if (filteredPolicies.length === 0) return
+
+    const exportData = filteredPolicies.map((p: any, idx: number) => ({
+      "Sr No": idx + 1,
+      "Bank / Lender": p.bank_name || p.bank_code || "N/A",
+      "Loan Type": p.loan_type || "Personal Loan",
+      "Employment": p.employment_type || "Salaried",
+      "Min CIBIL": p.min_cibil ?? "N/A",
+      "Max CIBIL": p.max_cibil ?? "N/A",
+      "Min Salary (₹)": p.min_salary ?? "N/A",
+      "Min Age": p.min_age ?? "N/A",
+      "Max Age": p.max_age ?? "N/A",
+      "Min Loan Amount (₹)": p.min_loan_amount ?? "N/A",
+      "Max Loan Amount (₹)": p.max_loan_amount ?? "N/A",
+      "Min Tenure (Months)": p.min_tenure_months ?? "N/A",
+      "Max Tenure (Months)": p.max_tenure_months ?? "N/A",
+      "FOIR %": p.foir_percent ? `${p.foir_percent}%` : "N/A",
+      "ROI %": p.roi ? `${p.roi}%` : "N/A",
+      "Processing Fee %": p.processing_fee_percent ? `${p.processing_fee_percent}%` : "N/A",
+      "Status": p.status || "Active",
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Bank Policies")
+
+    const filename = `Bank_Master_Policies_${new Date().toISOString().slice(0, 10)}.xlsx`
+    XLSX.writeFile(workbook, filename)
+  }
+
+  // Export Policy Files to Excel
+  const exportPolicyFilesToExcel = () => {
+    if (filteredPolicyFiles.length === 0) return
+
+    const exportData = filteredPolicyFiles.map((file: any, idx: number) => ({
+      "Sr No": idx + 1,
+      "Bank Name": file.bank_name || "N/A",
+      "Master Policy File": file.file_name || "N/A",
+      "File Size (Bytes)": file.file_size_bytes || 0,
+      "Text Length (Chars)": file.text_length || 0,
+      "Updated Date": file.updated_at ? new Date(file.updated_at).toLocaleString("en-IN") : "N/A",
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Policy Files")
+
+    const filename = `Policy_Master_Files_${new Date().toISOString().slice(0, 10)}.xlsx`
+    XLSX.writeFile(workbook, filename)
+  }
 
   // Unique bank options for edit modal
   const allBankOptions = Array.from(
@@ -1583,6 +1637,17 @@ export default function PoliciesView({
                 <button
                   type="button"
                   className="cw-btn-secondary"
+                  onClick={exportPoliciesToExcel}
+                  disabled={filteredPolicies.length === 0}
+                  title="Export Bank Policies to Excel"
+                >
+                  <Download style={{ width: 14, height: 14 }} className="text-emerald-600 dark:text-emerald-400" />
+                  <span>Export Excel</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="cw-btn-secondary"
                   onClick={loadPolicies}
                   disabled={loading}
                 >
@@ -1603,7 +1668,7 @@ export default function PoliciesView({
             </div>
 
             {/* Bank Policy Guidelines Table Container matching Image 3 */}
-            <div className="cw-card">
+            <div className="cw-card shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
               {/* Card Header matching Image 3 */}
               <div
                 style={{
@@ -1611,17 +1676,17 @@ export default function PoliciesView({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  borderBottom: "1px solid #f1f5f9",
+                  borderBottom: "1px solid var(--border)",
                   flexWrap: "wrap",
                   gap: "12px",
                 }}
               >
                 <h3
+                  className="text-slate-900 dark:text-white"
                   style={{
                     margin: 0,
                     fontSize: "1rem",
                     fontWeight: 700,
-                    color: "#0f172a",
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
@@ -1647,7 +1712,8 @@ export default function PoliciesView({
                 </div>
               </div>
 
-              <div className="cw-table-container">
+              {/* Desktop Table: Hidden on Mobile */}
+              <div className="hidden md:block cw-table-container border-0">
                 <table className="cw-table">
                   <thead>
                     <tr>
@@ -1670,7 +1736,9 @@ export default function PoliciesView({
                       <tr>
                         <td colSpan={5} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
                           <Landmark style={{ width: 36, height: 36, color: "#94a3b8", margin: "0 auto 8px" }} />
-                          <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", color: "#1e293b", fontWeight: 600 }}>No Matching Policies Found</h4>
+                          <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", fontWeight: 600 }} className="text-slate-900 dark:text-white">
+                            No Matching Policies Found
+                          </h4>
                           <p style={{ margin: 0, fontSize: "0.8125rem" }}>
                             {searchBank || filterLoanType !== "all" || filterStatus !== "all"
                               ? "Try adjusting your search criteria or resetting filters."
@@ -1697,8 +1765,8 @@ export default function PoliciesView({
                                     display: "inline-flex",
                                     alignItems: "center",
                                     gap: "6px",
-                                    background: "#f0f4ff",
-                                    border: "1px solid #dbeafe",
+                                    background: "rgba(37, 99, 235, 0.1)",
+                                    border: "1px solid rgba(37, 99, 235, 0.2)",
                                     color: "#2563eb",
                                     padding: "4px 12px",
                                     borderRadius: "9999px",
@@ -1720,9 +1788,9 @@ export default function PoliciesView({
                                   borderRadius: "9999px",
                                   fontSize: "0.75rem",
                                   fontWeight: 600,
-                                  background: "#eff6ff",
-                                  color: "#1d4ed8",
-                                  border: "1px solid #bfdbfe",
+                                  background: "rgba(37, 99, 235, 0.08)",
+                                  color: "#2563eb",
+                                  border: "1px solid rgba(37, 99, 235, 0.2)",
                                 }}
                               >
                                 {policy.loan_type || "Personal Loan"}
@@ -1738,9 +1806,9 @@ export default function PoliciesView({
                                   borderRadius: "9999px",
                                   fontSize: "0.75rem",
                                   fontWeight: 600,
-                                  background: isStatusActive ? "#ecfdf5" : isStatusReview ? "#fffbeb" : "#f1f5f9",
+                                  background: isStatusActive ? "rgba(16, 185, 129, 0.1)" : isStatusReview ? "rgba(245, 158, 11, 0.1)" : "rgba(148, 163, 184, 0.1)",
                                   color: isStatusActive ? "#059669" : isStatusReview ? "#d97706" : "#64748b",
-                                  border: `1px solid ${isStatusActive ? "#a7f3d0" : isStatusReview ? "#fde68a" : "#e2e8f0"}`,
+                                  border: `1px solid ${isStatusActive ? "rgba(16, 185, 129, 0.25)" : isStatusReview ? "rgba(245, 158, 11, 0.25)" : "rgba(148, 163, 184, 0.2)"}`,
                                 }}
                               >
                                 <span
@@ -1791,6 +1859,99 @@ export default function PoliciesView({
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Adaptive Mobile Card List for Rules Tab */}
+              <div className="md:hidden divide-y divide-slate-200 dark:divide-slate-800">
+                {loading ? (
+                  <div className="p-8 text-center text-slate-500">
+                    <RotateCcw className="w-6 h-6 mx-auto mb-2 animate-spin text-blue-600" />
+                    <p className="text-sm">Loading bank policies...</p>
+                  </div>
+                ) : filteredPolicies.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500">
+                    <Landmark className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-white">No Matching Policies</h4>
+                    <p className="text-xs text-slate-500">Try adjusting your search criteria.</p>
+                  </div>
+                ) : (
+                  paginatedPolicies.map((policy: any, idx: number) => {
+                    const bankName = policy.bank_name || policy.bank_code || "Partner Bank";
+                    const isStatusActive = String(policy.status || "active").toLowerCase() === "active";
+                    const isStatusReview = String(policy.status || "").toLowerCase() === "review";
+
+                    return (
+                      <div key={policy.bank_id || policy.id || idx} className="p-4 bg-white dark:bg-slate-900 flex flex-col gap-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                              <Landmark className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="font-semibold text-slate-900 dark:text-white text-sm">
+                                {bankName}
+                              </div>
+                              <span className="text-xs text-slate-500 dark:text-slate-400">
+                                {policy.loan_type || "Personal Loan"}
+                              </span>
+                            </div>
+                          </div>
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                              isStatusActive
+                                ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                : isStatusReview
+                                ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isStatusActive ? "bg-emerald-500" : isStatusReview ? "bg-amber-500" : "bg-slate-400"
+                              }`}
+                            />
+                            <span className="capitalize">{policy.status || "Active"}</span>
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <span className="text-slate-500 dark:text-slate-400 text-xs font-mono">
+                            Min Salary: {policy.min_salary ? `₹${Number(policy.min_salary).toLocaleString()}` : "N/A"}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              className="cw-action-btn"
+                              title="View Bank Policy Document"
+                              aria-label={`View Master Policy Document for ${bankName}`}
+                              onClick={() => handleOpenViewerFile(policy)}
+                            >
+                              <Eye style={{ width: 14, height: 14 }} />
+                            </button>
+                            <button
+                              type="button"
+                              className="cw-action-btn cw-action-primary"
+                              title="Edit Bank Policy Document"
+                              aria-label={`Edit Master Policy Document for ${bankName}`}
+                              onClick={() => handleOpenEditorFile(policy)}
+                            >
+                              <Pencil style={{ width: 14, height: 14 }} />
+                            </button>
+                            <button
+                              type="button"
+                              className="cw-action-btn cw-action-delete"
+                              title="Delete Policy"
+                              aria-label={`Delete Policy for ${bankName}`}
+                              onClick={() => handleOpenDelete(policy)}
+                            >
+                              <Trash2 style={{ width: 14, height: 14 }} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
 
               {/* Table Footer with Pagination */}
@@ -2042,6 +2203,17 @@ export default function PoliciesView({
                 <button
                   type="button"
                   className="cw-btn-secondary"
+                  onClick={exportPolicyFilesToExcel}
+                  disabled={filteredPolicyFiles.length === 0}
+                  title="Export Policy Files directory to Excel"
+                >
+                  <Download style={{ width: 14, height: 14 }} className="text-emerald-600 dark:text-emerald-400" />
+                  <span>Export Excel</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="cw-btn-secondary"
                   onClick={loadPolicyFiles}
                   disabled={loadingFiles}
                 >
@@ -2062,7 +2234,7 @@ export default function PoliciesView({
             </div>
 
             {/* Policy Master Files Table Container matching Image 3 */}
-            <div className="cw-card">
+            <div className="cw-card shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
               {/* Card Header matching Image 3 */}
               <div
                 style={{
@@ -2070,17 +2242,17 @@ export default function PoliciesView({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  borderBottom: "1px solid #f1f5f9",
+                  borderBottom: "1px solid var(--border)",
                   flexWrap: "wrap",
                   gap: "12px",
                 }}
               >
                 <h3
+                  className="text-slate-900 dark:text-white"
                   style={{
                     margin: 0,
                     fontSize: "1rem",
                     fontWeight: 700,
-                    color: "#0f172a",
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
@@ -2106,7 +2278,8 @@ export default function PoliciesView({
                 </div>
               </div>
 
-              <div className="cw-table-container">
+              {/* Desktop Table: Hidden on Mobile */}
+              <div className="hidden md:block cw-table-container border-0">
                 <table className="cw-table">
                   <thead>
                     <tr>
@@ -2129,7 +2302,9 @@ export default function PoliciesView({
                       <tr>
                         <td colSpan={5} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
                           <FileSpreadsheet style={{ width: 36, height: 36, color: "#94a3b8", margin: "0 auto 8px" }} />
-                          <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", color: "#1e293b", fontWeight: 600 }}>No Policy Documents Found</h4>
+                          <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", fontWeight: 600 }} className="text-slate-900 dark:text-white">
+                            No Policy Documents Found
+                          </h4>
                           <p style={{ margin: 0, fontSize: "0.8125rem" }}>
                             {searchFileQuery || selectedFileBank !== "all"
                               ? "No policy files match your search criteria."
@@ -2165,8 +2340,8 @@ export default function PoliciesView({
                                     display: "inline-flex",
                                     alignItems: "center",
                                     gap: "6px",
-                                    background: "#f0f4ff",
-                                    border: "1px solid #dbeafe",
+                                    background: "rgba(37, 99, 235, 0.1)",
+                                    border: "1px solid rgba(37, 99, 235, 0.2)",
                                     color: "#2563eb",
                                     padding: "4px 12px",
                                     borderRadius: "9999px",
@@ -2186,8 +2361,8 @@ export default function PoliciesView({
                                     width: 30,
                                     height: 30,
                                     borderRadius: 8,
-                                    background: isSpreadsheet ? "#ecfdf5" : "#eff6ff",
-                                    border: `1px solid ${isSpreadsheet ? "#d1fae5" : "#dbeafe"}`,
+                                    background: isSpreadsheet ? "rgba(5, 150, 105, 0.1)" : "rgba(37, 99, 235, 0.1)",
+                                    border: `1px solid ${isSpreadsheet ? "rgba(5, 150, 105, 0.2)" : "rgba(37, 99, 235, 0.2)"}`,
                                     color: isSpreadsheet ? "#059669" : "#2563eb",
                                     display: "flex",
                                     alignItems: "center",
@@ -2201,7 +2376,7 @@ export default function PoliciesView({
                                     <FileText style={{ width: 16, height: 16 }} />
                                   )}
                                 </div>
-                                <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.875rem" }} title={file.file_name}>
+                                <span style={{ fontWeight: 600, fontSize: "0.875rem" }} title={file.file_name}>
                                   {file.file_name}
                                 </span>
                               </div>
@@ -2273,6 +2448,116 @@ export default function PoliciesView({
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Adaptive Mobile Card List for Documents Tab */}
+              <div className="md:hidden divide-y divide-slate-200 dark:divide-slate-800">
+                {loadingFiles ? (
+                  <div className="p-8 text-center text-slate-500">
+                    <RotateCcw className="w-6 h-6 mx-auto mb-2 animate-spin text-blue-600" />
+                    <p className="text-sm">Loading policy files...</p>
+                  </div>
+                ) : filteredPolicyFiles.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500">
+                    <FileSpreadsheet className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-white">No Policy Documents Found</h4>
+                    <p className="text-xs text-slate-500">Try adjusting your search criteria.</p>
+                  </div>
+                ) : (
+                  paginatedFiles.map((file: any, idx: number) => {
+                    const kbSize = file.file_size_bytes
+                      ? file.file_size_bytes > 1024 * 1024
+                        ? (file.file_size_bytes / (1024 * 1024)).toFixed(1) + " MB"
+                        : (file.file_size_bytes / 1024).toFixed(1) + " KB"
+                      : file.text_length
+                      ? (file.text_length / 1024).toFixed(1) + " KB"
+                      : "0 KB"
+
+                    const isSpreadsheet =
+                      (file.file_name || "").endsWith(".xlsx") ||
+                      (file.file_name || "").endsWith(".xls") ||
+                      (file.file_name || "").endsWith(".csv")
+
+                    return (
+                      <div key={file.bank_id || file.id || idx} className="p-4 bg-white dark:bg-slate-900 flex flex-col gap-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div
+                              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                                isSpreadsheet
+                                  ? "bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400"
+                                  : "bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400"
+                              }`}
+                            >
+                              {isSpreadsheet ? <FileSpreadsheet className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-semibold text-slate-900 dark:text-white text-sm break-all">
+                                {file.file_name}
+                              </div>
+                              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                <Landmark className="w-3.5 h-3.5 shrink-0" />
+                                <span className="font-medium truncate">{file.bank_name || "Partner Lender"}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <span className="cw-badge cw-badge-info text-[11px] shrink-0 font-mono">{kbSize}</span>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <button
+                            type="button"
+                            className="cw-action-btn"
+                            title="View Document"
+                            onClick={() => handleOpenViewer(file.id, file)}
+                          >
+                            <Eye style={{ width: 14, height: 14 }} />
+                          </button>
+                          <button
+                            type="button"
+                            className="cw-action-btn cw-action-primary"
+                            title="Edit Master Policy"
+                            onClick={() => handleOpenEditorFile(file)}
+                          >
+                            <Pencil style={{ width: 14, height: 14 }} />
+                          </button>
+                          <button
+                            type="button"
+                            className="cw-action-btn"
+                            title="Download File"
+                            onClick={async () => {
+                              if (file.extracted_text) {
+                                handleDownloadText(file.file_name, file.extracted_text)
+                              } else {
+                                try {
+                                  const res = await fetch(`/api/policies/extracted-files/${file.id}`)
+                                  const data = await res.json()
+                                  if (data.success && data.file?.extracted_text) {
+                                    handleDownloadText(file.file_name, data.file.extracted_text)
+                                  } else {
+                                    showToast("Failed to download file content", "error")
+                                  }
+                                } catch {
+                                  showToast("Error downloading policy file", "error")
+                                }
+                              }
+                            }}
+                          >
+                            <Download style={{ width: 14, height: 14 }} />
+                          </button>
+                          <button
+                            type="button"
+                            className="cw-action-btn cw-action-delete"
+                            title="Delete Policy File"
+                            onClick={() => handleOpenDelete(file)}
+                          >
+                            <Trash2 style={{ width: 14, height: 14 }} />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
               </div>
 
               {/* Policy Files Footer & Pagination */}
