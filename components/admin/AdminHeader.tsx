@@ -528,7 +528,7 @@ export default function AdminHeader({
                 className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors no-underline"
               >
                 <FileText className="w-4 h-4 text-indigo-600" />
-                <span>Bank Policy Guidelines</span>
+                <span>Bank Policy</span>
               </Link>
               <Link
                 href="/admin/company-search"

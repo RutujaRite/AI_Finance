@@ -67,7 +67,7 @@ export default function BankPolicyDedicatedPage() {
       <AdminHeader
         user={user}
         title="Bank Policy"
-        description="Underwriting policy guidelines, credit cutoffs, lender RAG knowledge base, and official policy documents."
+        description="Official bank master policy documents, spreadsheet uploads, and lender RAG knowledge base."
         breadcrumbs={[{ label: "Bank Policy" }]}
       />
 
