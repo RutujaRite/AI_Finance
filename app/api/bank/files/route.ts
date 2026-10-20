@@ -439,61 +439,134 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const { searchParams } = new URL(req.url);
-    let fileId = searchParams.get("id");
-    if (!fileId) {
+    let rawFileId = searchParams.get("id");
+    if (!rawFileId) {
       try {
         const body = await req.json();
-        fileId = body?.id;
+        rawFileId = body?.id || body?.file_id || body?.fileId;
       } catch (e) {
         // body not present
       }
     }
 
-    if (!fileId) {
+    if (!rawFileId) {
       return NextResponse.json({ success: false, error: "Missing file id" }, { status: 400 });
     }
 
+    const fileId = decodeURIComponent(String(rawFileId));
+    const isFsScan = fileId.startsWith("fs-");
+    const numericId = parseInt(fileId, 10);
+    const isNumeric = !isNaN(numericId) && !isFsScan && String(numericId) === fileId;
+
+    const candidateDirs = [
+      path.join(process.cwd(), "public", "uploads", "bank-company-data"),
+      path.join(process.cwd(), "company-master-files"),
+      path.join(process.cwd(), "data"),
+      path.join(process.cwd(), "uploads"),
+    ];
+
     const client = await pool.connect();
     try {
-      const res = await client.query("SELECT id, file_name, file_path FROM bank_uploaded_files WHERE id = $1", [Number(fileId)]);
-      if (res.rowCount === 0) {
-        return NextResponse.json({ success: false, error: "File not found" }, { status: 404 });
+      let targetFileRecord: any = null;
+      let rawFileName = isFsScan ? fileId.replace(/^fs-/, "") : fileId;
+
+      if (isNumeric) {
+        const res = await client.query(
+          "SELECT id, file_name, file_path FROM bank_uploaded_files WHERE id = $1",
+          [numericId]
+        );
+        if (res.rowCount && res.rowCount > 0) {
+          targetFileRecord = res.rows[0];
+          rawFileName = targetFileRecord.file_name;
+        }
+      } else {
+        const res = await client.query(
+          "SELECT id, file_name, file_path FROM bank_uploaded_files WHERE file_name = $1 OR file_path ILIKE $2 LIMIT 1",
+          [rawFileName, `%${rawFileName}%`]
+        );
+        if (res.rowCount && res.rowCount > 0) {
+          targetFileRecord = res.rows[0];
+          rawFileName = targetFileRecord.file_name;
+        }
       }
 
-      const { file_name, file_path } = res.rows[0];
-      if (file_path) {
-        let fullPath = "";
-        if (file_path.startsWith(URL_PREFIX)) {
-          fullPath = path.join(UPLOAD_DIR, file_path.replace(URL_PREFIX, ""));
-        } else if (file_path.startsWith("/uploads/bank-pdfs/")) {
-          fullPath = path.join(process.cwd(), "public", file_path.replace(/^\//, ""));
-        } else if (path.isAbsolute(file_path)) {
-          fullPath = file_path;
+      let deletedRecordsCount = 0;
+      let diskDeleted = false;
+
+      // 1. Delete associated database records if registered in bank_uploaded_files
+      if (targetFileRecord) {
+        const compDeleteRes = await client.query(
+          "DELETE FROM bank_company_data WHERE file_id = $1",
+          [targetFileRecord.id]
+        );
+        deletedRecordsCount += compDeleteRes.rowCount || 0;
+
+        await client.query("DELETE FROM bank_uploaded_files WHERE id = $1", [targetFileRecord.id]);
+      } else if (!isNumeric) {
+        // If file had records under its inferred bank name, clean them up
+        const inferredBank = inferBankName(rawFileName);
+        if (inferredBank && inferredBank !== "Multi-Bank Master") {
+          const compDeleteRes = await client.query(
+            "DELETE FROM bank_company_data WHERE bank_name ILIKE $1",
+            [inferredBank]
+          );
+          deletedRecordsCount += compDeleteRes.rowCount || 0;
+        }
+      }
+
+      // 2. Delete file from disk if path exists
+      if (targetFileRecord?.file_path) {
+        let explicitPath = "";
+        const p = targetFileRecord.file_path;
+        if (p.startsWith(URL_PREFIX)) {
+          explicitPath = path.join(UPLOAD_DIR, p.replace(URL_PREFIX, ""));
+        } else if (p.startsWith("/uploads/")) {
+          explicitPath = path.join(process.cwd(), "public", p.replace(/^\//, ""));
+        } else if (path.isAbsolute(p)) {
+          explicitPath = p;
         } else {
-          fullPath = path.join(process.cwd(), file_path);
+          explicitPath = path.join(process.cwd(), p);
         }
 
         try {
-          if (existsSync(fullPath)) {
-            await unlink(fullPath);
+          if (existsSync(explicitPath)) {
+            await unlink(explicitPath);
+            diskDeleted = true;
           }
         } catch (e) {
-          console.warn("Could not delete disk file:", e);
+          console.warn("Could not delete explicit disk path:", explicitPath, e);
         }
       }
 
-      const compDeleteRes = await client.query("DELETE FROM bank_company_data WHERE file_id = $1", [Number(fileId)]);
-      await client.query("DELETE FROM bank_uploaded_files WHERE id = $1", [Number(fileId)]);
+      // Also remove matching file from candidate storage directories
+      for (const dir of candidateDirs) {
+        const fullCandidatePath = path.join(dir, rawFileName);
+        try {
+          if (existsSync(fullCandidatePath)) {
+            await unlink(fullCandidatePath);
+            diskDeleted = true;
+          }
+        } catch (e) {
+          console.warn("Could not delete candidate file:", fullCandidatePath, e);
+        }
+      }
+
+      if (!targetFileRecord && !diskDeleted && deletedRecordsCount === 0) {
+        return NextResponse.json({ success: false, error: "File not found" }, { status: 404 });
+      }
 
       return NextResponse.json({
         success: true,
-        message: `File "${file_name}" and ${compDeleteRes.rowCount || 0} associated company records were deleted successfully.`,
+        message: `File "${rawFileName}" and ${deletedRecordsCount} associated company records were deleted successfully.`,
       });
     } finally {
       client.release();
     }
   } catch (err: any) {
     console.error("delete bank company file error", err);
-    return NextResponse.json({ success: false, error: "Could not delete the file" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: err?.message || "Could not delete the file" },
+      { status: 500 }
+    );
   }
 }

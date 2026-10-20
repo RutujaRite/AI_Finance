@@ -331,13 +331,13 @@ export default function CompanySearchPage() {
   }
 
   // Delete Spreadsheet File Handler (Tab 2)
-  async function handleDeleteFile(fileId: number, fileName: string) {
+  async function handleDeleteFile(fileId: number | string, fileName: string) {
     if (!confirm(`Are you sure you want to delete "${fileName}"? This will remove all associated company records from the database.`)) {
       return;
     }
 
     try {
-      const res = await fetch(`/api/bank/files/${fileId}`, {
+      const res = await fetch(`/api/bank/files/${encodeURIComponent(String(fileId))}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -1363,7 +1363,7 @@ export default function CompanySearchPage() {
                               <td style={{ textAlign: "center" }}>
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
                                   <a
-                                    href={`/api/bank/files/${f.id}/download`}
+                                    href={`/api/bank/files/${encodeURIComponent(String(f.id))}/download`}
                                     className="cw-action-btn"
                                     title="Download original spreadsheet"
                                     aria-label={`Download ${f.file_name}`}
@@ -1432,7 +1432,7 @@ export default function CompanySearchPage() {
 
                           <div className="flex items-center gap-2">
                             <a
-                              href={`/api/bank/files/${f.id}/download`}
+                              href={`/api/bank/files/${encodeURIComponent(String(f.id))}/download`}
                               className="cw-action-btn"
                               title="Download"
                             >
