@@ -539,12 +539,12 @@ export default function AdminHeader({
                 <span>Company Categorization</span>
               </Link>
               <Link
-                href="/admin/bank-managers"
+                href="/admin/bank-manager-locations"
                 onClick={() => setMobileDrawerOpen(false)}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors no-underline"
               >
                 <Users className="w-4 h-4 text-amber-600" />
-                <span>Official Bank Managers</span>
+                <span>Bank Manager and Locations</span>
               </Link>
               <Link
                 href="/admin/ai-model"

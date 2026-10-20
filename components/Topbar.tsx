@@ -243,9 +243,9 @@ export default function Topbar({
     },
     {
       id: "bank-managers",
-      label: "Contact and Location Bank Manager",
-      shortLabel: "Contact & Location",
-      href: "/admin/bank-managers",
+      label: "Bank Manager and Locations",
+      shortLabel: "Manager & Locations",
+      href: "/admin/bank-manager-locations",
       iconClass: "bi bi-people",
       description: "Branch locations & official manager contacts",
       badge: "Contacts",

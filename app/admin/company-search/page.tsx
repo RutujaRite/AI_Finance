@@ -493,6 +493,29 @@ export default function CompanySearchPage() {
     XLSX.writeFile(workbook, filename);
   };
 
+  // Download single company record
+  const downloadSingleCompanyRecord = (r: any) => {
+    if (!r) return;
+    const exportData = [
+      { Property: "Company Name", Value: r.company_name || "N/A" },
+      { Property: "Bank / Lender", Value: r.bank_name || "Corporate Master" },
+      { Property: "Category Tier", Value: r.company_category || "Approved" },
+      { Property: "Serial Number", Value: r.sr_no || "N/A" },
+      { Property: "Source File", Value: r.file_name || "Manual Entry" },
+      { Property: "Remarks / Notes", Value: r.other_info || "None" },
+      { Property: "Exported At", Value: new Date().toLocaleString("en-IN") },
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Company Record");
+    worksheet["!cols"] = [{ wch: 25 }, { wch: 50 }];
+
+    const safeName = (r.company_name || "Company_Record").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 30);
+    const filename = `${safeName}_Details.xlsx`;
+    XLSX.writeFile(workbook, filename);
+  };
+
   // Export Tab 2 Spreadsheets to Excel
   const exportCompanyFilesToExcel = () => {
     if (filteredFiles.length === 0) return;
@@ -772,10 +795,10 @@ export default function CompanySearchPage() {
                   className="cw-btn-secondary text-xs"
                   onClick={exportCompanyRecordsToExcel}
                   disabled={records.length === 0}
-                  title="Export current page to Excel"
+                  title="Download current filtered list to Excel"
                 >
                   <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Export Page</span>
+                  <span>Download List</span>
                 </button>
 
                 <button
@@ -890,6 +913,16 @@ export default function CompanySearchPage() {
 
                                 <button
                                   type="button"
+                                  onClick={() => downloadSingleCompanyRecord(r)}
+                                  className="cw-action-btn text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                                  title="Download company details"
+                                  aria-label={`Download details for ${r.company_name}`}
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                </button>
+
+                                <button
+                                  type="button"
                                   onClick={() => setDeleteRecordTarget(r)}
                                   className="cw-action-btn text-red-600 hover:text-red-700 dark:text-red-400"
                                   title="Delete company record"
@@ -959,6 +992,14 @@ export default function CompanySearchPage() {
                             title="Edit"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => downloadSingleCompanyRecord(r)}
+                            className="cw-action-btn text-emerald-600"
+                            title="Download"
+                          >
+                            <Download className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"

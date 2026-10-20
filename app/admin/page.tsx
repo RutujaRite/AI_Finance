@@ -180,11 +180,11 @@ export default function AdminDashboardPage() {
     },
     {
       id: "card-bank-managers",
-      title: "Bank Managers",
+      title: "Bank Manager and Locations",
       metric: stats.bankManagersCount > 0 ? `${stats.bankManagersCount} contacts` : "Manager directory",
       desc: "Branch escalation contacts & city directory",
       action: "View escalation contacts",
-      href: "/admin/bank-managers",
+      href: "/admin/bank-manager-locations",
       icon: Users,
       iconContainerClass: "bg-emerald-50 text-emerald-600 border border-emerald-200",
       badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
