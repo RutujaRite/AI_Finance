@@ -131,6 +131,8 @@ export default function PoliciesView({
   const [isUploading, setIsUploading] = useState(false)
   const [uploadBankId, setUploadBankId] = useState<number>(0)
   const [uploadBankName, setUploadBankName] = useState<string>("")
+  const [isCustomUploadBank, setIsCustomUploadBank] = useState<boolean>(false)
+  const [customUploadBankName, setCustomUploadBankName] = useState<string>("")
   const [uploadLoanType, setUploadLoanType] = useState<string>("Personal Loan")
   const [uploadPolicyVersion, setUploadPolicyVersion] = useState<string>("V1")
   const [uploadEmployment, setUploadEmployment] = useState<string>("Salaried")
@@ -426,8 +428,9 @@ export default function PoliciesView({
       showToast("Please select a file to upload", "error")
       return
     }
-    if (!uploadBankId) {
-      showToast("Please select a bank", "error")
+    const finalBank = isCustomUploadBank ? customUploadBankName.trim() : uploadBankName.trim()
+    if (!finalBank) {
+      showToast("Please select or enter a bank name", "error")
       return
     }
     if (!uploadLoanType) {
@@ -439,7 +442,10 @@ export default function PoliciesView({
     try {
       const formData = new FormData()
       formData.append("file", uploadFile)
-      formData.append("bank_id", String(uploadBankId))
+      formData.append("bank_name", finalBank)
+      if (!isCustomUploadBank && uploadBankId) {
+        formData.append("bank_id", String(uploadBankId))
+      }
       formData.append("loan_type", uploadLoanType)
       formData.append("policy_version", uploadPolicyVersion)
       formData.append("employment_type", uploadEmployment)
@@ -765,6 +771,39 @@ export default function PoliciesView({
     XLSX.utils.book_append_sheet(workbook, worksheet, "Bank Policies")
 
     const filename = `Bank_Master_Policies_${new Date().toISOString().slice(0, 10)}.xlsx`
+    XLSX.writeFile(workbook, filename)
+  }
+
+  // Download single bank policy guidelines
+  const downloadSinglePolicy = (p: any) => {
+    if (!p) return
+    const exportData = [
+      { Field: "Bank / Lender", Value: p.bank_name || p.bank_code || "N/A" },
+      { Field: "Loan Type", Value: p.loan_type || "Personal Loan" },
+      { Field: "Employment Type", Value: p.employment_type || "Salaried" },
+      { Field: "Min CIBIL Score", Value: p.min_cibil ?? "Not specified" },
+      { Field: "Max CIBIL Score", Value: p.max_cibil ?? "Not specified" },
+      { Field: "Min Salary Required (₹)", Value: p.min_salary ? `₹${Number(p.min_salary).toLocaleString("en-IN")}` : "Not specified" },
+      { Field: "Min Age", Value: p.min_age ? `${p.min_age} years` : "Not specified" },
+      { Field: "Max Age", Value: p.max_age ? `${p.max_age} years` : "Not specified" },
+      { Field: "Min Loan Amount (₹)", Value: p.min_loan_amount ? `₹${Number(p.min_loan_amount).toLocaleString("en-IN")}` : "Not specified" },
+      { Field: "Max Loan Amount (₹)", Value: p.max_loan_amount ? `₹${Number(p.max_loan_amount).toLocaleString("en-IN")}` : "Not specified" },
+      { Field: "Min Tenure (Months)", Value: p.min_tenure_months ? `${p.min_tenure_months} months` : "Not specified" },
+      { Field: "Max Tenure (Months)", Value: p.max_tenure_months ? `${p.max_tenure_months} months` : "Not specified" },
+      { Field: "FOIR %", Value: p.foir_percent ? `${p.foir_percent}%` : "Not specified" },
+      { Field: "Rate of Interest (ROI %)", Value: p.roi ? `${p.roi}%` : "Not specified" },
+      { Field: "Processing Fee %", Value: p.processing_fee_percent ? `${p.processing_fee_percent}%` : "Not specified" },
+      { Field: "Policy Status", Value: p.status || "Active" },
+      { Field: "Exported At", Value: new Date().toLocaleString("en-IN") },
+    ]
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Policy Guidelines")
+    worksheet["!cols"] = [{ wch: 30 }, { wch: 50 }]
+
+    const safeName = (p.bank_name || p.bank_code || "Bank_Policy").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 30)
+    const filename = `${safeName}_Policy_Guidelines.xlsx`
     XLSX.writeFile(workbook, filename)
   }
 
@@ -1639,10 +1678,10 @@ export default function PoliciesView({
                   className="cw-btn-secondary"
                   onClick={exportPoliciesToExcel}
                   disabled={filteredPolicies.length === 0}
-                  title="Export Bank Policies to Excel"
+                  title="Download current filtered list to Excel"
                 >
                   <Download style={{ width: 14, height: 14 }} className="text-emerald-600 dark:text-emerald-400" />
-                  <span>Export Excel</span>
+                  <span>Download List</span>
                 </button>
 
                 <button
@@ -1844,6 +1883,15 @@ export default function PoliciesView({
                                 </button>
                                 <button
                                   type="button"
+                                  className="cw-action-btn"
+                                  title="Download Policy Guidelines"
+                                  aria-label={`Download Policy Guidelines for ${bankName}`}
+                                  onClick={() => downloadSinglePolicy(policy)}
+                                >
+                                  <Download style={{ width: 14, height: 14 }} className="text-emerald-600 dark:text-emerald-400" />
+                                </button>
+                                <button
+                                  type="button"
                                   className="cw-action-btn cw-action-delete"
                                   title="Delete Policy"
                                   aria-label={`Delete Policy for ${bankName}`}
@@ -1936,6 +1984,15 @@ export default function PoliciesView({
                               onClick={() => handleOpenEditorFile(policy)}
                             >
                               <Pencil style={{ width: 14, height: 14 }} />
+                            </button>
+                            <button
+                              type="button"
+                              className="cw-action-btn"
+                              title="Download Policy Guidelines"
+                              aria-label={`Download Policy Guidelines for ${bankName}`}
+                              onClick={() => downloadSinglePolicy(policy)}
+                            >
+                              <Download style={{ width: 14, height: 14 }} className="text-emerald-600 dark:text-emerald-400" />
                             </button>
                             <button
                               type="button"
@@ -2205,10 +2262,10 @@ export default function PoliciesView({
                   className="cw-btn-secondary"
                   onClick={exportPolicyFilesToExcel}
                   disabled={filteredPolicyFiles.length === 0}
-                  title="Export Policy Files directory to Excel"
+                  title="Download Policy Files directory to Excel"
                 >
                   <Download style={{ width: 14, height: 14 }} className="text-emerald-600 dark:text-emerald-400" />
-                  <span>Export Excel</span>
+                  <span>Download List</span>
                 </button>
 
                 <button
@@ -3345,12 +3402,17 @@ export default function PoliciesView({
                       <i className="bi bi-bank policy-select-icon" />
                       <select
                         className="form-select policy-select-has-icon"
-                        value={uploadBankName}
+                        value={isCustomUploadBank ? "__CUSTOM__" : uploadBankName}
                         onChange={(e) => {
-                          const selectedName = e.target.value
-                          setUploadBankName(selectedName)
-                          const matched = allBankOptions.find((b) => b.name === selectedName)
-                          if (matched) setUploadBankId(matched.id)
+                          const val = e.target.value
+                          if (val === "__CUSTOM__") {
+                            setIsCustomUploadBank(true)
+                          } else {
+                            setIsCustomUploadBank(false)
+                            setUploadBankName(val)
+                            const matched = allBankOptions.find((b) => b.name === val)
+                            if (matched) setUploadBankId(matched.id)
+                          }
                         }}
                         required
                       >
@@ -3364,8 +3426,24 @@ export default function PoliciesView({
                         ) : (
                           <option value={uploadBankName}>{uploadBankName}</option>
                         )}
+                        <option value="__CUSTOM__">+ Custom Bank / Manual Entry...</option>
                       </select>
                     </div>
+
+                    {isCustomUploadBank && (
+                      <div style={{ marginTop: "10px" }}>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Type custom Bank or Lender name..."
+                          value={customUploadBankName}
+                          onChange={(e) => setCustomUploadBankName(e.target.value)}
+                          required
+                          autoFocus
+                          style={{ fontSize: "0.875rem" }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Loan Type */}

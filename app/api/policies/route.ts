@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const bankId = formData.get("bank_id") as string;
+    const bankNameParam = (formData.get("bank_name") as string || "").trim();
     const loanType = formData.get("loan_type") as string;
     const policyVersion = formData.get("policy_version") as string || "V1";
     const employmentType = formData.get("employment_type") as string || "Salaried";
@@ -95,8 +96,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
     }
 
-    if (!bankId) {
-      return NextResponse.json({ success: false, error: "Bank ID is required" }, { status: 400 });
+    if (!bankId && !bankNameParam) {
+      return NextResponse.json({ success: false, error: "Bank ID or Bank Name is required" }, { status: 400 });
     }
 
     if (!loanType) {
@@ -151,24 +152,39 @@ export async function POST(req: NextRequest) {
     }
 
     // Determine bank info
-    const bankIdNum = parseInt(bankId, 10);
-    let bankName = "";
+    let bankIdNum = parseInt(bankId, 10);
+    let bankName = bankNameParam;
     let bankCode = "";
-    
+
     try {
       if (pool) {
-        const bankRes = await pool.query("SELECT name, code FROM banks WHERE id = $1", [bankIdNum]);
-        if (bankRes.rows.length > 0) {
-          bankName = bankRes.rows[0].name;
-          bankCode = bankRes.rows[0].code;
+        if ((!bankIdNum || isNaN(bankIdNum)) && bankName) {
+          const existing = await pool.query("SELECT id, name, code FROM banks WHERE name ILIKE $1 LIMIT 1", [bankName]);
+          if (existing.rows.length > 0) {
+            bankIdNum = existing.rows[0].id;
+            bankName = existing.rows[0].name;
+            bankCode = existing.rows[0].code;
+          } else {
+            const genCode = bankName.replace(/[^A-Za-z0-9]/g, "_").toUpperCase().slice(0, 15);
+            const ins = await pool.query("INSERT INTO banks (name, code) VALUES ($1, $2) RETURNING id, name, code", [bankName, genCode]);
+            bankIdNum = ins.rows[0].id;
+            bankName = ins.rows[0].name;
+            bankCode = ins.rows[0].code;
+          }
+        } else if (bankIdNum) {
+          const bankRes = await pool.query("SELECT name, code FROM banks WHERE id = $1", [bankIdNum]);
+          if (bankRes.rows.length > 0) {
+            bankName = bankRes.rows[0].name;
+            bankCode = bankRes.rows[0].code;
+          }
         }
       }
     } catch (dbErr) {
-      console.warn("Could not fetch bank info from DB:", dbErr);
+      console.warn("Could not fetch or create bank info from DB:", dbErr);
     }
 
     // Fallback to master policies
-    if (!bankName) {
+    if (!bankName && bankIdNum) {
       const masterPolicies = getAllMasterPolicies();
       const matched = masterPolicies.find(p => p.bank_id === bankIdNum);
       if (matched) {
@@ -178,7 +194,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!bankName) {
-      return NextResponse.json({ success: false, error: "Invalid bank ID" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "Invalid bank ID or Bank Name" }, { status: 400 });
     }
 
     // Generate unique file name
