@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken, isAdminUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,15 +11,7 @@ export async function GET(request: NextRequest) {
     const token = request.cookies.get("token")?.value;
     const user = token ? verifyToken(token) : null;
 
-    const isAdmin =
-      user &&
-      (String(user.role || "").trim().toLowerCase() === "admin" ||
-        (user as any).is_admin === true ||
-        String(user.email || "").toLowerCase() === "admin@gmail.com" ||
-        String(user.email || "").toLowerCase() === "akshadasagar31@gmail.com" ||
-        String(user.email || "").toLowerCase().startsWith("admin"));
-
-    if (!isAdmin) {
+    if (!isAdminUser(user)) {
       return NextResponse.json(
         { success: false, error: "Unauthorized. Admin privileges required." },
         { status: 401 }
@@ -131,15 +123,8 @@ export async function POST(request: NextRequest) {
   try {
     const token = request.cookies.get("token")?.value;
     const user = token ? verifyToken(token) : null;
-    const isAdmin =
-      user &&
-      (String(user.role || "").trim().toLowerCase() === "admin" ||
-        (user as any).is_admin === true ||
-        String(user.email || "").toLowerCase() === "admin@gmail.com" ||
-        String(user.email || "").toLowerCase() === "akshadasagar31@gmail.com" ||
-        String(user.email || "").toLowerCase().startsWith("admin"));
 
-    if (!isAdmin) {
+    if (!isAdminUser(user)) {
       return NextResponse.json(
         { success: false, error: "Unauthorized. Admin privileges required." },
         { status: 401 }
@@ -190,15 +175,8 @@ export async function PUT(request: NextRequest) {
   try {
     const token = request.cookies.get("token")?.value;
     const user = token ? verifyToken(token) : null;
-    const isAdmin =
-      user &&
-      (String(user.role || "").trim().toLowerCase() === "admin" ||
-        (user as any).is_admin === true ||
-        String(user.email || "").toLowerCase() === "admin@gmail.com" ||
-        String(user.email || "").toLowerCase() === "akshadasagar31@gmail.com" ||
-        String(user.email || "").toLowerCase().startsWith("admin"));
 
-    if (!isAdmin) {
+    if (!isAdminUser(user)) {
       return NextResponse.json(
         { success: false, error: "Unauthorized. Admin privileges required." },
         { status: 401 }
@@ -258,15 +236,8 @@ export async function DELETE(request: NextRequest) {
   try {
     const token = request.cookies.get("token")?.value;
     const user = token ? verifyToken(token) : null;
-    const isAdmin =
-      user &&
-      (String(user.role || "").trim().toLowerCase() === "admin" ||
-        (user as any).is_admin === true ||
-        String(user.email || "").toLowerCase() === "admin@gmail.com" ||
-        String(user.email || "").toLowerCase() === "akshadasagar31@gmail.com" ||
-        String(user.email || "").toLowerCase().startsWith("admin"));
 
-    if (!isAdmin) {
+    if (!isAdminUser(user)) {
       return NextResponse.json(
         { success: false, error: "Unauthorized. Admin privileges required." },
         { status: 401 }
