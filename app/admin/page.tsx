@@ -205,28 +205,16 @@ export default function AdminDashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-500/20 selection:text-blue-700 transition-colors">
       {/* 1. TOP NAVIGATION */}
-      <AdminHeader user={user} showBreadcrumbs={false} showBackToWorkspace={false} />
+      <AdminHeader
+        user={user}
+        title="Admin Overview"
+        description="Central platform administration, KPI summary, and data management."
+        breadcrumbs={[]}
+        showBreadcrumbs={true}
+      />
 
       {/* 2. PAGE CONTAINER */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 w-full flex-1 flex flex-col">
-        {/* Header Section */}
-        <section className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white m-0">
-                  Admin Overview
-                </h1>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                  Central Control
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1.5 m-0 leading-relaxed">
-                Manage platform lender policies, company database, managers, and system users.
-              </p>
-            </div>
-          </div>
-        </section>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full flex-1 flex flex-col">
 
         {/* 3. 4-COLUMN KPI SUMMARY STRIP */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">

@@ -188,20 +188,20 @@ export default function AdminHeader({
     <>
       {/* 1. TOP NAVIGATION BAR */}
       <header className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-6 border-b border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 sticky top-0 z-30 font-sans shadow-2xs transition-colors">
-        {/* Left: Hamburger + Brand Group */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* YouTube-style Hamburger Button on far left (Visible on mobile/tablet) */}
+        {/* Left: Brand + Admin Navigation Group */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          {/* YouTube-style Hamburger Button on far left (Visible on mobile screens) */}
           <button
             type="button"
             onClick={() => setMobileDrawerOpen(true)}
-            className="lg:hidden p-1.5 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors flex items-center justify-center shrink-0 cursor-pointer"
+            className="md:hidden p-1.5 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors flex items-center justify-center shrink-0 cursor-pointer"
             aria-label="Open Admin Navigation Menu"
             title="Admin Menu"
           >
             <Menu className="w-5 h-5" />
           </button>
 
-          <Link href="/admin" className="flex items-center gap-2 sm:gap-2.5 no-underline group" title="CreditWise Admin Overview">
+          <Link href="/admin" className="flex items-center gap-2 sm:gap-2.5 no-underline group shrink-0" title="CreditWise Admin Overview">
             {/* Logo Icon */}
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0 group-hover:scale-105 transition-transform">
               <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
@@ -210,35 +210,35 @@ export default function AdminHeader({
             {/* Brand text & Badge */}
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-slate-900 dark:text-white text-sm sm:text-base tracking-tight">
+                <span className="font-bold text-slate-900 dark:text-white text-sm sm:text-base tracking-tight whitespace-nowrap">
                   CreditWise AI
                 </span>
                 <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 uppercase">
                   Admin
                 </span>
               </div>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 hidden 2xl:inline">
                 Financial SaaS Management Suite
               </span>
             </div>
           </Link>
 
-          {/* Admin Panel Quick Navigation (Desktop only) */}
-          <nav className="hidden lg:flex items-center gap-1 ml-3 pl-3 border-l border-slate-200 dark:border-slate-800 text-xs">
+          {/* Admin Panel Quick Navigation (Always visible & responsive scroll) */}
+          <nav className="flex items-center gap-1 ml-1.5 sm:ml-3 pl-1.5 sm:pl-3 border-l border-slate-200 dark:border-slate-800 text-xs overflow-x-auto no-scrollbar py-1 shrink min-w-0">
             {adminNavItems.map((item) => {
               const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors no-underline ${
+                  className={`inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs transition-colors no-underline whitespace-nowrap shrink-0 ${
                     item.isActive
                       ? "bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800/80 shadow-2xs"
                       : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 font-medium border border-transparent"
                   }`}
                   title={item.title}
                 >
-                  <Icon className={`w-3.5 h-3.5 ${item.isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"}`} />
+                  <Icon className={`w-3.5 h-3.5 shrink-0 ${item.isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"}`} />
                   <span>{item.label}</span>
                 </Link>
               );
@@ -418,7 +418,9 @@ export default function AdminHeader({
                   <span>Admin Overview</span>
                 </Link>
 
-                <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
+                {breadcrumbs.length > 0 && (
+                  <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />
+                )}
 
                 {breadcrumbs.map((crumb, idx) => (
                   <React.Fragment key={idx}>
@@ -438,28 +440,30 @@ export default function AdminHeader({
                   </React.Fragment>
                 ))}
 
-                {breadcrumbs.length === 0 && title && (
+                {breadcrumbs.length === 0 && title && pathname !== "/admin" && (
                   <span className="text-slate-800 dark:text-slate-200 font-semibold truncate max-w-[200px]">{title}</span>
                 )}
               </nav>
 
               <div className="flex items-center gap-2 sm:gap-3">
-                {/* Dedicated Back Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof window !== "undefined" && window.history.length > 1) {
-                      router.back();
-                    } else {
-                      router.push("/admin");
-                    }
-                  }}
-                  title="Go Back"
-                  aria-label="Navigate back"
-                  className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors flex items-center justify-center cursor-pointer shrink-0"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </button>
+                {/* Dedicated Back Button (only on sub-pages) */}
+                {pathname !== "/admin" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== "undefined" && window.history.length > 1) {
+                        router.back();
+                      } else {
+                        router.push("/admin");
+                      }
+                    }}
+                    title="Go Back"
+                    aria-label="Navigate back"
+                    className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors flex items-center justify-center cursor-pointer shrink-0"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                )}
 
                 {title && (
                   <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight m-0">
@@ -468,23 +472,24 @@ export default function AdminHeader({
                 )}
               </div>
               {description && (
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 sm:ml-8 m-0 leading-relaxed">
+                <p className={`text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 m-0 leading-relaxed ${pathname !== "/admin" ? "sm:ml-8" : ""}`}>
                   {description}
                 </p>
               )}
             </div>
 
             <div className="flex items-center flex-wrap gap-2 shrink-0">
-
-              {/* Back to Admin Overview */}
-              <Link
-                href="/admin"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 shadow-2xs rounded-lg transition-all no-underline cursor-pointer"
-                title="Return to Admin Overview"
-              >
-                <LayoutGrid className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                <span>Admin Overview</span>
-              </Link>
+              {/* Back to Admin Overview (only if not on /admin) */}
+              {pathname !== "/admin" && (
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 shadow-2xs rounded-lg transition-all no-underline cursor-pointer"
+                  title="Return to Admin Overview"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                  <span>Admin Overview</span>
+                </Link>
+              )}
 
               {actions}
             </div>
