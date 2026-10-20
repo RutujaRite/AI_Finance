@@ -867,10 +867,10 @@ export default function AiInstructionsView({
 
 
   return (
-    <div className="w-full min-h-full bg-slate-50 flex-1 overflow-y-auto">
+    <div className="w-full min-h-full bg-slate-50 dark:bg-slate-950 flex-1 overflow-y-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* 1. PAGE HEADER BANNER (GRADIENT CARD WITH AI MASCOT ILLUSTRATION) */}
-        <div className="ai-header-banner relative overflow-hidden flex items-center justify-between bg-white border border-slate-300 rounded-2xl p-5 sm:p-6 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md">
+        <div className="ai-header-banner relative overflow-hidden flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md">
           <div className="flex items-center gap-3 sm:gap-4 relative z-10">
             {/* AI Chip Icon Badge */}
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[11px] bg-[#1677FF] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/25">
@@ -892,10 +892,10 @@ export default function AiInstructionsView({
               <div className="hidden bg-[#EAF3FF]"><Settings className="w-5 h-5 text-[#1677FF]" /></div>
             </div>
             <div>
-              <h1 className="text-lg sm:text-2xl font-bold text-[#12336B] tracking-tight">
+              <h1 className="text-lg sm:text-2xl font-bold text-[#12336B] dark:text-white tracking-tight">
                 Configure AI Instructions
               </h1>
-              <p className="text-xs md:text-[13px] text-[#526B91] mt-0.5">
+              <p className="text-xs md:text-[13px] text-[#526B91] dark:text-slate-400 mt-0.5">
                 Customize how your assistant speaks, thinks, and uses your knowledge.
               </p>
             </div>
@@ -1007,34 +1007,29 @@ export default function AiInstructionsView({
         </div>
 
         {/* 3. AGENT IDENTITY & PERSONA (FULL WIDTH WHITE CARD WITH LIGHT COLOR SHADOW) */}
-        <div className="ai-card bg-white border border-slate-300 shadow-xs rounded-2xl p-6 transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
+        <div className="ai-card bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 shadow-xs rounded-2xl p-6 transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
           <div className="flex items-center justify-between pb-4">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-[12px] bg-[#EAF2FF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-12 h-12 rounded-[12px] bg-[#EAF2FF] dark:bg-blue-950/40 text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
                 <User className="w-5 h-5 text-[#1677FF]" />
               </div>
               <div>
-                <h2 className="font-bold text-[#102A56] text-base md:text-[17px] tracking-tight">
+                <h2 className="font-bold text-[#102A56] dark:text-white text-base md:text-[17px] tracking-tight">
                   Agent Identity &amp; Persona
                 </h2>
-                <p className="text-xs text-[#526B91] mt-0.5 font-normal">
+                <p className="text-xs text-[#526B91] dark:text-slate-400 mt-0.5 font-normal">
                   Define the agent's name, conversation tone, and response style.
                 </p>
               </div>
             </div>
-
-<span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${isAgentActive ? 'bg-[#EAF8F1] text-[#079669] border border-[#079669]/20' : 'bg-slate-50 text-slate-600 border border-slate-200'} shadow-xs`}>
-      <span className={`w-2 h-2 rounded-full ${isAgentActive ? 'bg-[#079669] animate-pulse' : 'bg-slate-400'}`} />
-      {isAgentActive ? 'Active' : 'Inactive'}
-    </span>
            </div>
 
-           <div className="mb-5 border-b border-slate-100"></div>
+           <div className="mb-5 border-b border-slate-100 dark:border-slate-800"></div>
 
            {/* 3-Column Responsive Inputs with Icons in Labels */}
           <div className="ai-form-grid pt-5 md:pt-6">
             <div>
-<label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-1.5">
+<label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
       <User className="w-3.5 h-3.5 text-[#1677FF]" />
       <span>Agent Name</span>
     </label>
@@ -1043,12 +1038,12 @@ export default function AiInstructionsView({
       value={agentName}
       onChange={(e) => handleNameChange(e.target.value)}
       placeholder="Loan Assistant"
-      className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3.5 py-2.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
+      className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-sm rounded-lg px-3.5 py-2.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
     />
             </div>
 
             <div>
-<label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-1.5">
+<label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
       <MessageSquare className="w-3.5 h-3.5 text-[#1677FF]" />
       <span>Conversation Tone</span>
     </label>
@@ -1056,10 +1051,9 @@ export default function AiInstructionsView({
       <select
         value={currentTone}
         onChange={(e) => handleToneChange(e.target.value)}
-        className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3.5 py-2.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
+        className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-sm rounded-lg px-3.5 py-2.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
       >
         <option value="Professional and friendly">Professional and friendly</option>
-        <option value="Professional and Friendly">Professional and friendly</option>
         <option value="Formal">Formal</option>
         <option value="Conversational">Conversational</option>
         <option value="Empathetic">Empathetic</option>
@@ -1069,7 +1063,7 @@ export default function AiInstructionsView({
             </div>
 
             <div>
-<label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-1.5">
+<label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
       <Sliders className="w-3.5 h-3.5 text-[#1677FF]" />
       <span>Response Style</span>
     </label>
@@ -1077,13 +1071,11 @@ export default function AiInstructionsView({
       <select
         value={currentResponseStyle}
         onChange={(e) => handleStyleChange(e.target.value)}
-        className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3.5 py-2.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
+        className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-sm rounded-lg px-3.5 py-2.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
       >
         <option value="Clear, helpful, concise">Clear, helpful, concise</option>
-        <option value="Clear, Helpful, Concise">Clear, helpful, concise</option>
         <option value="Detailed">Detailed</option>
         <option value="Step-by-step">Step-by-step</option>
-        <option value="Step-by-Step">Step-by-step</option>
       </select>
       <ChevronDown className="w-4 h-4 text-[#526B91] pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2" />
     </div>
@@ -1092,35 +1084,35 @@ export default function AiInstructionsView({
         </div>
 
         {/* 4. INSTRUCTIONS FOR THE AI AGENT (FULL WIDTH WHITE CARD DIRECTLY BELOW PERSONA) */}
-        <div className="ai-card bg-white border border-slate-300 shadow-xs rounded-2xl p-6 transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
-          <div className="flex items-center justify-between pb-3.5 border-b border-[#DCE8F8]">
+        <div className="ai-card bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 shadow-xs rounded-2xl p-6 transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
+          <div className="flex items-center justify-between pb-3.5 border-b border-[#DCE8F8] dark:border-slate-800">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-[10px] bg-[#E6EEFF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-10 h-10 rounded-[10px] bg-[#E6EEFF] dark:bg-blue-950/40 text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
                 <FileText className="w-5 h-5 text-[#1677FF]" />
               </div>
               <div>
-                <h2 className="font-bold text-[#12336B] text-base tracking-tight">
+                <h2 className="font-bold text-[#12336B] dark:text-white text-base tracking-tight">
                   Instructions for the AI Agent
                 </h2>
-                <p className="text-xs text-[#526B91] mt-0.5">
+                <p className="text-xs text-[#526B91] dark:text-slate-400 mt-0.5">
                   Master instruction prompt, financial verification rules, and conversational logic.
                  </p>
                </div>
               </div>
             </div>
-            <div className="mb-5 border-b border-slate-100"></div>
+            <div className="mb-5 border-b border-slate-100 dark:border-slate-800"></div>
             {/* Clean Instructions Container Box */}
           <div className="pt-4 w-full">
-            <div className="border border-[#DCE8F8] focus-within:border-[#1677FF] focus-within:ring-2 focus-within:ring-[#1677FF]/10 rounded-[12px] bg-white p-4 transition shadow-xs w-full">
+            <div className="border border-[#DCE8F8] dark:border-slate-800 focus-within:border-[#1677FF] focus-within:ring-2 focus-within:ring-[#1677FF]/10 rounded-[12px] bg-white dark:bg-slate-900 p-4 transition shadow-xs w-full">
               <textarea
                 value={instructionsText}
                 onChange={(e) => handleInstructionsChange(e.target.value)}
                 placeholder="Write your custom instructions here..."
-                className="ai-textarea w-full min-h-[340px] font-mono text-sm leading-relaxed resize-y bg-white border border-slate-300 text-slate-900 rounded-lg p-3.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
+                className="ai-textarea w-full min-h-[340px] font-mono text-sm leading-relaxed resize-y bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-lg p-3.5 shadow-2xs transition-all hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-500/15"
               />
 
               {/* Reference Checklist Guidelines */}
-              <div className="pt-3.5 border-t border-[#F0F5FA] space-y-2 text-xs text-[#526B91]">
+              <div className="pt-3.5 border-t border-[#F0F5FA] dark:border-slate-800 space-y-2 text-xs text-[#526B91] dark:text-slate-400">
                 <div className="flex items-center gap-2">
                   <Check className="w-3.5 h-3.5 text-[#1677FF] shrink-0" />
                   <span>Be specific about how the agent should respond and behave.</span>
@@ -1136,7 +1128,7 @@ export default function AiInstructionsView({
               </div>
 
               {/* Character Limit Counter */}
-              <div className="text-right text-[11px] font-mono text-[#8FA0BC] pt-2">
+              <div className="text-right text-[11px] font-mono text-[#8FA0BC] dark:text-slate-500 pt-2">
                 {instructionsText.length.toLocaleString()} / 10,000 characters
               </div>
             </div>
@@ -1165,20 +1157,20 @@ export default function AiInstructionsView({
         {isKnowledgeBaseAgent(agent) ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left: Drag-and-Drop Upload Area */}
-            <div className="ai-card flex flex-col justify-between rounded-2xl border border-slate-300 bg-white p-5 md:p-6 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
+            <div className="ai-card flex flex-col justify-between rounded-2xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 md:p-6 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
               <div>
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-[10px] bg-[#E1EFFF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
+                  <div className="w-10 h-10 rounded-[10px] bg-[#E1EFFF] dark:bg-blue-950/40 text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
                     <UploadCloud className="w-5 h-5 text-[#1677FF]" />
                   </div>
                   <div>
-                    <h2 className="font-bold text-[#12336B] text-base tracking-tight">
+                    <h2 className="font-bold text-[#12336B] dark:text-white text-base tracking-tight">
                       Upload Knowledge Base
                     </h2>
-                    <p className="text-xs text-[#526B91] mt-0.5">
+                    <p className="text-xs text-[#526B91] dark:text-slate-400 mt-0.5">
                       Add documents like PDFs, Word files, or text files.
                     </p>
-                    <p className="text-[11px] text-[#526B91]/80 mt-0.5 font-medium">
+                    <p className="text-[11px] text-[#526B91]/80 dark:text-slate-500 mt-0.5 font-medium">
                       Supported: PDF, DOCX, TXT, CSV, XLSX (Max size: 10MB per file)
                     </p>
                   </div>
@@ -1187,7 +1179,7 @@ export default function AiInstructionsView({
                 {/* Dropzone Box with Normal Light Border */}
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="mt-4 border border-solid border-[#D2E2F8] hover:border-[#1677FF] bg-[#F7FAFE] hover:bg-[#EFF6FF] rounded-[10px] p-6 text-center transition-all duration-200 cursor-pointer shadow-[0_1px_3px_rgba(30,80,150,0.02)] hover:shadow-sm"
+                  className="mt-4 border border-solid border-[#D2E2F8] dark:border-slate-800 hover:border-[#1677FF] bg-[#F7FAFE] dark:bg-slate-950/70 hover:bg-[#EFF6FF] dark:hover:bg-slate-900 rounded-[10px] p-6 text-center transition-all duration-200 cursor-pointer shadow-[0_1px_3px_rgba(30,80,150,0.02)] hover:shadow-sm"
                 >
                   <input
                     type="file"
@@ -1196,7 +1188,7 @@ export default function AiInstructionsView({
                     accept=".pdf,.docx,.doc,.txt,.xlsx,.xls,.csv"
                     onChange={(e) => handleFileUpload(e.target.files)}
                   />
-                  <div className="text-xs text-[#526B91] mb-2 font-medium">
+                  <div className="text-xs text-[#526B91] dark:text-slate-400 mb-2 font-medium">
                     Drag and drop files here or
                   </div>
                   <button
@@ -1206,7 +1198,7 @@ export default function AiInstructionsView({
                   >
                     <span>{isUploading ? "Uploading..." : "Choose Files"}</span>
                   </button>
-                  <div className="text-[11px] text-[#8FA0BC] mt-2">
+                  <div className="text-[11px] text-[#8FA0BC] dark:text-slate-500 mt-2">
                     Supports single or multiple files
                   </div>
                 </div>
@@ -1214,13 +1206,13 @@ export default function AiInstructionsView({
             </div>
 
             {/* Right: Add from existing sources */}
-            <div className="ai-card flex flex-col justify-between rounded-2xl border border-slate-300 bg-white p-5 md:p-6 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
+            <div className="ai-card flex flex-col justify-between rounded-2xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 md:p-6 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5">
               <div>
                 <div className="mb-3.5">
-                  <h3 className="font-bold text-[#12336B] text-base tracking-tight">
+                  <h3 className="font-bold text-[#12336B] dark:text-white text-base tracking-tight">
                     Or add from existing sources
                   </h3>
-                  <p className="text-xs text-[#526B91] mt-0.5">
+                  <p className="text-xs text-[#526B91] dark:text-slate-400 mt-0.5">
                     Connect live web links, text notes, or verified policies.
                   </p>
                 </div>
@@ -1342,18 +1334,18 @@ export default function AiInstructionsView({
         )}
 
         {/* 5. UPLOADED KNOWLEDGE BASE FILES */}
-        <div className="ai-card p-0 overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md">
+        <div className="ai-card p-0 overflow-hidden rounded-2xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md">
           {/* Table Header Controls */}
-          <div className="p-4 sm:p-5 border-b border-[#DCE8F8] flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-white">
+          <div className="p-4 sm:p-5 border-b border-[#DCE8F8] dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-white dark:bg-slate-900">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-[10px] bg-[#E1EFFF] text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-10 h-10 rounded-[10px] bg-[#E1EFFF] dark:bg-blue-950/40 text-[#1677FF] flex items-center justify-center shrink-0 shadow-xs">
                 <BookOpen className="w-5 h-5 text-[#1677FF]" />
               </div>
               <div>
-                <h2 className="font-bold text-[#12336B] text-base tracking-tight">
+                <h2 className="font-bold text-[#12336B] dark:text-white text-base tracking-tight">
                   Uploaded Knowledge Base Files
                 </h2>
-                <p className="text-xs text-[#526B91] mt-0.5">
+                <p className="text-xs text-[#526B91] dark:text-slate-400 mt-0.5">
                   Manage your uploaded files and view their status.
                 </p>
               </div>
@@ -1361,7 +1353,7 @@ export default function AiInstructionsView({
 
             <div className="flex items-center gap-2.5">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 text-[#8FA0BC] absolute left-3 top-3" />
+                <Search className="w-3.5 h-3.5 text-[#8FA0BC] dark:text-slate-500 absolute left-3 top-3" />
                 <input
                   type="text"
                   placeholder="Search files..."
@@ -1370,7 +1362,7 @@ export default function AiInstructionsView({
                     setSearchQuery(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="ai-search-input h-[38px] rounded-[8px] pl-9 border border-[#DCE8F8] text-xs"
+                  className="ai-search-input h-[38px] rounded-[8px] pl-9 border border-[#DCE8F8] dark:border-slate-800 text-xs dark:bg-slate-950 dark:text-slate-100"
                 />
               </div>
 
@@ -1380,7 +1372,7 @@ export default function AiInstructionsView({
                   setTypeFilter(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="h-[38px] px-3 py-1 text-xs text-[#12336B] bg-white border border-[#DCE8F8] rounded-[8px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] shadow-xs cursor-pointer transition-all"
+                className="h-[38px] px-3 py-1 text-xs text-[#12336B] dark:text-slate-100 bg-white dark:bg-slate-950 border border-[#DCE8F8] dark:border-slate-800 rounded-[8px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] shadow-xs cursor-pointer transition-all"
               >
                 <option value="All Types">All Types</option>
                 <option value="PDF">PDF</option>
@@ -1394,7 +1386,7 @@ export default function AiInstructionsView({
                 type="button"
                 onClick={loadAgentKnowledge}
                 disabled={isLoadingDocs}
-                className="h-[38px] w-[38px] flex items-center justify-center border border-[#DCE8F8] text-[#526B91] hover:text-[#1677FF] hover:bg-[#EAF3FF] rounded-[8px] transition cursor-pointer shadow-xs"
+                className="h-[38px] w-[38px] flex items-center justify-center border border-[#DCE8F8] dark:border-slate-800 text-[#526B91] dark:text-slate-400 hover:text-[#1677FF] dark:hover:text-blue-400 hover:bg-[#EAF3FF] dark:hover:bg-slate-800 rounded-[8px] transition cursor-pointer shadow-xs"
                 title="Refresh list"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoadingDocs ? "animate-spin text-[#1677FF]" : ""}`} />
@@ -1673,78 +1665,78 @@ export default function AiInstructionsView({
 
       {/* MODAL 1: View File Details Modal */}
       {previewDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-[10px] max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] animate-fadeIn">
-<div className="flex items-center justify-between pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-[10px] max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] dark:border-slate-800 animate-fadeIn">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] dark:bg-blue-950/40 text-[#1677FF] flex items-center justify-center shrink-0">
                   <FileText className="w-4 h-4 text-[#1677FF]" />
                 </div>
-                <h3 className="font-bold text-[#12336B] text-sm truncate max-w-md">
+                <h3 className="font-bold text-[#12336B] dark:text-white text-sm truncate max-w-md">
                   {previewDoc.name}
                 </h3>
               </div>
               <button
                 onClick={() => setPreviewDoc(null)}
-                className="text-[#8FA0BC] hover:text-[#12336B] p-1 rounded-md cursor-pointer transition"
+                className="text-[#8FA0BC] dark:text-slate-400 hover:text-[#12336B] dark:hover:text-slate-200 p-1 rounded-md cursor-pointer transition"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="mt-4 space-y-3 max-h-[60vh] overflow-y-auto text-xs text-[#526B91] leading-relaxed">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-[8px] bg-[#F5F9FF] border border-[#DCE8F8] text-[11px]">
+            <div className="mt-4 space-y-3 max-h-[60vh] overflow-y-auto text-xs text-[#526B91] dark:text-slate-300 leading-relaxed">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-[8px] bg-[#F5F9FF] dark:bg-slate-950 border border-[#DCE8F8] dark:border-slate-800 text-[11px]">
                 <div>
-                  <span className="text-[#8FA0BC] block">Format</span>
-                  <span className="font-bold text-[#12336B]">{previewDoc.type}</span>
+                  <span className="text-[#8FA0BC] dark:text-slate-500 block">Format</span>
+                  <span className="font-bold text-[#12336B] dark:text-slate-100">{previewDoc.type}</span>
                 </div>
                 <div>
-                  <span className="text-[#8FA0BC] block">File Size</span>
-                  <span className="font-bold text-[#12336B]">{previewDoc.size}</span>
+                  <span className="text-[#8FA0BC] dark:text-slate-500 block">File Size</span>
+                  <span className="font-bold text-[#12336B] dark:text-slate-100">{previewDoc.size}</span>
                 </div>
                 <div>
-                  <span className="text-[#8FA0BC] block">Uploaded On</span>
-                  <span className="font-bold text-[#12336B]">{previewDoc.uploadedOn}</span>
+                  <span className="text-[#8FA0BC] dark:text-slate-500 block">Uploaded On</span>
+                  <span className="font-bold text-[#12336B] dark:text-slate-100">{previewDoc.uploadedOn}</span>
                 </div>
                 <div>
-                  <span className="text-[#8FA0BC] block">Status</span>
+                  <span className="text-[#8FA0BC] dark:text-slate-500 block">Status</span>
                   <span className="font-bold text-[#079669]">Active</span>
                 </div>
               </div>
 
               {previewDoc.instructionText && (
-                <div className="p-3 rounded-[8px] bg-[#EAF3FF]/60 border border-[#DCE8F8]">
+                <div className="p-3 rounded-[8px] bg-[#EAF3FF]/60 dark:bg-blue-950/30 border border-[#DCE8F8] dark:border-blue-900/50">
                   <span className="text-[10px] font-bold uppercase text-[#1677FF] block mb-1">
                     Document Usage Instruction
                   </span>
-                  <p className="text-[#12336B] text-xs">{previewDoc.instructionText}</p>
+                  <p className="text-[#12336B] dark:text-slate-200 text-xs">{previewDoc.instructionText}</p>
                 </div>
               )}
 
               {previewDoc.guardrailText && (
-                <div className="p-3 rounded-[8px] bg-purple-50/60 border border-purple-100">
-                  <span className="text-[10px] font-bold uppercase text-purple-700 block mb-1">
+                <div className="p-3 rounded-[8px] bg-purple-50/60 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50">
+                  <span className="text-[10px] font-bold uppercase text-purple-700 dark:text-purple-300 block mb-1">
                     Safety Guardrail
                   </span>
-                  <p className="text-[#12336B] text-xs">{previewDoc.guardrailText}</p>
+                  <p className="text-[#12336B] dark:text-slate-200 text-xs">{previewDoc.guardrailText}</p>
                 </div>
               )}
 
               <div>
-                <span className="text-[11px] font-bold text-[#12336B] block mb-1.5">
+                <span className="text-[11px] font-bold text-[#12336B] dark:text-slate-200 block mb-1.5">
                   Extracted Content / Policy Rules Preview
                 </span>
-                <div className="p-3.5 rounded-[8px] bg-[#F5F9FF] border border-[#DCE8F8] font-mono text-[11px] text-[#12336B] whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto">
+                <div className="p-3.5 rounded-[8px] bg-[#F5F9FF] dark:bg-slate-950 border border-[#DCE8F8] dark:border-slate-800 font-mono text-[11px] text-[#12336B] dark:text-slate-200 whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto">
                   {previewDoc.content ||
                     `Document: ${previewDoc.name}\n\nBank underwriting criteria and credit guidelines are indexed in PostgreSQL vector memory for ${agentName}.\nWhen users inquire about eligibility, this document will be retrieved to ground loan parameters.`}
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-[#DCE8F8] flex justify-end">
+            <div className="mt-4 pt-3 border-t border-[#DCE8F8] dark:border-slate-800 flex justify-end">
               <button
                 onClick={() => setPreviewDoc(null)}
-                className="px-4 py-1.5 border border-[#DCE8F8] hover:bg-[#F5F9FF] text-[#526B91] rounded-[7px] text-xs font-semibold cursor-pointer transition"
+                className="px-4 py-1.5 border border-[#DCE8F8] dark:border-slate-700 hover:bg-[#F5F9FF] dark:hover:bg-slate-800 text-[#526B91] dark:text-slate-300 rounded-[7px] text-xs font-semibold cursor-pointer transition"
               >
                 Close Preview
               </button>
@@ -1755,20 +1747,20 @@ export default function AiInstructionsView({
 
       {/* MODAL 2: Edit Configuration & Metadata Modal */}
       {editConfigDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-[10px] max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 border-b border-[#DCE8F8]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-[10px] max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] dark:border-slate-800 animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-[#DCE8F8] dark:border-slate-800">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] dark:bg-blue-950/40 text-[#1677FF] flex items-center justify-center shrink-0">
                   <Edit2 className="w-4 h-4 text-[#1677FF]" />
                 </div>
-                <h3 className="font-bold text-[#12336B] text-sm">
+                <h3 className="font-bold text-[#12336B] dark:text-white text-sm">
                   Edit File Configuration &amp; Metadata
                 </h3>
               </div>
               <button
                 onClick={() => setEditConfigDoc(null)}
-                className="text-[#8FA0BC] hover:text-[#12336B] p-1 cursor-pointer transition"
+                className="text-[#8FA0BC] dark:text-slate-400 hover:text-[#12336B] dark:hover:text-slate-200 p-1 cursor-pointer transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1776,19 +1768,19 @@ export default function AiInstructionsView({
 
             <div className="mt-4 space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-[#12336B] mb-1">
+                <label className="block font-semibold text-[#12336B] dark:text-slate-200 mb-1">
                   File Display Name
                 </label>
                 <input
                   type="text"
                   value={editDocName}
                   onChange={(e) => setEditDocName(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
+                  className="w-full px-3 py-1.5 border border-[#DCE8F8] dark:border-slate-700 bg-white dark:bg-slate-950 text-[#12336B] dark:text-slate-100 rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] transition shadow-xs"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-[#12336B] mb-1">
+                <label className="block font-semibold text-[#12336B] dark:text-slate-200 mb-1">
                   Document Usage Instruction
                 </label>
                 <textarea
@@ -1796,13 +1788,13 @@ export default function AiInstructionsView({
                   placeholder="e.g. Reference this document strictly when applicant asks about salary requirements..."
                   value={editInstructionText}
                   onChange={(e) => setEditInstructionText(e.target.value)}
-                  className="w-full p-2.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
+                  className="w-full p-2.5 border border-[#DCE8F8] dark:border-slate-700 bg-white dark:bg-slate-950 text-[#12336B] dark:text-slate-100 rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] transition shadow-xs"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-[#12336B] mb-1">
+                  <label className="block font-semibold text-[#12336B] dark:text-slate-200 mb-1">
                     When to Use (Keywords)
                   </label>
                   <input
@@ -1810,11 +1802,11 @@ export default function AiInstructionsView({
                     placeholder="e.g. personal loan, cibil, foir"
                     value={editWhenToUse}
                     onChange={(e) => setEditWhenToUse(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
+                    className="w-full px-3 py-1.5 border border-[#DCE8F8] dark:border-slate-700 bg-white dark:bg-slate-950 text-[#12336B] dark:text-slate-100 rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] transition shadow-xs"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-[#12336B] mb-1">
+                  <label className="block font-semibold text-[#12336B] dark:text-slate-200 mb-1">
                     When Not to Use
                   </label>
                   <input
@@ -1822,13 +1814,13 @@ export default function AiInstructionsView({
                     placeholder="e.g. home loan, gold loan"
                     value={editWhenNotToUse}
                     onChange={(e) => setEditWhenNotToUse(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
+                    className="w-full px-3 py-1.5 border border-[#DCE8F8] dark:border-slate-700 bg-white dark:bg-slate-950 text-[#12336B] dark:text-slate-100 rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] transition shadow-xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-[#12336B] mb-1">
+                <label className="block font-semibold text-[#12336B] dark:text-slate-200 mb-1">
                   Safety Guardrail for this File
                 </label>
                 <input
@@ -1836,16 +1828,16 @@ export default function AiInstructionsView({
                   placeholder="e.g. Never disclose internal underwriter notes to applicants"
                   value={editGuardrailText}
                   onChange={(e) => setEditGuardrailText(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
+                  className="w-full px-3 py-1.5 border border-[#DCE8F8] dark:border-slate-700 bg-white dark:bg-slate-950 text-[#12336B] dark:text-slate-100 rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] transition shadow-xs"
                 />
               </div>
             </div>
 
-            <div className="mt-5 pt-3 border-t border-[#DCE8F8] flex justify-end gap-2">
+            <div className="mt-5 pt-3 border-t border-[#DCE8F8] dark:border-slate-800 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setEditConfigDoc(null)}
-                className="px-3 py-1.5 text-xs text-[#526B91] hover:bg-[#F5F9FF] border border-[#DCE8F8] rounded-[7px] cursor-pointer transition"
+                className="px-3 py-1.5 text-xs text-[#526B91] dark:text-slate-300 hover:bg-[#F5F9FF] dark:hover:bg-slate-800 border border-[#DCE8F8] dark:border-slate-700 rounded-[7px] cursor-pointer transition"
               >
                 Cancel
               </button>
@@ -1864,32 +1856,32 @@ export default function AiInstructionsView({
 
       {/* MODAL 3: Delete File Confirmation Modal */}
       {deleteDocTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-[10px] max-w-md w-full p-5 sm:p-6 shadow-2xl border border-rose-200 animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-[10px] max-w-md w-full p-5 sm:p-6 shadow-2xl border border-rose-200 dark:border-rose-900/60 animate-fadeIn">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-lg bg-rose-50 text-[#F04452] flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-[#F04452] dark:text-rose-400 flex items-center justify-center shrink-0">
                 <Trash2 className="w-4.5 h-4.5" />
               </div>
               <div>
-                <h3 className="font-bold text-[#12336B] text-sm">
+                <h3 className="font-bold text-[#12336B] dark:text-white text-sm">
                   Delete Knowledge Document?
                 </h3>
-                <span className="text-[11px] text-[#F04452] font-semibold">
+                <span className="text-[11px] text-[#F04452] dark:text-rose-400 font-semibold">
                   Destructive Action
                 </span>
               </div>
             </div>
 
-            <p className="text-xs text-[#526B91] leading-relaxed mb-4">
-              Are you sure you want to remove <strong>"{deleteDocTarget.name}"</strong>? All extracted text chunks and embeddings associated with this document will be erased from PostgreSQL.
+            <p className="text-xs text-[#526B91] dark:text-slate-300 leading-relaxed mb-4">
+              Are you sure you want to remove <strong className="dark:text-white">"{deleteDocTarget.name}"</strong>? All extracted text chunks and embeddings associated with this document will be erased from PostgreSQL.
             </p>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-[#DCE8F8]">
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#DCE8F8] dark:border-slate-800">
               <button
                 type="button"
                 disabled={isDeletingDoc}
                 onClick={() => setDeleteDocTarget(null)}
-                className="px-3.5 py-1.5 text-xs text-[#526B91] hover:bg-[#F5F9FF] border border-[#DCE8F8] rounded-[7px] cursor-pointer transition"
+                className="px-3.5 py-1.5 text-xs text-[#526B91] dark:text-slate-300 hover:bg-[#F5F9FF] dark:hover:bg-slate-800 border border-[#DCE8F8] dark:border-slate-700 rounded-[7px] cursor-pointer transition"
               >
                 Cancel
               </button>
@@ -1908,20 +1900,20 @@ export default function AiInstructionsView({
 
       {/* MODAL 4: From URL Modal */}
       {isUrlModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-[10px] max-w-md w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 border-b border-[#DCE8F8]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-[10px] max-w-md w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] dark:border-slate-800 animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-[#DCE8F8] dark:border-slate-800">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] dark:bg-blue-950/40 text-[#1677FF] flex items-center justify-center shrink-0">
                   <Paperclip className="w-4 h-4 text-[#1677FF]" />
                 </div>
-                <h3 className="font-bold text-[#12336B] text-sm">
+                <h3 className="font-bold text-[#12336B] dark:text-white text-sm">
                   Add Knowledge from URL
                 </h3>
               </div>
               <button
                 onClick={() => setIsUrlModalOpen(false)}
-                className="text-[#8FA0BC] hover:text-[#12336B] p-1 cursor-pointer transition"
+                className="text-[#8FA0BC] dark:text-slate-400 hover:text-[#12336B] dark:hover:text-slate-200 p-1 cursor-pointer transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1929,7 +1921,7 @@ export default function AiInstructionsView({
 
             <div className="mt-4 space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-[#12336B] mb-1">
+                <label className="block font-semibold text-[#12336B] dark:text-slate-200 mb-1">
                   Source Web URL
                 </label>
                 <input
@@ -1937,12 +1929,12 @@ export default function AiInstructionsView({
                   placeholder="https://example.com/bank-loan-criteria"
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
+                  className="w-full px-3 py-1.5 border border-[#DCE8F8] dark:border-slate-700 bg-white dark:bg-slate-950 text-[#12336B] dark:text-slate-100 rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] transition shadow-xs"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-[#12336B] mb-1">
+                <label className="block font-semibold text-[#12336B] dark:text-slate-200 mb-1">
                   Document Display Name (optional)
                 </label>
                 <input
@@ -1950,19 +1942,19 @@ export default function AiInstructionsView({
                   placeholder="e.g. Bank_Online_Policy.txt"
                   value={urlTitleInput}
                   onChange={(e) => setUrlTitleInput(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
+                  className="w-full px-3 py-1.5 border border-[#DCE8F8] dark:border-slate-700 bg-white dark:bg-slate-950 text-[#12336B] dark:text-slate-100 rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] transition shadow-xs"
                 />
               </div>
 
-              <p className="text-[11px] text-[#526B91]">
+              <p className="text-[11px] text-[#526B91] dark:text-slate-400">
                 The content from the web link will be processed and indexed into PostgreSQL for this agent.
               </p>
             </div>
 
-            <div className="mt-5 pt-3 border-t border-[#DCE8F8] flex justify-end gap-2">
+            <div className="mt-5 pt-3 border-t border-[#DCE8F8] dark:border-slate-800 flex justify-end gap-2">
               <button
                 onClick={() => setIsUrlModalOpen(false)}
-                className="px-3 py-1.5 text-xs text-[#526B91] hover:bg-[#F5F9FF] border border-[#DCE8F8] rounded-[7px] cursor-pointer transition"
+                className="px-3 py-1.5 text-xs text-[#526B91] dark:text-slate-300 hover:bg-[#F5F9FF] dark:hover:bg-slate-800 border border-[#DCE8F8] dark:border-slate-700 rounded-[7px] cursor-pointer transition"
               >
                 Cancel
               </button>
@@ -1980,20 +1972,20 @@ export default function AiInstructionsView({
 
       {/* MODAL 5: From Text Modal */}
       {isTextModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-[10px] max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 border-b border-[#DCE8F8]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-[10px] max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] dark:border-slate-800 animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-[#DCE8F8] dark:border-slate-800">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] dark:bg-blue-950/40 text-[#1677FF] flex items-center justify-center shrink-0">
                   <FileText className="w-4 h-4 text-[#1677FF]" />
                 </div>
-                <h3 className="font-bold text-[#12336B] text-sm">
+                <h3 className="font-bold text-[#12336B] dark:text-white text-sm">
                   Add Raw Text Knowledge
                 </h3>
               </div>
               <button
                 onClick={() => setIsTextModalOpen(false)}
-                className="text-[#8FA0BC] hover:text-[#12336B] p-1 cursor-pointer transition"
+                className="text-[#8FA0BC] dark:text-slate-400 hover:text-[#12336B] dark:hover:text-slate-200 p-1 cursor-pointer transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2001,7 +1993,7 @@ export default function AiInstructionsView({
 
             <div className="mt-4 space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-[#12336B] mb-1">
+                <label className="block font-semibold text-[#12336B] dark:text-slate-200 mb-1">
                   Document Title
                 </label>
                 <input
@@ -2009,12 +2001,12 @@ export default function AiInstructionsView({
                   placeholder="e.g. Underwriting_Exceptions.txt"
                   value={textTitleInput}
                   onChange={(e) => setTextTitleInput(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] transition shadow-xs"
+                  className="w-full px-3 py-1.5 border border-[#DCE8F8] dark:border-slate-700 bg-white dark:bg-slate-950 text-[#12336B] dark:text-slate-100 rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] transition shadow-xs"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-[#12336B] mb-1">
+                <label className="block font-semibold text-[#12336B] dark:text-slate-200 mb-1">
                   Text Content / Policy Rules
                 </label>
                 <textarea
@@ -2022,15 +2014,15 @@ export default function AiInstructionsView({
                   placeholder="Paste bank terms, company categories, FOIR rules, or underwriting exceptions..."
                   value={textContentInput}
                   onChange={(e) => setTextContentInput(e.target.value)}
-                  className="w-full p-2.5 border border-[#DCE8F8] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] text-[#12336B] leading-relaxed font-mono text-[11px] transition shadow-xs"
+                  className="w-full p-2.5 border border-[#DCE8F8] dark:border-slate-700 bg-white dark:bg-slate-950 text-[#12336B] dark:text-slate-100 leading-relaxed font-mono text-[11px] rounded-[7px] focus:outline-none focus:border-[#1677FF] focus:ring-1 focus:ring-[#1677FF] transition shadow-xs"
                 />
               </div>
             </div>
 
-            <div className="mt-5 pt-3 border-t border-[#DCE8F8] flex justify-end gap-2">
+            <div className="mt-5 pt-3 border-t border-[#DCE8F8] dark:border-slate-800 flex justify-end gap-2">
               <button
                 onClick={() => setIsTextModalOpen(false)}
-                className="px-3 py-1.5 text-xs text-[#526B91] hover:bg-[#F5F9FF] border border-[#DCE8F8] rounded-[7px] cursor-pointer transition"
+                className="px-3 py-1.5 text-xs text-[#526B91] dark:text-slate-300 hover:bg-[#F5F9FF] dark:hover:bg-slate-800 border border-[#DCE8F8] dark:border-slate-700 rounded-[7px] cursor-pointer transition"
               >
                 Cancel
               </button>
@@ -2048,60 +2040,60 @@ export default function AiInstructionsView({
 
       {/* MODAL 6: From Knowledge Base Library Modal (Real Database Bank Policies) */}
       {isLibraryModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-[10px] max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 border-b border-[#DCE8F8]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-[10px] max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-[#DCE8F8] dark:border-slate-800 animate-fadeIn">
+            <div className="flex items-center justify-between pb-3 border-b border-[#DCE8F8] dark:border-slate-800">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] text-[#1677FF] flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-[#EAF3FF] dark:bg-blue-950/40 text-[#1677FF] flex items-center justify-center shrink-0">
                   <BookOpen className="w-4 h-4 text-[#1677FF]" />
                 </div>
-                <h3 className="font-bold text-[#12336B] text-sm">
+                <h3 className="font-bold text-[#12336B] dark:text-white text-sm">
                   Knowledge Base Library
                 </h3>
               </div>
               <button
                 onClick={() => setIsLibraryModalOpen(false)}
-                className="text-[#8FA0BC] hover:text-[#12336B] p-1 cursor-pointer transition"
+                className="text-[#8FA0BC] dark:text-slate-400 hover:text-[#12336B] dark:hover:text-slate-200 p-1 cursor-pointer transition"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-[#526B91] mt-2 mb-3">
+            <p className="text-xs text-[#526B91] dark:text-slate-400 mt-2 mb-3">
               Select any verified bank master policy from the CreditWise database to attach and index for this agent:
             </p>
 
             {/* Library list */}
             <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
               {isLoadingLibrary ? (
-                <div className="py-10 text-center text-[#526B91]">
+                <div className="py-10 text-center text-[#526B91] dark:text-slate-400">
                   <RefreshCw className="w-5 h-5 text-[#1677FF] animate-spin mx-auto mb-2" />
                   <span className="text-xs">Loading verified policies from database...</span>
                 </div>
               ) : libraryPolicies.length === 0 ? (
-                <div className="py-8 text-center text-[#526B91] text-xs">
+                <div className="py-8 text-center text-[#526B91] dark:text-slate-400 text-xs">
                   No bank master policies found in database.
                 </div>
               ) : (
                 libraryPolicies.map((policy) => (
                   <div
                     key={policy.id || policy.bank_code}
-                    className="p-3 rounded-[8px] border border-[#DCE8F8] hover:border-[#1677FF]/40 bg-white hover:bg-[#F5F9FF] transition flex items-center justify-between gap-3 shadow-xs"
+                    className="p-3 rounded-[8px] border border-[#DCE8F8] dark:border-slate-800 hover:border-[#1677FF]/40 bg-white dark:bg-slate-800 hover:bg-[#F5F9FF] dark:hover:bg-slate-750 transition flex items-center justify-between gap-3 shadow-xs"
                   >
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-[#12336B]">
+                        <span className="text-xs font-bold text-[#12336B] dark:text-white">
                           {policy.bank_name}
                         </span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EAF3FF] text-[#1677FF]">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EAF3FF] dark:bg-blue-950/60 text-[#1677FF] dark:text-blue-300">
                           {policy.bank_code}
                         </span>
                       </div>
-                      <p className="text-[11px] text-[#526B91] line-clamp-1">
+                      <p className="text-[11px] text-[#526B91] dark:text-slate-400 line-clamp-1">
                         {policy.file_name || `${policy.bank_name} verified underwriting master policy`}
                       </p>
-                      <span className="text-[10px] text-[#079669] font-semibold flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3 text-[#079669]" />
+                      <span className="text-[10px] text-[#079669] dark:text-emerald-400 font-semibold flex items-center gap-1">
+                        <ShieldCheck className="w-3 h-3 text-[#079669] dark:text-emerald-400" />
                         Verified Bank Policy
                       </span>
                     </div>
@@ -2119,20 +2111,20 @@ export default function AiInstructionsView({
               )}
             </div>
 
-            <div className="mt-4 pt-3 border-t border-[#DCE8F8] flex justify-between items-center text-xs">
+            <div className="mt-4 pt-3 border-t border-[#DCE8F8] dark:border-slate-800 flex justify-between items-center text-xs">
               <button
                 type="button"
                 onClick={() => {
                   setIsLibraryModalOpen(false);
                   onNavigateToKnowledge();
                 }}
-                className="text-[#1677FF] hover:underline font-semibold cursor-pointer"
+                className="text-[#1677FF] dark:text-blue-400 hover:underline font-semibold cursor-pointer"
               >
                 Browse dedicated Knowledge Base page →
               </button>
               <button
                 onClick={() => setIsLibraryModalOpen(false)}
-                className="px-4 py-1.5 border border-[#DCE8F8] hover:bg-[#F5F9FF] text-[#526B91] rounded-[7px] font-semibold cursor-pointer transition"
+                className="px-4 py-1.5 border border-[#DCE8F8] dark:border-slate-700 hover:bg-[#F5F9FF] dark:hover:bg-slate-800 text-[#526B91] dark:text-slate-300 rounded-[7px] font-semibold cursor-pointer transition"
               >
                 Close
               </button>

@@ -469,16 +469,16 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
       bg = "bg-amber-50 text-amber-700 border-amber-200";
       label = "ANTHROPIC";
     } else if (p.includes("google")) {
-      bg = "bg-blue-50 text-blue-700 border-blue-200";
+      bg = "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800";
       label = "GOOGLE GEMINI";
     } else if (p.includes("groq")) {
-      bg = "bg-orange-50 text-orange-700 border-orange-200";
+      bg = "bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800";
       label = "GROQ";
     } else if (p.includes("custom") || p.includes("openrouter")) {
-      bg = "bg-purple-50 text-purple-700 border-purple-200";
+      bg = "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800";
       label = "OPENROUTER / GATEWAY";
     } else if (p.includes("ollama")) {
-      bg = "bg-slate-100 text-slate-700 border-slate-300";
+      bg = "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700";
       label = "OLLAMA";
     }
 
@@ -491,7 +491,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
           {label}
         </span>
         {isRoutedViaGateway && p !== "ollama" && (
-          <div className="flex items-center gap-1 text-[11px] text-emerald-600 font-medium" title="Routes via OpenRouter multi-provider key">
+          <div className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium" title="Routes via OpenRouter multi-provider key">
             <Zap className="w-3 h-3 text-emerald-500 shrink-0" />
             <span className="truncate">OpenRouter Gateway (Inherited Key)</span>
           </div>
@@ -502,15 +502,15 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
 
   // Purpose badge renderer
   const renderPurposeBadge = (purpose: string) => {
-    let style = "bg-blue-50 text-blue-700 border-blue-200";
+    let style = "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800";
     if (purpose.includes("Underwriting") || purpose.includes("Eligibility")) {
-      style = "bg-emerald-50 text-emerald-700 border-emerald-200";
+      style = "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
     } else if (purpose.includes("Complex Reasoning") || purpose.includes("Policy RAG")) {
-      style = "bg-indigo-50 text-indigo-700 border-indigo-200";
+      style = "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800";
     } else if (purpose.includes("Fast Extraction") || purpose.includes("Guardrails")) {
-      style = "bg-amber-50 text-amber-700 border-amber-200";
+      style = "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800";
     } else if (purpose.includes("Embeddings")) {
-      style = "bg-cyan-50 text-cyan-700 border-cyan-200";
+      style = "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800";
     }
 
     return (
@@ -522,18 +522,18 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
   };
 
   return (
-    <div className="w-full flex-1 bg-slate-50 min-h-full overflow-y-auto">
+    <div className="w-full flex-1 bg-slate-50 dark:bg-slate-950 min-h-full overflow-y-auto">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Model & Provider Management</h1>
-            <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-blue-200">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Model & Provider Management</h1>
+            <span className="bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
               Production Routing
             </span>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Configure LLM engines, manage API provider credentials, and inspect live assistant bindings.
           </p>
         </div>
@@ -545,7 +545,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
               fetchProviders();
             }}
             disabled={loadingModels || loadingProviders}
-            className="p-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            className="p-2 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
             title="Refresh list"
           >
             <RotateCw className={`w-4 h-4 ${(loadingModels || loadingProviders) ? "animate-spin" : ""}`} />
@@ -564,77 +564,77 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
       {/* Overview Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Active Default Model Card */}
-        <div className="bg-white border-2 border-blue-500/30 rounded-xl p-4 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
+        <div className="bg-white dark:bg-slate-900 border-2 border-blue-500/30 dark:border-blue-500/40 rounded-xl p-4 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 dark:bg-blue-950/30 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Assistant Default</span>
+            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Assistant Default</span>
             <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
           </div>
           <div className="mt-2">
-            <h3 className="font-bold text-slate-900 text-base truncate">
+            <h3 className="font-bold text-slate-900 dark:text-white text-base truncate">
               {activeDefaultModel ? activeDefaultModel.name : "Not Configured"}
             </h3>
-            <p className="text-xs text-slate-500 font-mono truncate mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono truncate mt-0.5">
               {activeDefaultModel ? activeDefaultModel.model_id : "No default selected"}
             </p>
           </div>
-          <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+          <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
             <CheckCircle2 className="w-3.5 h-3.5" />
             Active on CreditWise Assistant
           </div>
         </div>
 
         {/* Registered Models Count */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-xs font-semibold uppercase tracking-wider">Configured Models</span>
             <Cpu className="w-4 h-4 text-slate-400" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">{models.length}</span>
-            <span className="text-xs text-slate-500">models registered</span>
+            <span className="text-2xl font-bold text-slate-900 dark:text-white">{models.length}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">models registered</span>
           </div>
-          <div className="mt-3 text-xs text-slate-500">Available across all underwriting tools</div>
+          <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">Available across all underwriting tools</div>
         </div>
 
         {/* Provider API Keys Status */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-xs font-semibold uppercase tracking-wider">Active Providers</span>
             <Key className="w-4 h-4 text-slate-400" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">
+            <span className="text-2xl font-bold text-slate-900 dark:text-white">
               {providers.filter((p) => p.hasKey).length} / {providers.length}
             </span>
-            <span className="text-xs text-slate-500">keys verified</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">keys verified</span>
           </div>
-          <div className="mt-3 text-xs text-emerald-600 font-medium">OpenRouter & Custom Gateway live</div>
+          <div className="mt-3 text-xs text-emerald-600 dark:text-emerald-400 font-medium">OpenRouter & Custom Gateway live</div>
         </div>
 
         {/* Agent Bindings */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
             <span className="text-xs font-semibold uppercase tracking-wider">Agent Bindings</span>
             <Bot className="w-4 h-4 text-slate-400" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">4</span>
-            <span className="text-xs text-slate-500">active assistants</span>
+            <span className="text-2xl font-bold text-slate-900 dark:text-white">4</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">active assistants</span>
           </div>
-          <div className="mt-3 text-xs text-slate-500">Multi-Bank, Guardrail, RAG, QA</div>
+          <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">Multi-Bank, Guardrail, RAG, QA</div>
         </div>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="border-b border-slate-200">
+      <div className="border-b border-slate-200 dark:border-slate-800">
         <nav className="flex space-x-6">
           <button
             onClick={() => setActiveTab("models")}
             className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
               activeTab === "models"
-                ? "border-blue-600 text-blue-600 font-semibold"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                ? "border-blue-600 text-blue-600 dark:text-blue-400 font-semibold"
+                : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700"
             }`}
           >
             <Cpu className="w-4 h-4" />
@@ -645,8 +645,8 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
             onClick={() => setActiveTab("keys")}
             className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
               activeTab === "keys"
-                ? "border-blue-600 text-blue-600 font-semibold"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                ? "border-blue-600 text-blue-600 dark:text-blue-400 font-semibold"
+                : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700"
             }`}
           >
             <Key className="w-4 h-4" />
@@ -657,8 +657,8 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
             onClick={() => setActiveTab("usage")}
             className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
               activeTab === "usage"
-                ? "border-blue-600 text-blue-600 font-semibold"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                ? "border-blue-600 text-blue-600 dark:text-blue-400 font-semibold"
+                : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700"
             }`}
           >
             <Network className="w-4 h-4" />
@@ -671,7 +671,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
       {activeTab === "models" && (
         <div className="w-full space-y-4">
           {/* Filter Bar */}
-          <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 border border-slate-200 rounded-xl shadow-sm">
+          <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <div className="relative w-full sm:w-80">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
@@ -679,7 +679,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                 placeholder="Search by name, model ID, or provider..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-9 pr-3 py-1.5 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
 
@@ -687,7 +687,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
               <select
                 value={providerFilter}
                 onChange={(e) => setProviderFilter(e.target.value)}
-                className="text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="ALL">All Providers</option>
                 <option value="custom">Custom / OpenRouter</option>
@@ -701,7 +701,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
               <select
                 value={purposeFilter}
                 onChange={(e) => setPurposeFilter(e.target.value)}
-                className="text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="ALL">All Purposes</option>
                 {PURPOSE_OPTIONS.map((p) => (
@@ -733,22 +733,22 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
           </div>
 
           {/* Models Table */}
-          <div className="w-full bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
             {loadingModels ? (
-              <div className="p-12 text-center text-slate-500">
+              <div className="p-12 text-center text-slate-500 dark:text-slate-400">
                 <RotateCw className="w-6 h-6 animate-spin mx-auto text-blue-600 mb-2" />
                 <p className="text-sm">Loading configured models...</p>
               </div>
             ) : filteredModels.length === 0 ? (
-              <div className="p-12 text-center text-slate-500">
-                <Cpu className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-                <p className="font-medium text-slate-700">No models match your filters.</p>
-                <p className="text-xs text-slate-400 mt-1">Try resetting your search query or provider filter.</p>
+              <div className="p-12 text-center text-slate-500 dark:text-slate-400">
+                <Cpu className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                <p className="font-medium text-slate-700 dark:text-slate-300">No models match your filters.</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Try resetting your search query or provider filter.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-600">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-semibold text-slate-500 tracking-wider">
+                <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+                  <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-xs uppercase font-semibold text-slate-500 dark:text-slate-400 tracking-wider">
                     <tr>
                       <th className="px-5 py-3.5">Model Name & ID</th>
                       <th className="px-5 py-3.5">Provider</th>
@@ -757,31 +757,31 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                       <th className="px-5 py-3.5 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredModels.map((model) => (
-                      <tr key={model.id} className="hover:bg-slate-50/70 transition-colors">
+                      <tr key={model.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-colors">
                         {/* Name & ID */}
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-slate-900">{model.name}</span>
+                            <span className="font-semibold text-slate-900 dark:text-white">{model.name}</span>
                             {model.is_assistant_default && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                                 <Star className="w-3 h-3 fill-amber-500" />
                                 PRIMARY DEFAULT
                               </span>
                             )}
                           </div>
                           <div className="flex items-center gap-1.5 mt-1">
-                            <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono border border-slate-200">
+                            <code className="text-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-700 dark:text-slate-300 font-mono border border-slate-200 dark:border-slate-700">
                               {model.model_id}
                             </code>
                             <button
                               onClick={() => handleCopyId(model.id, model.model_id)}
-                              className="text-slate-400 hover:text-slate-600 transition-colors p-0.5"
+                              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-0.5"
                               title="Copy identifier"
                             >
                               {copiedId === model.id ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                               ) : (
                                 <Copy className="w-3.5 h-3.5" />
                               )}
@@ -798,17 +798,17 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                         {/* Assistant Status */}
                         <td className="px-5 py-4">
                           {model.is_assistant_default ? (
-                            <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
+                            <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
                               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                               Active Assistant Engine
                             </div>
                           ) : (
-                            <div className="text-xs text-slate-500">
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
                               Standby / Dedicated Purpose
                             </div>
                           )}
                           {model.assignedAgents && model.assignedAgents.length > 0 && (
-                            <div className="text-[11px] text-slate-400 mt-1 truncate max-w-xs">
+                            <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 truncate max-w-xs">
                               {model.assignedAgents.join(", ")}
                             </div>
                           )}
@@ -821,7 +821,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                               <button
                                 onClick={() => handleSetDefault(model)}
                                 disabled={actionLoading}
-                                className="px-2.5 py-1 text-xs font-semibold text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors disabled:opacity-50"
+                                className="px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-md hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors disabled:opacity-50"
                               >
                                 Set as Default
                               </button>
@@ -833,7 +833,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                                 setShowDeleteModal(true);
                               }}
                               disabled={actionLoading}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md transition-colors"
                               title="Delete model"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -851,13 +851,14 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
       )}
 
       {/* TAB 2: PROVIDER API KEYS */}
+      {/* TAB 2: PROVIDER API KEYS */}
       {activeTab === "keys" && (
         <div className="w-full space-y-4">
-          <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3 shadow-xs">
-            <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-900">
+          <div className="w-full bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-xl p-4 flex items-start gap-3 shadow-xs">
+            <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+            <div className="text-sm text-blue-900 dark:text-blue-200">
               <p className="font-semibold">Secure Credential Storage</p>
-              <p className="text-xs text-blue-700 mt-0.5">
+              <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
                 API keys are encrypted and stored in PostgreSQL. They are used securely on server-side model routing and never exposed in client bundles.
               </p>
             </div>
@@ -867,18 +868,18 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
             {providers.map((p) => (
               <div
                 key={p.id}
-                className="w-full bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-slate-300 transition-all flex flex-col justify-between"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-slate-900 text-base">{p.name}</h3>
+                    <h3 className="font-bold text-slate-900 dark:text-white text-base">{p.name}</h3>
                     {p.hasKey ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
                         <CheckCircle2 className="w-3 h-3" />
                         Configured
                       </span>
                     ) : (
-                      <span className="text-[11px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                      <span className="text-[11px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
                         Missing Key
                       </span>
                     )}
@@ -887,21 +888,21 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                   <div className="mt-3 space-y-2">
                     <div>
                       <span className="text-xs text-slate-400 uppercase font-semibold">Active Key</span>
-                      <p className="text-sm font-mono text-slate-800 bg-slate-50 p-2 rounded border border-slate-100 mt-0.5 truncate">
+                      <p className="text-sm font-mono text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-950 p-2 rounded border border-slate-100 dark:border-slate-800 mt-0.5 truncate">
                         {p.maskedKey}
                       </p>
                     </div>
 
                     <div>
                       <span className="text-xs text-slate-400 uppercase font-semibold">Base URL</span>
-                      <p className="text-xs font-mono text-slate-600 truncate mt-0.5">
+                      <p className="text-xs font-mono text-slate-600 dark:text-slate-400 truncate mt-0.5">
                         {p.baseUrl}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                   <button
                     onClick={() => {
                       setKeyModalProvider(p);
@@ -909,7 +910,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                       setNewBaseUrl(p.baseUrl);
                       setTestResult(null);
                     }}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                    className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                   >
                     Configure Key
                   </button>
@@ -917,7 +918,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                   <button
                     onClick={() => handleTestProvider(p.id)}
                     disabled={!p.hasKey || testingKey}
-                    className="px-3 py-1.5 text-blue-600 hover:bg-blue-50 text-xs font-semibold rounded-lg transition-colors border border-blue-200 disabled:opacity-40 cursor-pointer"
+                    className="px-3 py-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-xs font-semibold rounded-lg transition-colors border border-blue-200 dark:border-blue-800 disabled:opacity-40 cursor-pointer"
                   >
                     Test Ping
                   </button>
@@ -934,15 +935,15 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                 setCustomProviderKey("");
                 setShowCustomProviderModal(true);
               }}
-              className="w-full border-2 border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50/20 rounded-xl p-5 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[220px] group shadow-2xs"
+              className="w-full border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50/20 dark:hover:bg-blue-950/20 rounded-xl p-5 transition-all flex flex-col items-center justify-center text-center cursor-pointer min-h-[220px] group shadow-2xs"
             >
-              <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-blue-100 text-slate-500 group-hover:text-blue-600 flex items-center justify-center transition-colors mb-2">
+              <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-100 dark:group-hover:bg-blue-950 text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 flex items-center justify-center transition-colors mb-2">
                 <Plus className="w-5 h-5" />
               </div>
-              <h4 className="text-sm font-bold text-slate-800 group-hover:text-blue-600">
+              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
                 + Add Custom Provider
               </h4>
-              <p className="text-xs text-slate-500 mt-1 max-w-[200px] leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[200px] leading-relaxed">
                 Connect LiteLLM, Ollama, LM Studio, vLLM, or self-hosted API endpoints
               </p>
             </div>
@@ -953,92 +954,92 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
       {/* TAB 3: AGENT & ASSISTANT BINDINGS */}
       {activeTab === "usage" && (
         <div className="w-full space-y-4">
-          <div className="w-full bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-            <h3 className="font-bold text-slate-900 text-base mb-1">Custom Agent & Assistant Model Mapping</h3>
-            <p className="text-xs text-slate-500 mb-4">
+          <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+            <h3 className="font-bold text-slate-900 dark:text-white text-base mb-1">Custom Agent & Assistant Model Mapping</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               Inspect how the AI Finance platform routes requests to specialized models based on task domain and underwriting requirements.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-4 bg-slate-50 dark:bg-slate-950">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                    <Bot className="w-4 h-4 text-blue-600" />
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     CreditWise Primary Assistant
                   </h4>
-                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
                     User-Facing Default
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 mt-1">
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                   Handles general user loan queries, multi-turn dialogue, greetings, and chat responses.
                 </p>
-                <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Bound Engine:</span>
-                  <span className="text-xs font-bold font-mono text-slate-800">
+                <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Bound Engine:</span>
+                  <span className="text-xs font-bold font-mono text-slate-800 dark:text-slate-200">
                     {activeDefaultModel?.name || "NVIDIA Nemotron 3 Ultra"}
                   </span>
                 </div>
               </div>
 
-              <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-4 bg-slate-50 dark:bg-slate-950">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-amber-600" />
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                     CreditWise Guardrail & Pre-Processor
                   </h4>
-                  <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
                     Stage 1 Filter
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 mt-1">
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                   Filters non-salaried tokens (student, homemaker, unemployed) and handles company disavowals deterministically.
                 </p>
-                <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Bound Engine:</span>
-                  <span className="text-xs font-bold font-mono text-slate-800">
+                <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Bound Engine:</span>
+                  <span className="text-xs font-bold font-mono text-slate-800 dark:text-slate-200">
                     Deterministic Zero-Hallucination Guardrail
                   </span>
                 </div>
               </div>
 
-              <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-4 bg-slate-50 dark:bg-slate-950">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-emerald-600" />
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     Multi-Bank Eligibility Wizard
                   </h4>
-                  <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800">
                     Stage 3 Tool
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 mt-1">
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                   Evaluates applicant profile across all 23 partner lenders without LLM guessing.
                 </p>
-                <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Bound Engine:</span>
-                  <span className="text-xs font-bold font-mono text-slate-800">
+                <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Bound Engine:</span>
+                  <span className="text-xs font-bold font-mono text-slate-800 dark:text-slate-200">
                     23-Lender Master Policy Engine
                   </span>
                 </div>
               </div>
 
-              <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-4 bg-slate-50 dark:bg-slate-950">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-indigo-600" />
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                     Policy RAG & Parameter Retriever
                   </h4>
-                  <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                  <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
                     Structured RAG
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 mt-1">
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                   Answers targeted questions on CIBIL, FOIR, and ROI using verified `.txt` policy files.
                 </p>
-                <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Bound Engine:</span>
-                  <span className="text-xs font-bold font-mono text-slate-800">
+                <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Bound Engine:</span>
+                  <span className="text-xs font-bold font-mono text-slate-800 dark:text-slate-200">
                     PolicyPgVector + Structured Formatter
                   </span>
                 </div>
@@ -1050,16 +1051,16 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
 
       {/* MODAL: REGISTER NEW MODEL */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-2">
-                <Cpu className="w-5 h-5 text-blue-600" />
-                <h3 className="font-bold text-slate-900 text-lg">Register New Model</h3>
+                <Cpu className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-bold text-slate-900 dark:text-white text-lg">Register New Model</h3>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1067,7 +1068,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
 
             <form onSubmit={handleRegisterModel} className="space-y-4 mt-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
                   Model Display Name
                 </label>
                 <input
@@ -1075,13 +1076,13 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                   placeholder="e.g. Claude 3.5 Sonnet, Llama 3.3 70B"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
                   Model Identifier (API Slug)
                 </label>
                 <input
@@ -1089,18 +1090,18 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                   placeholder="e.g. claude-3-5-sonnet-20241022 or llama-3.3-70b-versatile"
                   value={formModelId}
                   onChange={(e) => setFormModelId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 text-sm font-mono bg-white dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Provider</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">Provider</label>
                   <select
                     value={formProvider}
                     onChange={(e) => setFormProvider(e.target.value as ModelProvider)}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-slate-950 text-slate-900 dark:text-white"
                   >
                     {PROVIDER_OPTIONS.map((opt) => (
                       <option key={opt.id} value={opt.id}>
@@ -1111,11 +1112,11 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Specific Purpose</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">Specific Purpose</label>
                   <select
                     value={formPurpose}
                     onChange={(e) => setFormPurpose(e.target.value as ModelPurpose)}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-slate-950 text-slate-900 dark:text-white"
                   >
                     {PURPOSE_OPTIONS.map((opt) => (
                       <option key={opt} value={opt}>
@@ -1127,48 +1128,48 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
               </div>
 
               <div className="space-y-2 pt-2">
-                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                <label className="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-800 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                   <input
                     type="checkbox"
                     checked={formRouteViaGateway}
                     onChange={(e) => setFormRouteViaGateway(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 dark:border-slate-700 focus:ring-blue-500"
                   />
                   <div>
-                    <span className="text-sm font-semibold text-slate-900 block flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       Route via OpenRouter / Unified Gateway
                     </span>
-                    <span className="text-xs text-slate-500 block">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 block">
                       Inherits the active OpenRouter credentials. No direct provider API key is required.
                     </span>
                   </div>
                 </label>
 
-                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                <label className="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-800 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                   <input
                     type="checkbox"
                     checked={formIsDefault}
                     onChange={(e) => setFormIsDefault(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 dark:border-slate-700 focus:ring-blue-500"
                   />
                   <div>
-                    <span className="text-sm font-semibold text-slate-900 block flex items-center gap-1.5">
+                    <span className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
                       <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
                       Set as Primary Assistant Default
                     </span>
-                    <span className="text-xs text-slate-500 block">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 block">
                       Promotes this model to handle primary customer conversations in the central chat agent.
                     </span>
                   </div>
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1197,21 +1198,21 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
 
       {/* MODAL: DELETE MODEL CONFIRMATION */}
       {showDeleteModal && modelToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
-            <div className="flex items-center gap-3 text-rose-600 mb-3">
-              <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400 mb-3">
+              <div className="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-950/50 flex items-center justify-center">
                 <AlertTriangle className="w-5 h-5" />
               </div>
-              <h3 className="font-bold text-slate-900 text-lg">Delete Model</h3>
+              <h3 className="font-bold text-slate-900 dark:text-white text-lg">Delete Model</h3>
             </div>
 
-            <p className="text-sm text-slate-600">
-              Are you sure you want to remove <span className="font-bold text-slate-900">"{modelToDelete.name}"</span>?
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Are you sure you want to remove <span className="font-bold text-slate-900 dark:text-white">"{modelToDelete.name}"</span>?
             </p>
 
             {modelToDelete.is_assistant_default && (
-              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+              <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-800 dark:text-amber-200">
                 ⚠️ This model is currently the primary assistant default. Deleting it will automatically promote the next available model.
               </div>
             )}
@@ -1223,7 +1224,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                   setShowDeleteModal(false);
                   setModelToDelete(null);
                 }}
-                className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
@@ -1242,12 +1243,12 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
 
       {/* MODAL: CONFIGURE PROVIDER KEY */}
       {keyModalProvider && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-2">
-                <Key className="w-5 h-5 text-blue-600" />
-                <h3 className="font-bold text-slate-900 text-lg">
+                <Key className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-bold text-slate-900 dark:text-white text-lg">
                   Configure {keyModalProvider.name} API Key
                 </h3>
               </div>
@@ -1256,7 +1257,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                   setKeyModalProvider(null);
                   setTestResult(null);
                 }}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1264,7 +1265,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
 
             <form onSubmit={handleSaveProviderKey} className="space-y-4 mt-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
                   API Key
                 </label>
                 <div className="relative">
@@ -1273,13 +1274,13 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                     placeholder={`Paste ${keyModalProvider.name} API key...`}
                     value={newApiKey}
                     onChange={(e) => setNewApiKey(e.target.value)}
-                    className="w-full pl-3 pr-10 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full pl-3 pr-10 py-2 text-sm font-mono bg-white dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowRawKey(!showRawKey)}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                   >
                     {showRawKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -1287,7 +1288,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
                   API Endpoint / Base URL
                 </label>
                 <input
@@ -1295,7 +1296,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                   placeholder={keyModalProvider.defaultBaseUrl}
                   value={newBaseUrl}
                   onChange={(e) => setNewBaseUrl(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 text-sm font-mono bg-white dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
 
@@ -1303,15 +1304,15 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                 <div
                   className={`p-3 rounded-lg text-xs font-medium border ${
                     testResult.success
-                      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                      : "bg-rose-50 text-rose-800 border-rose-200"
+                      ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                      : "bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800"
                   }`}
                 >
                   <div className="flex items-center gap-1.5 font-bold">
                     {testResult.success ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     ) : (
-                      <AlertTriangle className="w-4 h-4 text-rose-600" />
+                      <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                     )}
                     {testResult.message}
                     {testResult.latencyMs && ` (${testResult.latencyMs}ms)`}
@@ -1319,12 +1320,12 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => handleTestProvider(keyModalProvider.id, newApiKey)}
                   disabled={!newApiKey.trim() || testingKey}
-                  className="px-3 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-semibold disabled:opacity-40"
+                  className="px-3 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-semibold disabled:opacity-40"
                 >
                   {testingKey ? "Testing..." : "Test Connection"}
                 </button>
@@ -1336,7 +1337,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                       setKeyModalProvider(null);
                       setTestResult(null);
                     }}
-                    className="px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    className="px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                   >
                     Cancel
                   </button>
@@ -1356,17 +1357,17 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
 
       {/* MODAL: ADD CUSTOM PROVIDER */}
       {showCustomProviderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-scaleIn">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-scaleIn text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-2">
-                <Server className="w-5 h-5 text-blue-600" />
-                <h3 className="font-bold text-slate-900 text-lg">Add Custom Provider Endpoint</h3>
+                <Server className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-bold text-slate-900 dark:text-white text-lg">Add Custom Provider Endpoint</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowCustomProviderModal(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1374,7 +1375,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
 
             <form onSubmit={handleSaveCustomProvider} className="space-y-4 mt-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
                   Provider Display Name
                 </label>
                 <input
@@ -1388,13 +1389,13 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                       setCustomProviderId(val.toLowerCase().replace(/[^a-z0-9]/g, "-"));
                     }
                   }}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
                   Provider Identifier Slug
                 </label>
                 <input
@@ -1402,13 +1403,13 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                   placeholder="e.g. litellm, vllm, lmstudio"
                   value={customProviderId}
                   onChange={(e) => setCustomProviderId(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
-                  className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 text-sm font-mono bg-white dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1">
                   API Endpoint / Base URL
                 </label>
                 <input
@@ -1416,30 +1417,30 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                   placeholder="e.g. http://localhost:4000/v1 or https://ai-proxy.internal.corp/v1"
                   value={customProviderBaseUrl}
                   onChange={(e) => setCustomProviderBaseUrl(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 text-sm font-mono bg-white dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1 flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase mb-1 flex items-center justify-between">
                   <span>API Key (Optional / Bearer Token)</span>
-                  <span className="text-[10px] text-slate-400 font-normal">Leave empty for local Ollama/LM Studio</span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Leave empty for local Ollama/LM Studio</span>
                 </label>
                 <input
                   type="password"
                   placeholder="sk-... or leave blank if unauthenticated"
                   value={customProviderKey}
                   onChange={(e) => setCustomProviderKey(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 text-sm font-mono bg-white dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowCustomProviderModal(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   Cancel
                 </button>

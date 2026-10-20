@@ -98,6 +98,12 @@ export async function GET(request: NextRequest) {
       );
       const availableBanks = banksRes.rows.map((r) => r.bank_name);
 
+      // 4. Fetch list of distinct categories for filter dropdown
+      const catsRes = await client.query(
+        "SELECT DISTINCT company_category FROM bank_company_data WHERE company_category IS NOT NULL AND company_category <> '' ORDER BY company_category ASC LIMIT 40"
+      );
+      const availableCategories = catsRes.rows.map((r) => r.company_category);
+
       return NextResponse.json({
         success: true,
         records: recordsRes.rows,
@@ -106,6 +112,7 @@ export async function GET(request: NextRequest) {
         limit,
         totalPages: Math.ceil(total / limit),
         availableBanks,
+        availableCategories,
       });
     } finally {
       client.release();
@@ -118,3 +125,198 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// POST: Add new single company record
+export async function POST(request: NextRequest) {
+  try {
+    const token = request.cookies.get("token")?.value;
+    const user = token ? verifyToken(token) : null;
+    const isAdmin =
+      user &&
+      (String(user.role || "").trim().toLowerCase() === "admin" ||
+        (user as any).is_admin === true ||
+        String(user.email || "").toLowerCase() === "admin@gmail.com" ||
+        String(user.email || "").toLowerCase() === "akshadasagar31@gmail.com" ||
+        String(user.email || "").toLowerCase().startsWith("admin"));
+
+    if (!isAdmin) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized. Admin privileges required." },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const companyName = (body.company_name || "").trim();
+    const bankName = (body.bank_name || "").trim() || "Corporate Master";
+    const category = (body.company_category || "").trim() || "Approved";
+    const otherInfo = (body.other_info || "").trim();
+
+    if (!companyName) {
+      return NextResponse.json(
+        { success: false, error: "Company name is required." },
+        { status: 400 }
+      );
+    }
+
+    const client = await pool.connect();
+    try {
+      const res = await client.query(
+        `INSERT INTO bank_company_data (company_name, bank_name, company_category, other_info, sr_no)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, company_name, bank_name, company_category, other_info, sr_no`,
+        [companyName, bankName, category, otherInfo, `MANUAL-${Date.now().toString(36).toUpperCase()}`]
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: `Company record "${companyName}" created successfully.`,
+        record: res.rows[0],
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error("Error creating company record:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to create company record" },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT: Update an existing company record
+export async function PUT(request: NextRequest) {
+  try {
+    const token = request.cookies.get("token")?.value;
+    const user = token ? verifyToken(token) : null;
+    const isAdmin =
+      user &&
+      (String(user.role || "").trim().toLowerCase() === "admin" ||
+        (user as any).is_admin === true ||
+        String(user.email || "").toLowerCase() === "admin@gmail.com" ||
+        String(user.email || "").toLowerCase() === "akshadasagar31@gmail.com" ||
+        String(user.email || "").toLowerCase().startsWith("admin"));
+
+    if (!isAdmin) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized. Admin privileges required." },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const id = parseInt(body.id, 10);
+    const companyName = (body.company_name || "").trim();
+    const bankName = (body.bank_name || "").trim() || "Corporate Master";
+    const category = (body.company_category || "").trim() || "Approved";
+    const otherInfo = (body.other_info || "").trim();
+
+    if (!id || !companyName) {
+      return NextResponse.json(
+        { success: false, error: "Record ID and Company Name are required." },
+        { status: 400 }
+      );
+    }
+
+    const client = await pool.connect();
+    try {
+      const res = await client.query(
+        `UPDATE bank_company_data
+         SET company_name = $1, bank_name = $2, company_category = $3, other_info = $4
+         WHERE id = $5
+         RETURNING id, company_name, bank_name, company_category, other_info, sr_no`,
+        [companyName, bankName, category, otherInfo, id]
+      );
+
+      if (res.rows.length === 0) {
+        return NextResponse.json(
+          { success: false, error: "Record not found." },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `Company record "${companyName}" updated successfully.`,
+        record: res.rows[0],
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error("Error updating company record:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to update company record" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE: Delete a company record
+export async function DELETE(request: NextRequest) {
+  try {
+    const token = request.cookies.get("token")?.value;
+    const user = token ? verifyToken(token) : null;
+    const isAdmin =
+      user &&
+      (String(user.role || "").trim().toLowerCase() === "admin" ||
+        (user as any).is_admin === true ||
+        String(user.email || "").toLowerCase() === "admin@gmail.com" ||
+        String(user.email || "").toLowerCase() === "akshadasagar31@gmail.com" ||
+        String(user.email || "").toLowerCase().startsWith("admin"));
+
+    if (!isAdmin) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized. Admin privileges required." },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    let id = parseInt(searchParams.get("id") || "0", 10);
+
+    if (!id) {
+      try {
+        const body = await request.json();
+        id = parseInt(body.id, 10);
+      } catch {}
+    }
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: "Valid company record ID is required." },
+        { status: 400 }
+      );
+    }
+
+    const client = await pool.connect();
+    try {
+      const res = await client.query(
+        "DELETE FROM bank_company_data WHERE id = $1 RETURNING id, company_name",
+        [id]
+      );
+
+      if (res.rows.length === 0) {
+        return NextResponse.json(
+          { success: false, error: "Record not found or already deleted." },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `Company record "${res.rows[0].company_name}" deleted successfully.`,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error: any) {
+    console.error("Error deleting company record:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to delete company record" },
+      { status: 500 }
+    );
+  }
+}
+

@@ -299,18 +299,6 @@ function AgentStudioContent() {
     }
   }, [selectedAgentId, selectedAgent]);
 
-  const activeAgent = {
-    ...currentAgent,
-    is_active: currentAgent.isActiveForUser !== false && currentAgent.status === "active",
-  };
-
-  function handleDeleteAgent() {
-    setDeleteConfirmAgentId(currentAgent.id);
-  }
-
-  async function handleSaveInstructions() {
-    await handleSaveChanges();
-  }
 
   function handleUpdateCurrentAgent(updates: Partial<Agent>) {
     setAgents((prev) =>
@@ -568,56 +556,6 @@ function AgentStudioContent() {
 
         {/* Studio Content Viewport */}
         <div className="flex-1 flex flex-col h-full overflow-hidden">
-          {/* Top action bar */}
-          <div className="px-4 sm:px-6 pt-4 pb-2 bg-slate-50 dark:bg-slate-950 shrink-0">
-            <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
-              <div className="flex items-center gap-3">
-                {/* Agent Selector Dropdown */}
-                <select
-                  value={selectedAgentId}
-                  onChange={(e) => setSelectedAgentId(e.target.value)}
-                  className="px-3.5 py-2 text-sm font-semibold bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                >
-                  {agents.map((agent: any) => (
-                    <option key={agent.id} value={agent.id}>
-                      {agent.name}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Status Badge */}
-                <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-medium flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  {activeAgent?.is_active ? "Active" : "Inactive"}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 transition cursor-pointer"
-                >
-                  + Create Agent
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleDeleteAgent}
-                  className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-rose-600 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-lg hover:bg-rose-100 transition cursor-pointer"
-                >
-                  Delete
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveInstructions}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm transition cursor-pointer"
-                >
-                  Save Instructions
-                </button>
-              </div>
-            </div>
-          </div>
 
           {/* Mobile sub-bar if on small screens */}
           <div className="lg:hidden flex items-center justify-between px-4 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-300 dark:border-slate-800 shadow-2xs">
@@ -716,27 +654,27 @@ function AgentStudioContent() {
       {/* Create New Agent Modal (Option B: Modal Prompt) */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleIn">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleIn">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-slate-50 shrink-0">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-slate-50 dark:from-slate-900 dark:via-slate-800/80 dark:to-slate-900 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs ring-4 ring-blue-50">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs ring-4 ring-blue-50 dark:ring-blue-900/30">
                   <Bot className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <span>Create New AI Agent</span>
-                    <span className="text-[10px] font-semibold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-100/80 dark:bg-blue-900/40 px-2 py-0.5 rounded-full uppercase tracking-wider">
                       Option B Modal
                     </span>
                   </h3>
-                  <p className="text-xs text-slate-500">Configure persona presets, assigned model, and initial prompt</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Configure persona presets, assigned model, and initial prompt</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                 title="Close modal"
               >
                 <X className="w-5 h-5" />
@@ -750,12 +688,12 @@ function AgentStudioContent() {
             >
               {/* 1. Base Template / Persona Presets */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-blue-600" />
+                    <Layers className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     Base Template / Persona Preset
                   </span>
-                  <span className="text-[11px] font-normal text-slate-500 lowercase">click to auto-populate</span>
+                  <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400 lowercase">click to auto-populate</span>
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {PRESET_TEMPLATES.map((preset) => {
@@ -767,24 +705,24 @@ function AgentStudioContent() {
                         onClick={() => handleSelectPreset(preset.id)}
                         className={`text-left p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
                           isSelected
-                            ? "border-blue-500 bg-blue-50/70 shadow-xs ring-2 ring-blue-500/20"
-                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                            ? "border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 shadow-xs ring-2 ring-blue-500/20"
+                            : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-1 mb-1">
-                          <span className={`text-xs font-bold truncate ${isSelected ? "text-blue-900" : "text-slate-800"}`}>
+                          <span className={`text-xs font-bold truncate ${isSelected ? "text-blue-900 dark:text-blue-200" : "text-slate-800 dark:text-slate-200"}`}>
                             {preset.name}
                           </span>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
+                          {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                         </div>
-                        <span className="text-[10px] text-slate-500 line-clamp-2 leading-tight">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-tight">
                           {preset.description}
                         </span>
-                        <div className="mt-1.5 pt-1 border-t border-slate-100 flex items-center justify-between text-[9px] text-slate-400">
-                          <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">
+                        <div className="mt-1.5 pt-1 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-[9px] text-slate-400">
+                          <span className="bg-slate-100 dark:bg-slate-700 dark:text-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-mono">
                             {preset.model.replace("-mini", "")}
                           </span>
-                          <span className="font-semibold text-blue-600">{preset.badge}</span>
+                          <span className="font-semibold text-blue-600 dark:text-blue-400">{preset.badge}</span>
                         </div>
                       </button>
                     );
@@ -795,7 +733,7 @@ function AgentStudioContent() {
               {/* 2. Agent Name & Model Assignment */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Agent Name <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -804,19 +742,19 @@ function AgentStudioContent() {
                     placeholder="e.g. Mortgage Advisor, KYC Verification Bot"
                     value={newAgentName}
                     onChange={(e) => setNewAgentName(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-white shadow-2xs"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-950 shadow-2xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
-                    <Cpu className="w-3.5 h-3.5 text-blue-600" />
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                    <Cpu className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     Model Assignment
                   </label>
                   <select
                     value={newAgentModel}
                     onChange={(e) => setNewAgentModel(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-white shadow-2xs cursor-pointer"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-950 shadow-2xs cursor-pointer"
                   >
                     <option value="gpt-4o-mini">gpt-4o-mini (OpenAI · Fast & cost-efficient)</option>
                     <option value="gpt-4o">gpt-4o (OpenAI · Advanced reasoning)</option>
@@ -830,13 +768,13 @@ function AgentStudioContent() {
               {/* 3. Tone of Voice & Response Style */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Tone of Voice
                   </label>
                   <select
                     value={newAgentTone}
                     onChange={(e) => setNewAgentTone(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-white shadow-2xs cursor-pointer"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-950 shadow-2xs cursor-pointer"
                   >
                     <option value="Professional and friendly">Professional and friendly</option>
                     <option value="Formal and authoritative">Formal and authoritative</option>
@@ -846,13 +784,13 @@ function AgentStudioContent() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Response Style
                   </label>
                   <select
                     value={newAgentResponseStyle}
                     onChange={(e) => setNewAgentResponseStyle(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-white shadow-2xs cursor-pointer"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-950 shadow-2xs cursor-pointer"
                   >
                     <option value="Clear, helpful, concise">Clear, helpful, concise</option>
                     <option value="Detailed and thorough">Detailed and thorough</option>
@@ -864,7 +802,7 @@ function AgentStudioContent() {
               {/* 4. Description / Role */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Assigned Role
                   </label>
                   <input
@@ -872,12 +810,12 @@ function AgentStudioContent() {
                     placeholder="e.g. Mortgage & Home Loan Advisor"
                     value={newAgentRole}
                     onChange={(e) => setNewAgentRole(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-white shadow-2xs"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-950 shadow-2xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Brief Description
                   </label>
                   <input
@@ -885,16 +823,16 @@ function AgentStudioContent() {
                     placeholder="e.g. Assists users with home loan eligibility and LTV"
                     value={newAgentDescription}
                     onChange={(e) => setNewAgentDescription(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-white shadow-2xs"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-950 shadow-2xs"
                   />
                 </div>
               </div>
 
               {/* 5. Initial System Instruction Prompt */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
                   <span>Initial System Instruction Prompt</span>
-                  <span className="text-[11px] font-normal text-slate-400">
+                  <span className="text-[11px] font-normal text-slate-400 dark:text-slate-500">
                     {newAgentPrompt.length} chars
                   </span>
                 </label>
@@ -903,16 +841,16 @@ function AgentStudioContent() {
                   placeholder="For bank-specific values (minimum salary, cut-off CIBIL scores, LTV ratios, interest rates), rely strictly on verified knowledge base files. For general financial definitions or industry acronyms (e.g., FOIR, LTV, CIBIL, EMI), provide clear standard financial definitions while noting that exact percentage thresholds depend on individual lender policy."
                   value={newAgentPrompt}
                   onChange={(e) => setNewAgentPrompt(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-mono leading-relaxed border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 bg-slate-50/50 shadow-2xs resize-y min-h-[90px]"
+                  className="w-full px-3 py-2 text-xs font-mono leading-relaxed border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 text-slate-800 dark:text-slate-100 bg-slate-50/50 dark:bg-slate-950 shadow-2xs resize-y min-h-[90px]"
                 />
               </div>
 
               {/* Modal Footer */}
-              <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-100">
+              <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -943,53 +881,53 @@ function AgentStudioContent() {
       {/* Modernized Delete Agent Warning Modal */}
       {deleteConfirmAgentId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-2xl border border-rose-200/80 shadow-2xl w-full max-w-md overflow-hidden animate-scaleIn">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-rose-200/80 dark:border-rose-900/60 shadow-2xl w-full max-w-md overflow-hidden animate-scaleIn">
             <div className="p-6">
               <div className="flex items-center gap-3.5 mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shadow-xs ring-4 ring-rose-50/60 shrink-0">
-                  <AlertTriangle className="w-6 h-6 text-rose-600 animate-pulse" />
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 flex items-center justify-center shadow-xs ring-4 ring-rose-50/60 dark:ring-rose-950/40 shrink-0">
+                  <AlertTriangle className="w-6 h-6 text-rose-600 dark:text-rose-400 animate-pulse" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 leading-tight">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
                     Permanently Delete Agent?
                   </h3>
-                  <span className="text-[11px] font-semibold text-rose-600 uppercase tracking-wide">
+                  <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wide">
                     Destructive Action • Irreversible
                   </span>
                 </div>
               </div>
 
               {/* Agent Preview Box */}
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 mb-4">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 mb-4">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-medium">Target Agent:</span>
-                  <span className="font-bold text-slate-900">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Target Agent:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
                     {agents.find((a) => a.id === deleteConfirmAgentId)?.name || 'CreditWise Assistant'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-[11px] mt-1 text-slate-500">
+                <div className="flex items-center justify-between text-[11px] mt-1 text-slate-500 dark:text-slate-400">
                   <span>Assigned Role:</span>
-                  <span className="font-medium text-slate-700 capitalize">
+                  <span className="font-medium text-slate-700 dark:text-slate-300 capitalize">
                     {agents.find((a) => a.id === deleteConfirmAgentId)?.instructions?.agentRole || 'Loan Specialist'}
                   </span>
                 </div>
               </div>
 
-              <div className="text-xs text-slate-600 space-y-2 leading-relaxed">
+              <div className="text-xs text-slate-600 dark:text-slate-300 space-y-2 leading-relaxed">
                 <p>
                   You are about to delete this agent and its complete configuration.
                 </p>
-                <div className="p-3 rounded-xl bg-rose-50/70 border border-rose-200/80 text-rose-800 text-[11px] font-medium leading-relaxed">
+                <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 text-rose-800 dark:text-rose-200 text-[11px] font-medium leading-relaxed">
                   ⚠️ <strong>Irreversible warning:</strong> All custom system instructions, uploaded knowledge documents, pgvector embeddings, and conversation histories tied to this agent will be permanently erased.
                 </div>
               </div>
 
-              <div className="mt-6 flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <div className="mt-6 flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   disabled={isDeleting}
                   onClick={() => setDeleteConfirmAgentId(null)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition shadow-xs cursor-pointer active:scale-95"
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl transition shadow-xs cursor-pointer active:scale-95"
                 >
                   Cancel
                 </button>

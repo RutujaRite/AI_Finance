@@ -36,7 +36,7 @@ interface ParsedCompanyRecord {
   other_info: string;
 }
 
-function parseCompanyFile(buffer: Buffer, originalName: string): ParsedCompanyRecord[] {
+function parseCompanyFile(buffer: Buffer, originalName: string, selectedBankName?: string): ParsedCompanyRecord[] {
   const ext = path.extname(originalName).toLowerCase();
   let rows: any[] = [];
 
@@ -72,6 +72,8 @@ function parseCompanyFile(buffer: Buffer, originalName: string): ParsedCompanyRe
     .replace(/\(\d+\)$/, "")
     .trim();
 
+  const chosenBank = (selectedBankName && selectedBankName.trim()) || defaultBankFromFileName || "Corporate Master";
+
   const records: ParsedCompanyRecord[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -105,7 +107,7 @@ function parseCompanyFile(buffer: Buffer, originalName: string): ParsedCompanyRe
     if (compName) {
       records.push({
         company_name: compName.slice(0, 255),
-        bank_name: (bankName || defaultBankFromFileName || "Partner Bank").slice(0, 255),
+        bank_name: (selectedBankName?.trim() || bankName || chosenBank).slice(0, 255),
         company_category: (compCat || "Approved").slice(0, 100),
         sr_no: (srNo || String(i + 1)).slice(0, 100),
         other_info: otherInfo,
@@ -312,6 +314,7 @@ export async function POST(req: NextRequest) {
     await ensureUploadDir();
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
+    const selectedBank = (formData.get("bank_name") as string || "").trim();
     if (!file || file.size === 0) {
       return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
     }
@@ -354,8 +357,8 @@ export async function POST(req: NextRequest) {
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     await writeFile(filePath, fileBuffer);
 
-    // Parse company categorization records
-    const parsedRecords = parseCompanyFile(fileBuffer, originalName);
+    // Parse company categorization records with explicit bank
+    const parsedRecords = parseCompanyFile(fileBuffer, originalName, selectedBank);
 
     const client = await pool.connect();
     try {

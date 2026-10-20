@@ -174,17 +174,17 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
   const isAlertThresholdReached = summary.budgetUsedPercent >= summary.alertThresholdPercent;
 
   return (
-    <div className="w-full flex-1 bg-slate-50 min-h-full overflow-y-auto">
+    <div className="w-full flex-1 bg-slate-50 dark:bg-slate-950 min-h-full overflow-y-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* CallNow Style Page Header */}
         <div className="cn-page-header">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 shadow-xs shrink-0">
-              <Activity className="w-6 h-6 text-purple-600" />
+            <div className="w-11 h-11 rounded-2xl bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 flex items-center justify-center text-purple-600 dark:text-purple-400 shadow-xs shrink-0">
+              <Activity className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">AI Token Usage &amp; Analytics</h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">AI Token Usage &amp; Analytics</h1>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Real-time tracking of LLM token consumption, prompt vs completion breakdowns, and budget limits.
               </p>
             </div>
@@ -193,16 +193,16 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
           <div className="cn-page-header-actions">
             <button
               onClick={() => setIsBudgetModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 hover:border-slate-400 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 shadow-2xs transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-2xs transition-all cursor-pointer"
             >
-              <Sliders className="w-3.5 h-3.5 text-slate-500" />
+              <Sliders className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               <span>Configure Budget</span>
             </button>
 
             <button
               onClick={handleClearLogs}
               disabled={isClearing || recentLogs.length === 0}
-              className="flex items-center gap-1.5 px-3.5 py-2 border border-rose-300 hover:border-rose-400 rounded-lg text-xs font-semibold text-rose-600 bg-white hover:bg-rose-50 shadow-2xs transition-all cursor-pointer disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-rose-300 dark:border-rose-800 hover:border-rose-400 dark:hover:border-rose-700 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 shadow-2xs transition-all cursor-pointer disabled:opacity-40"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Clear History</span>
@@ -221,8 +221,8 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
 
         {/* Alert Banner if Near/Over Budget */}
         {isAlertThresholdReached && (
-          <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-3 text-amber-900 text-xs shadow-xs">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-2xl flex items-start gap-3 text-amber-900 dark:text-amber-200 text-xs shadow-xs">
+            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div>
               <strong className="font-bold">Token Usage Alert:</strong> You have consumed{" "}
               {summary.budgetUsedPercent}% of your monthly token budget ({summary.totalTokens.toLocaleString()} /{" "}
@@ -234,32 +234,32 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
         {/* Responsive 4-Card KPI Grid (1 col -> 2 col -> 4 col) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Total Tokens */}
-          <div className="bg-white border border-slate-300 rounded-2xl p-5 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 shrink-0">
+          <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl p-5 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
               <Zap className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Tokens</div>
-              <div className="text-2xl font-extrabold text-slate-900 tabular-nums tracking-tight">
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Total Tokens</div>
+              <div className="text-2xl font-extrabold text-slate-900 dark:text-white tabular-nums tracking-tight">
                 {summary.totalTokens.toLocaleString()}
               </div>
-              <div className="inline-flex items-center gap-1.5 text-xs text-purple-700 font-semibold mt-1">
+              <div className="inline-flex items-center gap-1.5 text-xs text-purple-700 dark:text-purple-300 font-semibold mt-1">
                 <span>{summary.totalCalls} calls executed</span>
               </div>
             </div>
           </div>
 
           {/* Card 2: Prompt Tokens */}
-          <div className="bg-white border border-slate-300 rounded-2xl p-5 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-600 shrink-0">
+          <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl p-5 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
               <Layers className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Prompt Tokens</div>
-              <div className="text-2xl font-extrabold text-slate-900 tabular-nums tracking-tight">
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Prompt Tokens</div>
+              <div className="text-2xl font-extrabold text-slate-900 dark:text-white tabular-nums tracking-tight">
                 {summary.promptTokens.toLocaleString()}
               </div>
-              <div className="inline-flex items-center gap-1 text-xs text-sky-700 font-semibold mt-1">
+              <div className="inline-flex items-center gap-1 text-xs text-sky-700 dark:text-sky-300 font-semibold mt-1">
                 <span>
                   {summary.totalTokens > 0
                     ? `${Math.round((summary.promptTokens / summary.totalTokens) * 100)}% volume`
@@ -270,16 +270,16 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
           </div>
 
           {/* Card 3: Completion Tokens */}
-          <div className="bg-white border border-slate-300 rounded-2xl p-5 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
+          <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl p-5 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
               <TrendingUp className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Completion Tokens</div>
-              <div className="text-2xl font-extrabold text-slate-900 tabular-nums tracking-tight">
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Completion Tokens</div>
+              <div className="text-2xl font-extrabold text-slate-900 dark:text-white tabular-nums tracking-tight">
                 {summary.completionTokens.toLocaleString()}
               </div>
-              <div className="inline-flex items-center gap-1 text-xs text-emerald-700 font-semibold mt-1">
+              <div className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-300 font-semibold mt-1">
                 <span>
                   {summary.totalTokens > 0
                     ? `${Math.round((summary.completionTokens / summary.totalTokens) * 100)}% volume`
@@ -290,18 +290,18 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
           </div>
 
           {/* Card 4: Monthly Budget Consumption */}
-          <div className="bg-white border border-slate-300 rounded-2xl p-5 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-start gap-3.5">
+          <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl p-5 shadow-xs transition-all duration-200 hover:border-blue-500 hover:shadow-md hover:-translate-y-0.5 flex items-start gap-3.5">
             <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${
-              isAlertThresholdReached ? "bg-amber-50 border-amber-200 text-amber-600" : "bg-emerald-50 border-emerald-200 text-emerald-600"
+              isAlertThresholdReached ? "bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400" : "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400"
             }`}>
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Budget Consumed</div>
-              <div className="text-2xl font-extrabold text-slate-900 tabular-nums tracking-tight">
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Budget Consumed</div>
+              <div className="text-2xl font-extrabold text-slate-900 dark:text-white tabular-nums tracking-tight">
                 {summary.budgetUsedPercent}%
               </div>
-              <div className="text-xs text-slate-500 font-medium mt-1 truncate">
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
                 Limit: {summary.budgetTokens.toLocaleString()}
               </div>
             </div>
@@ -309,15 +309,15 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
         </div>
 
         {/* Budget Progress Bar Card */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-300 shadow-xs space-y-3.5 transition-all duration-200 hover:border-slate-400">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-xs space-y-3.5 transition-all duration-200 hover:border-slate-400 dark:hover:border-slate-700">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-1.5">
-            <span className="font-bold text-slate-800 text-sm">Monthly Token Budget Consumption</span>
-            <span className="text-slate-600 font-semibold font-mono tabular-nums">
+            <span className="font-bold text-slate-800 dark:text-white text-sm">Monthly Token Budget Consumption</span>
+            <span className="text-slate-600 dark:text-slate-300 font-semibold font-mono tabular-nums">
               {summary.totalTokens.toLocaleString()} / {summary.budgetTokens.toLocaleString()} Tokens ({summary.budgetUsedPercent}%)
             </span>
           </div>
 
-          <div className="w-full h-3.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+          <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
             <div
               className={`h-full transition-all duration-500 rounded-full ${
                 summary.budgetUsedPercent >= 90
@@ -330,9 +330,9 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
             />
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
             <span>0 tokens</span>
-            <span className="text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+            <span className="text-amber-700 dark:text-amber-300 font-semibold bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
               Alert threshold: {summary.alertThresholdPercent}%
             </span>
             <span>{summary.budgetTokens.toLocaleString()} tokens</span>
@@ -342,19 +342,19 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
         {/* 2-Column Breakdown: By Model & By Agent */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left: Usage by Model */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-300 shadow-xs space-y-4 transition-all duration-200 hover:border-slate-400">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-xs space-y-4 transition-all duration-200 hover:border-slate-400 dark:hover:border-slate-700">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600">
-                  <Zap className="w-4 h-4 text-purple-600" />
+                <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                  <Zap className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                 </div>
-                <h2 className="text-sm font-bold text-slate-900">Usage by AI Model</h2>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">Usage by AI Model</h2>
               </div>
-              <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">{byModel.length} models used</span>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">{byModel.length} models used</span>
             </div>
 
             {byModel.length === 0 ? (
-              <div className="py-6 text-center text-xs text-slate-400">
+              <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
                 No model usage recorded yet. Test an agent in the playground to begin logging.
               </div>
             ) : (
@@ -364,14 +364,14 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
                   return (
                     <div key={idx} className="space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold text-slate-800 truncate max-w-[200px]" title={item.modelName}>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px]" title={item.modelName}>
                           {item.modelName}
                         </span>
-                        <span className="text-slate-600 font-mono tabular-nums text-[11px]">
+                        <span className="text-slate-600 dark:text-slate-400 font-mono tabular-nums text-[11px]">
                           {item.totalTokens.toLocaleString()} tokens ({item.count} calls • {pct}%)
                         </span>
                       </div>
-                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                      <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
                         <div
                           className="h-full bg-purple-500 rounded-full transition-all duration-300"
                           style={{ width: `${Math.min(100, Math.max(4, pct))}%` }}
@@ -385,19 +385,19 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
           </div>
 
           {/* Right: Usage by Agent */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-300 shadow-xs space-y-4 transition-all duration-200 hover:border-slate-400">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-xs space-y-4 transition-all duration-200 hover:border-slate-400 dark:hover:border-slate-700">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
-                  <Bot className="w-4 h-4 text-blue-600" />
+                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                  <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 </div>
-                <h2 className="text-sm font-bold text-slate-900">Usage by AI Agent</h2>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">Usage by AI Agent</h2>
               </div>
-              <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">{byAgent.length} active agents</span>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">{byAgent.length} active agents</span>
             </div>
 
             {byAgent.length === 0 ? (
-              <div className="py-6 text-center text-xs text-slate-400">
+              <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
                 No agent usage recorded yet.
               </div>
             ) : (
@@ -407,14 +407,14 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
                   return (
                     <div key={idx} className="space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold text-slate-800 truncate max-w-[200px]" title={item.agentName}>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px]" title={item.agentName}>
                           {item.agentName}
                         </span>
-                        <span className="text-slate-600 font-mono tabular-nums text-[11px]">
+                        <span className="text-slate-600 dark:text-slate-400 font-mono tabular-nums text-[11px]">
                           {item.totalTokens.toLocaleString()} tokens ({item.count} calls • {pct}%)
                         </span>
                       </div>
-                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                      <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
                         <div
                           className="h-full bg-blue-600 rounded-full transition-all duration-300"
                           style={{ width: `${Math.min(100, Math.max(4, pct))}%` }}
@@ -429,12 +429,12 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
         </div>
 
         {/* Real-Time Audit Log Table */}
-        <div className="bg-white border border-slate-300 rounded-2xl shadow-xs overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
           {/* Table Header & Controls */}
-          <div className="p-4 sm:p-5 border-b border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-100/70">
+          <div className="p-4 sm:p-5 border-b border-slate-300 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-100/70 dark:bg-slate-950">
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Recent Token Activity Log</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">Recent Token Activity Log</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Audit trail of recent LLM execution tokens across chat and studio playground.
               </p>
             </div>
@@ -447,14 +447,14 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
                   placeholder="Filter logs..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 shadow-2xs hover:border-slate-400 w-44 transition-all"
+                  className="pl-9 pr-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 shadow-2xs hover:border-slate-400 dark:hover:border-slate-600 w-44 transition-all"
                 />
               </div>
 
               <select
                 value={sourceFilter}
                 onChange={(e) => setSourceFilter(e.target.value)}
-                className="px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 shadow-2xs hover:border-slate-400 cursor-pointer text-slate-700 transition-all"
+                className="px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 shadow-2xs hover:border-slate-400 dark:hover:border-slate-600 cursor-pointer text-slate-700 dark:text-slate-200 transition-all"
               >
                 <option value="all">All Sources</option>
                 <option value="chat">Main Chat</option>
@@ -466,7 +466,7 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
           {/* Table Body */}
           <div className="overflow-x-auto max-h-[480px]">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 bg-slate-100 border-b border-slate-300 text-slate-700 font-bold uppercase text-[11px] tracking-wider z-10">
+              <thead className="sticky top-0 bg-slate-100 dark:bg-slate-950 border-b border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold uppercase text-[11px] tracking-wider z-10">
                 <tr>
                   <th className="py-3.5 px-4">Time</th>
                   <th className="py-3.5 px-4">Agent</th>
@@ -477,24 +477,24 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
                   <th className="py-3.5 px-4 text-right">Total Tokens</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                 {filteredLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-slate-400 text-xs">
+                    <td colSpan={7} className="py-10 text-center text-slate-400 dark:text-slate-500 text-xs">
                       No matching token activity logs found.
                     </td>
                   </tr>
                 ) : (
                   filteredLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-blue-50/50 transition-colors border-b border-slate-200">
-                      <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap text-xs font-mono tabular-nums">
+                    <tr key={log.id} className="hover:bg-blue-50/50 dark:hover:bg-slate-800/60 transition-colors border-b border-slate-200 dark:border-slate-800">
+                      <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap text-xs font-mono tabular-nums">
                         {new Date(log.createdAt).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
                           second: "2-digit",
                         })}
                       </td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-800">
+                      <td className="py-3.5 px-4 font-semibold text-slate-800 dark:text-slate-200">
                         {log.agentName}
                       </td>
                       <td className="py-3.5 px-4">
@@ -507,16 +507,16 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
                           {log.source === "playground" ? "Playground" : "Main Chat"}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-slate-600 font-mono text-[11px] truncate max-w-[180px]" title={log.modelName}>
+                      <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400 font-mono text-[11px] truncate max-w-[180px]" title={log.modelName}>
                         {log.modelName}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono tabular-nums text-slate-600 text-xs">
+                      <td className="py-3.5 px-4 text-right font-mono tabular-nums text-slate-600 dark:text-slate-400 text-xs">
                         {log.promptTokens.toLocaleString()}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono tabular-nums text-slate-600 text-xs">
+                      <td className="py-3.5 px-4 text-right font-mono tabular-nums text-slate-600 dark:text-slate-400 text-xs">
                         {log.completionTokens.toLocaleString()}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono tabular-nums font-bold text-slate-900 text-xs">
+                      <td className="py-3.5 px-4 text-right font-mono tabular-nums font-bold text-slate-900 dark:text-white text-xs">
                         {log.totalTokens.toLocaleString()}
                       </td>
                     </tr>
@@ -529,18 +529,18 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
 
         {/* Modal for Configuring Budget */}
         {isBudgetModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-            <div className="bg-white rounded-2xl border border-slate-300 shadow-2xl w-full max-w-md p-6 space-y-5 animate-scaleUp">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-5 animate-scaleUp text-slate-900 dark:text-white">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                     <Sliders className="w-4 h-4" />
                   </div>
-                  <h3 className="font-bold text-slate-900 text-base">Token Budget &amp; Alerts</h3>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-base">Token Budget &amp; Alerts</h3>
                 </div>
                 <button
                   onClick={() => setIsBudgetModalOpen(false)}
-                  className="text-slate-400 hover:text-slate-600 p-1"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
                 >
                   ✕
                 </button>
@@ -548,7 +548,7 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
 
               <div className="space-y-4 text-xs">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Monthly Token Budget
                   </label>
                   <input
@@ -557,15 +557,15 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
                     onChange={(e) => setNewBudget(parseInt(e.target.value) || 1000)}
                     min={1000}
                     step={50000}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
                     Total tokens allocated per month across all agents and users.
                   </p>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Alert Threshold Percentage ({newThreshold}%)
                   </label>
                   <input
@@ -577,17 +577,17 @@ export default function TokenAnalyticsView({ onToast }: TokenAnalyticsViewProps)
                     step={5}
                     className="w-full cursor-pointer"
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
                     Trigger an in-studio warning when consumption reaches this percentage.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsBudgetModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   Cancel
                 </button>

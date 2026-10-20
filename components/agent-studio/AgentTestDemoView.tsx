@@ -289,14 +289,14 @@ export default function AgentTestDemoView({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Header matching Screenshot 1 */}
         <div className="flex items-start gap-4 shrink-0">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 mt-0.5">
             <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
               Agent Test / Demo
             </h1>
-            <p className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-3xl leading-relaxed">
               Test how your AI agent responds, uses knowledge base, and handles real conversations. Try different scenarios, upload files, and see the complete response flow.
             </p>
           </div>
@@ -305,18 +305,13 @@ export default function AgentTestDemoView({
         {/* 2-Column Layout with Rock-Solid Sizing */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* LEFT / CENTER COLUMN: Chat Interface (AI Model Blue Ribbon Style) - Stable fixed height */}
-          <div className="lg:col-span-8 flex flex-col h-[580px] sm:h-[720px] max-h-[720px] shrink-0 bg-white rounded-2xl border border-slate-300 shadow-xs overflow-hidden transition-all duration-200 hover:border-blue-500 hover:shadow-md">
+          <div className="lg:col-span-8 flex flex-col h-[580px] sm:h-[720px] max-h-[720px] shrink-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-xs overflow-hidden transition-all duration-200 hover:border-blue-500 hover:shadow-md">
             {/* AI Model Header Ribbon - Locked */}
             <div
+              className="border-b border-blue-100 dark:border-slate-800 flex items-center justify-between shrink-0 p-3 sm:px-5"
               style={{
                 background: "linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(37, 99, 235, 0.04) 100%)",
-                padding: "14px 20px",
-                borderBottom: "1px solid #dbeafe",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
               }}
-              className="shrink-0"
             >
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <div
@@ -335,10 +330,10 @@ export default function AgentTestDemoView({
                   <MessageSquare className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#1e3a8a" }}>
+                  <h2 className="m-0 text-base font-bold text-[#1e3a8a] dark:text-blue-200">
                     Live Agent Test Sandbox
                   </h2>
-                  <span style={{ fontSize: "0.75rem", color: "#60a5fa", fontWeight: 500 }}>
+                  <span className="text-xs font-medium text-blue-500 dark:text-blue-400">
                     Interactive conversation test with live grounding and policy checks
                   </span>
                 </div>
@@ -359,21 +354,8 @@ export default function AgentTestDemoView({
                   <span>Search</span>
                 </button>
 
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "4px 10px",
-                    borderRadius: "20px",
-                    fontSize: "0.75rem",
-                    fontWeight: 600,
-                    background: "#dcfce7",
-                    color: "#15803d",
-                    border: "1px solid #bbf7d0",
-                  }}
-                >
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e" }}></span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                   Agent Online
                 </span>
               </div>
@@ -425,16 +407,16 @@ export default function AgentTestDemoView({
             )}
 
             {/* Top Controls Bar - Locked */}
-            <div className="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-white shrink-0">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 shrink-0">
               <div className="flex items-center gap-3">
                 {/* Select Agent Dropdown */}
                 <div className="relative" ref={dropdownRef}>
                   <button
                     type="button"
                     onClick={() => setIsAgentMenuOpen((prev) => !prev)}
-                    className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 hover:border-blue-300 rounded-lg bg-white shadow-xs text-xs font-semibold text-slate-800 transition cursor-pointer"
+                    className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 rounded-lg bg-white dark:bg-slate-950 shadow-xs text-xs font-semibold text-slate-800 dark:text-slate-200 transition cursor-pointer"
                   >
-                    <Bot className="w-4 h-4 text-blue-600" />
+                    <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     <span>{currentAgentName}</span>
                     <ChevronDown
                       className={`w-3.5 h-3.5 text-slate-400 transition-transform ${
@@ -445,10 +427,10 @@ export default function AgentTestDemoView({
 
                   {/* Dropdown Menu showing all created agents */}
                   {isAgentMenuOpen && (
-                    <div className="absolute left-0 top-full mt-1.5 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 overflow-hidden animate-fadeIn">
-                      <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
+                    <div className="absolute left-0 top-full mt-1.5 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 py-1.5 overflow-hidden animate-fadeIn">
+                      <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                         <span>Select Created Agent</span>
-                        <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px]">
+                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[10px]">
                           {allAgentsList.length} agents
                         </span>
                       </div>
@@ -551,8 +533,8 @@ export default function AgentTestDemoView({
             <div
               className={`px-4 py-2 border-b text-xs flex items-center justify-between transition-colors shrink-0 ${
                 runtimeMode === "live"
-                  ? "bg-blue-50/70 border-blue-100 text-blue-900"
-                  : "bg-amber-50/70 border-amber-100 text-amber-900"
+                  ? "bg-blue-50/70 dark:bg-blue-950/40 border-blue-100 dark:border-blue-900/60 text-blue-900 dark:text-blue-200"
+                  : "bg-amber-50/70 dark:bg-amber-950/40 border-amber-100 dark:border-amber-900/60 text-amber-900 dark:text-amber-200"
               }`}
             >
               <div className="flex items-center gap-2">
@@ -564,13 +546,13 @@ export default function AgentTestDemoView({
                 <span className="font-bold">
                   {runtimeMode === "live" ? "Live LLM Sandbox:" : "Predefined Demo Mode:"}
                 </span>
-                <span className="text-[11px] text-slate-600 hidden sm:inline">
+                <span className="text-[11px] text-slate-600 dark:text-slate-400 hidden sm:inline">
                   {runtimeMode === "live"
                     ? "Real LLM calls executed with active agent instructions and RAG retrieval."
                     : "Simulated demonstration responses. Real LLM and production tools are not executed."}
                 </span>
               </div>
-              <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-white border border-slate-200">
+              <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
                 {runtimeMode === "live" ? "Live LLM" : "Simulated Demo"}
               </span>
             </div>
@@ -578,7 +560,7 @@ export default function AgentTestDemoView({
             {/* Chat Messages Scroll Container - Constrained with min-h-0 so outer agent box remains 100% stable */}
             <div
               ref={chatContainerRef}
-              className="flex-1 min-h-0 p-5 overflow-y-auto space-y-4 bg-white overscroll-contain"
+              className="flex-1 min-h-0 p-5 overflow-y-auto space-y-4 bg-white dark:bg-slate-900 overscroll-contain"
             >
               {(chatSearchQuery.trim()
                 ? messages.filter((m) => m.text.toLowerCase().includes(chatSearchQuery.toLowerCase()))
@@ -693,7 +675,7 @@ export default function AgentTestDemoView({
               />
 
             {/* Bottom Message Input Bar - Anchored at Bottom */}
-            <div className="p-4 border-t border-slate-100 bg-white shrink-0">
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -771,13 +753,13 @@ export default function AgentTestDemoView({
             </div>
 
             {/* Soft Segmented Tab Navigation matching AI Models page */}
-            <div className="inline-flex items-center gap-1 p-1 bg-slate-100/90 border border-slate-200/80 rounded-xl overflow-x-auto w-full">
+            <div className="inline-flex items-center gap-1 p-1 bg-slate-100/90 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-x-auto w-full">
               <button
                 onClick={() => setActiveTab("Quick Test")}
                 className={`flex-1 text-center py-1.5 px-2 rounded-lg text-xs font-semibold transition cursor-pointer active:scale-95 ${
                   activeTab === "Quick Test"
-                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/70"
-                    : "text-slate-600 hover:text-slate-900 border border-transparent"
+                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200/70 dark:border-slate-700"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-transparent"
                 }`}
               >
                 Quick Test
@@ -787,8 +769,8 @@ export default function AgentTestDemoView({
                 onClick={() => setActiveTab("Sample Scenarios")}
                 className={`flex-1 text-center py-1.5 px-2 rounded-lg text-xs font-semibold transition cursor-pointer active:scale-95 ${
                   activeTab === "Sample Scenarios"
-                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/70"
-                    : "text-slate-600 hover:text-slate-900 border border-transparent"
+                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200/70 dark:border-slate-700"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-transparent"
                 }`}
               >
                 Scenarios
@@ -798,8 +780,8 @@ export default function AgentTestDemoView({
                 onClick={() => setActiveTab("Conversation History")}
                 className={`flex-1 text-center py-1.5 px-2 rounded-lg text-xs font-semibold transition cursor-pointer active:scale-95 ${
                   activeTab === "Conversation History"
-                    ? "bg-white text-slate-900 shadow-xs border border-slate-200/70"
-                    : "text-slate-600 hover:text-slate-900 border border-transparent"
+                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200/70 dark:border-slate-700"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-transparent"
                 }`}
               >
                 History
@@ -902,41 +884,18 @@ export default function AgentTestDemoView({
                 </div>
 
                 {/* Card 3: Agent Runtime Mode (AI Model Amber Ribbon Style) */}
-                <div
-                  style={{
-                    background: "#ffffff",
-                    borderRadius: "16px",
-                    border: "1px solid #fed7aa",
-                    boxShadow: "0 4px 16px rgba(245, 158, 11, 0.06)",
-                    overflow: "hidden",
-                  }}
-                >
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-amber-200 dark:border-amber-900/60 shadow-xs overflow-hidden">
                   <div
+                    className="border-b border-amber-100 dark:border-amber-900/40 p-3 sm:px-4 flex items-center justify-between"
                     style={{
                       background: "linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.04) 100%)",
-                      padding: "12px 16px",
-                      borderBottom: "1px solid #ffedd5",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <div
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: "8px",
-                          background: "#d97706",
-                          color: "#fff",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0">
                         <Zap className="w-4 h-4 text-white" />
                       </div>
-                      <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#7c2d12" }}>
+                      <span className="text-xs font-bold text-[#7c2d12] dark:text-amber-200">
                         Agent Runtime Mode
                       </span>
                     </div>
@@ -963,11 +922,11 @@ export default function AgentTestDemoView({
                               <span className="w-1 h-1 rounded-full bg-white" />
                             )}
                           </span>
-                          <span className="text-xs font-semibold text-slate-900">
+                          <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
                             Live AI Assistant
                           </span>
                         </div>
-                        <p className="text-[10px] text-slate-500 mt-1 leading-tight">
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">
                           Uses LLM + Knowledge Base
                         </p>
                       </div>
@@ -990,11 +949,11 @@ export default function AgentTestDemoView({
                               <span className="w-1 h-1 rounded-full bg-white" />
                             )}
                           </span>
-                          <span className="text-xs font-semibold text-slate-900">
+                          <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
                             Fixed Demo
                           </span>
                         </div>
-                        <p className="text-[10px] text-slate-500 mt-1 leading-tight">
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">
                           Predefined conversation
                         </p>
                       </div>
@@ -1005,58 +964,35 @@ export default function AgentTestDemoView({
                 {/* View Agent Configuration Button matching Screenshot 1 */}
                 <button
                   onClick={onNavigateToInstructions}
-                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-blue-100 bg-blue-50/30 hover:bg-blue-50/70 text-blue-600 transition cursor-pointer shadow-xs"
+                  className="w-full flex items-center justify-between p-3.5 rounded-xl border border-blue-100 dark:border-blue-900/60 bg-blue-50/30 dark:bg-blue-950/30 hover:bg-blue-50/70 dark:hover:bg-blue-950/60 text-blue-600 dark:text-blue-400 transition cursor-pointer shadow-xs"
                 >
                   <div className="flex items-center gap-2 text-xs font-semibold">
-                    <Sliders className="w-4 h-4 text-blue-600" />
+                    <Sliders className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     <span>View Agent Configuration</span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-blue-600" />
+                  <ChevronRight className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 </button>
               </div>
             )}
 
             {/* TAB 2: Sample Scenarios (AI Model Blue Ribbon Style) */}
             {activeTab === "Sample Scenarios" && (
-              <div
-                style={{
-                  background: "#ffffff",
-                  borderRadius: "16px",
-                  border: "1px solid #bfdbfe",
-                  boxShadow: "0 4px 16px rgba(59, 130, 246, 0.06)",
-                  overflow: "hidden",
-                }}
-              >
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-blue-200 dark:border-slate-800 shadow-xs overflow-hidden">
                 <div
+                  className="border-b border-blue-100 dark:border-slate-800 p-3 sm:px-4 flex items-center justify-between"
                   style={{
                     background: "linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(37, 99, 235, 0.04) 100%)",
-                    padding: "12px 16px",
-                    borderBottom: "1px solid #dbeafe",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <div
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: "8px",
-                        background: "#2563eb",
-                        color: "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
                       <Workflow className="w-4 h-4 text-white" />
                     </div>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, color: "#1e3a8a" }}>
+                      <h3 className="m-0 text-xs font-bold text-[#1e3a8a] dark:text-blue-200">
                         Pre-configured Scenarios
                       </h3>
-                      <p style={{ margin: 0, fontSize: "0.7rem", color: "#60a5fa" }}>
+                      <p className="m-0 text-[11px] text-blue-500 dark:text-blue-400">
                         Click to simulate test dialogues
                       </p>
                     </div>
@@ -1113,7 +1049,7 @@ export default function AgentTestDemoView({
 
                     if (filtered.length === 0) {
                       return (
-                        <div className="p-6 text-center text-xs text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                        <div className="p-6 text-center text-xs text-slate-400 bg-slate-50/50 dark:bg-slate-950/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
                           No scenarios found matching "{panelSearchQuery}".
                         </div>
                       );
@@ -1123,17 +1059,17 @@ export default function AgentTestDemoView({
                       <div
                         key={i}
                         onClick={() => handleSendMessage(sc.query)}
-                        className="p-3 border border-slate-200/80 hover:border-blue-300 hover:bg-blue-50/40 rounded-xl cursor-pointer transition shadow-xs active:scale-[0.99]"
+                        className="p-3 border border-slate-200/80 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/40 dark:hover:bg-blue-950/40 rounded-xl cursor-pointer transition shadow-xs active:scale-[0.99] bg-white dark:bg-slate-900"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <div className="text-xs font-semibold text-slate-800">
+                          <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">
                             {sc.title}
                           </div>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase tracking-wide">
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                             {sc.category}
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-400 mt-1">
+                        <div className="text-[11px] text-slate-400 dark:text-slate-400 mt-1">
                           Sample: {sc.salary}
                         </div>
                       </div>
@@ -1145,45 +1081,22 @@ export default function AgentTestDemoView({
 
             {/* TAB 3: Conversation History (AI Model Emerald Ribbon Style) */}
             {activeTab === "Conversation History" && (
-              <div
-                style={{
-                  background: "#ffffff",
-                  borderRadius: "16px",
-                  border: "1px solid #bbf7d0",
-                  boxShadow: "0 4px 16px rgba(16, 185, 129, 0.06)",
-                  overflow: "hidden",
-                }}
-              >
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 shadow-xs overflow-hidden">
                 <div
+                  className="border-b border-emerald-100 dark:border-emerald-900/40 p-3 sm:px-4 flex items-center justify-between"
                   style={{
                     background: "linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.04) 100%)",
-                    padding: "12px 16px",
-                    borderBottom: "1px solid #d1fae5",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <div
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: "8px",
-                        background: "#059669",
-                        color: "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
                       <History className="w-4 h-4 text-white" />
                     </div>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: "0.85rem", fontWeight: 700, color: "#065f46" }}>
+                      <h3 className="m-0 text-xs font-bold text-[#065f46] dark:text-emerald-200">
                         Session History
                       </h3>
-                      <p style={{ margin: 0, fontSize: "0.7rem", color: "#34d399" }}>
+                      <p className="m-0 text-[11px] text-emerald-500 dark:text-emerald-400">
                         Active sandbox records
                       </p>
                     </div>
@@ -1191,17 +1104,20 @@ export default function AgentTestDemoView({
                 </div>
 
                 <div className="p-4 space-y-3">
-                  <div className="p-3 border border-emerald-200 bg-emerald-50/40 rounded-xl">
-                    <div className="text-xs font-semibold text-emerald-900">
+                  <div className="p-3 border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/40 dark:bg-emerald-950/40 rounded-xl">
+                    <div className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
                       Active Sandbox Playground
                     </div>
-                    <div className="text-[11px] text-emerald-700 mt-0.5">
+                    <div className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+                      Session messages are maintained in local state for safe testing and do not overwrite production audit logs.
+                    </div>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-400 mt-2">
                       {messages.length} messages exchanged in this test run
                     </div>
                   </div>
                   <button
                     onClick={handleResetChat}
-                    className="w-full text-center text-xs text-rose-600 hover:text-rose-700 font-medium py-1.5 rounded-lg border border-rose-100 hover:bg-rose-50 transition cursor-pointer"
+                    className="w-full text-center text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400 font-medium py-1.5 rounded-lg border border-rose-100 dark:border-rose-900/40 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
                   >
                     Clear Sandbox Session
                   </button>
@@ -1240,9 +1156,9 @@ function renderMessageContent(content: string, isUser: boolean): React.ReactNode
       : headerRow.split(",").map((c) => c.trim());
 
     elements.push(
-      <div key={`table-${keyIndex}`} className="my-2.5 overflow-x-auto rounded-lg border border-slate-200 bg-white">
-        <table className="min-w-full text-left text-xs divide-y divide-slate-200">
-          <thead className="bg-slate-50 text-slate-700 font-semibold">
+      <div key={`table-${keyIndex}`} className="my-2.5 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+        <table className="min-w-full text-left text-xs divide-y divide-slate-200 dark:divide-slate-800">
+          <thead className="bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-semibold">
             <tr>
               {headers.map((h, i) => (
                 <th key={i} className="px-3 py-2 text-[10px] uppercase tracking-wider font-bold whitespace-nowrap">
@@ -1251,16 +1167,16 @@ function renderMessageContent(content: string, isUser: boolean): React.ReactNode
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-950">
             {dataRows.map((row, rIdx) => {
               const cells = isPipe
                 ? row.split("|").map((c) => c.trim()).filter(Boolean)
                 : row.split(",").map((c) => c.trim());
               if (cells.length === 0) return null;
               return (
-                <tr key={rIdx} className="hover:bg-blue-50/30 transition">
+                <tr key={rIdx} className="hover:bg-blue-50/30 dark:hover:bg-blue-950/30 transition">
                   {cells.map((cell, cIdx) => (
-                    <td key={cIdx} className="px-3 py-1.5 text-[11px] text-slate-700 whitespace-nowrap">
+                    <td key={cIdx} className="px-3 py-1.5 text-[11px] text-slate-700 dark:text-slate-200 whitespace-nowrap">
                       {cell}
                     </td>
                   ))}
@@ -1300,7 +1216,7 @@ function renderMessageContent(content: string, isUser: boolean): React.ReactNode
 
     if (trimmed.startsWith("### ")) {
       elements.push(
-        <h4 key={`h3-${index}`} className="font-bold text-slate-900 mt-2 mb-1 text-xs">
+        <h4 key={`h3-${index}`} className="font-bold text-slate-900 dark:text-white mt-2 mb-1 text-xs">
           {trimmed.replace(/^###\s+/, "")}
         </h4>
       );
@@ -1309,7 +1225,7 @@ function renderMessageContent(content: string, isUser: boolean): React.ReactNode
 
     if (trimmed.startsWith("#### ")) {
       elements.push(
-        <h5 key={`h4-${index}`} className="font-semibold text-slate-800 mt-1.5 mb-0.5 text-xs">
+        <h5 key={`h4-${index}`} className="font-semibold text-slate-800 dark:text-slate-200 mt-1.5 mb-0.5 text-xs">
           {trimmed.replace(/^####\s+/, "")}
         </h5>
       );
@@ -1319,7 +1235,7 @@ function renderMessageContent(content: string, isUser: boolean): React.ReactNode
     if (trimmed.startsWith("• ") || trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
       const bulletText = trimmed.replace(/^([•\-\*]\s+)/, "");
       elements.push(
-        <div key={`bullet-${index}`} className="flex items-start gap-1.5 text-slate-700 my-0.5 pl-1">
+        <div key={`bullet-${index}`} className="flex items-start gap-1.5 text-slate-700 dark:text-slate-200 my-0.5 pl-1">
           <span className="text-blue-500 font-bold shrink-0 leading-tight">•</span>
           <span>{formatInlineMarkdown(bulletText)}</span>
         </div>
@@ -1328,7 +1244,7 @@ function renderMessageContent(content: string, isUser: boolean): React.ReactNode
     }
 
     elements.push(
-      <p key={`p-${index}`} className="my-1 text-slate-700 leading-relaxed">
+      <p key={`p-${index}`} className="my-1 text-slate-700 dark:text-slate-200 leading-relaxed">
         {formatInlineMarkdown(trimmed)}
       </p>
     );
@@ -1346,21 +1262,21 @@ function formatInlineMarkdown(text: string): React.ReactNode {
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return (
-        <strong key={i} className="font-semibold text-slate-900">
+        <strong key={i} className="font-semibold text-slate-900 dark:text-white">
           {part.slice(2, -2)}
         </strong>
       );
     }
     if (part.startsWith("*") && part.endsWith("*")) {
       return (
-        <em key={i} className="text-slate-600 italic">
+        <em key={i} className="text-slate-600 dark:text-slate-300 italic">
           {part.slice(1, -1)}
         </em>
       );
     }
     if (part.startsWith("`") && part.endsWith("`")) {
       return (
-        <code key={i} className="px-1 py-0.5 bg-slate-100 text-blue-700 rounded text-[11px] font-mono">
+        <code key={i} className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-mono text-[11px]">
           {part.slice(1, -1)}
         </code>
       );
