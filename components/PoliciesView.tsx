@@ -1485,6 +1485,7 @@ export default function PoliciesView({
                   }`}
                   onClick={() => {
                     if (isTab2UploadUnlocked && tab2FileInputRef.current) {
+                      tab2FileInputRef.current.value = ""
                       tab2FileInputRef.current.click()
                     }
                   }}
@@ -1492,12 +1493,13 @@ export default function PoliciesView({
                   <input
                     ref={tab2FileInputRef}
                     type="file"
-                    accept=".txt, .pdf, .docx, .xlsx, .csv"
+                    accept=".txt,.pdf,.docx,.xlsx,.csv,text/plain,application/pdf"
                     className="hidden"
                     disabled={!isTab2UploadUnlocked || tab2Uploading}
                     onChange={(e) => {
                       if (e.target.files?.[0]) {
                         handleTab2FileUpload(e.target.files[0])
+                        e.target.value = ""
                       }
                     }}
                   />
@@ -1536,6 +1538,13 @@ export default function PoliciesView({
                     {isTab2UploadUnlocked && !tab2Uploading && (
                       <button
                         type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (tab2FileInputRef.current) {
+                            tab2FileInputRef.current.value = ""
+                            tab2FileInputRef.current.click()
+                          }
+                        }}
                         className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                       >
                         Choose Policy Document
