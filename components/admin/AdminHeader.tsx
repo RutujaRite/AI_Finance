@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   ShieldCheck,
   LayoutGrid,
@@ -16,9 +16,12 @@ import {
   LogOut,
   Bot,
   Users,
+  UserCheck,
+  Settings,
   MessageSquare,
   Calculator,
   FileText,
+  FileSpreadsheet,
   Menu,
   X,
   Building,
@@ -53,6 +56,7 @@ export default function AdminHeader({
   showBackToWorkspace = false,
 }: AdminHeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
@@ -135,6 +139,51 @@ export default function AdminHeader({
 
   const userInitial = userName.charAt(0).toUpperCase() || "A";
 
+  const adminNavItems = [
+    {
+      label: "Overview",
+      href: "/admin",
+      icon: LayoutGrid,
+      isActive: pathname === "/admin",
+      title: "Admin Dashboard Overview",
+    },
+    {
+      label: "Company Files",
+      href: "/admin/company-search",
+      icon: Building,
+      isActive: pathname?.startsWith("/admin/company-search") || pathname?.startsWith("/admin/companies"),
+      title: "Company Files & Categorization Search",
+    },
+    {
+      label: "Bank Policy",
+      href: "/admin/bank-policy",
+      icon: FileSpreadsheet,
+      isActive: pathname?.startsWith("/admin/bank-policy"),
+      title: "Bank Policy Master Files",
+    },
+    {
+      label: "Manager & Location Files",
+      href: "/admin/bank-manager-locations",
+      icon: Users,
+      isActive: pathname?.startsWith("/admin/bank-manager-locations") || pathname?.startsWith("/admin/bank-managers"),
+      title: "Bank Manager and Locations Escalation Directory",
+    },
+    {
+      label: "Users",
+      href: "/admin/users",
+      icon: UserCheck,
+      isActive: pathname?.startsWith("/admin/users"),
+      title: "User Accounts & Access Management",
+    },
+    {
+      label: "Settings",
+      href: "/agent-studio",
+      icon: Settings,
+      isActive: pathname?.startsWith("/agent-studio") || pathname?.startsWith("/admin/ai-model") || pathname?.startsWith("/admin/ai-agent"),
+      title: "AI Agent & System Settings",
+    },
+  ];
+
   return (
     <>
       {/* 1. TOP NAVIGATION BAR */}
@@ -174,40 +223,26 @@ export default function AdminHeader({
             </div>
           </Link>
 
-          {/* Quick Nav directly to Main App Workspace (Desktop only) */}
-          <nav className="hidden lg:flex items-center gap-1 ml-4 pl-4 border-l border-slate-200 dark:border-slate-800 text-xs">
-            <Link
-              href="/home"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-semibold text-blue-700 dark:text-blue-400 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors no-underline"
-              title="Application Dashboard"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>Dashboard</span>
-            </Link>
-            <Link
-              href="/home?section=assistant"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors no-underline"
-              title="AI Assistant"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
-              <span>AI Assistant</span>
-            </Link>
-            <Link
-              href="/home?section=emi"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors no-underline"
-              title="EMI Calculator"
-            >
-              <Calculator className="w-3.5 h-3.5 text-slate-400" />
-              <span>EMI Calc</span>
-            </Link>
-            <Link
-              href="/home?section=eligibility"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors no-underline"
-              title="Eligibility Calculator"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-              <span>Eligibility</span>
-            </Link>
+          {/* Admin Panel Quick Navigation (Desktop only) */}
+          <nav className="hidden lg:flex items-center gap-1 ml-3 pl-3 border-l border-slate-200 dark:border-slate-800 text-xs">
+            {adminNavItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors no-underline ${
+                    item.isActive
+                      ? "bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800/80 shadow-2xs"
+                      : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 font-medium border border-transparent"
+                  }`}
+                  title={item.title}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${item.isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"}`} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
           </nav>
         </div>
 
@@ -514,62 +549,24 @@ export default function AdminHeader({
           <div>
             <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 mb-1.5">Admin Management Tools</div>
             <div className="space-y-0.5">
-              <Link
-                href="/admin"
-                onClick={() => setMobileDrawerOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors no-underline"
-              >
-                <LayoutGrid className="w-4 h-4 text-blue-600" />
-                <span>Admin Dashboard</span>
-              </Link>
-              <Link
-                href="/admin/bank-policy"
-                onClick={() => setMobileDrawerOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors no-underline"
-              >
-                <FileText className="w-4 h-4 text-indigo-600" />
-                <span>Bank Policy</span>
-              </Link>
-              <Link
-                href="/admin/company-search"
-                onClick={() => setMobileDrawerOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors no-underline"
-              >
-                <Building className="w-4 h-4 text-emerald-600" />
-                <span>Company Categorization</span>
-              </Link>
-              <Link
-                href="/admin/bank-manager-locations"
-                onClick={() => setMobileDrawerOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors no-underline"
-              >
-                <Users className="w-4 h-4 text-amber-600" />
-                <span>Bank Manager and Locations</span>
-              </Link>
-              <Link
-                href="/admin/ai-model"
-                onClick={() => setMobileDrawerOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors no-underline"
-              >
-                <Cpu className="w-4 h-4 text-purple-600" />
-                <span>AI Model Settings</span>
-              </Link>
-              <Link
-                href="/agent-studio"
-                onClick={() => setMobileDrawerOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors no-underline"
-              >
-                <Bot className="w-4 h-4 text-pink-600" />
-                <span>AI Agent Configuration</span>
-              </Link>
-              <Link
-                href="/admin/users"
-                onClick={() => setMobileDrawerOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors no-underline"
-              >
-                <Users className="w-4 h-4 text-cyan-600" />
-                <span>Users Management</span>
-              </Link>
+              {adminNavItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileDrawerOpen(false)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors no-underline ${
+                      item.isActive
+                        ? "bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800"
+                        : "font-medium text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 ${item.isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400"}`} />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
             </div>
           </div>
 
