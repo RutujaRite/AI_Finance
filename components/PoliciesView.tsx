@@ -25,10 +25,49 @@ import {
   UploadCloud,
   CheckCircle2,
   FileText,
+  Lock,
+  Unlock,
+  X,
 } from "lucide-react"
 import ModernSearchBar from "@/components/ui/ModernSearchBar"
 import ModernConfirmDialog from "@/components/ui/ModernConfirmDialog"
 import ModernTableActionBtn, { ModernDeleteActionBtn } from "@/components/ui/ModernTableActionBtn"
+
+const PRESET_PARTNER_BANKS = [
+  "Axis Bank",
+  "Bandhan Bank",
+  "HDFC Bank",
+  "ICICI Bank",
+  "IDFC FIRST Bank",
+  "IndusInd Bank",
+  "Kotak Mahindra Bank",
+  "SBM Bank India",
+  "Yes Bank",
+  "Aditya Birla Capital",
+  "Axis Finance",
+  "Bajaj Finserv",
+  "Bajaj Markets",
+  "Cholamandalam Investment & Finance",
+  "Fibe (EarlySalary)",
+  "Finnable Credit",
+  "Home Loan Services",
+  "L&T Finance",
+  "Piramal Finance",
+  "Poonawalla Fincorp",
+  "SMFG India Credit",
+  "TATA Capital",
+  "Utkarsh Small Finance Bank",
+]
+
+function formatCurrency(val?: number | string | null): string {
+  if (val == null || val === "" || val === undefined) return "N/A"
+  const num = Number(val)
+  if (isNaN(num)) return String(val)
+  if (num >= 10000000) return `₹${(num / 10000000).toFixed(1).replace(/\.0$/, "")} Cr`
+  if (num >= 100000) return `₹${(num / 100000).toFixed(1).replace(/\.0$/, "")} L`
+  if (num >= 1000) return `₹${(num / 1000).toFixed(0)}k`
+  return `₹${num.toLocaleString("en-IN")}`
+}
 
 export default function PoliciesView({
   user: propUser,
@@ -139,6 +178,67 @@ export default function PoliciesView({
   const [uploadDescription, setUploadDescription] = useState<string>("")
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const uploadFileInputRef = useRef<HTMLInputElement | null>(null)
+
+  // View Guidelines Details Modal State (Tab 1)
+  const [viewGuidelinesPolicy, setViewGuidelinesPolicy] = useState<any | null>(null)
+
+  // Tab 2: 3-Step Bank-Gated Upload State
+  const [tab2SelectedBank, setTab2SelectedBank] = useState<string>("")
+  const [tab2IsCustomBank, setTab2IsCustomBank] = useState<boolean>(false)
+  const [tab2CustomBankName, setTab2CustomBankName] = useState<string>("")
+  const [tab2Uploading, setTab2Uploading] = useState<boolean>(false)
+  const [tab2IsDragOver, setTab2IsDragOver] = useState<boolean>(false)
+  const tab2FileInputRef = useRef<HTMLInputElement | null>(null)
+
+  const tab2EffectiveBank = useMemo(() => {
+    return tab2IsCustomBank ? tab2CustomBankName.trim() : tab2SelectedBank.trim()
+  }, [tab2IsCustomBank, tab2CustomBankName, tab2SelectedBank])
+
+  const isTab2UploadUnlocked = useMemo(() => {
+    return !!tab2EffectiveBank
+  }, [tab2EffectiveBank])
+
+  async function handleTab2FileUpload(file: File) {
+    if (!file) return
+    if (!isTab2UploadUnlocked) {
+      showToast("Please select or enter a Bank / Lender name before uploading.", "error")
+      return
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      showToast("File size exceeds 50 MB limit", "error")
+      return
+    }
+
+    setTab2Uploading(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("bank_name", tab2EffectiveBank)
+      formData.append("loan_type", "Personal Loan")
+      formData.append("policy_version", "V1")
+
+      const res = await fetch("/api/policies", {
+        method: "POST",
+        body: formData,
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        showToast(`✓ Master policy file for "${tab2EffectiveBank}" uploaded successfully.`, "success")
+        loadPolicies()
+        loadPolicyFiles()
+        setTab2SelectedBank("")
+        setTab2IsCustomBank(false)
+        setTab2CustomBankName("")
+      } else {
+        showToast(`✕ Upload failed: ${data.error || "Unknown server error"}`, "error")
+      }
+    } catch (err) {
+      console.error("Tab 2 upload error", err)
+      showToast("✕ Network error while uploading policy file", "error")
+    } finally {
+      setTab2Uploading(false)
+    }
+  }
 
   useEffect(() => {
     if (propUser) {
@@ -1301,6 +1401,292 @@ export default function PoliciesView({
           padding: 0 8px;
         }
 
+        /* Comprehensive Dark Theme Overrides */
+        .dark .bp-header-card,
+        [data-theme="dark"] .bp-header-card,
+        [data-bs-theme="dark"] .bp-header-card {
+          background: #0f172a !important;
+          border-color: #1e293b !important;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+        }
+        .dark .bp-icon-badge,
+        [data-theme="dark"] .bp-icon-badge,
+        [data-bs-theme="dark"] .bp-icon-badge {
+          background: rgba(37, 99, 235, 0.15) !important;
+          border-color: rgba(37, 99, 235, 0.3) !important;
+          color: #60a5fa !important;
+        }
+        .dark .bp-tab-pill-group,
+        [data-theme="dark"] .bp-tab-pill-group,
+        [data-bs-theme="dark"] .bp-tab-pill-group {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+        }
+        .dark .bp-tab-pill,
+        [data-theme="dark"] .bp-tab-pill,
+        [data-bs-theme="dark"] .bp-tab-pill {
+          background: #0f172a !important;
+          border-color: #334155 !important;
+          color: #94a3b8 !important;
+        }
+        .dark .bp-tab-pill:hover:not(.active),
+        [data-theme="dark"] .bp-tab-pill:hover:not(.active),
+        [data-bs-theme="dark"] .bp-tab-pill:hover:not(.active) {
+          border-color: #475569 !important;
+          background: #1e293b !important;
+          color: #f8fafc !important;
+        }
+        .dark .bp-tab-pill.active,
+        [data-theme="dark"] .bp-tab-pill.active,
+        [data-bs-theme="dark"] .bp-tab-pill.active {
+          background: rgba(37, 99, 235, 0.2) !important;
+          color: #60a5fa !important;
+          border-color: #3b82f6 !important;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+        }
+        .dark .bp-tab-pill-count,
+        [data-theme="dark"] .bp-tab-pill-count,
+        [data-bs-theme="dark"] .bp-tab-pill-count {
+          background: #1e293b !important;
+          color: #94a3b8 !important;
+        }
+        .dark .bp-tab-pill.active .bp-tab-pill-count,
+        [data-theme="dark"] .bp-tab-pill.active .bp-tab-pill-count,
+        [data-bs-theme="dark"] .bp-tab-pill.active .bp-tab-pill-count {
+          background: rgba(37, 99, 235, 0.35) !important;
+          color: #93c5fd !important;
+        }
+        .dark .bp-refresh-btn,
+        [data-theme="dark"] .bp-refresh-btn,
+        [data-bs-theme="dark"] .bp-refresh-btn {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+          color: #cbd5e1 !important;
+        }
+        .dark .bp-refresh-btn:hover:not(:disabled),
+        [data-theme="dark"] .bp-refresh-btn:hover:not(:disabled),
+        [data-bs-theme="dark"] .bp-refresh-btn:hover:not(:disabled) {
+          background: #334155 !important;
+          border-color: #475569 !important;
+          color: #ffffff !important;
+        }
+        .dark .bp-toolbar-card,
+        [data-theme="dark"] .bp-toolbar-card,
+        [data-bs-theme="dark"] .bp-toolbar-card,
+        .dark .bp-table-card,
+        [data-theme="dark"] .bp-table-card,
+        [data-bs-theme="dark"] .bp-table-card {
+          background: #0f172a !important;
+          border-color: #1e293b !important;
+          color: #f8fafc !important;
+        }
+        .dark .bp-search-input,
+        [data-theme="dark"] .bp-search-input,
+        [data-bs-theme="dark"] .bp-search-input {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+          color: #f8fafc !important;
+        }
+        .dark .bp-search-input:hover,
+        [data-theme="dark"] .bp-search-input:hover,
+        [data-bs-theme="dark"] .bp-search-input:hover {
+          border-color: #475569 !important;
+        }
+        .dark .bp-filter-select,
+        [data-theme="dark"] .bp-filter-select,
+        [data-bs-theme="dark"] .bp-filter-select {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+          color: #f8fafc !important;
+        }
+        .dark .bp-filter-select:hover,
+        [data-theme="dark"] .bp-filter-select:hover,
+        [data-bs-theme="dark"] .bp-filter-select:hover {
+          border-color: #475569 !important;
+        }
+        .dark .bp-table thead,
+        [data-theme="dark"] .bp-table thead,
+        [data-bs-theme="dark"] .bp-table thead {
+          background: #1e293b !important;
+          border-bottom-color: #334155 !important;
+        }
+        .dark .bp-table th,
+        [data-theme="dark"] .bp-table th,
+        [data-bs-theme="dark"] .bp-table th {
+          color: #94a3b8 !important;
+        }
+        .dark .bp-table tbody tr,
+        [data-theme="dark"] .bp-table tbody tr,
+        [data-bs-theme="dark"] .bp-table tbody tr {
+          border-bottom-color: #1e293b !important;
+        }
+        .dark .bp-table tbody tr:hover,
+        [data-theme="dark"] .bp-table tbody tr:hover,
+        [data-bs-theme="dark"] .bp-table tbody tr:hover {
+          background-color: rgba(30, 41, 59, 0.6) !important;
+        }
+        .dark .bp-table td,
+        [data-theme="dark"] .bp-table td,
+        [data-bs-theme="dark"] .bp-table td {
+          color: #cbd5e1 !important;
+        }
+        .dark .bp-bank-name,
+        [data-theme="dark"] .bp-bank-name,
+        [data-bs-theme="dark"] .bp-bank-name {
+          color: #f8fafc !important;
+        }
+        .dark .bp-bank-logo-icon,
+        [data-theme="dark"] .bp-bank-logo-icon,
+        [data-bs-theme="dark"] .bp-bank-logo-icon {
+          background: rgba(37, 99, 235, 0.15) !important;
+          border-color: rgba(37, 99, 235, 0.3) !important;
+          color: #60a5fa !important;
+        }
+        .dark .bp-action-btn,
+        [data-theme="dark"] .bp-action-btn,
+        [data-bs-theme="dark"] .bp-action-btn {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+          color: #94a3b8 !important;
+        }
+        .dark .bp-action-btn:hover,
+        [data-theme="dark"] .bp-action-btn:hover,
+        [data-bs-theme="dark"] .bp-action-btn:hover {
+          border-color: #475569 !important;
+          color: #f8fafc !important;
+        }
+        .dark .bp-btn-view:hover,
+        [data-theme="dark"] .bp-btn-view:hover,
+        [data-bs-theme="dark"] .bp-btn-view:hover,
+        .dark .bp-btn-edit:hover,
+        [data-theme="dark"] .bp-btn-edit:hover,
+        [data-bs-theme="dark"] .bp-btn-edit:hover {
+          background: rgba(37, 99, 235, 0.2) !important;
+          border-color: rgba(37, 99, 235, 0.4) !important;
+          color: #60a5fa !important;
+        }
+        .dark .bp-btn-delete:hover,
+        [data-theme="dark"] .bp-btn-delete:hover,
+        [data-bs-theme="dark"] .bp-btn-delete:hover {
+          background: rgba(239, 68, 68, 0.2) !important;
+          border-color: rgba(239, 68, 68, 0.4) !important;
+          color: #f87171 !important;
+        }
+        .dark .bp-footer,
+        [data-theme="dark"] .bp-footer,
+        [data-bs-theme="dark"] .bp-footer {
+          background: #0f172a !important;
+          border-top-color: #1e293b !important;
+        }
+        .dark .bp-footer-range,
+        [data-theme="dark"] .bp-footer-range,
+        [data-bs-theme="dark"] .bp-footer-range {
+          color: #94a3b8 !important;
+        }
+        .dark .bp-page-btn,
+        [data-theme="dark"] .bp-page-btn,
+        [data-bs-theme="dark"] .bp-page-btn {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+          color: #cbd5e1 !important;
+        }
+        .dark .bp-page-btn:hover:not(:disabled),
+        [data-theme="dark"] .bp-page-btn:hover:not(:disabled),
+        [data-bs-theme="dark"] .bp-page-btn:hover:not(:disabled) {
+          background: #334155 !important;
+          border-color: #475569 !important;
+          color: #ffffff !important;
+        }
+        .dark .bp-page-indicator,
+        [data-theme="dark"] .bp-page-indicator,
+        [data-bs-theme="dark"] .bp-page-indicator {
+          color: #cbd5e1 !important;
+        }
+        .dark .bp-count-number,
+        [data-theme="dark"] .bp-count-number,
+        [data-bs-theme="dark"] .bp-count-number {
+          background: rgba(37, 99, 235, 0.2) !important;
+          border-color: rgba(37, 99, 235, 0.35) !important;
+          color: #93c5fd !important;
+        }
+        .dark .cw-card,
+        [data-theme="dark"] .cw-card,
+        [data-bs-theme="dark"] .cw-card {
+          background: #0f172a !important;
+          border-color: #1e293b !important;
+          color: #f8fafc !important;
+        }
+        .dark .cw-table thead th,
+        [data-theme="dark"] .cw-table thead th,
+        [data-bs-theme="dark"] .cw-table thead th {
+          background: #1e293b !important;
+          border-bottom-color: #334155 !important;
+          color: #94a3b8 !important;
+        }
+        .dark .cw-table tbody tr,
+        [data-theme="dark"] .cw-table tbody tr,
+        [data-bs-theme="dark"] .cw-table tbody tr {
+          border-bottom-color: #1e293b !important;
+        }
+        .dark .cw-table tbody tr:hover,
+        [data-theme="dark"] .cw-table tbody tr:hover,
+        [data-bs-theme="dark"] .cw-table tbody tr:hover {
+          background-color: rgba(30, 41, 59, 0.6) !important;
+        }
+        .dark .cw-table tbody td,
+        [data-theme="dark"] .cw-table tbody td,
+        [data-bs-theme="dark"] .cw-table tbody td {
+          color: #cbd5e1 !important;
+        }
+        .dark .cw-action-btn,
+        [data-theme="dark"] .cw-action-btn,
+        [data-bs-theme="dark"] .cw-action-btn {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+          color: #94a3b8 !important;
+        }
+        .dark .cw-action-btn:hover,
+        [data-theme="dark"] .cw-action-btn:hover,
+        [data-bs-theme="dark"] .cw-action-btn:hover {
+          border-color: #475569 !important;
+          color: #f8fafc !important;
+        }
+        .dark .cw-btn-secondary,
+        [data-theme="dark"] .cw-btn-secondary,
+        [data-bs-theme="dark"] .cw-btn-secondary {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+          color: #cbd5e1 !important;
+        }
+        .dark .cw-btn-secondary:hover:not(:disabled),
+        [data-theme="dark"] .cw-btn-secondary:hover:not(:disabled),
+        [data-bs-theme="dark"] .cw-btn-secondary:hover:not(:disabled) {
+          background: #334155 !important;
+          border-color: #475569 !important;
+          color: #ffffff !important;
+        }
+        .dark .cw-select,
+        [data-theme="dark"] .cw-select,
+        [data-bs-theme="dark"] .cw-select {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+          color: #f8fafc !important;
+        }
+        .dark .cw-modal-content,
+        [data-theme="dark"] .cw-modal-content,
+        [data-bs-theme="dark"] .cw-modal-content {
+          background: #0f172a !important;
+          border-color: #1e293b !important;
+          color: #f8fafc !important;
+        }
+        .dark .cw-input,
+        [data-theme="dark"] .cw-input,
+        [data-bs-theme="dark"] .cw-input {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+          color: #f8fafc !important;
+        }
+
         @media (max-width: 768px) {
           .bp-header-card {
             flex-direction: column !important;
@@ -1514,7 +1900,7 @@ export default function PoliciesView({
                   <Landmark style={{ width: 22, height: 22 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                  <div className="text-slate-900 dark:text-white" style={{ fontSize: "1.35rem", fontWeight: 800 }}>
                     {policies.length}
                   </div>
                   <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Partner Lenders</div>
@@ -1540,7 +1926,7 @@ export default function PoliciesView({
                   <CheckCircle2 style={{ width: 22, height: 22 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                  <div className="text-slate-900 dark:text-white" style={{ fontSize: "1.35rem", fontWeight: 800 }}>
                     {policies.filter((p) => String(p.status || "active").toLowerCase() === "active").length}
                   </div>
                   <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Active Guidelines</div>
@@ -1566,7 +1952,7 @@ export default function PoliciesView({
                   <FileSpreadsheet style={{ width: 22, height: 22 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                  <div className="text-slate-900 dark:text-white" style={{ fontSize: "1.35rem", fontWeight: 800 }}>
                     {policies.filter((p) => {
                       const s = String(p.status || "").toLowerCase();
                       return s === "review" || s === "draft";
@@ -1595,7 +1981,7 @@ export default function PoliciesView({
                   <Building2 style={{ width: 22, height: 22 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                  <div className="text-slate-900 dark:text-white" style={{ fontSize: "1.35rem", fontWeight: 800 }}>
                     {Array.from(new Set(policies.map((p) => p.loan_type || "Personal Loan"))).length}
                   </div>
                   <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Loan Categories</div>
@@ -1756,24 +2142,28 @@ export default function PoliciesView({
                 <table className="cw-table">
                   <thead>
                     <tr>
-                      <th style={{ width: 60, textAlign: "center" }}>#</th>
-                      <th style={{ minWidth: 260, textAlign: "left" }}>Bank Name</th>
-                      <th style={{ width: 180, textAlign: "center" }}>Category</th>
-                      <th style={{ width: 140, textAlign: "center" }}>Status</th>
-                      <th style={{ width: 140, textAlign: "center" }}>Actions</th>
+                      <th style={{ width: 50, textAlign: "center" }}>#</th>
+                      <th style={{ minWidth: 200, textAlign: "left" }}>Bank / Lender</th>
+                      <th style={{ width: 170, textAlign: "center" }}>Loan Type &amp; Category</th>
+                      <th style={{ width: 130, textAlign: "center" }}>Min Salary</th>
+                      <th style={{ width: 110, textAlign: "center" }}>CIBIL Cutoff</th>
+                      <th style={{ width: 120, textAlign: "center" }}>Age Limits</th>
+                      <th style={{ width: 180, textAlign: "center" }}>Loan Amount &amp; Tenure</th>
+                      <th style={{ width: 120, textAlign: "center" }}>Status</th>
+                      <th style={{ width: 150, textAlign: "center" }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={5} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
+                        <td colSpan={9} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
                           <RotateCcw style={{ width: 24, height: 24, margin: "0 auto 8px" }} className="animate-spin text-blue-600" />
                           <p style={{ margin: 0, fontSize: "0.875rem" }}>Loading bank policy guidelines...</p>
                         </td>
                       </tr>
                     ) : filteredPolicies.length === 0 ? (
                       <tr>
-                        <td colSpan={5} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
+                        <td colSpan={9} style={{ padding: "48px", textAlign: "center", color: "#64748b" }}>
                           <Landmark style={{ width: 36, height: 36, color: "#94a3b8", margin: "0 auto 8px" }} />
                           <h4 style={{ margin: "0 0 4px 0", fontSize: "1rem", fontWeight: 600 }} className="text-slate-900 dark:text-white">
                             No Matching Policies Found
@@ -1789,8 +2179,6 @@ export default function PoliciesView({
                       paginatedPolicies.map((policy: any, idx: number) => {
                         const rowNumber = startIndex + idx + 1;
                         const bankName = policy.bank_name || policy.bank_code || "Partner Bank";
-                        const isStatusActive = String(policy.status || "active").toLowerCase() === "active";
-                        const isStatusReview = String(policy.status || "").toLowerCase() === "review";
 
                         return (
                           <tr key={policy.bank_id || policy.id || idx}>
@@ -1798,94 +2186,79 @@ export default function PoliciesView({
                               {rowNumber}
                             </td>
                             <td style={{ textAlign: "left" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <div
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "6px",
-                                    background: "rgba(37, 99, 235, 0.1)",
-                                    border: "1px solid rgba(37, 99, 235, 0.2)",
-                                    color: "#2563eb",
-                                    padding: "4px 12px",
-                                    borderRadius: "9999px",
-                                    fontSize: "0.8125rem",
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  <Landmark style={{ width: 14, height: 14, color: "#2563eb", flexShrink: 0 }} />
-                                  <span>{bankName}</span>
+                              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                <div className="bp-bank-logo-icon">
+                                  <Landmark style={{ width: 15, height: 15 }} />
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                  <div className="font-semibold text-slate-900 dark:text-white text-xs truncate max-w-[180px]">
+                                    {bankName}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                                    {policy.bank_code || "BANK"}
+                                  </div>
                                 </div>
                               </div>
                             </td>
                             <td style={{ textAlign: "center" }}>
-                              <span
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  padding: "3px 10px",
-                                  borderRadius: "9999px",
-                                  fontSize: "0.75rem",
-                                  fontWeight: 600,
-                                  background: "rgba(37, 99, 235, 0.08)",
-                                  color: "#2563eb",
-                                  border: "1px solid rgba(37, 99, 235, 0.2)",
-                                }}
-                              >
+                              <span className="bp-cat-badge bp-cat-personal">
                                 {policy.loan_type || "Personal Loan"}
                               </span>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                {policy.employment_type || "Salaried"}
+                              </div>
                             </td>
                             <td style={{ textAlign: "center" }}>
-                              <span
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "6px",
-                                  padding: "3px 10px",
-                                  borderRadius: "9999px",
-                                  fontSize: "0.75rem",
-                                  fontWeight: 600,
-                                  background: isStatusActive ? "rgba(16, 185, 129, 0.1)" : isStatusReview ? "rgba(245, 158, 11, 0.1)" : "rgba(148, 163, 184, 0.1)",
-                                  color: isStatusActive ? "#059669" : isStatusReview ? "#d97706" : "#64748b",
-                                  border: `1px solid ${isStatusActive ? "rgba(16, 185, 129, 0.25)" : isStatusReview ? "rgba(245, 158, 11, 0.25)" : "rgba(148, 163, 184, 0.2)"}`,
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    width: 6,
-                                    height: 6,
-                                    borderRadius: "50%",
-                                    background: isStatusActive ? "#10b981" : isStatusReview ? "#f59e0b" : "#94a3b8",
-                                  }}
-                                />
-                                <span style={{ textTransform: "capitalize" }}>{policy.status || "Active"}</span>
+                              <span className="font-semibold text-slate-900 dark:text-white text-xs">
+                                {policy.min_salary ? `₹${Number(policy.min_salary).toLocaleString("en-IN")}/mo` : "₹25,000/mo"}
                               </span>
                             </td>
                             <td style={{ textAlign: "center" }}>
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                {policy.min_cibil || 700}+
+                              </span>
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">
+                                {policy.min_age || 21}–{policy.max_age || 60} yrs
+                              </span>
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              <div className="text-xs font-semibold text-slate-900 dark:text-white">
+                                {formatCurrency(policy.min_loan_amount || 50000)} – {formatCurrency(policy.max_loan_amount || 4000000)}
+                              </div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                {policy.min_tenure_months || 12}–{policy.max_tenure_months || 60} mos
+                              </div>
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              {renderStatusBadge(policy.status)}
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
                                 <button
                                   type="button"
                                   className="cw-action-btn"
-                                  title="View Bank Policy Document"
-                                  aria-label={`View Master Policy Document for ${bankName}`}
-                                  onClick={() => handleOpenViewerFile(policy)}
+                                  title="View Underwriting Guidelines Details"
+                                  aria-label={`View Guidelines for ${bankName}`}
+                                  onClick={() => setViewGuidelinesPolicy(policy)}
                                 >
                                   <Eye style={{ width: 14, height: 14 }} />
                                 </button>
                                 <button
                                   type="button"
                                   className="cw-action-btn cw-action-primary"
-                                  title="Edit Bank Policy Document"
-                                  aria-label={`Edit Master Policy Document for ${bankName}`}
-                                  onClick={() => handleOpenEditorFile(policy)}
+                                  title="Edit Policy Guidelines & Criteria"
+                                  aria-label={`Edit Guidelines for ${bankName}`}
+                                  onClick={() => handleOpenEdit(policy)}
                                 >
                                   <Pencil style={{ width: 14, height: 14 }} />
                                 </button>
                                 <button
                                   type="button"
                                   className="cw-action-btn"
-                                  title="Download Policy Guidelines"
-                                  aria-label={`Download Policy Guidelines for ${bankName}`}
+                                  title="Download Policy Guidelines Sheet"
+                                  aria-label={`Download Guidelines for ${bankName}`}
                                   onClick={() => downloadSinglePolicy(policy)}
                                 >
                                   <Download style={{ width: 14, height: 14 }} className="text-emerald-600 dark:text-emerald-400" />
@@ -1925,8 +2298,6 @@ export default function PoliciesView({
                 ) : (
                   paginatedPolicies.map((policy: any, idx: number) => {
                     const bankName = policy.bank_name || policy.bank_code || "Partner Bank";
-                    const isStatusActive = String(policy.status || "active").toLowerCase() === "active";
-                    const isStatusReview = String(policy.status || "").toLowerCase() === "review";
 
                     return (
                       <div key={policy.bank_id || policy.id || idx} className="p-4 bg-white dark:bg-slate-900 flex flex-col gap-3">
@@ -1940,70 +2311,77 @@ export default function PoliciesView({
                                 {bankName}
                               </div>
                               <span className="text-xs text-slate-500 dark:text-slate-400">
-                                {policy.loan_type || "Personal Loan"}
+                                {policy.loan_type || "Personal Loan"} ({policy.employment_type || "Salaried"})
                               </span>
                             </div>
                           </div>
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                              isStatusActive
-                                ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                                : isStatusReview
-                                ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
-                            }`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                isStatusActive ? "bg-emerald-500" : isStatusReview ? "bg-amber-500" : "bg-slate-400"
-                              }`}
-                            />
-                            <span className="capitalize">{policy.status || "Active"}</span>
-                          </span>
+                          {renderStatusBadge(policy.status)}
                         </div>
 
-                        <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
-                          <span className="text-slate-500 dark:text-slate-400 text-xs font-mono">
-                            Min Salary: {policy.min_salary ? `₹${Number(policy.min_salary).toLocaleString()}` : "N/A"}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              className="cw-action-btn"
-                              title="View Bank Policy Document"
-                              aria-label={`View Master Policy Document for ${bankName}`}
-                              onClick={() => handleOpenViewerFile(policy)}
-                            >
-                              <Eye style={{ width: 14, height: 14 }} />
-                            </button>
-                            <button
-                              type="button"
-                              className="cw-action-btn cw-action-primary"
-                              title="Edit Bank Policy Document"
-                              aria-label={`Edit Master Policy Document for ${bankName}`}
-                              onClick={() => handleOpenEditorFile(policy)}
-                            >
-                              <Pencil style={{ width: 14, height: 14 }} />
-                            </button>
-                            <button
-                              type="button"
-                              className="cw-action-btn"
-                              title="Download Policy Guidelines"
-                              aria-label={`Download Policy Guidelines for ${bankName}`}
-                              onClick={() => downloadSinglePolicy(policy)}
-                            >
-                              <Download style={{ width: 14, height: 14 }} className="text-emerald-600 dark:text-emerald-400" />
-                            </button>
-                            <button
-                              type="button"
-                              className="cw-action-btn cw-action-delete"
-                              title="Delete Policy"
-                              aria-label={`Delete Policy for ${bankName}`}
-                              onClick={() => handleOpenDelete(policy)}
-                            >
-                              <Trash2 style={{ width: 14, height: 14 }} />
-                            </button>
+                        <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <div>
+                            <span className="text-slate-400 text-[10px] uppercase font-bold block">Min Salary</span>
+                            <span className="font-semibold text-slate-900 dark:text-white">
+                              {policy.min_salary ? `₹${Number(policy.min_salary).toLocaleString("en-IN")}/mo` : "₹25,000/mo"}
+                            </span>
                           </div>
+                          <div>
+                            <span className="text-slate-400 text-[10px] uppercase font-bold block">CIBIL Cutoff</span>
+                            <span className="font-bold text-blue-600 dark:text-blue-400">
+                              {policy.min_cibil || 700}+
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 text-[10px] uppercase font-bold block">Age Limits</span>
+                            <span className="text-slate-700 dark:text-slate-300">
+                              {policy.min_age || 21}–{policy.max_age || 60} yrs
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 text-[10px] uppercase font-bold block">Max Loan</span>
+                            <span className="text-slate-700 dark:text-slate-300">
+                              {formatCurrency(policy.max_loan_amount || 4000000)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <button
+                            type="button"
+                            className="cw-action-btn"
+                            title="View Underwriting Guidelines Details"
+                            aria-label={`View Guidelines for ${bankName}`}
+                            onClick={() => setViewGuidelinesPolicy(policy)}
+                          >
+                            <Eye style={{ width: 14, height: 14 }} />
+                          </button>
+                          <button
+                            type="button"
+                            className="cw-action-btn cw-action-primary"
+                            title="Edit Policy Guidelines & Criteria"
+                            aria-label={`Edit Guidelines for ${bankName}`}
+                            onClick={() => handleOpenEdit(policy)}
+                          >
+                            <Pencil style={{ width: 14, height: 14 }} />
+                          </button>
+                          <button
+                            type="button"
+                            className="cw-action-btn"
+                            title="Download Policy Guidelines"
+                            aria-label={`Download Guidelines for ${bankName}`}
+                            onClick={() => downloadSinglePolicy(policy)}
+                          >
+                            <Download style={{ width: 14, height: 14 }} className="text-emerald-600 dark:text-emerald-400" />
+                          </button>
+                          <button
+                            type="button"
+                            className="cw-action-btn cw-action-delete"
+                            title="Delete Policy"
+                            aria-label={`Delete Policy for ${bankName}`}
+                            onClick={() => handleOpenDelete(policy)}
+                          >
+                            <Trash2 style={{ width: 14, height: 14 }} />
+                          </button>
                         </div>
                       </div>
                     );
@@ -2089,7 +2467,7 @@ export default function PoliciesView({
                   <FileSpreadsheet style={{ width: 22, height: 22 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                  <div className="text-slate-900 dark:text-white" style={{ fontSize: "1.35rem", fontWeight: 800 }}>
                     {policyFiles.length}
                   </div>
                   <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Policy Files &amp; Spreadsheets</div>
@@ -2114,7 +2492,7 @@ export default function PoliciesView({
                   <Landmark style={{ width: 22, height: 22 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                  <div className="text-slate-900 dark:text-white" style={{ fontSize: "1.35rem", fontWeight: 800 }}>
                     {fileBankOptions.length}
                   </div>
                   <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Covered Banks &amp; Lenders</div>
@@ -2139,7 +2517,7 @@ export default function PoliciesView({
                   <CheckCircle2 style={{ width: 22, height: 22 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a" }}>
+                  <div className="text-slate-900 dark:text-white" style={{ fontSize: "1.35rem", fontWeight: 800 }}>
                     PDF / TXT / XLSX
                   </div>
                   <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>Supported Master Formats</div>
@@ -2147,58 +2525,150 @@ export default function PoliciesView({
               </div>
             </div>
 
-            {/* Drag & Drop Upload Card matching Company Search */}
-            <div
-              className="cw-card"
-              style={{
-                padding: "32px 24px",
-                textAlign: "center",
-                cursor: "pointer",
-                background: isFileDragOver ? "#eff6ff" : "#ffffff",
-                borderColor: isFileDragOver ? "#2563eb" : "#e2e8f0",
-                borderStyle: "dashed",
-                borderWidth: 2,
-                transition: "all 0.15s ease",
-              }}
-              onDragOver={(e) => {
-                e.preventDefault()
-                setIsFileDragOver(true)
-              }}
-              onDragLeave={() => setIsFileDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault()
-                setIsFileDragOver(false)
-                const dropped = e.dataTransfer.files[0]
-                if (dropped) {
-                  setUploadFile(dropped)
-                  setUploadModalOpen(true)
-                }
-              }}
-              onClick={handleOpenUploadModal}
-            >
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: "50%",
-                  background: "#eff6ff",
-                  border: "1px solid #dbeafe",
-                  color: "#2563eb",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 12px auto",
-                }}
-              >
-                <UploadCloud style={{ width: 24, height: 24 }} />
+            {/* Step 1 & Step 2: Upload Card with Bank Gate */}
+            <div className="cw-card p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4">
+              {/* Step 1: Bank Selection */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  Step 1: Select Partner Bank / Lender (Required before uploading)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="relative">
+                    <select
+                      value={tab2IsCustomBank ? "__CUSTOM__" : tab2SelectedBank}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "__CUSTOM__") {
+                          setTab2IsCustomBank(true);
+                        } else {
+                          setTab2IsCustomBank(false);
+                          setTab2SelectedBank(val);
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">-- Choose a Bank / Lender --</option>
+                      {PRESET_PARTNER_BANKS.map((bank) => (
+                        <option key={bank} value={bank}>
+                          {bank}
+                        </option>
+                      ))}
+                      <option value="__CUSTOM__">+ Custom Bank / Manual Entry...</option>
+                    </select>
+                  </div>
+
+                  {/* Manual Typing Option */}
+                  {tab2IsCustomBank && (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={tab2CustomBankName}
+                        onChange={(e) => setTab2CustomBankName(e.target.value)}
+                        placeholder="Type custom Bank or Lender name..."
+                        className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-blue-400 dark:border-blue-500 rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        autoFocus
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Status Indicator */}
+                <div className="mt-2.5 flex items-center gap-2 text-xs">
+                  {isTab2UploadUnlocked ? (
+                    <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                      <Unlock className="w-3.5 h-3.5" />
+                      <span>Ready to upload master file for: <strong>{tab2EffectiveBank}</strong></span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Select or type a Bank Name to unlock file upload</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <h3 style={{ margin: "0 0 4px 0", fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
-                {isUploading ? "Uploading policy document..." : "Upload Bank Policy Document or Spreadsheet"}
-              </h3>
-              <p style={{ margin: 0, fontSize: "0.8125rem", color: "#64748b" }}>
-                Drag &amp; drop a policy file (.txt, .pdf, .docx, .xlsx, .csv) here, or click to browse. Max file size: 50 MB.
-              </p>
+              {/* Step 2: Upload Dropzone (Gated) */}
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (isTab2UploadUnlocked) setTab2IsDragOver(true);
+                }}
+                onDragLeave={() => setTab2IsDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setTab2IsDragOver(false);
+                  if (isTab2UploadUnlocked && e.dataTransfer.files?.[0]) {
+                    handleTab2FileUpload(e.dataTransfer.files[0]);
+                  }
+                }}
+                className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+                  !isTab2UploadUnlocked
+                    ? "border-slate-300 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-950/40 opacity-60 cursor-not-allowed"
+                    : tab2IsDragOver
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-950/40 cursor-copy"
+                    : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/60 hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-slate-900/60 cursor-pointer"
+                }`}
+                onClick={() => {
+                  if (isTab2UploadUnlocked && tab2FileInputRef.current) {
+                    tab2FileInputRef.current.click();
+                  }
+                }}
+              >
+                <input
+                  ref={tab2FileInputRef}
+                  type="file"
+                  accept=".txt, .pdf, .docx, .xlsx, .csv"
+                  className="hidden"
+                  disabled={!isTab2UploadUnlocked || tab2Uploading}
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) {
+                      handleTab2FileUpload(e.target.files[0]);
+                    }
+                  }}
+                />
+
+                <div className="max-w-md mx-auto flex flex-col items-center">
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${
+                      !isTab2UploadUnlocked
+                        ? "bg-slate-200 dark:bg-slate-800 text-slate-400"
+                        : "bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400"
+                    }`}
+                  >
+                    {tab2Uploading ? (
+                      <RotateCcw className="w-6 h-6 animate-spin text-blue-600" />
+                    ) : !isTab2UploadUnlocked ? (
+                      <Lock className="w-6 h-6" />
+                    ) : (
+                      <UploadCloud className="w-6 h-6" />
+                    )}
+                  </div>
+
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
+                    {tab2Uploading
+                      ? "Uploading & Registering Master Policy..."
+                      : !isTab2UploadUnlocked
+                      ? "File Upload Locked"
+                      : "Drag & Drop or Click to Upload Policy File"}
+                  </h4>
+
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                    {!isTab2UploadUnlocked
+                      ? "Please select or type a Bank Name in Step 1 above to enable policy file upload."
+                      : `Selected Bank: "${tab2EffectiveBank}". Accepts .txt, .pdf, .docx, .xlsx, .csv files up to 50 MB.`}
+                  </p>
+
+                  {isTab2UploadUnlocked && !tab2Uploading && (
+                    <button
+                      type="button"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                    >
+                      Choose Policy Document
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Search & Filter Toolbar */}
@@ -2652,6 +3122,135 @@ export default function PoliciesView({
           </div>
         )}
       </div>
+
+      {/* =========================================================================
+          VIEW POLICY GUIDELINES DETAILS MODAL (Tab 1 Underwriting Criteria)
+          ========================================================================= */}
+      {viewGuidelinesPolicy && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fade-in" onClick={() => setViewGuidelinesPolicy(null)}>
+          <div
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-300 dark:border-slate-700 shadow-2xl max-w-2xl w-full p-6 text-left relative max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setViewGuidelinesPolicy(null)}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <Landmark className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white m-0">
+                  {viewGuidelinesPolicy.bank_name || viewGuidelinesPolicy.bank_code}
+                </h3>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold font-mono">
+                    {viewGuidelinesPolicy.bank_code || "BANK"}
+                  </span>
+                  <span className="text-slate-300 dark:text-slate-700">•</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    {viewGuidelinesPolicy.loan_type || "Personal Loan"} ({viewGuidelinesPolicy.employment_type || "Salaried"})
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Key Underwriting Parameters Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-6 text-xs">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-1">
+                  Minimum Monthly Salary
+                </span>
+                <span className="font-bold text-slate-900 dark:text-white text-base">
+                  {viewGuidelinesPolicy.min_salary ? `₹${Number(viewGuidelinesPolicy.min_salary).toLocaleString("en-IN")}` : "₹25,000"} / mo
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-1">
+                  CIBIL Score Cutoff
+                </span>
+                <span className="font-bold text-blue-600 dark:text-blue-400 text-base">
+                  {viewGuidelinesPolicy.min_cibil || 700}+ (Max: {viewGuidelinesPolicy.max_cibil || 900})
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-1">
+                  Eligible Age Limits
+                </span>
+                <span className="font-semibold text-slate-900 dark:text-white text-sm">
+                  {viewGuidelinesPolicy.min_age || 21} to {viewGuidelinesPolicy.max_age || 60} Years
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-1">
+                  Loan Amount Range
+                </span>
+                <span className="font-semibold text-slate-900 dark:text-white text-sm">
+                  {formatCurrency(viewGuidelinesPolicy.min_loan_amount || 50000)} – {formatCurrency(viewGuidelinesPolicy.max_loan_amount || 4000000)}
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-1">
+                  Tenure Range (Months)
+                </span>
+                <span className="font-semibold text-slate-900 dark:text-white text-sm">
+                  {viewGuidelinesPolicy.min_tenure_months || 12} to {viewGuidelinesPolicy.max_tenure_months || 60} Months
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-1">
+                  Rate of Interest (ROI) &amp; FOIR
+                </span>
+                <span className="font-semibold text-slate-900 dark:text-white text-sm">
+                  {viewGuidelinesPolicy.roi || "10.49%"} | FOIR: {viewGuidelinesPolicy.foir_percent || 50}%
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => downloadSinglePolicy(viewGuidelinesPolicy)}
+                className="cw-btn-secondary text-xs flex items-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Download Excel</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const p = viewGuidelinesPolicy;
+                  setViewGuidelinesPolicy(null);
+                  handleOpenEdit(p);
+                }}
+                className="cw-btn-primary text-xs flex items-center gap-1.5"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                <span>Edit Guidelines</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewGuidelinesPolicy(null)}
+                className="cw-btn-secondary text-xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* =========================================================================
           EDIT POLICY RULE MODAL (Matches User Mockup Precisely)
