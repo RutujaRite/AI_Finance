@@ -542,6 +542,82 @@ export const QuickCalculators: React.FC<QuickCalculatorsProps> = ({
         .text-blue-700 { color: #1d4ed8; }
         .bg-blue-100 { background: #dbeafe; }
         .text-blue-800 { color: #1e40af; }
+
+        /* Dark mode overrides */
+        :global([data-theme="dark"]) .calc-card,
+        :global([data-bs-theme="dark"]) .calc-card,
+        :global(.dark) .calc-card {
+          background: #111b2e !important;
+          border-color: #1e293b !important;
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .external-card,
+        :global([data-bs-theme="dark"]) .external-card,
+        :global(.dark) .external-card {
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+          border-color: #334155 !important;
+        }
+
+        :global([data-theme="dark"]) .card-heading,
+        :global([data-bs-theme="dark"]) .card-heading,
+        :global(.dark) .card-heading {
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .card-desc,
+        :global([data-bs-theme="dark"]) .card-desc,
+        :global(.dark) .card-desc {
+          color: #94a3b8 !important;
+        }
+
+        :global([data-theme="dark"]) .card-badge,
+        :global([data-bs-theme="dark"]) .card-badge,
+        :global(.dark) .card-badge {
+          background: #1e293b !important;
+          color: #cbd5e1 !important;
+        }
+
+        :global([data-theme="dark"]) .calc-result-box,
+        :global([data-bs-theme="dark"]) .calc-result-box,
+        :global(.dark) .calc-result-box {
+          background: #0b1220 !important;
+          border-color: #1e293b !important;
+        }
+
+        :global([data-theme="dark"]) .result-lbl,
+        :global([data-bs-theme="dark"]) .result-lbl,
+        :global(.dark) .result-lbl {
+          color: #94a3b8 !important;
+        }
+
+        :global([data-theme="dark"]) .input-with-symbol,
+        :global([data-bs-theme="dark"]) .input-with-symbol,
+        :global(.dark) .input-with-symbol {
+          background: #0f172a !important;
+          border-color: #334155 !important;
+        }
+
+        :global([data-theme="dark"]) .param-num-input,
+        :global([data-bs-theme="dark"]) .param-num-input,
+        :global(.dark) .param-num-input {
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .sym-prefix,
+        :global([data-theme="dark"]) .sym-suffix,
+        :global([data-bs-theme="dark"]) .sym-prefix,
+        :global([data-bs-theme="dark"]) .sym-suffix,
+        :global(.dark) .sym-prefix,
+        :global(.dark) .sym-suffix {
+          color: #64748b !important;
+        }
+
+        :global([data-theme="dark"]) .feature-line,
+        :global([data-bs-theme="dark"]) .feature-line,
+        :global(.dark) .feature-line {
+          color: #cbd5e1 !important;
+        }
       `}</style>
     </section>
   );

@@ -434,6 +434,77 @@ export const SavedRecordsModal: React.FC<SavedRecordsModalProps> = ({
         .text-emerald-700 { color: #047857; }
         .text-blue-700 { color: #1d4ed8; }
         .text-blue-600 { color: #2563eb; }
+
+        /* Dark mode overrides */
+        :global([data-theme="dark"]) .modal-card,
+        :global([data-bs-theme="dark"]) .modal-card,
+        :global(.dark) .modal-card {
+          background: #111b2e !important;
+          border-color: #1e293b !important;
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .modal-header,
+        :global([data-bs-theme="dark"]) .modal-header,
+        :global(.dark) .modal-header {
+          border-bottom-color: #1e293b !important;
+        }
+
+        :global([data-theme="dark"]) .modal-footer,
+        :global([data-bs-theme="dark"]) .modal-footer,
+        :global(.dark) .modal-footer {
+          background: #0f172a !important;
+          border-top-color: #1e293b !important;
+        }
+
+        :global([data-theme="dark"]) .record-item,
+        :global([data-bs-theme="dark"]) .record-item,
+        :global(.dark) .record-item {
+          background: #16243d !important;
+          border-color: #1e293b !important;
+        }
+
+        :global([data-theme="dark"]) .record-item:hover,
+        :global([data-bs-theme="dark"]) .record-item:hover,
+        :global(.dark) .record-item:hover {
+          border-color: #3b82f6 !important;
+          background: #1a2c4a !important;
+        }
+
+        :global([data-theme="dark"]) .applicant-name,
+        :global([data-bs-theme="dark"]) .applicant-name,
+        :global(.dark) .applicant-name {
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .btn-done,
+        :global([data-bs-theme="dark"]) .btn-done,
+        :global(.dark) .btn-done {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .btn-done:hover,
+        :global([data-bs-theme="dark"]) .btn-done:hover,
+        :global(.dark) .btn-done:hover {
+          background: #334155 !important;
+          color: #ffffff !important;
+        }
+
+        :global([data-theme="dark"]) .btn-delete-record,
+        :global([data-bs-theme="dark"]) .btn-delete-record,
+        :global(.dark) .btn-delete-record {
+          background: rgba(239, 68, 68, 0.15) !important;
+          color: #fca5a5 !important;
+        }
+
+        :global([data-theme="dark"]) .btn-delete-record:hover,
+        :global([data-bs-theme="dark"]) .btn-delete-record:hover,
+        :global(.dark) .btn-delete-record:hover {
+          background: rgba(239, 68, 68, 0.3) !important;
+          color: #ffffff !important;
+        }
       `}</style>
     </div>
   );

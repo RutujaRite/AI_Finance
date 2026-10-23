@@ -1309,11 +1309,17 @@ export function formatPostEligibilityManagerDetails(
 
     cardSections.push(
       `### 📍 ${bName} — Branch Contact Details\n\n` +
+      `- **Bank Name**: ${bName}\n` +
+      `- **Branch Name**: ${branchVal}\n` +
       `- **Branch**: ${branchVal}\n` +
       `- **Location**: ${locationVal}\n` +
+      `- **Manager Name**: ${mgrVal}\n` +
       `- **Manager**: ${mgrVal}\n` +
+      `- **Contact Number**: ${phoneVal}\n` +
       `- **Phone**: ${phoneVal}\n` +
+      `- **Email Address**: ${emailVal}\n` +
       `- **Email**: ${emailVal}\n` +
+      `- **Branch Address**: ${addressVal}\n` +
       `- **Address**: ${addressVal}`
     );
   }

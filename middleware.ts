@@ -43,9 +43,10 @@ function isUserAdmin(payload: any): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Allow static assets, landing page, and public auth endpoints
+  // Allow static assets, dashboard, and public auth endpoints
   if (
     pathname === '/' ||
+    pathname === '/home' ||
     pathname.startsWith('/_next') ||
     pathname === '/favicon.ico' ||
     pathname === '/login' ||

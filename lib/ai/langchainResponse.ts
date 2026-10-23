@@ -166,6 +166,14 @@ function isFallbackEligibleError(err: any): boolean {
   return true;
 }
 
+let mockResponder:
+  | ((messages: Array<ChatMessageInput | BaseMessage>, options?: LangChainChatOptions) => string | null)
+  | null = null;
+
+export function setMockLangChainChatResponder(fn: typeof mockResponder) {
+  mockResponder = fn;
+}
+
 /**
  * Executes a streaming chat completion using LangChain LCEL (ChatOpenAI.pipe(StringOutputParser)).
  * Yields tokens in real-time to onToken callback and returns complete accumulated text.
@@ -175,6 +183,15 @@ export async function generateLangChainChatStream(
   onToken: (token: string) => void,
   options?: LangChainChatOptions
 ): Promise<string> {
+  const activeMock = mockResponder || (globalThis as any).__mockLangChainChatResponder;
+  if (activeMock) {
+    const mocked = activeMock(messages, options);
+    if (mocked !== null && mocked !== undefined) {
+      onToken(mocked);
+      return mocked;
+    }
+  }
+
   let resolvedKey = sanitizeApiKey(options?.apiKey);
   if (!resolvedKey) {
     try {
@@ -271,6 +288,18 @@ export async function generateLangChainChatResponseWithMetadata(
   messages: Array<ChatMessageInput | BaseMessage>,
   options?: LangChainChatOptions
 ): Promise<LangChainChatResponseWithMetadata> {
+  const activeMock = mockResponder || (globalThis as any).__mockLangChainChatResponder;
+  if (activeMock) {
+    const mocked = activeMock(messages, options);
+    if (mocked !== null && mocked !== undefined) {
+      return {
+        content: mocked,
+        usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 },
+        model: "mock-model",
+      };
+    }
+  }
+
   let resolvedKey = sanitizeApiKey(options?.apiKey);
   if (!resolvedKey) {
     try {

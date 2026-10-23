@@ -134,16 +134,16 @@ export default function AdminDashboardPage() {
 
   if (loading || !user) {
     return (
-      <main className="flex flex-col items-center justify-center min-h-screen gap-3 bg-slate-50 text-slate-900 font-sans">
+      <main className="flex flex-col items-center justify-center min-h-screen gap-3 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
         <div className="w-9 h-9 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-slate-600 font-medium text-sm">
+        <p className="text-slate-600 dark:text-slate-400 font-medium text-sm">
           Verifying administrator access...
         </p>
       </main>
     );
   }
 
-  // 5 Focused Core Module Cards with Semantic Tint Colors (Enterprise Light)
+  // 5 Focused Core Module Cards with Semantic Tint Colors (Enterprise Light & Dark)
   const moduleCards = [
     {
       id: "card-company-search",
@@ -153,8 +153,8 @@ export default function AdminDashboardPage() {
       action: "Manage employer database",
       href: "/admin/company-search",
       icon: Building2,
-      iconContainerClass: "bg-sky-50 text-sky-600 border border-sky-200",
-      badgeClass: "bg-sky-50 text-sky-700 border-sky-200",
+      iconContainerClass: "bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800",
+      badgeClass: "bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800",
     },
     {
       id: "card-bank-policy",
@@ -164,8 +164,8 @@ export default function AdminDashboardPage() {
       action: "Configure lending rules",
       href: "/admin/bank-policy",
       icon: ShieldCheck,
-      iconContainerClass: "bg-indigo-50 text-indigo-600 border border-indigo-200",
-      badgeClass: "bg-indigo-50 text-indigo-700 border-indigo-200",
+      iconContainerClass: "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800",
+      badgeClass: "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
     },
     {
       id: "card-ai-agent-studio",
@@ -175,8 +175,8 @@ export default function AdminDashboardPage() {
       action: "Configure agent intelligence",
       href: "/agent-studio",
       icon: Bot,
-      iconContainerClass: "bg-blue-50 text-blue-600 border border-blue-200",
-      badgeClass: "bg-blue-50 text-blue-700 border-blue-200",
+      iconContainerClass: "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800",
+      badgeClass: "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",
     },
     {
       id: "card-bank-managers",
@@ -186,8 +186,8 @@ export default function AdminDashboardPage() {
       action: "View escalation contacts",
       href: "/admin/bank-manager-locations",
       icon: Users,
-      iconContainerClass: "bg-emerald-50 text-emerald-600 border border-emerald-200",
-      badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      iconContainerClass: "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800",
+      badgeClass: "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
     },
     {
       id: "card-total-users",
@@ -197,8 +197,8 @@ export default function AdminDashboardPage() {
       action: "Manage roles & permissions",
       href: "/admin/users",
       icon: UserCheck,
-      iconContainerClass: "bg-purple-50 text-purple-600 border border-purple-200",
-      badgeClass: "bg-purple-50 text-purple-700 border-purple-200",
+      iconContainerClass: "bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800",
+      badgeClass: "bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800",
     },
   ];
 

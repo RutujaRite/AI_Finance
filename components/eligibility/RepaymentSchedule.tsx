@@ -1386,6 +1386,54 @@ export const RepaymentSchedule: React.FC<RepaymentScheduleProps> = ({
           border-bottom-color: #1e3a5f !important;
         }
 
+        :global([data-theme="dark"]) .rep-btn-print,
+        :global([data-bs-theme="dark"]) .rep-btn-print,
+        :global(.dark) .rep-btn-print {
+          background: var(--surface-2) !important;
+          border-color: var(--border) !important;
+          color: var(--ink-soft) !important;
+        }
+
+        :global([data-theme="dark"]) .rep-btn-print:hover,
+        :global([data-bs-theme="dark"]) .rep-btn-print:hover,
+        :global(.dark) .rep-btn-print:hover {
+          background: #334155 !important;
+          border-color: #60a5fa !important;
+          color: #ffffff !important;
+        }
+
+        :global([data-theme="dark"]) .rep-btn-preview,
+        :global([data-bs-theme="dark"]) .rep-btn-preview,
+        :global(.dark) .rep-btn-preview {
+          background: rgba(37, 99, 235, 0.15) !important;
+          border-color: rgba(59, 130, 246, 0.4) !important;
+          color: #93c5fd !important;
+        }
+
+        :global([data-theme="dark"]) .rep-btn-preview:hover,
+        :global([data-bs-theme="dark"]) .rep-btn-preview:hover,
+        :global(.dark) .rep-btn-preview:hover {
+          background: rgba(37, 99, 235, 0.3) !important;
+          border-color: #60a5fa !important;
+          color: #ffffff !important;
+        }
+
+        :global([data-theme="dark"]) .rep-btn-download,
+        :global([data-bs-theme="dark"]) .rep-btn-download,
+        :global(.dark) .rep-btn-download {
+          background: rgba(16, 185, 129, 0.15) !important;
+          border-color: rgba(16, 185, 129, 0.4) !important;
+          color: #6ee7b7 !important;
+        }
+
+        :global([data-theme="dark"]) .rep-btn-download:hover:not(:disabled),
+        :global([data-bs-theme="dark"]) .rep-btn-download:hover:not(:disabled),
+        :global(.dark) .rep-btn-download:hover:not(:disabled) {
+          background: rgba(16, 185, 129, 0.3) !important;
+          border-color: #34d399 !important;
+          color: #ffffff !important;
+        }
+
         /* Preview Modal */
         .preview-modal-backdrop {
           position: fixed;

@@ -144,6 +144,7 @@ export interface SessionState {
   topBank?: string;
   chosenBank?: string;
   selectedBank?: string;
+  selectedBankId?: string;
   lastPolicyBank?: string;
   preferredBranch?: string;
   city?: string;
@@ -6379,7 +6380,8 @@ export function formatDynamicEligibilityReport(
     recommendationReason: string;
   }
 ): string {
-  const { eligibleBanks, recommendedBank, reviewBanks = [] } = evaluationOutput;
+  const { eligibleBanks = [], recommendedBank, reviewBanks = [], ineligibleBanks = [] } = evaluationOutput || {};
+
   // Sort approved banks with recommendedBank at the top, then by lowest ROI, lowest EMI, and highest loan limit
   const sortedEligible = [...eligibleBanks].sort((a, b) => {
     if (recommendedBank && a.bankName.toLowerCase() === recommendedBank.bankName.toLowerCase()) return -1;
@@ -6388,7 +6390,35 @@ export function formatDynamicEligibilityReport(
     if (a.monthlyEmi !== b.monthlyEmi) return a.monthlyEmi - b.monthlyEmi;
     return b.maxLoanEligible - a.maxLoanEligible;
   });
-  const approvedOrReviewBanks = [...sortedEligible, ...reviewBanks];
+
+  const sortedReview = [...reviewBanks].sort((a, b) => {
+    if (a.roi !== b.roi) return a.roi - b.roi;
+    if (a.monthlyEmi !== b.monthlyEmi) return a.monthlyEmi - b.monthlyEmi;
+    return b.maxLoanEligible - a.maxLoanEligible;
+  });
+
+  const sortedIneligible = [...ineligibleBanks].sort((a, b) => a.bankName.localeCompare(b.bankName));
+
+  // Full evaluated bank list: recommended first, then remaining eligible, then review, then ineligible
+  const allEvaluatedBanks: BankEvaluationResult[] = evaluationOutput.evaluations && evaluationOutput.evaluations.length > 0
+    ? (() => {
+        const evals = [...evaluationOutput.evaluations];
+        return evals.sort((a, b) => {
+          const aRec = recommendedBank && a.bankName.toLowerCase() === recommendedBank.bankName.toLowerCase() ? 1 : 0;
+          const bRec = recommendedBank && b.bankName.toLowerCase() === recommendedBank.bankName.toLowerCase() ? 1 : 0;
+          if (aRec !== bRec) return bRec - aRec;
+          const aElig = a.status === "ELIGIBLE" ? 2 : a.status === "NEEDS_REVIEW" ? 1 : 0;
+          const bElig = b.status === "ELIGIBLE" ? 2 : b.status === "NEEDS_REVIEW" ? 1 : 0;
+          if (aElig !== bElig) return bElig - aElig;
+          if (a.isEligible && b.isEligible) {
+            if (a.roi !== b.roi) return a.roi - b.roi;
+            return b.maxLoanEligible - a.maxLoanEligible;
+          }
+          return a.bankName.localeCompare(b.bankName);
+        });
+      })()
+    : [...sortedEligible, ...sortedReview, ...sortedIneligible];
+
   const lines: string[] = [];
 
   // Do not generate a bank table when required data is missing!
@@ -6433,57 +6463,70 @@ export function formatDynamicEligibilityReport(
   lines.push(`| **Applicant Age** | ${applicant.age && typeof applicant.age === "number" && applicant.age > 0 ? `${applicant.age} years` : "Not provided"} |`);
   lines.push("");
 
-  // Eligible Banks Table (Bank | Status | CIBIL | Tenure | Est. EMI)
-  if (approvedOrReviewBanks.length > 0) {
-    const isSole = approvedOrReviewBanks.length === 1;
-    lines.push(`### 📋 Eligible Partner Bank${isSole ? "" : "s"} (${approvedOrReviewBanks.length})`);
-    if (isSole) {
-      lines.push(`Based on your profile and verified financial parameters, **${approvedOrReviewBanks[0].bankName}** meets all eligibility criteria for your requested loan:`);
-    } else {
-      lines.push(`The following partner banks meet all policy criteria for your profile:`);
-    }
+  // 1. Recommended Bank Card Highlight
+  if (recommendedBank && (recommendedBank.status === "ELIGIBLE" || recommendedBank.status === "NEEDS_REVIEW")) {
+    const recAmt = recommendedBank.maxLoanEligible > 0
+      ? `₹${recommendedBank.maxLoanEligible.toLocaleString("en-IN")}`
+      : (recommendedBank.requestedLoanAmount > 0 ? `₹${recommendedBank.requestedLoanAmount.toLocaleString("en-IN")}` : "Not available");
+    const recRoi = recommendedBank.roi > 0 ? `${recommendedBank.roi}% p.a.` : "Not available";
+    lines.push(`### 🌟 Recommended Bank`);
+    lines.push(`**${recommendedBank.bankName}**`);
+    lines.push(`* **Eligibility**: ${recommendedBank.status === "ELIGIBLE" ? "Eligible" : "Needs Review"}`);
+    lines.push(`* **Estimated Eligible Amount**: ${recAmt}`);
+    lines.push(`* **Interest Rate**: ${recRoi}`);
+    lines.push(`* **Why recommended**: ${evaluationOutput.recommendationReason}`);
     lines.push("");
-    lines.push(`| Bank | Status | CIBIL | Tenure | Est. EMI |`);
-    lines.push(`| :--- | :--- | :--- | :--- | :--- |`);
-
-    approvedOrReviewBanks.forEach((b, idx) => {
-      const isTop = idx === 0 && b.status === "ELIGIBLE";
-      const statusIcon = b.status === "ELIGIBLE" ? "✅ ELIGIBLE" : "⚠️ NEEDS_REVIEW";
-      const bankLabel = isTop ? `**${b.bankName}** 🌟 *(Highly Recommended)*` : `**${b.bankName}**`;
-      lines.push(
-        `| ${bankLabel} | ${statusIcon} | ${b.policyCibil || "-"} | ${b.policyTenure || "-"} | ₹${b.monthlyEmi.toLocaleString("en-IN")} |`
-      );
-    });
-    lines.push("");
-
-    if (reviewBanks.length > 0) {
-      lines.push(`> ⚠️ **Note**: Banks marked **NEEDS_REVIEW** require underwriting sign-off or employer verification as per bank policy.`);
-      lines.push("");
-    }
-
-    lines.push(`---\n🏦 **Next Step**: Which bank from your eligible list above would you like to proceed with? Please select **ONE** bank to connect with an official branch manager.`);
   } else {
-    // Objective assessment outcome based strictly on actual failed criteria returned by the engine
-    lines.push(`### ⚠️ Assessment Outcome: No Partner Banks Currently Eligible`);
-    lines.push(`> [!WARNING]`);
-    lines.push(`> **Policy Criteria Not Met**`);
-    lines.push(`> Based on an objective evaluation against partner bank policies, no partner bank currently approves the requested loan parameters under this profile.`);
+    lines.push(`### ⚠️ Recommended Bank`);
+    lines.push(`* **Eligibility**: No partner banks currently eligible`);
+    lines.push(`* **Why recommended**: Based on an objective evaluation against partner bank policies, no partner bank currently approves the requested loan parameters under this profile. Please review the bank-wise assessment and rejection reasons below.`);
     lines.push("");
+  }
 
-    const ineligibles = evaluationOutput.ineligibleBanks || [];
-    if (ineligibles.length > 0) {
-      lines.push(`### 📋 Bank-Wise Assessment Results`);
-      lines.push(`| Bank | Status | CIBIL | Tenure | Est. EMI |`);
-      lines.push(`| :--- | :--- | :--- | :--- | :--- |`);
-      ineligibles.forEach((b) => {
-        lines.push(
-          `| **${b.bankName}** | ❌ NOT_ELIGIBLE | ${b.policyCibil || "-"} | ${b.policyTenure || "-"} | - |`
-        );
-      });
-      lines.push("");
+  // 2. Comprehensive Loan Eligibility Sheet Table
+  lines.push(`### 📋 Loan Eligibility Sheet`);
+  lines.push(`Evaluated across **${allEvaluatedBanks.length} partner lenders** using verified Master Policy underwriting rules:`);
+  lines.push("");
+  lines.push(`| Bank Name | Eligibility Status | Eligible Loan Amount | Interest Rate | Tenure | Eligibility Reason | Action |`);
+  lines.push(`| :--- | :--- | :--- | :--- | :--- | :--- | :--- |`);
+
+  allEvaluatedBanks.forEach((b) => {
+    const isTop = recommendedBank && b.bankName.toLowerCase() === recommendedBank.bankName.toLowerCase() && b.isEligible;
+    const bankLabel = isTop ? `**${b.bankName}** 🌟 *(Recommended)*` : `**${b.bankName}**`;
+
+    if (b.status === "ELIGIBLE") {
+      const amtStr = b.maxLoanEligible > 0
+        ? `₹${b.maxLoanEligible.toLocaleString("en-IN")}`
+        : (b.requestedLoanAmount > 0 ? `₹${b.requestedLoanAmount.toLocaleString("en-IN")}` : "Not available");
+      const roiStr = b.roi > 0 ? `${b.roi}% p.a.` : "Not available";
+      const tenureStr = b.tenureMonths > 0
+        ? `${b.tenureMonths} months`
+        : (b.policyTenure && b.policyTenure !== "-" ? b.policyTenure : "Not available");
+      const reasonStr = buildConciseEligibilityReason(applicant, b).replace(/\|/g, "/");
+      lines.push(`| ${bankLabel} | Eligible | ${amtStr} | ${roiStr} | ${tenureStr} | ${reasonStr} | Select |`);
+    } else if (b.status === "NEEDS_REVIEW") {
+      const amtStr = b.maxLoanEligible > 0
+        ? `₹${b.maxLoanEligible.toLocaleString("en-IN")}`
+        : (b.requestedLoanAmount > 0 ? `₹${b.requestedLoanAmount.toLocaleString("en-IN")}` : "Not available");
+      const roiStr = b.roi > 0 ? `${b.roi}% p.a.` : "Not available";
+      const tenureStr = b.tenureMonths > 0
+        ? `${b.tenureMonths} months`
+        : (b.policyTenure && b.policyTenure !== "-" ? b.policyTenure : "Not available");
+      const reasonStr = (b.reviewReason || "Underwriting review required by bank policy").replace(/\|/g, "/");
+      lines.push(`| ${bankLabel} | Needs Review | ${amtStr} | ${roiStr} | ${tenureStr} | ${reasonStr} | Select |`);
+    } else {
+      // Ineligible row
+      const failureReason = b.failureReasons && b.failureReasons.length > 0
+        ? b.failureReasons[0].replace(/\|/g, "/").trim()
+        : "Policy criteria not satisfied";
+      lines.push(`| ${bankLabel} | Not Eligible | — | — | — | ${failureReason} | — |`);
     }
+  });
+  lines.push("");
 
-    const deduplicatedReasons = deduplicateRejectionReasons(ineligibles, applicant);
+  // Ineligible reasons breakdown if some banks were rejected
+  if (ineligibleBanks.length > 0 && eligibleBanks.length === 0) {
+    const deduplicatedReasons = deduplicateRejectionReasons(ineligibleBanks, applicant);
     if (deduplicatedReasons.length > 0) {
       lines.push(`#### 📋 Key Policy Criteria Not Met:`);
       deduplicatedReasons.forEach((r) => {
@@ -6492,7 +6535,6 @@ export function formatDynamicEligibilityReport(
       lines.push("");
     }
 
-    // Simple natural-language actionable guidance in pointwise format
     lines.push(`#### 💡 How You Can Become Eligible:`);
     const numIncome = Number(applicant.monthlyIncome) || 0;
     const numLoan = Number(applicant.loanAmount) || 0;
@@ -6518,6 +6560,11 @@ export function formatDynamicEligibilityReport(
     }
     lines.push(`* **Add a Salaried Co-Applicant**: Applying jointly with an earning spouse or family member combines income to qualify for higher amounts.`);
     lines.push("");
+  }
+
+  if (eligibleBanks.length > 0 || reviewBanks.length > 0) {
+    lines.push(`---\n🏦 **Next Step**: Click **Select** on any eligible bank above or tell me which bank you would like to proceed with to connect with an official branch manager.`);
+  } else {
     lines.push(`---\nWould you like to recalculate your eligibility with a different loan amount or longer tenure?`);
   }
 
@@ -7020,15 +7067,26 @@ export async function applyProfileUpdateAndRecalculate(
       })),
     };
 
+    const prevState = await getEligibilityState(conversationId);
+
     // CRITICAL (TEST H & Section 6): If this is a hypothetical scenario, DO NOT overwrite the baseline applicant!
     if (!isScenario) {
       calculationStateUpdate.applicant = applicant;
       calculationStateUpdate.expectedField = "selectedBank";
-      calculationStateUpdate.selectedBank = "";
-      calculationStateUpdate.chosenBank = "";
+      // Revalidate previous selection against the new eligibility results:
+      const prevBank = prevState?.selectedBank || prevState?.chosenBank;
+      const isStillEligible = prevBank && evalResult.eligibleBanks.some((b) => isSameBank(b.bankName, prevBank));
+      if (isStillEligible) {
+        calculationStateUpdate.selectedBank = prevBank;
+        calculationStateUpdate.chosenBank = prevBank;
+        calculationStateUpdate.selectedBankId = prevState?.selectedBankId || "";
+      } else {
+        calculationStateUpdate.selectedBank = "";
+        calculationStateUpdate.chosenBank = "";
+        calculationStateUpdate.selectedBankId = "";
+      }
     }
 
-    const prevState = await getEligibilityState(conversationId);
     await saveEligibilityState(conversationId, {
       ...(prevState || {}),
       ...calculationStateUpdate,

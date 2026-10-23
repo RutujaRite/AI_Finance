@@ -16,7 +16,7 @@ import { isGeneralFinancialQuery, answerGeneralFinancialQuery, RESUME_TRANSITION
 import { detectCompanyFollowUp, resolveContextualCompany as resolveCompanyFromContext, executeCompanyFollowUpAnswer } from "@/lib/ai/companyFollowUp";
 import { extractSpecificBankPolicyParameter, formatBankPolicyComparison, formatCategorySalaryAcrossBanks, formatBankDocumentTable, formatDocumentComparisonAcrossBanks } from "@/lib/ai/bankPolicyFormatter";
 import { isConstraintOnlyFollowUp, resolveConversationalContext } from "@/lib/ai/conversationIntelligence";
-import { extractVariableUpdatesFromText } from "@/lib/ai/variableTracker";
+import { extractVariableUpdatesFromText, formatActiveVariablesPrompt } from "@/lib/ai/variableTracker";
 import { extractEntitiesFromText } from "@/lib/ai/intentClassifier";
 import { searchBankManager, formatManagers, findBankBranches, formatBankManagersTable, getUniqueBranches, getUniqueManagerRecords, BankManagerRecord } from "@/lib/bankSearch";
 import { searchCompany, formatCompanyResponse, formatCompanyCandidateList, findCompanySuggestions, CompanyCandidate } from "@/lib/companySearch";
@@ -238,6 +238,11 @@ export interface CompanySelectionAction {
   type: "confirm" | "retry" | "select";
   companyId?: string;
   companyName?: string;
+}
+
+export interface BankSelectionAction {
+  bankId?: string;
+  bankName: string;
 }
 
 export const OPENROUTER_TOOLS = [
@@ -6268,6 +6273,7 @@ export async function runCentralAgent(opts: {
   model?: string;
   conversationHistory?: Array<{ role: string; content: string }>;
   companySelectionAction?: CompanySelectionAction;
+  bankSelectionAction?: BankSelectionAction;
   currentTime?: string;
   systemPrompt?: string;
   activeAgent?: any;
@@ -6312,13 +6318,14 @@ async function runCentralAgentInternal(opts: {
   model?: string;
   conversationHistory?: Array<{ role: string; content: string }>;
   companySelectionAction?: CompanySelectionAction;
+  bankSelectionAction?: BankSelectionAction;
   currentTime?: string;
   systemPrompt?: string;
   activeAgent?: any;
   agentKnowledgeResult?: any;
   onToken?: (token: string) => void;
 }): Promise<AgentResult> {
-  const { message, conversationId, model: requestedModel, companySelectionAction, currentTime: optsCurrentTime, systemPrompt: optsSystemPrompt, activeAgent, agentKnowledgeResult } = opts;
+  const { message, conversationId, model: requestedModel, companySelectionAction, bankSelectionAction, currentTime: optsCurrentTime, systemPrompt: optsSystemPrompt, activeAgent, agentKnowledgeResult } = opts;
   let { conversationHistory } = opts;
 
   // Dynamically resolve and activate configured credentials from PostgreSQL / env
@@ -6931,6 +6938,7 @@ async function runCentralAgentInternal(opts: {
     eligibilitySession,
     currentApplicant,
     requestedModel,
+    bankSelectionAction,
     finalizeAndReturn,
   });
   if (postEligRes) {
@@ -7225,10 +7233,38 @@ async function runCentralAgentInternal(opts: {
     // Direct LLM call with token budget — NO policy RAG, NO company search, NO manager lookup
     const budget = getTokenBudget("GENERAL_QUERY");
     const prunedHistory = pruneHistoryToBudget(conversationHistory || [], budget.maxInputTokens || budget.inputMaxTokens);
-    const isLoanContextMsg = /loan|emi|cibil|credit|borrow|lender|bank/i.test(userMessage);
-    const sysPromptContent = !isLoanContextMsg
+    const hasSessionVars = Boolean(
+      currentApplicant?.monthlyIncome ||
+      currentApplicant?.companyName ||
+      currentApplicant?.cibil !== undefined ||
+      currentApplicant?.age ||
+      currentApplicant?.existingEmi !== undefined ||
+      currentApplicant?.loanAmount ||
+      (conversationHistory && conversationHistory.length > 0)
+    );
+
+    const isLoanContextMsg =
+      hasSessionVars ||
+      /loan|emi|cibil|credit|borrow|lender|bank|salary|income|employer|company|tenure|age/i.test(userMessage);
+
+    let sysPromptContent = !isLoanContextMsg
       ? "You are CreditWise AI, a helpful, intelligent assistant. Directly answer the user's question clearly, concisely, and accurately. Follow all user instructions strictly (such as exact bullet point counts or formatting constraints). Do not inject loan policy details, employer requirements, or personal financial questionnaires when answering general technical or educational questions."
       : (optsSystemPrompt || "You are CreditWise AI, a helpful, intelligent assistant. Directly answer the user's question clearly, concisely, and accurately. Do not invent bank rules or force the user into loan application flows unless they ask about personal loans.");
+
+    if (hasSessionVars && !sysPromptContent.includes("CURRENT SESSION CONTEXT") && !sysPromptContent.includes("Applicant Profile")) {
+      const varsPrompt = formatActiveVariablesPrompt({
+        monthlySalary: currentApplicant.monthlyIncome ? Number(currentApplicant.monthlyIncome) : undefined,
+        existingEmi: currentApplicant.existingEmi !== undefined ? Number(currentApplicant.existingEmi) : undefined,
+        loanAmount: currentApplicant.loanAmount ? Number(currentApplicant.loanAmount) : undefined,
+        cibilScore: currentApplicant.cibil !== undefined ? Number(currentApplicant.cibil) : undefined,
+        companyName: currentApplicant.companyName,
+        employerCategory: currentApplicant.companyCategory,
+        age: currentApplicant.age ? Number(currentApplicant.age) : undefined,
+        tenureMonths: currentApplicant.tenureMonths ? Number(currentApplicant.tenureMonths) : undefined,
+        employmentType: currentApplicant.employmentType,
+      });
+      sysPromptContent = `${sysPromptContent}\n\n${varsPrompt}`;
+    }
 
     const messages = [
       {

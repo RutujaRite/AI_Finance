@@ -712,6 +712,14 @@ export const CalculationBenchmarks: React.FC<CalculationBenchmarksProps> = ({
           color: var(--ink-soft) !important;
         }
 
+        :global([data-theme="dark"]) .reset-btn:hover,
+        :global([data-bs-theme="dark"]) .reset-btn:hover,
+        :global(.dark) .reset-btn:hover {
+          background: #334155 !important;
+          border-color: #60a5fa !important;
+          color: #ffffff !important;
+        }
+
         :global([data-theme="dark"]) .text-blue-700,
         :global([data-bs-theme="dark"]) .text-blue-700,
         :global(.dark) .text-blue-700 {

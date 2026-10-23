@@ -370,6 +370,61 @@ export const CalculationLogic: React.FC<CalculationLogicProps> = ({
         .text-emerald-700 { color: #047857; }
         .text-emerald-800 { color: #065f46; }
         .text-indigo-700 { color: #4338ca; }
+
+        /* Dark mode overrides */
+        :global([data-theme="dark"]) .calculation-logic-card,
+        :global([data-bs-theme="dark"]) .calculation-logic-card,
+        :global(.dark) .calculation-logic-card {
+          background: #111b2e !important;
+          border-color: #1e293b !important;
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .card-header-bar,
+        :global([data-bs-theme="dark"]) .card-header-bar,
+        :global(.dark) .card-header-bar {
+          background: #111b2e !important;
+          border-bottom-color: #1e293b !important;
+        }
+
+        :global([data-theme="dark"]) .card-header-bar:hover,
+        :global([data-bs-theme="dark"]) .card-header-bar:hover,
+        :global(.dark) .card-header-bar:hover {
+          background: #16243d !important;
+        }
+
+        :global([data-theme="dark"]) .card-title,
+        :global([data-bs-theme="dark"]) .card-title,
+        :global(.dark) .card-title {
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .card-subtitle,
+        :global([data-bs-theme="dark"]) .card-subtitle,
+        :global(.dark) .card-subtitle {
+          color: #94a3b8 !important;
+        }
+
+        :global([data-theme="dark"]) .step-card,
+        :global([data-bs-theme="dark"]) .step-card,
+        :global(.dark) .step-card {
+          background: #16243d !important;
+          border-color: #1e293b !important;
+        }
+
+        :global([data-theme="dark"]) .step-title,
+        :global([data-bs-theme="dark"]) .step-title,
+        :global(.dark) .step-title {
+          color: #f8fafc !important;
+        }
+
+        :global([data-theme="dark"]) .pos-audit-strip,
+        :global([data-bs-theme="dark"]) .pos-audit-strip,
+        :global(.dark) .pos-audit-strip {
+          background: #0f172a !important;
+          border-color: #1e293b !important;
+          color: #cbd5e1 !important;
+        }
       `}</style>
     </section>
   );

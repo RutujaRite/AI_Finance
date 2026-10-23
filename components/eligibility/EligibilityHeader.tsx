@@ -282,6 +282,14 @@ export const EligibilityHeader: React.FC<EligibilityHeaderProps> = ({
           border-color: var(--border) !important;
           color: var(--ink-soft) !important;
         }
+
+        :global([data-theme="dark"]) .hdr-btn-secondary:hover,
+        :global([data-bs-theme="dark"]) .hdr-btn-secondary:hover,
+        :global(.dark) .hdr-btn-secondary:hover {
+          background: #334155 !important;
+          border-color: #60a5fa !important;
+          color: #ffffff !important;
+        }
       `}</style>
     </header>
   );

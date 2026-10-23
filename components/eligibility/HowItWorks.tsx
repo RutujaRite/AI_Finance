@@ -234,8 +234,43 @@ export const HowItWorks: React.FC = () => {
           transition: all 0.2s ease;
         }
 
-        :global([data-theme='dark']) .concept-box {
-          background: #141c2e;
+        :global(.dark) .how-it-works-card,
+        :global([data-theme='dark']) .how-it-works-card,
+        :global([data-bs-theme='dark']) .how-it-works-card {
+          background: #111b2e;
+          border-color: #1e293b;
+        }
+
+        :global(.dark) .card-header,
+        :global([data-theme='dark']) .card-header,
+        :global([data-bs-theme='dark']) .card-header {
+          border-bottom-color: #1e293b;
+        }
+
+        :global(.dark) .card-title,
+        :global([data-theme='dark']) .card-title,
+        :global([data-bs-theme='dark']) .card-title {
+          color: #f8fafc;
+        }
+
+        :global(.dark) .card-subtitle,
+        :global([data-theme='dark']) .card-subtitle,
+        :global([data-bs-theme='dark']) .card-subtitle {
+          color: #94a3b8;
+        }
+
+        :global(.dark) .card-icon-wrapper,
+        :global([data-theme='dark']) .card-icon-wrapper,
+        :global([data-bs-theme='dark']) .card-icon-wrapper {
+          background: rgba(37, 99, 235, 0.18);
+          color: #60a5fa;
+        }
+
+        :global(.dark) .concept-box,
+        :global([data-theme='dark']) .concept-box,
+        :global([data-bs-theme='dark']) .concept-box {
+          background: #0f172a;
+          border-color: #1e293b;
         }
 
         .concept-box:hover {
@@ -254,16 +289,35 @@ export const HowItWorks: React.FC = () => {
           justify-content: center;
         }
 
+        :global(.dark) .concept-icon-box,
+        :global([data-theme='dark']) .concept-icon-box,
+        :global([data-bs-theme='dark']) .concept-icon-box {
+          background: #1e293b;
+          border-color: #334155;
+        }
+
         .concept-title {
           font-size: 0.95rem;
           font-weight: 700;
           color: var(--text-primary, #0f172a);
         }
 
+        :global(.dark) .concept-title,
+        :global([data-theme='dark']) .concept-title,
+        :global([data-bs-theme='dark']) .concept-title {
+          color: #f8fafc;
+        }
+
         .concept-text {
           font-size: 0.82rem;
           color: var(--text-secondary, #475569);
           line-height: 1.5;
+        }
+
+        :global(.dark) .concept-text,
+        :global([data-theme='dark']) .concept-text,
+        :global([data-bs-theme='dark']) .concept-text {
+          color: #94a3b8;
         }
 
         .faqs-wrapper {
@@ -281,6 +335,12 @@ export const HowItWorks: React.FC = () => {
           gap: 8px;
         }
 
+        :global(.dark) .faqs-heading,
+        :global([data-theme='dark']) .faqs-heading,
+        :global([data-bs-theme='dark']) .faqs-heading {
+          color: #f8fafc;
+        }
+
         .faqs-list {
           display: flex;
           flex-direction: column;
@@ -295,8 +355,21 @@ export const HowItWorks: React.FC = () => {
           transition: all 0.15s ease;
         }
 
+        :global(.dark) .faq-item,
+        :global([data-theme='dark']) .faq-item,
+        :global([data-bs-theme='dark']) .faq-item {
+          background: #0f172a;
+          border-color: #1e293b;
+        }
+
         .faq-item.open {
           border-color: #93c5fd;
+        }
+
+        :global(.dark) .faq-item.open,
+        :global([data-theme='dark']) .faq-item.open,
+        :global([data-bs-theme='dark']) .faq-item.open {
+          border-color: #3b82f6;
         }
 
         .faq-question-btn {
@@ -317,6 +390,19 @@ export const HowItWorks: React.FC = () => {
           background: var(--bg-hover, #f8fafc);
         }
 
+        :global(.dark) .faq-question-btn,
+        :global([data-theme='dark']) .faq-question-btn,
+        :global([data-bs-theme='dark']) .faq-question-btn {
+          background: #0f172a;
+          color: #f8fafc;
+        }
+
+        :global(.dark) .faq-question-btn:hover,
+        :global([data-theme='dark']) .faq-question-btn:hover,
+        :global([data-bs-theme='dark']) .faq-question-btn:hover {
+          background: #16243d;
+        }
+
         .faq-q-text {
           flex: 1;
         }
@@ -332,8 +418,11 @@ export const HowItWorks: React.FC = () => {
           background: var(--bg-subtle, #f8fafc);
         }
 
-        :global([data-theme='dark']) .faq-answer-panel {
+        :global(.dark) .faq-answer-panel,
+        :global([data-theme='dark']) .faq-answer-panel,
+        :global([data-bs-theme='dark']) .faq-answer-panel {
           background: #141c2e;
+          border-top-color: #1e293b;
         }
 
         .faq-a-text {
@@ -341,6 +430,12 @@ export const HowItWorks: React.FC = () => {
           color: var(--text-secondary, #475569);
           line-height: 1.55;
           padding-top: 12px;
+        }
+
+        :global(.dark) .faq-a-text,
+        :global([data-theme='dark']) .faq-a-text,
+        :global([data-bs-theme='dark']) .faq-a-text {
+          color: #cbd5e1;
         }
       `}</style>
     </div>

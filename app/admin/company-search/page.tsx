@@ -124,6 +124,16 @@ export default function CompanySearchPage() {
   const [loadingFiles, setLoadingFiles] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<{
+    fileName: string;
+    bankName: string;
+    status: "idle" | "uploading" | "completed" | "duplicate" | "error";
+    message: string;
+    inserted?: number;
+    skipped?: number;
+    invalidRows?: number;
+    totalRecords?: number;
+  } | null>(null);
 
   // Tab 2 Bank Name Gate & Selection
   const [uploadSelectedBank, setUploadSelectedBank] = useState<string>("");
@@ -272,7 +282,7 @@ export default function CompanySearchPage() {
 
   // Upload Spreadsheet Handler (Tab 2)
   async function handleFileUpload(file: File) {
-    if (!file) return;
+    if (!file || uploading) return;
 
     if (!isUploadUnlocked) {
       showNotification("Please select or enter a Bank / Lender name before uploading.", "error");
@@ -298,10 +308,19 @@ export default function CompanySearchPage() {
     }
 
     setUploading(true);
+    setUploadStatus({
+      fileName: file.name,
+      bankName: effectiveUploadBank,
+      status: "uploading",
+      message: `Uploading and ingesting records for "${effectiveUploadBank}"...`,
+    });
+
     try {
+      const uploadOpId = `up_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
       const formData = new FormData();
       formData.append("file", file);
       formData.append("bank_name", effectiveUploadBank);
+      formData.append("idempotency_key", uploadOpId);
 
       const res = await fetch("/api/bank/files", {
         method: "POST",
@@ -311,16 +330,49 @@ export default function CompanySearchPage() {
       const data = await res.json();
 
       if (res.ok && data.success) {
+        const isDup = data.duplicate || data.already_exists;
+        const inserted = data.stats?.inserted ?? (isDup ? 0 : data.file?.record_count ?? 0);
+        const skipped = data.stats?.skipped_duplicate ?? (isDup ? data.file?.record_count ?? 0 : 0);
+        const invalidRows = data.stats?.invalid_rows ?? 0;
+        const total = data.file?.record_count ?? inserted;
+
+        setUploadStatus({
+          fileName: file.name,
+          bankName: effectiveUploadBank,
+          status: isDup ? "duplicate" : "completed",
+          message: data.message || `Ingested ${inserted.toLocaleString()} company records.`,
+          inserted,
+          skipped,
+          invalidRows,
+          totalRecords: total,
+        });
+
         showNotification(
-          `Spreadsheet "${file.name}" uploaded successfully for "${effectiveUploadBank}"! Ingested ${data.file?.record_count || data.record_count || 0} company records.`,
-          "success"
+          data.message ||
+            (isDup
+              ? `File "${file.name}" was already uploaded. Existing ${skipped.toLocaleString()} records retained.`
+              : `Spreadsheet "${file.name}" uploaded successfully! Ingested ${inserted.toLocaleString()} records.`),
+          isDup ? "info" : "success"
         );
         loadFiles();
         loadCompanyRecords();
       } else {
-        showNotification(`Upload failed: ${data.error || "Unknown error"}`, "error");
+        const errMsg = data.error || "Unknown error during ingestion";
+        setUploadStatus({
+          fileName: file.name,
+          bankName: effectiveUploadBank,
+          status: "error",
+          message: errMsg,
+        });
+        showNotification(`Upload failed: ${errMsg}`, "error");
       }
     } catch {
+      setUploadStatus({
+        fileName: file.name,
+        bankName: effectiveUploadBank,
+        status: "error",
+        message: "Network or server connection error during upload.",
+      });
       showNotification("Upload failed due to network error", "error");
     } finally {
       setUploading(false);
@@ -329,6 +381,7 @@ export default function CompanySearchPage() {
       }
     }
   }
+
 
   // Delete Spreadsheet File Handler (Tab 2)
   async function handleDeleteFile(fileId: number | string, fileName: string) {
@@ -1160,7 +1213,7 @@ export default function CompanySearchPage() {
             {/* Step 2: Drag & Drop Upload Card (Unlocked only if bank chosen) */}
             <div
               className={`cw-card p-6 sm:p-8 text-center transition-all shadow-sm border-2 border-dashed ${
-                !isUploadUnlocked
+                !isUploadUnlocked || uploading
                   ? "bg-slate-100/60 dark:bg-slate-900/40 border-slate-300 dark:border-slate-800 opacity-75 cursor-not-allowed"
                   : isDragOver
                   ? "bg-blue-50/80 dark:bg-blue-950/40 border-blue-500 dark:border-blue-400 cursor-pointer"
@@ -1168,7 +1221,7 @@ export default function CompanySearchPage() {
               }`}
               onDragOver={(e) => {
                 e.preventDefault();
-                if (isUploadUnlocked) setIsDragOver(true);
+                if (isUploadUnlocked && !uploading) setIsDragOver(true);
               }}
               onDragLeave={() => setIsDragOver(false)}
               onDrop={(e) => {
@@ -1178,6 +1231,7 @@ export default function CompanySearchPage() {
                   showNotification("Please select or enter a Bank / Lender name above to enable spreadsheet upload.", "error");
                   return;
                 }
+                if (uploading) return;
                 const file = e.dataTransfer.files[0];
                 if (file) handleFileUpload(file);
               }}
@@ -1186,6 +1240,7 @@ export default function CompanySearchPage() {
                   showNotification("Please select or enter a Bank / Lender name above to enable spreadsheet upload.", "error");
                   return;
                 }
+                if (uploading) return;
                 if (fileInputRef.current) fileInputRef.current.click();
               }}
             >
@@ -1194,10 +1249,10 @@ export default function CompanySearchPage() {
                 type="file"
                 accept=".csv,.xlsx,.xls"
                 style={{ display: "none" }}
-                disabled={!isUploadUnlocked}
+                disabled={!isUploadUnlocked || uploading}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) handleFileUpload(file);
+                  if (file && !uploading) handleFileUpload(file);
                 }}
               />
 
@@ -1205,10 +1260,18 @@ export default function CompanySearchPage() {
                 className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 transition-colors ${
                   !isUploadUnlocked
                     ? "bg-slate-200 dark:bg-slate-800 text-slate-400"
+                    : uploading
+                    ? "bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400"
                     : "bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400"
                 }`}
               >
-                {!isUploadUnlocked ? <Lock className="w-7 h-7" /> : <UploadCloud className="w-7 h-7" />}
+                {!isUploadUnlocked ? (
+                  <Lock className="w-7 h-7" />
+                ) : uploading ? (
+                  <RotateCw className="w-7 h-7 animate-spin text-blue-600 dark:text-blue-400" />
+                ) : (
+                  <UploadCloud className="w-7 h-7" />
+                )}
               </div>
 
               <h3 className="m-0 mb-1 text-base font-bold text-slate-900 dark:text-white">
@@ -1220,11 +1283,102 @@ export default function CompanySearchPage() {
               </h3>
 
               <p className="m-0 text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                {isUploadUnlocked
+                {uploading
+                  ? "Processing spreadsheet with idempotent deduplication. Please do not close this window."
+                  : isUploadUnlocked
                   ? "Drag & drop a CSV or Excel spreadsheet here, or click to browse. Max size: 50 MB. Records will be mapped to the selected bank."
                   : "To prevent unmapped company data, you must choose or type a Bank/Lender destination in Step 1 first."}
               </p>
             </div>
+
+            {/* Ingestion Status & Audit Report */}
+            {uploadStatus && (
+              <div
+                className={`cw-card p-4 rounded-xl border transition-all ${
+                  uploadStatus.status === "completed"
+                    ? "bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100"
+                    : uploadStatus.status === "duplicate"
+                    ? "bg-blue-50/80 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800 text-blue-900 dark:text-blue-100"
+                    : uploadStatus.status === "uploading"
+                    ? "bg-indigo-50/80 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-800 text-indigo-900 dark:text-indigo-100"
+                    : "bg-rose-50/80 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-100"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5">
+                      {uploadStatus.status === "completed" ? (
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                      ) : uploadStatus.status === "duplicate" ? (
+                        <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      ) : uploadStatus.status === "uploading" ? (
+                        <RotateCw className="w-5 h-5 text-indigo-600 dark:text-indigo-400 animate-spin" />
+                      ) : (
+                        <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm">
+                          {uploadStatus.status === "completed"
+                            ? "Ingestion Successful"
+                            : uploadStatus.status === "duplicate"
+                            ? "Duplicate Upload Safely Recognized"
+                            : uploadStatus.status === "uploading"
+                            ? "Ingesting Spreadsheet..."
+                            : "Upload Failed"}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded-full font-mono font-medium bg-white/70 dark:bg-slate-900/70 border border-current">
+                          {uploadStatus.bankName}
+                        </span>
+                      </div>
+                      <p className="text-xs mt-1 opacity-90">{uploadStatus.message}</p>
+                      <p className="text-xs mt-0.5 opacity-75 font-mono">
+                        File: {uploadStatus.fileName}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setUploadStatus(null)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs p-1"
+                    title="Dismiss"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {uploadStatus.status !== "uploading" && (
+                  <div className="mt-3 pt-3 border-t border-current/15 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div className="bg-white/60 dark:bg-slate-900/60 p-2 rounded-lg text-center">
+                      <span className="block text-slate-500 dark:text-slate-400">Inserted</span>
+                      <strong className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                        {uploadStatus.inserted?.toLocaleString() ?? 0}
+                      </strong>
+                    </div>
+                    <div className="bg-white/60 dark:bg-slate-900/60 p-2 rounded-lg text-center">
+                      <span className="block text-slate-500 dark:text-slate-400">Skipped (Dups)</span>
+                      <strong className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                        {uploadStatus.skipped?.toLocaleString() ?? 0}
+                      </strong>
+                    </div>
+                    <div className="bg-white/60 dark:bg-slate-900/60 p-2 rounded-lg text-center">
+                      <span className="block text-slate-500 dark:text-slate-400">Invalid Rows</span>
+                      <strong className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                        {uploadStatus.invalidRows ?? 0}
+                      </strong>
+                    </div>
+                    <div className="bg-white/60 dark:bg-slate-900/60 p-2 rounded-lg text-center">
+                      <span className="block text-slate-500 dark:text-slate-400">Total in DB</span>
+                      <strong className="text-sm font-bold text-slate-900 dark:text-white">
+                        {uploadStatus.totalRecords?.toLocaleString() ?? 0}
+                      </strong>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
 
             {/* Step 3: Spreadsheets Files History Table */}
             <div className="space-y-4">

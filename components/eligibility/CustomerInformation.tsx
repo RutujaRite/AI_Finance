@@ -394,6 +394,12 @@ export const CustomerInformation: React.FC<CustomerInformationProps> = ({
           border-color: var(--border) !important;
         }
 
+        :global([data-theme="dark"]) .card-header-clickable:hover,
+        :global([data-bs-theme="dark"]) .card-header-clickable:hover,
+        :global(.dark) .card-header-clickable:hover {
+          background: #1e293b !important;
+        }
+
         :global([data-theme="dark"]) .card-title,
         :global([data-bs-theme="dark"]) .card-title,
         :global(.dark) .card-title {

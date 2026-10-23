@@ -289,7 +289,6 @@ export const EligibilityPieChart: React.FC<EligibilityPieChartProps> = ({
                   cx={cx} 
                   cy={cy} 
                   r={innerRadius - 1} 
-                  fill="#ffffff" 
                   className="donut-hole"
                 />
               </svg>
@@ -636,6 +635,138 @@ export const EligibilityPieChart: React.FC<EligibilityPieChartProps> = ({
 
         .font-mono {
           font-family: monospace;
+        }
+
+        .donut-hole {
+          fill: #ffffff;
+          transition: fill 0.2s ease;
+        }
+
+        :global(.dark) .donut-hole,
+        :global([data-theme="dark"]) .donut-hole,
+        :global([data-bs-theme="dark"]) .donut-hole {
+          fill: #0b1220;
+        }
+
+        :global(.dark) .pie-chart-box,
+        :global([data-theme="dark"]) .pie-chart-box,
+        :global([data-bs-theme="dark"]) .pie-chart-box {
+          background: #111b2e;
+          border-color: #1e293b;
+        }
+
+        :global(.dark) .chart-header,
+        :global([data-theme="dark"]) .chart-header,
+        :global([data-bs-theme="dark"]) .chart-header {
+          background: #111b2e;
+          border-bottom-color: #1e293b;
+        }
+
+        :global(.dark) .section-title,
+        :global([data-theme="dark"]) .section-title,
+        :global([data-bs-theme="dark"]) .section-title {
+          color: #f8fafc;
+        }
+
+        :global(.dark) .section-subtitle,
+        :global([data-theme="dark"]) .section-subtitle,
+        :global([data-bs-theme="dark"]) .section-subtitle {
+          color: #94a3b8;
+        }
+
+        :global(.dark) .icon-wrapper,
+        :global([data-theme="dark"]) .icon-wrapper,
+        :global([data-bs-theme="dark"]) .icon-wrapper {
+          background: rgba(37, 99, 235, 0.16);
+          color: #60a5fa;
+        }
+
+        :global(.dark) .mode-toggle-group,
+        :global([data-theme="dark"]) .mode-toggle-group,
+        :global([data-bs-theme="dark"]) .mode-toggle-group {
+          background: #0f172a;
+          border-color: #334155;
+        }
+
+        :global(.dark) .mode-btn,
+        :global([data-theme="dark"]) .mode-btn,
+        :global([data-bs-theme="dark"]) .mode-btn {
+          color: #94a3b8;
+        }
+
+        :global(.dark) .mode-btn:hover,
+        :global([data-theme="dark"]) .mode-btn:hover,
+        :global([data-bs-theme="dark"]) .mode-btn:hover {
+          color: #f8fafc;
+        }
+
+        :global(.dark) .mode-btn.active,
+        :global([data-theme="dark"]) .mode-btn.active,
+        :global([data-bs-theme="dark"]) .mode-btn.active {
+          background: #1e293b;
+          color: #60a5fa;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+
+        :global(.dark) .chart-body,
+        :global([data-theme="dark"]) .chart-body,
+        :global([data-bs-theme="dark"]) .chart-body {
+          background: #0b1220;
+        }
+
+        :global(.dark) .center-title,
+        :global([data-theme="dark"]) .center-title,
+        :global([data-bs-theme="dark"]) .center-title {
+          color: #f8fafc;
+        }
+
+        :global(.dark) .center-subtitle,
+        :global([data-theme="dark"]) .center-subtitle,
+        :global([data-bs-theme="dark"]) .center-subtitle {
+          color: #94a3b8;
+        }
+
+        :global(.dark) .legend-card,
+        :global([data-theme="dark"]) .legend-card,
+        :global([data-bs-theme="dark"]) .legend-card {
+          background: #111b2e;
+          border-color: #1e293b;
+        }
+
+        :global(.dark) .legend-card:hover,
+        :global(.dark) .legend-card-active,
+        :global([data-theme="dark"]) .legend-card:hover,
+        :global([data-theme="dark"]) .legend-card-active,
+        :global([data-bs-theme="dark"]) .legend-card:hover,
+        :global([data-bs-theme="dark"]) .legend-card-active {
+          border-color: #3b82f6;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        :global(.dark) .item-label,
+        :global([data-theme="dark"]) .item-label,
+        :global([data-bs-theme="dark"]) .item-label {
+          color: #f8fafc;
+        }
+
+        :global(.dark) .item-val,
+        :global([data-theme="dark"]) .item-val,
+        :global([data-bs-theme="dark"]) .item-val {
+          color: #f8fafc;
+        }
+
+        :global(.dark) .item-desc,
+        :global([data-theme="dark"]) .item-desc,
+        :global([data-bs-theme="dark"]) .item-desc {
+          color: #94a3b8;
+        }
+
+        :global(.dark) .chart-insight-strip,
+        :global([data-theme="dark"]) .chart-insight-strip,
+        :global([data-bs-theme="dark"]) .chart-insight-strip {
+          background: rgba(16, 185, 129, 0.12);
+          border-color: rgba(16, 185, 129, 0.28);
+          color: #4ade80;
         }
       `}</style>
     </div>

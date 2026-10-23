@@ -16,8 +16,8 @@ import { existsSync } from "fs";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "bank-pdfs");
-const URL_PREFIX = "/uploads/bank-pdfs/";
+const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "bank-company-data");
+const URL_PREFIX = "/uploads/bank-company-data/";
 
 export async function GET(
   req: NextRequest,

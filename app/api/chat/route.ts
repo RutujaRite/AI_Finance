@@ -38,6 +38,7 @@ import {
   persistUpdatedVariables,
   formatActiveVariablesPrompt,
 } from "@/lib/ai/variableTracker";
+import { getEligibilityState } from "@/lib/dynamicEligibilityEngine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,9 +60,8 @@ function nowISO(): string {
 
 /**
  * Resolves the authenticated user ID from the request auth token cookie.
- * Defaults to the primary active user (ID 2 / admin) if unauthenticated.
  */
-async function getUserIdFromReq(req: NextRequest): Promise<number> {
+async function getUserIdFromReq(req: NextRequest): Promise<number | null> {
   try {
     const token = req.cookies.get("token")?.value;
     const payload: any = token ? verifyToken(token) : null;
@@ -74,19 +74,13 @@ async function getUserIdFromReq(req: NextRequest): Promise<number> {
     }
   } catch {}
 
-  try {
-    const fallbackRes = await pool.query("SELECT id FROM users ORDER BY id ASC LIMIT 1");
-    if (fallbackRes.rows.length > 0) {
-      return Number(fallbackRes.rows[0].id);
-    }
-  } catch {}
-
-  return 1;
+  return null;
 }
 
 /**
  * Resolves an existing conversation in PostgreSQL or creates a new row with the
  * user's user_id, returning the integer conversation ID.
+ * Strictly verifies ownership so one user can NEVER access or overwrite another user's conversation.
  */
 async function resolveOrCreateConversation(
   userId: number,
@@ -98,19 +92,30 @@ async function resolveOrCreateConversation(
   try {
     if (Number.isFinite(numId) && numId > 0) {
       const check = await client.query(
-        `SELECT id FROM assistant_conversations WHERE id = $1 AND user_id = $2`,
-        [numId, userId]
+        `SELECT id, user_id FROM assistant_conversations WHERE id = $1`,
+        [numId]
       );
       if (check.rowCount && check.rowCount > 0) {
+        if (Number(check.rows[0].user_id) !== userId) {
+          const authError: any = new Error("Forbidden: Access denied to conversation");
+          authError.statusCode = 403;
+          throw authError;
+        }
         return numId;
       }
       // If client provided a specific numeric id not yet in DB, insert with user_id
-      await client.query(
+      const insertRes = await client.query(
         `INSERT INTO assistant_conversations (id, user_id, title)
          VALUES ($1, $2, $3)
-         ON CONFLICT (id) DO UPDATE SET updated_at = NOW()`,
+         ON CONFLICT (id) DO UPDATE SET updated_at = NOW()
+         RETURNING id, user_id`,
         [numId, userId, userMessage.slice(0, 40) || "Loan Assistant"]
       );
+      if (insertRes.rows.length > 0 && Number(insertRes.rows[0].user_id) !== userId) {
+        const authError: any = new Error("Forbidden: Access denied to conversation");
+        authError.statusCode = 403;
+        throw authError;
+      }
       return numId;
     }
 
@@ -123,12 +128,23 @@ async function resolveOrCreateConversation(
       if (stateCheck.rowCount && stateCheck.rowCount > 0) {
         const mappedId = Number(stateCheck.rows[0]?.state?.internal_conv_id);
         if (Number.isFinite(mappedId) && mappedId > 0) {
-          return mappedId;
+          const ownerCheck = await client.query(
+            `SELECT user_id FROM assistant_conversations WHERE id = $1`,
+            [mappedId]
+          );
+          if (ownerCheck.rowCount && ownerCheck.rowCount > 0) {
+            if (Number(ownerCheck.rows[0].user_id) !== userId) {
+              const authError: any = new Error("Forbidden: Access denied to conversation");
+              authError.statusCode = 403;
+              throw authError;
+            }
+            return mappedId;
+          }
         }
       }
     }
 
-    // Create a new conversation row with sequence id
+    // Create a new conversation row with sequence id for this authenticated user
     const res = await client.query(
       `INSERT INTO assistant_conversations (user_id, title)
        VALUES ($1, $2)
@@ -151,7 +167,7 @@ export async function POST(req: NextRequest) {
 
     const rawMessage = String(body?.message || "").trim();
     // Truncate incoming user messages to a maximum of 2,000 characters (~500 tokens)
-    const message = rawMessage.slice(0, 2000);
+    let message = rawMessage.slice(0, 2000);
 
     const clientConvId =
       String(body?.conversation_id || body?.conversationId || "").trim();
@@ -178,6 +194,23 @@ export async function POST(req: NextRequest) {
         }
       : undefined;
 
+    const bankSelectionAction =
+      body?.bankSelectionAction && typeof body.bankSelectionAction === "object" && body.bankSelectionAction.bankName
+        ? {
+            bankId: body.bankSelectionAction.bankId ? String(body.bankSelectionAction.bankId) : undefined,
+            bankName: String(body.bankSelectionAction.bankName).trim(),
+          }
+        : (body?.bank_selection && typeof body.bank_selection === "object" && body.bank_selection.bankName
+            ? {
+                bankId: body.bank_selection.bankId ? String(body.bank_selection.bankId) : undefined,
+                bankName: String(body.bank_selection.bankName).trim(),
+              }
+            : undefined);
+
+    if (!message && bankSelectionAction?.bankName) {
+      message = "I select " + bankSelectionAction.bankName;
+    }
+
     /* ---------------------------------------------------------------------- */
     /* Validate request                                                       */
     /* ---------------------------------------------------------------------- */
@@ -199,16 +232,40 @@ export async function POST(req: NextRequest) {
     /* ---------------------------------------------------------------------- */
 
     const userId = await getUserIdFromReq(req);
+    if (!userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+          message: "Authentication required",
+        },
+        { status: 401 }
+      );
+    }
+
     const convId = await resolveOrCreateConversation(userId, clientConvId, message);
     const conversationIdStr = String(convId);
 
-    // Save the incoming user message to assistant_messages
+    // Save the incoming user message to assistant_messages (avoid rapid duplicate submissions)
     try {
-      await pool.query(
-        `INSERT INTO assistant_messages (conversation_id, role, content)
-         VALUES ($1, 'user', $2)`,
-        [convId, message]
+      const lastMsgCheck = await pool.query(
+        `SELECT content, created_at FROM assistant_messages 
+         WHERE conversation_id = $1 AND role = 'user' 
+         ORDER BY id DESC LIMIT 1`,
+        [convId]
       );
+      const isRapidDuplicate =
+        lastMsgCheck.rows.length > 0 &&
+        lastMsgCheck.rows[0].content === message &&
+        Date.now() - new Date(lastMsgCheck.rows[0].created_at).getTime() < 1500;
+
+      if (!isRapidDuplicate) {
+        await pool.query(
+          `INSERT INTO assistant_messages (conversation_id, role, content)
+           VALUES ($1, 'user', $2)`,
+          [convId, message]
+        );
+      }
     } catch (msgErr) {
       console.error("Error saving user message to DB:", msgErr);
     }
@@ -224,7 +281,12 @@ export async function POST(req: NextRequest) {
       );
       // Exclude the message we just inserted so conversationHistory represents PRIOR turns
       const allRows = historyRes.rows;
-      const priorRows = allRows.slice(0, -1);
+      const priorRows =
+        allRows.length > 0 &&
+        allRows[allRows.length - 1].role === "user" &&
+        allRows[allRows.length - 1].content === message
+          ? allRows.slice(0, -1)
+          : allRows;
       // Always pass the entire current session chat history to the LLM
       conversationHistory = priorRows.map((r: any) => ({
         role: r.role === "assistant" || r.role === "ai" ? "assistant" : "user",
@@ -466,6 +528,7 @@ export async function POST(req: NextRequest) {
             conversationHistory,
             model: requestedModel,
             companySelectionAction,
+            bankSelectionAction,
             currentTime,
             systemPrompt,
             activeAgent: isAgentActive ? activeAgent : undefined,
@@ -576,12 +639,20 @@ export async function POST(req: NextRequest) {
           }
           aiMessage.retrieval_intent = retrievalRouting.intent;
 
+          const latestEligState = await getEligibilityState(conversationIdStr);
+          if (latestEligState?.selectedBank) {
+            aiMessage.selected_bank = latestEligState.selectedBank;
+            aiMessage.selected_bank_id = latestEligState.selectedBankId || undefined;
+          }
+
           await sendEvent({
             type: "done",
             success: true,
             conversation_id: conversationIdStr,
             client_conversation_id: clientConvId || conversationIdStr,
             title: effectiveTitle,
+            selectedBank: latestEligState?.selectedBank || null,
+            selectedBankId: latestEligState?.selectedBankId || null,
             ai_message: aiMessage,
             message: aiMessage,
             retrieval_intent: retrievalRouting.intent,
@@ -619,6 +690,7 @@ export async function POST(req: NextRequest) {
       conversationHistory,
       model: requestedModel,
       companySelectionAction,
+      bankSelectionAction,
       currentTime,
       systemPrompt,
       activeAgent: isAgentActive ? activeAgent : undefined,
@@ -719,6 +791,12 @@ export async function POST(req: NextRequest) {
     /* Return standard chat response with persistent conversation_id          */
     /* ---------------------------------------------------------------------- */
 
+    const latestEligStateNonStream = await getEligibilityState(conversationIdStr);
+    if (latestEligStateNonStream?.selectedBank) {
+      aiMessage.selected_bank = latestEligStateNonStream.selectedBank;
+      aiMessage.selected_bank_id = latestEligStateNonStream.selectedBankId || undefined;
+    }
+
     return NextResponse.json({
       success: true,
 
@@ -727,6 +805,10 @@ export async function POST(req: NextRequest) {
       client_conversation_id: clientConvId || conversationIdStr,
 
       title: effectiveTitle || "Loan Assistant",
+
+      selectedBank: latestEligStateNonStream?.selectedBank || null,
+
+      selectedBankId: latestEligStateNonStream?.selectedBankId || null,
 
       ai_message: aiMessage,
 
@@ -751,6 +833,18 @@ export async function POST(req: NextRequest) {
       error?.message || error,
       error?.stack || ""
     );
+
+    if (error?.statusCode === 403 || error?.message?.includes("Forbidden")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Forbidden: Access denied to conversation",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
 
     const { isOpenRouterAuthError, INVALID_KEY_USER_MESSAGE } = await import("@/lib/ai/keyResolution");
     const isAuthErr = isOpenRouterAuthError(error);

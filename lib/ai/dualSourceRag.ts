@@ -203,27 +203,32 @@ export async function searchBankPolicyEmbeddings(options: {
     const limitIdx = params.length;
     const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-    const fallbackRes = await client.query(
-      `SELECT id, policy_file_id, bank_id, file_name, chunk_index, content, metadata, loan_category
-       FROM bank_policy_embeddings
-       ${whereSql}
-       ORDER BY chunk_index ASC
-       LIMIT $${limitIdx};`,
-      params
-    );
+    try {
+      const fallbackRes = await client.query(
+        `SELECT id, policy_file_id, bank_id, file_name, chunk_index, content, metadata, loan_category
+         FROM bank_policy_embeddings
+         ${whereSql}
+         ORDER BY chunk_index ASC
+         LIMIT $${limitIdx};`,
+        params
+      );
 
-    return fallbackRes.rows.map((r: any) => ({
-      id: r.id,
-      policyFileId: Number(r.policy_file_id),
-      bankId: Number(r.bank_id),
-      fileName: r.file_name,
-      chunkIndex: Number(r.chunk_index),
-      content: r.content,
-      distance: 0.25,
-      similarity: 0.75,
-      loanCategory: r.loan_category,
-      metadata: r.metadata,
-    }));
+      return fallbackRes.rows.map((r: any) => ({
+        id: r.id,
+        policyFileId: Number(r.policy_file_id),
+        bankId: Number(r.bank_id),
+        fileName: r.file_name,
+        chunkIndex: Number(r.chunk_index),
+        content: r.content,
+        distance: 0.25,
+        similarity: 0.75,
+        loanCategory: r.loan_category,
+        metadata: r.metadata,
+      }));
+    } catch (fbErr) {
+      console.warn("[DualSourceRAG] fallback search error:", fbErr);
+      return [];
+    }
   } finally {
     client.release();
   }
@@ -344,19 +349,24 @@ export async function searchAgentKnowledgeEmbeddings(options: {
       const limitIdx = params.length;
       const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-      const fallbackRes = await client.query(
-        `SELECT id, document_id, agent_id, chunk_index, content, char_count, metadata
-         FROM agent_knowledge_embeddings
-         ${whereSql}
-         ORDER BY chunk_index ASC
-         LIMIT $${limitIdx};`,
-        params
-      );
-      chunks = fallbackRes.rows.map((r) => ({
-        ...r,
-        distance: 0.25,
-        similarity: 0.75,
-      }));
+      try {
+        const fallbackRes = await client.query(
+          `SELECT id, document_id, agent_id, chunk_index, content, char_count, metadata
+           FROM agent_knowledge_embeddings
+           ${whereSql}
+           ORDER BY chunk_index ASC
+           LIMIT $${limitIdx};`,
+          params
+        );
+        chunks = fallbackRes.rows.map((r) => ({
+          ...r,
+          distance: 0.25,
+          similarity: 0.75,
+        }));
+      } catch (fbErr) {
+        console.warn("[DualSourceRAG] fallback search in agent_knowledge_embeddings error:", fbErr);
+        chunks = [];
+      }
     }
 
     if (chunks.length === 0) return [];

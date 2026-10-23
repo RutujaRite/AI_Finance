@@ -943,6 +943,16 @@ export const LoanDetailsTable: React.FC<LoanDetailsTableProps> = ({
           border-color: var(--border) !important;
           color: var(--ink-soft) !important;
         }
+        :global([data-theme="dark"]) .tbl-btn-secondary:hover,
+        :global([data-theme="dark"]) .tbl-btn-collapse:hover,
+        :global([data-bs-theme="dark"]) .tbl-btn-secondary:hover,
+        :global([data-bs-theme="dark"]) .tbl-btn-collapse:hover,
+        :global(.dark) .tbl-btn-secondary:hover,
+        :global(.dark) .tbl-btn-collapse:hover {
+          background: #334155 !important;
+          border-color: #60a5fa !important;
+          color: #ffffff !important;
+        }
         :global([data-theme="dark"]) .loan-table th,
         :global([data-bs-theme="dark"]) .loan-table th,
         :global(.dark) .loan-table th {

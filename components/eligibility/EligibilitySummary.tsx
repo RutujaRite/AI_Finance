@@ -380,6 +380,26 @@ export const EligibilitySummary: React.FC<EligibilitySummaryProps> = ({
         :global(.dark) .bg-blue-subtle {
           background: rgba(30, 58, 138, 0.4) !important;
         }
+
+        :global([data-theme="dark"]) .multiplier-hero-card,
+        :global([data-bs-theme="dark"]) .multiplier-hero-card,
+        :global(.dark) .multiplier-hero-card {
+          background: linear-gradient(135deg, #1e3a8a 0%, #172554 100%) !important;
+          border-color: #3b82f6 !important;
+          box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.4) !important;
+        }
+
+        :global([data-theme="dark"]) .multiplier-hero-card .hero-badge,
+        :global([data-bs-theme="dark"]) .multiplier-hero-card .hero-badge,
+        :global(.dark) .multiplier-hero-card .hero-badge {
+          color: #93c5fd !important;
+        }
+
+        :global([data-theme="dark"]) .exact-excel-note,
+        :global([data-bs-theme="dark"]) .exact-excel-note,
+        :global(.dark) .exact-excel-note {
+          color: #bfdbfe !important;
+        }
       `}</style>
     </div>
   );

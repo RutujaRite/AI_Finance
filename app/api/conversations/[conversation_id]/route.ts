@@ -41,12 +41,14 @@ export async function GET(
     const convRes = await client.query(
       `SELECT id, user_id, title, created_at, updated_at
        FROM assistant_conversations
-       WHERE id = $1 AND user_id = $2
-       LIMIT 1`,
-      [convId, userId]
+       WHERE id = $1`,
+      [convId]
     );
     if (convRes.rowCount === 0) {
       return NextResponse.json({ success: false, error: "Conversation not found" }, { status: 404 });
+    }
+    if (Number(convRes.rows[0].user_id) !== userId) {
+      return NextResponse.json({ success: false, error: "Forbidden: Access denied to conversation" }, { status: 403 });
     }
 
     const conv = convRes.rows[0];
@@ -59,6 +61,12 @@ export async function GET(
       [convId]
     );
 
+    const stateRes = await client.query(
+      `SELECT state FROM assistant_conversation_states WHERE conversation_id = $1`,
+      [String(convId)]
+    );
+    const sessionState = stateRes.rows[0]?.state || null;
+
     return NextResponse.json({
       success: true,
       id: conv.id,
@@ -66,6 +74,9 @@ export async function GET(
       title: conv.title,
       created_at: conv.created_at,
       updated_at: conv.updated_at,
+      selectedBank: sessionState?.selectedBank || null,
+      selectedBankId: sessionState?.selectedBankId || null,
+      sessionState,
       messages: msgRes.rows.map((m: any) => ({
         id: String(m.id),
         role: m.role === "assistant" ? "ai" : "user",
@@ -99,11 +110,14 @@ export async function DELETE(
   const client = await pool.connect();
   try {
     const check = await client.query(
-      `SELECT id FROM assistant_conversations WHERE id = $1 AND user_id = $2`,
-      [convId, userId]
+      `SELECT id, user_id FROM assistant_conversations WHERE id = $1`,
+      [convId]
     );
     if (convResRowCount(check) === 0) {
       return NextResponse.json({ success: false, error: "Conversation not found" }, { status: 404 });
+    }
+    if (Number(check.rows[0].user_id) !== userId) {
+      return NextResponse.json({ success: false, error: "Forbidden: Access denied to conversation" }, { status: 403 });
     }
 
     await client.query(`DELETE FROM assistant_conversation_states WHERE conversation_id = $1`, [convId]);
@@ -153,6 +167,17 @@ export async function PUT(
 
   const client = await pool.connect();
   try {
+    const check = await client.query(
+      `SELECT id, user_id FROM assistant_conversations WHERE id = $1`,
+      [convId]
+    );
+    if (convResRowCount(check) === 0) {
+      return NextResponse.json({ success: false, error: "Conversation not found" }, { status: 404 });
+    }
+    if (Number(check.rows[0].user_id) !== userId) {
+      return NextResponse.json({ success: false, error: "Forbidden: Access denied to conversation" }, { status: 403 });
+    }
+
     const res = await client.query(
       `UPDATE assistant_conversations
        SET title = $1, updated_at = NOW()
@@ -160,9 +185,6 @@ export async function PUT(
        RETURNING id, title, updated_at`,
       [title, convId, userId]
     );
-    if (convResRowCount(res) === 0) {
-      return NextResponse.json({ success: false, error: "Conversation not found" }, { status: 404 });
-    }
     return NextResponse.json({ success: true, conversation: res.rows[0] });
   } catch (err: any) {
     console.error("Conversation rename error:", err);

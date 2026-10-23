@@ -19,13 +19,6 @@ export const dynamic = "force-dynamic";
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "bank-company-data");
 const URL_PREFIX = "/uploads/bank-company-data/";
 
-const CANDIDATE_DIRS = [
-  path.join(process.cwd(), "public", "uploads", "bank-company-data"),
-  path.join(process.cwd(), "company-master-files"),
-  path.join(process.cwd(), "data"),
-  path.join(process.cwd(), "uploads"),
-];
-
 function inferBankName(fileName: string): string {
   const clean = (fileName || "")
     .replace(/\.[^/.]+$/, "")
@@ -94,26 +87,30 @@ export async function GET(
 
     if (isFsScan) {
       const rawName = fileId.replace(/^fs-/, "");
-      for (const dir of CANDIDATE_DIRS) {
-        const fullCandidatePath = path.join(dir, rawName);
-        if (existsSync(fullCandidatePath)) {
-          const fileStat = await import("fs/promises").then((m) => m.stat(fullCandidatePath));
-          return NextResponse.json({
-            success: true,
-            file: {
-              id: fileId,
-              file_name: rawName,
-              file_path: fullCandidatePath,
-              file_size: fileStat.size,
-              uploaded_by: 1,
-              uploaded_at: fileStat.mtime.toISOString(),
-              uploaded_by_name: "System Master",
-              record_count: 533316,
-              bank_name: inferBankName(rawName),
-              status: "Processed",
-            },
-          });
+      const seedPath = path.join(process.cwd(), "company-master-files", rawName);
+      if (existsSync(seedPath)) {
+        const fileStat = await import("fs/promises").then((m) => m.stat(seedPath));
+        let count = 0;
+        if (rawName.endsWith(".csv")) {
+          const fileBuf = await import("fs/promises").then((m) => m.readFile(seedPath));
+          const lines = fileBuf.toString("utf8").split("\n").filter((l) => l.trim().length > 0);
+          count = Math.max(0, lines.length - 1);
         }
+        return NextResponse.json({
+          success: true,
+          file: {
+            id: fileId,
+            file_name: rawName,
+            file_path: seedPath,
+            file_size: fileStat.size,
+            uploaded_by: 1,
+            uploaded_at: fileStat.mtime.toISOString(),
+            uploaded_by_name: "System Master",
+            record_count: count,
+            bank_name: inferBankName(rawName),
+            status: "Processed",
+          },
+        });
       }
     }
 
@@ -122,8 +119,10 @@ export async function GET(
       let res;
       if (isNumeric) {
         res = await client.query(
-          `SELECT bf.id, bf.file_name, bf.file_path, bf.file_size, bf.uploaded_by, bf.uploaded_at,
-                  u.name as uploaded_by_name, COUNT(bcd.id)::int as record_count,
+          `SELECT bf.id, bf.file_name, bf.file_path, bf.file_size, bf.file_hash, bf.record_count as registered_count,
+                  bf.status, bf.uploaded_by, bf.uploaded_at,
+                  u.name as uploaded_by_name,
+                  COUNT(bcd.id)::int as actual_db_records,
                   COALESCE(MAX(bcd.bank_name), '') as bank_name
            FROM bank_uploaded_files bf
            LEFT JOIN users u ON bf.uploaded_by = u.id
@@ -135,8 +134,10 @@ export async function GET(
       } else {
         const rawName = fileId.replace(/^fs-/, "");
         res = await client.query(
-          `SELECT bf.id, bf.file_name, bf.file_path, bf.file_size, bf.uploaded_by, bf.uploaded_at,
-                  u.name as uploaded_by_name, COUNT(bcd.id)::int as record_count,
+          `SELECT bf.id, bf.file_name, bf.file_path, bf.file_size, bf.file_hash, bf.record_count as registered_count,
+                  bf.status, bf.uploaded_by, bf.uploaded_at,
+                  u.name as uploaded_by_name,
+                  COUNT(bcd.id)::int as actual_db_records,
                   COALESCE(MAX(bcd.bank_name), '') as bank_name
            FROM bank_uploaded_files bf
            LEFT JOIN users u ON bf.uploaded_by = u.id
@@ -152,7 +153,27 @@ export async function GET(
         return NextResponse.json({ success: false, error: "File not found" }, { status: 404 });
       }
 
-      return NextResponse.json({ success: true, file: res.rows[0] });
+      const row = res.rows[0];
+      const actualCount = Number(row.actual_db_records) || 0;
+      const registeredCount = Number(row.registered_count) || 0;
+      const finalCount = actualCount > 0 ? actualCount : registeredCount;
+
+      return NextResponse.json({
+        success: true,
+        file: {
+          id: row.id,
+          file_name: row.file_name,
+          file_path: row.file_path,
+          file_size: Number(row.file_size) || 0,
+          file_hash: row.file_hash || null,
+          uploaded_by: row.uploaded_by,
+          uploaded_at: row.uploaded_at,
+          uploaded_by_name: row.uploaded_by_name || "Admin",
+          record_count: finalCount,
+          bank_name: (row.bank_name || "").trim() || inferBankName(row.file_name),
+          status: row.status || "Processed",
+        },
+      });
     } finally {
       client.release();
     }
@@ -205,7 +226,7 @@ export async function DELETE(
           targetFileRecord = res.rows[0];
           rawFileName = targetFileRecord.file_name;
         }
-      } else {
+      } else if (!isFsScan) {
         const res = await client.query(
           "SELECT id, file_name, file_path FROM bank_uploaded_files WHERE file_name = $1 OR file_path ILIKE $2 LIMIT 1",
           [rawFileName, `%${rawFileName}%`]
@@ -228,16 +249,6 @@ export async function DELETE(
         deletedRecordsCount += compDeleteRes.rowCount || 0;
 
         await client.query("DELETE FROM bank_uploaded_files WHERE id = $1", [targetFileRecord.id]);
-      } else if (!isNumeric) {
-        // If file had orphaned records under its inferred bank name, clean them up
-        const inferredBank = inferBankName(rawFileName);
-        if (inferredBank && inferredBank !== "Multi-Bank Master") {
-          const compDeleteRes = await client.query(
-            "DELETE FROM bank_company_data WHERE bank_name ILIKE $1",
-            [inferredBank]
-          );
-          deletedRecordsCount += compDeleteRes.rowCount || 0;
-        }
       }
 
       // 2. Delete file from disk if path exists
@@ -264,26 +275,13 @@ export async function DELETE(
         }
       }
 
-      // Also remove matching file from candidate storage directories
-      for (const dir of CANDIDATE_DIRS) {
-        const fullCandidatePath = path.join(dir, rawFileName);
-        try {
-          if (existsSync(fullCandidatePath)) {
-            await unlink(fullCandidatePath);
-            diskDeleted = true;
-          }
-        } catch (e) {
-          console.warn("Could not delete candidate file:", fullCandidatePath, e);
-        }
-      }
-
       if (!targetFileRecord && !diskDeleted && deletedRecordsCount === 0) {
         return NextResponse.json({ success: false, error: "File not found" }, { status: 404 });
       }
 
       return NextResponse.json({
         success: true,
-        message: `File "${rawFileName}" and ${deletedRecordsCount} associated company records were deleted successfully.`,
+        message: `File "${rawFileName}" and ${deletedRecordsCount.toLocaleString()} associated company records were deleted successfully.`,
       });
     } finally {
       client.release();

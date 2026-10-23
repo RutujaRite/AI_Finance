@@ -78,9 +78,17 @@ CREATE TABLE IF NOT EXISTS bank_uploaded_files (
     file_name VARCHAR(255) NOT NULL,
     file_path VARCHAR(500),
     file_size BIGINT DEFAULT 0,
+    file_hash VARCHAR(64),
+    idempotency_key VARCHAR(128),
+    record_count INT DEFAULT 0,
+    status VARCHAR(50) DEFAULT 'completed',
+    error_message TEXT,
     uploaded_by INT REFERENCES users(id) ON DELETE SET NULL,
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_bank_uploaded_files_hash ON bank_uploaded_files(file_hash);
+
 
 -- Table: bank_managers
 -- Directory of branch managers and sales managers for loan escalation and lead contact.
@@ -134,6 +142,7 @@ CREATE TABLE IF NOT EXISTS bank_company_data (
 
 CREATE INDEX IF NOT EXISTS idx_bank_company_name ON bank_company_data(company_name);
 CREATE INDEX IF NOT EXISTS idx_bank_company_bank_name ON bank_company_data(bank_name);
+CREATE INDEX IF NOT EXISTS idx_bank_company_file_id ON bank_company_data(file_id);
 
 -- ----------------------------------------------------------------------------
 -- 4. STRUCTURED BANK POLICIES, VERSIONS & RULES

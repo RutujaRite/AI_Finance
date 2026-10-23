@@ -29,6 +29,7 @@ export interface PostEligibilityHandlerParams {
   eligibilitySession: any;
   currentApplicant: any;
   requestedModel?: string;
+  bankSelectionAction?: { bankId?: string; bankName: string };
   finalizeAndReturn: (
     res: AgentResult,
     customState?: Partial<SessionState>
@@ -89,9 +90,11 @@ export async function handlePostEligibilityWorkflow({
   eligibilitySession,
   currentApplicant,
   requestedModel,
+  bankSelectionAction,
   finalizeAndReturn,
 }: PostEligibilityHandlerParams): Promise<AgentResult | null> {
   const isPostEligibilityActive = Boolean(
+    Boolean(bankSelectionAction) ||
     eligibilitySession?.hasCompletedEvaluation ||
     eligibilitySession?.evaluationCompleted ||
     (eligibilitySession?.postEligibilityStage &&
@@ -307,19 +310,23 @@ export async function handlePostEligibilityWorkflow({
     /^(?:i\s+want\s+to\s+proceed|let'?s\s+proceed|continue\s+with\s+this\s+bank)$/i.test(trimmedMsg)
   );
 
-  // Check if user named a bank explicitly (e.g. "I would like to proceed with HDFC Bank...", "HDFC Bank", "ICICI Bank")
-  const resolvedBankObj = !/^\d+$/.test(trimmedMsg) ? resolveBankName(trimmedMsg, eligibleBanks) : null;
-  const namedBank = resolvedBankObj ? resolvedBankObj.bankName : (!/^\d+$/.test(trimmedMsg) ? detectPartnerBankInText(trimmedMsg) : null);
+  // Check if user selected via UI button action OR named a bank explicitly in message
+  const actionBankName = bankSelectionAction?.bankName ? bankSelectionAction.bankName.trim() : null;
+  const resolvedBankObj = !actionBankName && !/^\d+$/.test(trimmedMsg) ? resolveBankName(trimmedMsg, eligibleBanks) : null;
+  const namedBank = actionBankName
+    ? (resolveBankName(actionBankName, eligibleBanks)?.bankName || detectPartnerBankInText(actionBankName) || actionBankName)
+    : (resolvedBankObj ? resolvedBankObj.bankName : (!/^\d+$/.test(trimmedMsg) ? detectPartnerBankInText(trimmedMsg) : null));
 
   // -------------------------------------------------------------------------
   // Handle Named Bank Selection
   // -------------------------------------------------------------------------
   if (namedBank) {
+    // Validate bank strictly against the server's latest eligibility results
     const isEligible = eligibleBanks.length === 0 || eligibleBanks.some((b) => isSameBank(b, namedBank));
 
     if (!isEligible) {
       const formattedList = eligibleBanks.map((b, i) => `${i + 1}. **${b}**`).join("\n");
-      const reply = `Under your current loan evaluation, **${namedBank}** is not among your eligible lenders. Here are the banks you are currently eligible for:\n\n${formattedList}\n\nPlease choose one of your eligible partner banks to proceed.`;
+      const reply = `Under your current loan evaluation, **${namedBank}** is not eligible. Here are the banks you are currently eligible for:\n\n${formattedList}\n\nPlease choose one of your eligible partner banks to proceed.`;
       return await finalizeAndReturn(
         { reply },
         {
@@ -333,17 +340,27 @@ export async function handlePostEligibilityWorkflow({
 
     // Bank is verified and eligible!
     const effectiveBank = namedBank;
+    let selectedBankId = bankSelectionAction?.bankId;
+    if (!selectedBankId) {
+      const foundEval = eligibilitySession?.lastEligibilityResult?.evaluations?.find((e: any) => isSameBank(e.bankName, effectiveBank));
+      selectedBankId = foundEval?.bankId || effectiveBank.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+    }
+
     const knownCity = eligibilitySession?.city;
     const knownPincode = eligibilitySession?.pincode;
 
-    // If location is not known yet, ask for city/area politely (STEP 4)
+    // If location is not known yet, ask for city/branch/pincode
     if (!knownCity && !knownPincode) {
-      const reply = `Great! You've selected **${effectiveBank}**. I can help you find a bank manager near your preferred branch. Which city or area would you like to visit?`;
+      const reply = `You selected **${effectiveBank}**. Which city, branch, or pincode would you prefer?`;
       return await finalizeAndReturn(
         { reply },
         {
           selectedBank: effectiveBank,
           chosenBank: effectiveBank,
+          selectedBankId,
+          branch: undefined,
+          preferredBranch: undefined,
+          availableBranches: undefined,
           postEligibilityStage: "AWAITING_BRANCH_LOCATION",
           currentStep: "CITY_COLLECTION",
           locationStep: "CITY_COLLECTION",
@@ -368,7 +385,9 @@ export async function handlePostEligibilityWorkflow({
         {
           selectedBank: effectiveBank,
           chosenBank: effectiveBank,
+          selectedBankId,
           city: knownCity,
+          branch: undefined,
           availableBranches: searchRes.branches,
           postEligibilityStage: "BRANCH_SELECTION",
           currentStep: "BRANCH_SELECTION",
