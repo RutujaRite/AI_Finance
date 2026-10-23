@@ -214,40 +214,7 @@ export default function AdminDashboardPage() {
       />
 
       {/* 2. PAGE CONTAINER */}
-<<<<<<< HEAD
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full flex-1 flex flex-col">
-=======
-      <div className="max-w-7xl mx-auto px-6 py-10 w-full flex-1 flex flex-col">
-        {/* Header Section */}
-        <section className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 m-0">
-                  Admin Overview
-                </h1>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                  Central Control
-                </span>
-              </div>
-              <p className="text-sm text-slate-600 mt-1.5 m-0 leading-relaxed">
-                Manage platform lender policies, company database, managers, and system users.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2.5">
-              <Link
-                href="/home?section=assistant"
-                className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 bg-white hover:bg-slate-50 border border-slate-300 hover:border-blue-400 rounded-xl transition-all shadow-2xs no-underline cursor-pointer"
-                title="Go to AI Assistant"
-              >
-                <Home className="w-4 h-4 text-blue-600" />
-                <span>Go to Home</span>
-              </Link>
-            </div>
-          </div>
-        </section>
->>>>>>> bd31a41 (Update CreditWise AI changes)
 
         {/* 3. 4-COLUMN KPI SUMMARY STRIP */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">

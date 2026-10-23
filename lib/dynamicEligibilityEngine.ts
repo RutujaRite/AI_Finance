@@ -2826,12 +2826,90 @@ export function isPersonalNameOrIntroduction(text: string): boolean {
 }
 
 /**
+ * Accurately determines if user input is an explicit loan eligibility check request.
+ * Required classifications (must NOT be treated as company names or company search queries):
+ * - "Check my eligibility."
+ * - "Can you check my eligibility?"
+ * - "Check my loan eligibility."
+ * - "Am I eligible for a loan?"
+ * - "Can I get a personal loan?"
+ * - "Calculate my eligibility."
+ * - "I want to check whether I qualify for a loan."
+ * - "Tell me my loan eligibility."
+ *
+ * Must NOT intercept pure company category queries (e.g. "Can you check my company category?").
+ */
+export function isLoanEligibilityIntent(text: string): boolean {
+  if (!text || typeof text !== "string") return false;
+  const raw = text.trim();
+  const lower = raw.toLowerCase().replace(/[.!?]+$/, "").replace(/\s+/g, " ").trim();
+
+  // Guard against company category lookups without loan eligibility phrasing
+  const isCompanyCategoryOnly =
+    /\b(?:company|employer|corporate)\s*(?:'?s)?\s*(?:category|tier|rating|classification)\b/i.test(lower) ||
+    /\b(?:category|tier|rating|classification)\s+(?:of|for|in)\s+(?:my\s+|the\s+)?(?:company|employer)\b/i.test(lower) ||
+    /^(?:can\s+(?:you|we)\s+)?(?:check|find|lookup|tell\s+me|what\s+is|show)\s+(?:my\s+|the\s+)?(?:company|employer)\s+(?:category|tier|rating)\b/i.test(lower) ||
+    /^(?:what\s+is|tell\s+me)\s+(?:my\s+|the\s+)?(?:company|employer)\s*(?:'?s)?\s*(?:category|tier|rating)\b/i.test(lower) ||
+    /^(?:check\s+my\s+employer\s+category|tell\s+me\s+my\s+company'?s?\s+category)\b/i.test(lower) ||
+    /^(?:can\s+you\s+)?check\s+my\s+company\s+category\b/i.test(lower) ||
+    /^(?:my\s+)?(?:company|employer)\s+category\??$/i.test(lower);
+
+  const isTopicSwitchToLoan = /(?:forget|leave|drop|cancel|stop)\s+(?:that|company|it|the\s+company).*(?:loan|eligib)/i.test(lower);
+
+  if (isCompanyCategoryOnly && !isTopicSwitchToLoan && !/(?:loan\s*eligib|eligib.*loan)/i.test(lower)) {
+    return false;
+  }
+
+  // 1. Explicit canonical specifications
+  if (
+    /^(?:can\s+you\s+|could\s+you\s+|please\s+|i\s+want\s+to\s+|help\s+me\s+)?check\s+(?:my\s+|our\s+|the\s+)?(?:personal\s*)?(?:loan\s*)?eligib/i.test(lower) ||
+    /^(?:am\s+i|are\s+we)\s+eligible(?:\s+for\s+(?:a\s+)?(?:personal\s*)?loan)?\??$/i.test(lower) ||
+    /^(?:can\s+i|can\s+we|could\s+i)\s+(?:get|avail|take|have|apply\s+for)\s+(?:a\s+)?(?:personal\s*)?loan\??$/i.test(lower) ||
+    /^(?:can\s+you\s+|could\s+you\s+|please\s+)?calculate\s+(?:my\s+|our\s+)?(?:personal\s*)?(?:loan\s*)?eligib/i.test(lower) ||
+    /^(?:i\s*(?:want|need|wish|would\s*like)\s*to\s*(?:check|know|see|find\s*out)\s*(?:whether\s*|if\s*)?(?:i\s*qualify|i\s*am\s*eligible|eligible)\s*(?:for\s*(?:a\s*)?(?:personal\s*)?loan)?)/i.test(lower) ||
+    /^(?:tell\s+me|show\s+me|what\s+is)\s+(?:my\s+|our\s+)?(?:personal\s*)?(?:loan\s*)?eligib/i.test(lower) ||
+    /^(?:check|calculate|evaluate|assess|test)\s+(?:my\s+|our\s+|the\s+)?(?:personal\s*)?(?:loan\s*)?eligib/i.test(lower) ||
+    /^(?:loan\s*eligibility|personal\s*loan\s*eligibility|eligibility\s*check|check\s*eligibility)\??$/i.test(lower)
+  ) {
+    return true;
+  }
+
+  // 2. Compound phrases starting with eligibility check (e.g. "I want to check my eligibility. My salary is ₹50,000.")
+  if (
+    /(?:i\s*want\s*to\s*check\s*(?:my\s*)?eligibility|check\s*(?:my\s*)?loan\s*eligibility|check\s*my\s*eligibility|can\s*you\s*check\s*my\s*eligibility|am\s*i\s*eligible\s*for\s*(?:a\s*)?loan|calculate\s*my\s*eligibility)/i.test(lower)
+  ) {
+    return true;
+  }
+
+  // 3. Topic switches to loan eligibility (e.g. "Forget that, check my loan eligibility", "No company, check loan eligibility")
+  if (
+    /(?:forget|no|leave|drop|cancel|stop)\s+(?:that|company|it|the\s+company)?.*(?:check|calculate|evaluate)?\s*(?:my\s*)?(?:loan\s*)?eligib/i.test(lower)
+  ) {
+    return true;
+  }
+
+  // 4. Broader natural eligibility patterns
+  if (
+    /\b(?:check|calculate|evaluate|assess)\s+(?:my\s+)?(?:loan\s+)?eligibility\b/i.test(lower) ||
+    /\b(?:am\s+i|are\s+we)\s+eligible\s+for\s+(?:a\s+)?(?:personal\s*)?loan\b/i.test(lower) ||
+    /\bqualify\s+for\s+(?:a\s+)?(?:personal\s*)?loan\b/i.test(lower) ||
+    /\btell\s+me\s+my\s+loan\s+eligibility\b/i.test(lower)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Validates whether a candidate string is NOT a valid company name.
  * Recognizes structural validation, numbers, conversational sentences, and non-company status answers.
  */
 export function isInvalidCompanyName(text: string): boolean {
   if (!text) return true;
   const raw = text.trim();
+  if (isLoanEligibilityIntent(raw)) return true;
+  if (/^(?:my|our|the|a|an)?\s*(?:personal\s*)?(?:loan\s*)?eligib/i.test(raw)) return true;
   if (isKnownBankName(raw)) return true;
   if (isLocationInput(raw)) return true;
   if (isPureGreeting(raw) || isGreetingOrPleasantry(raw) || isGeneralAssistanceQuery(raw)) return true;
@@ -2840,6 +2918,8 @@ export function isInvalidCompanyName(text: string): boolean {
   if (isFinancialOrProfileInput(raw)) return true;
   if (/^(?:rs\.?|inr|₹)?\s*\d+(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr|crores?|thousand|hazar|peti|khoka)?$/i.test(raw)) return true;
   const clean = raw.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (isLoanEligibilityIntent(clean)) return true;
+  if (/^(?:my|our|the|a|an)?\s*(?:personal\s*)?(?:loan\s*)?eligib/i.test(clean)) return true;
   if (clean.length < 2) return true;
   if (/^\d+$/.test(clean)) return true;
   if (!/[a-zA-Z]/.test(clean)) return true;
@@ -3546,6 +3626,7 @@ export function extractCleanCompanyName(input: string): string {
  */
 export function isCompanyInfoOrSearchIntent(text: string): boolean {
   if (!text) return false;
+  if (isLoanEligibilityIntent(text)) return false;
   const norm = text.toLowerCase().replace(/[.!?]+$/, "").replace(/\s+/g, " ").trim();
   const isCategoryOrCompanyQuery =
     /(?:category|tier|employer|company)\b/i.test(norm) ||
@@ -3625,7 +3706,7 @@ export function isCompanyInfoOrSearchIntent(text: string): boolean {
   if (actionWithTarget) {
     const target = actionWithTarget[1].trim();
     const isEducationalTarget = /\b(?:artificial\s*intelligence|machine\s*learning|\bai\b|\bml\b|java|python|quantum|gravity|photosynthesis|compound\s*interest|credit\s*score|foir)\b/i.test(target);
-    if (target.length >= 2 && !isInvalidCompanyName(target) && !isFinancialOrProfileInput(target) && !isLocationInput(target) && !isKnownBankName(target) && !isEducationalTarget) {
+    if (target.length >= 2 && !isLoanEligibilityIntent(target) && !isInvalidCompanyName(target) && !isFinancialOrProfileInput(target) && !isLocationInput(target) && !isKnownBankName(target) && !isEducationalTarget) {
       isActionForTarget = true;
     }
   }
@@ -3641,6 +3722,7 @@ export function isCompanyInfoOrSearchIntent(text: string): boolean {
 export function extractTargetCompanyFromMessage(text: string): string | undefined {
   if (!text) return undefined;
   const raw = text.trim();
+  if (isLoanEligibilityIntent(raw)) return undefined;
   const isCategoryOrCompanyQuery =
     /(?:category|tier|employer|company)\b/i.test(raw) ||
     Boolean(extractCompoundLoanCompanyIntent(raw).companyCandidate);
@@ -3709,6 +3791,7 @@ export function extractTargetCompanyFromMessage(text: string): string | undefine
 export function extractCompanyCandidateFromText(text: string, expectedField?: string): string | undefined {
   if (!text) return undefined;
   const raw = text.trim();
+  if (isLoanEligibilityIntent(raw)) return undefined;
   if (isKnownBankName(raw)) return undefined;
   if (isPureGreeting(raw) || isGreetingOrPleasantry(raw)) return undefined;
   if (detectCompanyDisavowal(raw).isDisavowal) return undefined;
@@ -4963,14 +5046,14 @@ export function getRequiredPolicyFields(
   // 1. Missing fields evaluation in strict sequential order:
   const missing: string[] = [];
 
-  // Step 1: Employment Type (Salaried, Self-Employed, Unemployed)
-  if (!applicant.employmentType && !applicant.employmentStatus) {
-    if (applicant.monthlyIncome || applicant.companyName) {
-      applicant.employmentType = "Salaried";
-      applicant.employmentStatus = "salaried";
-    } else {
-      missing.push("employmentType");
-    }
+  // Step 1: Monthly Income
+  const rawInc = applicant.monthlyIncome ?? applicant.monthlySalary;
+  if (
+    rawInc === undefined ||
+    rawInc === null ||
+    (typeof rawInc === "number" && rawInc <= 0)
+  ) {
+    missing.push("monthlyIncome");
   }
 
   // Step 2: Company Name (strictly required for Salaried applicants)
@@ -4981,7 +5064,7 @@ export function getRequiredPolicyFields(
     applicant.employmentType === "Unemployed" ||
     applicant.employmentType === "Self-Employed";
 
-  if (!isNonCorporate && (applicant.employmentType === "Salaried" || applicant.employmentStatus === "salaried" || (!applicant.employmentType && applicant.companyName))) {
+  if (!isNonCorporate) {
     if (
       !applicant.companyName ||
       applicant.companyName.trim().length === 0 ||
@@ -4993,25 +5076,15 @@ export function getRequiredPolicyFields(
     }
   }
 
-  // Step 3: Monthly Income
-  const rawInc = applicant.monthlyIncome ?? applicant.monthlySalary;
-  if (
-    rawInc === undefined ||
-    rawInc === null ||
-    (typeof rawInc === "number" && rawInc <= 0)
-  ) {
-    missing.push("monthlyIncome");
+  // Auto-infer salaried if not non-corporate and income/company provided
+  if (!applicant.employmentType && !applicant.employmentStatus) {
+    if (applicant.monthlyIncome || applicant.companyName) {
+      applicant.employmentType = "Salaried";
+      applicant.employmentStatus = "salaried";
+    }
   }
 
-  // Step 4: Existing EMIs
-  if (
-    applicant.existingEmi === undefined ||
-    applicant.existingEmi === null
-  ) {
-    missing.push("existingEmi");
-  }
-
-  // Step 5: CIBIL Score
+  // Step 3: CIBIL Score
   const hasCibil =
     (applicant.cibil !== undefined && applicant.cibil !== null) ||
     (applicant.cibilScore !== undefined && applicant.cibilScore !== null);
@@ -5019,13 +5092,21 @@ export function getRequiredPolicyFields(
     missing.push("cibilScore");
   }
 
-  // Step 6: Age
+  // Step 4: Age
   if (
     applicant.age === undefined ||
     applicant.age === null ||
     (typeof applicant.age === "number" && applicant.age <= 0)
   ) {
     missing.push("age");
+  }
+
+  // Step 5: Existing EMIs
+  if (
+    applicant.existingEmi === undefined ||
+    applicant.existingEmi === null
+  ) {
+    missing.push("existingEmi");
   }
 
   // Step 7: Desired Loan Amount
@@ -6115,17 +6196,17 @@ export function checkEligibilitySlotCompleteness(
 export function formatMissingSlotsPrompt(missingSlots: string[]): string {
   if (!missingSlots || missingSlots.length === 0) return "";
 
-  // Strict priority order: Phase 1 (Employment Status / Company) -> Phase 2 (Salary) -> Phase 3 (Age) -> Phase 4 (CIBIL) -> Phase 5 (Existing EMI) -> Phase 6 (Loan & Tenure)
+  // Strict priority order: Phase 1 (Salary) -> Phase 2 (Company / Employer) -> Phase 3 (Age) -> Phase 4 (Existing EMI) -> Phase 5 (CIBIL) -> Phase 6 (Loan & Tenure)
   const normSlots = missingSlots.map((s) => s.toLowerCase());
 
-  if (normSlots.some((s) => s.includes("employment"))) {
-    return "Are you currently Salaried, Self-Employed, or Unemployed?";
+  if (normSlots.some((s) => s.includes("salary") || s.includes("income"))) {
+    return "What is your monthly take-home salary?";
   }
   if (normSlots.some((s) => s.includes("employer") || s.includes("company"))) {
     return "Great! 😊 Which company do you currently work for?";
   }
-  if (normSlots.some((s) => s.includes("salary") || s.includes("income"))) {
-    return "What is your monthly take-home salary?";
+  if (normSlots.some((s) => s.includes("employment"))) {
+    return "Are you currently Salaried, Self-Employed, or Unemployed?";
   }
   if (normSlots.some((s) => s.includes("emi"))) {
     return "Do you currently pay any EMIs?";
@@ -7215,7 +7296,16 @@ export async function processDynamicEligibility(
 
   // 5. Dynamically determine required fields from active bank Master Policy rules
   const companyMatch = applicant.companyName ? await resolveCompanyCategories(applicant.companyName) : undefined;
-  const missingFields = getRequiredPolicyFields(applicant, companyMatch, applicant.loanType || "Personal Loan");
+  let missingFields = getRequiredPolicyFields(applicant, companyMatch, applicant.loanType || "Personal Loan");
+  if (existingState?.missingFields && existingState.missingFields.length > 0) {
+    const existingOrder = existingState.missingFields
+      .map((f) => (f === "cibil" ? "cibilScore" : f))
+      .filter((f) => missingFields.includes(f as any));
+    const extra = missingFields.filter((f) => !existingOrder.includes(f as any));
+    if (existingOrder.length > 0) {
+      missingFields = [...existingOrder, ...extra];
+    }
+  }
 
   // 6. If all parameters collected, evaluate independently against all banks!
   if (missingFields.length === 0) {

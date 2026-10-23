@@ -9,7 +9,7 @@
  */
 
 import pool from "./db";
-import { extractCleanCompanyName, isLocationInput } from "./dynamicEligibilityEngine";
+import { extractCleanCompanyName, isLocationInput, isLoanEligibilityIntent } from "./dynamicEligibilityEngine";
 import {
   fetchLiveCompanyIntelligence,
   CanonicalCompanyIdentity,
@@ -143,7 +143,11 @@ export function extractLlpinFromOtherInfo(bankRecords: CompanyRecord[]): string 
 export function isInvalidCompanySearchQuery(text: string): boolean {
   if (!text) return true;
   const raw = text.trim();
+  if (isLoanEligibilityIntent(raw)) return true;
+  if (/^(?:my|our|the|a|an)?\s*(?:personal\s*)?(?:loan\s*)?eligib/i.test(raw)) return true;
   const clean = raw.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (isLoanEligibilityIntent(clean)) return true;
+  if (/^(?:my|our|the|a|an)?\s*(?:personal\s*)?(?:loan\s*)?eligib/i.test(clean)) return true;
   if (clean.length < 2) return true;
   if (/^\d+$/.test(clean)) return true;
   if (!/[a-zA-Z]/.test(clean)) return true;
@@ -857,6 +861,11 @@ export function isCompanyCategoryLookupIntent(text: string): boolean {
   const raw = String(text || "").trim();
   const lower = raw.toLowerCase().replace(/[?.,!]+$/, "").replace(/\s+/g, " ").trim();
 
+  // If message is loan eligibility intent without explicit company category keyword, return false
+  if (isLoanEligibilityIntent(raw) && !/\b(?:company|employer|corporate)\s*(?:'?s)?\s*(?:category|tier|rating|classification)\b/i.test(lower)) {
+    return false;
+  }
+
   // If message is purely loan intent without category mention, return false
   if (
     /^(?:i\s*(?:want|need)\s*(?:a\s*)?loan|apply\s*for\s*(?:a\s*)?loan|check\s*(?:my\s*)?eligibility|evaluate\s*loan|can\s*i\s*get\s*(?:a\s*)?loan)\b/i.test(lower) &&
@@ -888,6 +897,7 @@ export function isCompanyCategoryLookupIntent(text: string): boolean {
  */
 export function extractCompanyNameFromCategoryQuery(text: string): string | undefined {
   if (!text) return undefined;
+  if (isLoanEligibilityIntent(text)) return undefined;
   let s = String(text || "").trim();
   s = s.replace(/^(?:can\s+(?:you|we)\s+|could\s+you\s+|please\s+)?(?:check|find|lookup|tell\s+me|what\s+is|show|know|get|see)\s+/i, "");
   s = s.replace(/\b(?:the\s+)?(?:company|employer|corporate)\s*(?:'?s)?\s*(?:category|tier|rating|classification)\b/gi, "");
@@ -900,6 +910,7 @@ export function extractCompanyNameFromCategoryQuery(text: string): string | unde
   if (
     !s ||
     s.length < 2 ||
+    isLoanEligibilityIntent(s) ||
     /^(?:my|the|a|an|me|it|this|that|category|tier|rating|please|can|you|what|check|is|of|for)$/i.test(s) ||
     isInvalidCompanySearchQuery(s)
   ) {

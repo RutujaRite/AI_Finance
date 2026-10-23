@@ -1,6 +1,7 @@
 // lib/ai/generalFinancialQueries.ts
 
 import { normalizeBankName } from "@/lib/ai/intentClassifier";
+import { isLoanEligibilityIntent } from "@/lib/dynamicEligibilityEngine";
 
 const getApiKey = () => process.env.OPENROUTER_API_KEY || "";
 const getModel = () => (process.env.OPENROUTER_MODEL || "openrouter/auto").replace(/^["']|["']$/g, "").trim();
@@ -379,6 +380,7 @@ export interface GeneralLoanAssistanceMatch {
 
 export function isGeneralLoanAssistanceQuery(message: string): GeneralLoanAssistanceMatch {
   if (!message || typeof message !== "string") return { isMatch: false };
+  if (isLoanEligibilityIntent(message)) return { isMatch: false };
   const text = message.trim().toLowerCase();
   const cleanText = text.replace(/[.!?]+$/, "").trim();
 

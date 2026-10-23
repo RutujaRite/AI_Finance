@@ -1348,6 +1348,9 @@ export async function processAntigravityWebhook(
   // If required financial data is missing, we MUST ask the user for it and NOT evaluate!
   if (missingSlots.length > 0) {
     let nextSlotRequired = missingSlots[0];
+    if ((lastSlot === "requestedAmount" || incomingEntities.requestedAmount) && missingSlots.includes("tenureMonths")) {
+      nextSlotRequired = "tenureMonths";
+    }
 
     // RULE 2: NEVER REPEAT THE EXACT SAME QUESTION:
     // Ask for a missing field AT MOST ONCE.

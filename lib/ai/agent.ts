@@ -29,6 +29,7 @@ import {
 } from "@/lib/eligibilityWizard";
 import {
   detectLoanIntent,
+  isLoanEligibilityIntent,
   getEligibilityState,
   clearEligibilityState,
   saveEligibilityState,
@@ -4933,6 +4934,9 @@ async function handleCompanySelectionFlow(
     ))
   );
   const trimmedInput = input.trim();
+  if (isLoanEligibilityIntent(trimmedInput)) {
+    return null;
+  }
 
   const isExplicitCompanyPhrase = /(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*)|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for))|(?:(?:my\s+)?(?:company|employer)\s+is)|(?:(?:i\s*am|i'?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by))|(?:(?:change|changed|update|updated|correct|switch|switched|move|moved|leave|left|joined)\s+(?:my\s+)?(?:company|employer|job|workplace|comapny))|(?:employer\s*[:=-]|company\s*[:=-]))\b/i.test(trimmedInput);
 
@@ -6042,6 +6046,7 @@ export function summarizePolicyHighlightsIntoBullets(policyMarkdown: string, ban
 export function sanitizeConciseResponse(text: string): string {
   if (!text || typeof text !== "string") return text;
   if (text.trim() === "Sure! Please tell me your company name.") return text.trim();
+  if (text.trim().startsWith("Sure! Let's check your loan eligibility")) return text.trim();
   let cleaned = text.trim();
 
   // Strip LLM safety headers and reasoning preambles
@@ -6704,10 +6709,12 @@ async function runCentralAgentInternal(opts: {
     baseState.applicant = mergedApplicant;
 
     if (baseState.in_eligibility_flow && baseState.activeFlow !== "MULTI_BANK_ELIGIBILITY_CHECK" && !baseState.company && baseState.companyFlow?.stage !== "COMPANY_SELECTION" && !baseState.awaitingEmployerConfirmation) {
-      if (!mergedApplicant.employmentType) {
-        baseState.expectedField = "employmentType";
-      } else if (mergedApplicant.employmentType === "Salaried") {
-        baseState.expectedField = "companyName";
+      if (!customState?.expectedField) {
+        if (!mergedApplicant.employmentType) {
+          baseState.expectedField = "employmentType";
+        } else if (mergedApplicant.employmentType === "Salaried") {
+          baseState.expectedField = "companyName";
+        }
       }
     }
 
@@ -6867,7 +6874,7 @@ async function runCentralAgentInternal(opts: {
         return !cName.includes("demo");
       });
 
-      if (!isMultiBankAsk && !isGreetingMsg && !isIdentityMsg && (isDocMentioned || isDemoLoanAsk) && safeDocs.length > 0 && safeChunks.length > 0) {
+      if (!isLoanEligibilityIntent(userMessage) && !isMultiBankAsk && !isGreetingMsg && !isIdentityMsg && (isDocMentioned || isDemoLoanAsk) && safeDocs.length > 0 && safeChunks.length > 0) {
         const chunksText = safeChunks.map((c: any, i: number) => `[Chunk ${i + 1}]:\n${c.content}`).join("\n\n");
         const docName = safeDocs[0]?.name || "Knowledge_Document";
         const isDemoDoc = (safeDocs[0] as any)?.is_demo || (safeDocs[0]?.name || "").toLowerCase().includes("demo");
@@ -6957,7 +6964,7 @@ async function runCentralAgentInternal(opts: {
   const isNegativeConsent =
     /^(?:no|nope|not\s*now|later|don'?t|cancel)\b/i.test(userMessage.trim());
 
-  if (eligibilitySession?.awaitingEligibilityConsent) {
+  if (eligibilitySession?.awaitingEligibilityConsent && !isLoanEligibilityIntent(userMessage)) {
     if (isAffirmativeConsent) {
       return await finalizeAndReturn(
         { reply: "Are you currently Salaried, Self-Employed, or Unemployed?" },
@@ -6981,7 +6988,7 @@ async function runCentralAgentInternal(opts: {
   }
 
   // 0b. Step 3: Employment Type Gatekeeper
-  if (eligibilitySession?.expectedField === "employmentType") {
+  if (eligibilitySession?.expectedField === "employmentType" && !isLoanEligibilityIntent(userMessage)) {
     const normEmp = userMessage.trim().toLowerCase();
     if (/\b(?:self[\s-]employed|business|freelanc\w*|own\s+business|propriet\w*|consultant)\b/i.test(normEmp)) {
       const updatedApplicant: ApplicantProfile = {
@@ -7058,7 +7065,7 @@ async function runCentralAgentInternal(opts: {
     /(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*)|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for))|(?:(?:my\s+)?(?:company|employer)\s+is)|(?:(?:i\s*am|i'?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by))|(?:(?:change|changed|update|updated|correct|switch|switched|move|moved|leave|left|joined)\s+(?:my\s+)?(?:company|employer|job|workplace|comapny))|(?:employer\s*[:=-]|company\s*[:=-]))\b/i.test(userMessage.trim())
   );
 
-  if (isAwaitingCompanySelectionEarly || isCompanyStepEarly || hasExplicitEmployerPhraseEarly) {
+  if (!isLoanEligibilityIntent(userMessage) && (isAwaitingCompanySelectionEarly || isCompanyStepEarly || hasExplicitEmployerPhraseEarly)) {
     const earlyCompanyRes = await handleCompanySelectionFlow(
       conversationId,
       userMessage,
@@ -7380,7 +7387,7 @@ async function runCentralAgentInternal(opts: {
 
   // 5. COMPANY_SEARCH_OR_VERIFICATION
   // Searches PostgreSQL bank_company_data for authoritative category without touching policy RAG!
-  if (intelligentNlu.intent === "COMPANY_SEARCH_OR_VERIFICATION") {
+  if (intelligentNlu.intent === "COMPANY_SEARCH_OR_VERIFICATION" && !isLoanEligibilityIntent(userMessage)) {
     const compName =
       intelligentNlu.targetCompany ||
       extractCleanCompanyName(userMessage) ||
@@ -7613,21 +7620,42 @@ async function runCentralAgentInternal(opts: {
     return await finalizeAndReturn({ reply: prompt });
   }
 
-  // 12. LOAN_ELIGIBILITY_CALCULATION
-  if (intelligentNlu.intent === "LOAN_ELIGIBILITY_CALCULATION") {
+  // 12. LOAN_ELIGIBILITY_CALCULATION / LOAN_ELIGIBILITY
+  if (
+    intelligentNlu.intent === "LOAN_ELIGIBILITY_CALCULATION" ||
+    (intelligentNlu.intent as any) === "LOAN_ELIGIBILITY" ||
+    isLoanEligibilityIntent(userMessage)
+  ) {
     const isCompanyConfirmed = Boolean(
       eligibilitySession?.companyFlow?.selectedCompanyName ||
       eligibilitySession?.selectedCompanyName ||
       (eligibilitySession?.company && !isInvalidCompanyName(eligibilitySession.company) && eligibilitySession?.companyFlow?.stage === "ELIGIBILITY_INPUT")
     );
 
+    const directlyExtracted = extractApplicantDetails(userMessage);
+    const targetComp =
+      intelligentNlu.targetCompany &&
+      !isInvalidCompanyName(intelligentNlu.targetCompany) &&
+      !isLoanEligibilityIntent(intelligentNlu.targetCompany)
+        ? intelligentNlu.targetCompany
+        : undefined;
+
     const mergedApplicant: ApplicantProfile = {
       ...(eligibilitySession?.applicant || currentApplicant),
       ...(intelligentNlu.extractedEntities as Partial<ApplicantProfile>),
-      ...(intelligentNlu.targetCompany ? { companyName: intelligentNlu.targetCompany } : {}),
+      ...(directlyExtracted as Partial<ApplicantProfile>),
+      ...(targetComp ? { companyName: targetComp } : {}),
     };
 
     if (
+      mergedApplicant.companyName &&
+      (isInvalidCompanyName(mergedApplicant.companyName) || isLoanEligibilityIntent(mergedApplicant.companyName))
+    ) {
+      delete mergedApplicant.companyName;
+    }
+
+    if (
+      !isLoanEligibilityIntent(userMessage) &&
       !isCompanyConfirmed &&
       mergedApplicant.companyName &&
       (mergedApplicant.employmentType === "Salaried" || (!mergedApplicant.employmentType && !eligibilitySession?.applicant?.employmentType))
@@ -7656,7 +7684,10 @@ async function runCentralAgentInternal(opts: {
         conversationHistory
       );
     } else {
-      const ask = buildMultiBankIntakePrompt(mergedApplicant);
+      let ask = buildMultiBankIntakePrompt(mergedApplicant);
+      if (missing[0] === "monthlyIncome" && isLoanEligibilityIntent(userMessage)) {
+        ask = "Sure! Let's check your loan eligibility. What is your monthly take-home salary?";
+      }
       return await finalizeAndReturn({ reply: ask }, {
         applicant: mergedApplicant,
         expectedField: missing[0],
@@ -7664,6 +7695,8 @@ async function runCentralAgentInternal(opts: {
         in_eligibility_flow: true,
         activeFlow: "LOAN_ELIGIBILITY",
         mainUserGoal: "PERSONAL_LOAN",
+        activeIntent: "LOAN_ELIGIBILITY",
+        awaitingEligibilityConsent: false,
       });
     }
   }
@@ -8897,7 +8930,7 @@ async function runCentralAgentInternal(opts: {
   }
 
   let isCandidateCompanyQuery = false;
-  if (!isPostEvalOrBankManager && !isDirectEmiCalcRequest && !isPureGreeting(userMessage) && !isCompanyInquiry) {
+  if (!isLoanEligibilityIntent(userMessage) && !isPostEvalOrBankManager && !isDirectEmiCalcRequest && !isPureGreeting(userMessage) && !isCompanyInquiry) {
     const cleanCand = extractCleanCompanyName(userMessage);
     const rawClean = cleanCand || (userMessage.trim().length <= 40 ? userMessage.trim() : "");
     if (
@@ -8915,7 +8948,7 @@ async function runCentralAgentInternal(opts: {
     }
   }
 
-  if (isAwaitingCompanySelection || isCompanyStep || hasExplicitEmployerPhrase || isCandidateCompanyQuery) {
+  if (!isLoanEligibilityIntent(userMessage) && (isAwaitingCompanySelection || isCompanyStep || hasExplicitEmployerPhrase || isCandidateCompanyQuery)) {
     const companyFlowResult = await handleCompanySelectionFlow(
       conversationId,
       userMessage,

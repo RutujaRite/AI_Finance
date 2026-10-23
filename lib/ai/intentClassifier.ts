@@ -15,6 +15,7 @@ import {
   detectCompanyDisavowal,
   isPersonalNameOrIntroduction,
   UNEMPLOYED_REGEX,
+  isLoanEligibilityIntent,
 } from "@/lib/dynamicEligibilityEngine";
 
 import {
@@ -947,6 +948,26 @@ export function fallbackMultidimensionalNluParser(
       };
     }
   }
+
+  // 3b. Loan Eligibility Check requests
+  if (isLoanEligibilityIntent(text)) {
+    const extractedSal = extractEntitiesFromText(text, { isFlowActive: context?.isFlowActive });
+    return {
+      messageType: "QUESTION",
+      primaryIntent: "LOAN_ELIGIBILITY",
+      secondaryIntents: ["LOAN_ELIGIBILITY"],
+      conversationAction: context?.isFlowActive ? "NONE" : "NEW_TASK",
+      mainUserGoal: "PERSONAL_LOAN",
+      confidence: { intentConfidence: 0.98, entityConfidence: 0.95, stateConfidence: 0.95 },
+      entities: {
+        ...(extractedSal.monthlyIncome ? { monthlyIncome: extractedSal.monthlyIncome } : {}),
+        ...(extractedSal.loanAmount ? { loanAmount: extractedSal.loanAmount } : {}),
+        ...(extractedSal.cibil ? { cibilScore: extractedSal.cibil } : {}),
+      },
+      corrections: [],
+    };
+  }
+
   if (
     !detectCompanyDisavowal(text).isDisavowal &&
     (isCompanyCategoryLookupIntent(text) || isCompanyInfoOrSearchIntent(text) || /(?:forget\s*(?:the\s*)?loan|leave\s*loan|switch\s*to|show\s*(?:me\s*)?(?:the\s*)?company|company\s*details)/i.test(norm))
@@ -1450,6 +1471,21 @@ export async function classifyIntelligentIntent(
   const cityMatch = lowerMsg.match(/\b(pune|mumbai|delhi|bangalore|bengaluru|hyderabad|chennai|kolkata|ahmedabad|jaipur|lucknow|chandigarh|noida|gurgaon|gurugram)\b/i);
   const targetLocation = pinMatch ? pinMatch[1] : (cityMatch ? cityMatch[1] : undefined);
 
+  // Check for explicit loan eligibility requests first
+  if (isLoanEligibilityIntent(rawMsg)) {
+    if (extracted.companyName && (isLoanEligibilityIntent(extracted.companyName) || isInvalidCompanyName(extracted.companyName))) {
+      extracted.companyName = undefined;
+    }
+    return {
+      intent: "LOAN_ELIGIBILITY",
+      confidence: 0.98,
+      extractedEntities: extracted,
+      targetBank,
+      targetCompany: undefined,
+      reasoning: "User is requesting personal loan eligibility assessment.",
+    };
+  }
+
   // Check for company mentions
   let targetCompany: string | undefined = undefined;
   if (isCompanyCategoryLookupIntent(rawMsg)) {
@@ -1458,7 +1494,7 @@ export async function classifyIntelligentIntent(
   if (!targetCompany && !detectCompanyDisavowal(rawMsg).isDisavowal) {
     targetCompany = extractTargetCompanyFromMessage(rawMsg) || extractCleanCompanyName(rawMsg);
   }
-  if (targetCompany && (isInvalidCompanyName(targetCompany) || isCompanyCategoryLookupIntent(targetCompany) || detectCompanyDisavowal(targetCompany).isDisavowal)) {
+  if (targetCompany && (isLoanEligibilityIntent(targetCompany) || isInvalidCompanyName(targetCompany) || isCompanyCategoryLookupIntent(targetCompany) || detectCompanyDisavowal(targetCompany).isDisavowal)) {
     targetCompany = undefined;
   }
   if (targetCompany && !extracted.companyName) {
@@ -1483,6 +1519,7 @@ export async function classifyIntelligentIntent(
     /\b(?:bank\s*manager|branch\s*manager|branch\s*head|\basm\b|\brsm\b|manager|branch\s*near|branches\s*near|contact\s*details?\s*of.*manager)\b/i.test(lowerMsg);
 
   const isCompanyAsk =
+    !isLoanEligibilityIntent(rawMsg) &&
     !detectCompanyDisavowal(rawMsg).isDisavowal &&
     (isCompanyCategoryLookupIntent(rawMsg) ||
     isCompanyInfoOrSearchIntent(rawMsg) ||

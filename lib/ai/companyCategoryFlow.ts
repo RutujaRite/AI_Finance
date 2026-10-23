@@ -11,6 +11,8 @@ import {
 import {
   resolveBankName,
   SessionState,
+  isLoanEligibilityIntent,
+  saveEligibilityState,
 } from "@/lib/dynamicEligibilityEngine";
 import { AgentResult, CompanySelectionAction } from "@/lib/ai/agent";
 
@@ -30,6 +32,7 @@ export interface CompanyCategoryLookupParams {
  * Checks if the user message indicates switching to the loan eligibility flow.
  */
 function isLoanSwitchIntent(msg: string): boolean {
+  if (isLoanEligibilityIntent(msg)) return true;
   const lower = msg.toLowerCase().trim();
   return (
     /(?:i\s*(?:need|want|require|wish|am\s*looking\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(lower) ||
@@ -115,7 +118,7 @@ export async function handleCompanyCategoryLookupFlow(
   // -------------------------------------------------------------------------
   // Case L: User switches to Loan Eligibility from an active Category session
   // -------------------------------------------------------------------------
-  if (isCurrentCategorySession && isLoanSwitchIntent(rawMsg)) {
+  if (isCurrentCategorySession && (isLoanSwitchIntent(rawMsg) || isLoanEligibilityIntent(rawMsg))) {
     // Retain selected company in applicant profile if user already selected one
     const preservedCompany = eligibilitySession?.selectedCompanyName || eligibilitySession?.company;
     const customUpdate: Partial<SessionState> = {
@@ -133,6 +136,12 @@ export async function handleCompanyCategoryLookupFlow(
         companyName: preservedCompany,
         loanType: "Personal Loan",
       };
+    }
+    if (eligibilitySession) {
+      Object.assign(eligibilitySession, customUpdate);
+    }
+    if (params.conversationId) {
+      await saveEligibilityState(params.conversationId, eligibilitySession || (customUpdate as any));
     }
     // Return null to let the agent pipeline process the loan request with updated state
     return null;
@@ -310,6 +319,9 @@ export async function handleCompanyCategoryLookupFlow(
   // Cases B, E, F
   // -------------------------------------------------------------------------
   if (isCurrentCategorySession && eligibilitySession?.awaitingCompanyName) {
+    if (isLoanEligibilityIntent(rawMsg) || isLoanSwitchIntent(rawMsg)) {
+      return null;
+    }
     let cleanCompName = sanitizeCompanySearchQuery(rawMsg);
 
     const candidates = await searchCategoryCandidates(cleanCompName, 10);

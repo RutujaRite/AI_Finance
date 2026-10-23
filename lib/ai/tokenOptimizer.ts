@@ -13,6 +13,7 @@ export type CanonicalIntent =
   | "BANK_POLICY_QUERY"
   | "LOAN_TYPE_OR_LOAN_PROCESS_QUERY"
   | "COMPANY_SEARCH_OR_VERIFICATION"
+  | "LOAN_ELIGIBILITY"
   | "LOAN_ELIGIBILITY_CALCULATION"
   | "ELIGIBILITY_UPDATE_OR_RECALCULATION"
   | "BANK_MANAGER_SEARCH"
@@ -125,6 +126,13 @@ export const INTENT_BUDGETS: Record<CanonicalIntent | SpecificSubCategory, Inten
     retrieval: "Company database/API",
   },
   LOAN_ELIGIBILITY_CALCULATION: {
+    inputMinTokens: 2000,
+    inputMaxTokens: 5000,
+    outputMinTokens: 400,
+    outputMaxTokens: 900,
+    retrieval: "Existing calculation engine",
+  },
+  LOAN_ELIGIBILITY: {
     inputMinTokens: 2000,
     inputMaxTokens: 5000,
     outputMinTokens: 400,

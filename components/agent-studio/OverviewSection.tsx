@@ -2,6 +2,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Agent, UserSubscriptionState } from "@/lib/agent-studio/types";
 
 interface OverviewSectionProps {
@@ -51,6 +52,13 @@ export default function OverviewSection({
         </div>
 
         <div className="flex items-center gap-2.5 self-start md:self-auto">
+          <Link
+            href="/home?section=assistant"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 transition"
+          >
+            <i className="bi bi-house-door text-sm text-slate-600" />
+            <span>Home</span>
+          </Link>
           <button
             onClick={onTestAgent}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 transition"

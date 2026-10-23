@@ -37,11 +37,7 @@ export default function HomePage() {
   const [deleteModalConv, setDeleteModalConv] = useState<any | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [clearHistoryModalOpen, setClearHistoryModalOpen] = useState(false)
-<<<<<<< HEAD
   const [isClearingHistory, setIsClearingHistory] = useState(false)
-=======
-  const [isClearingAll, setIsClearingAll] = useState(false)
->>>>>>> bd31a41 (Update CreditWise AI changes)
   const [messageActions, setMessageActions] = useState<Record<string, { liked: boolean; disliked: boolean }>>({})
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -396,15 +392,7 @@ export default function HomePage() {
           router.replace("/?auth=login")
           return
         }
-<<<<<<< HEAD
-        let errMsg = `Request failed with status ${res.status}`
-        try {
-          const errData = await res.json()
-          if (errData?.error) errMsg = errData.error
-        } catch { }
-=======
         let errMsg = errData?.error || `Request failed with status ${res.status}`
->>>>>>> bd31a41 (Update CreditWise AI changes)
         throw new Error(errMsg)
       }
 
@@ -832,15 +820,9 @@ export default function HomePage() {
     }
   }
 
-<<<<<<< HEAD
   async function confirmClearAllHistory() {
     if (isClearingHistory) return
     setIsClearingHistory(true)
-=======
-  async function handleClearAllHistory() {
-    if (isClearingAll) return
-    setIsClearingAll(true)
->>>>>>> bd31a41 (Update CreditWise AI changes)
 
     try {
       const res = await fetch("/api/conversations", {
@@ -848,29 +830,12 @@ export default function HomePage() {
         credentials: "include",
       })
       if (!res.ok) {
-<<<<<<< HEAD
-        console.error("Failed to delete conversations from server:", res.status)
+        console.warn("Server clear all failed, proceeding with local clean:", res.status)
       }
     } catch (e) {
       console.error("Error clearing conversations from server:", e)
     } finally {
-      setMessages([])
-      setConversations([])
-      setActiveConversationId(null)
-      activeConvIdRef.current = null
-      messagesByConvRef.current = {}
-      try {
-        localStorage.removeItem(STORAGE_KEY)
-      } catch {}
       setIsClearingHistory(false)
-      setClearHistoryModalOpen(false)
-=======
-        console.warn("Server clear all failed, proceeding with local clean")
-      }
-    } catch (e) {
-      console.error("Error clearing all conversations:", e)
-    } finally {
-      setIsClearingAll(false)
       setClearHistoryModalOpen(false)
       setConversations([])
       setMessages([])
@@ -882,7 +847,6 @@ export default function HomePage() {
           localStorage.removeItem(STORAGE_KEY)
         } catch {}
       }
->>>>>>> bd31a41 (Update CreditWise AI changes)
       await newConversation()
     }
   }
@@ -3468,13 +3432,9 @@ export default function HomePage() {
         <div
           className="modal-backdrop"
           style={{ zIndex: 9999 }}
-<<<<<<< HEAD
           onClick={() => {
             if (!isClearingHistory) setClearHistoryModalOpen(false)
           }}
-=======
-          onClick={() => !isClearingAll && setClearHistoryModalOpen(false)}
->>>>>>> bd31a41 (Update CreditWise AI changes)
         >
           <div
             className="modal-content"
@@ -3488,26 +3448,16 @@ export default function HomePage() {
               </h5>
               <button
                 type="button"
-<<<<<<< HEAD
                 disabled={isClearingHistory}
                 onClick={() => setClearHistoryModalOpen(false)}
                 style={{ background: "none", border: "none", cursor: isClearingHistory ? "not-allowed" : "pointer", color: "var(--ink-muted)", fontSize: "1.1rem", padding: 0 }}
-=======
-                onClick={() => !isClearingAll && setClearHistoryModalOpen(false)}
-                style={{ background: "none", border: "none", cursor: isClearingAll ? "not-allowed" : "pointer", color: "var(--ink-muted)", fontSize: "1.1rem", padding: 0 }}
->>>>>>> bd31a41 (Update CreditWise AI changes)
                 aria-label="Close"
-                disabled={isClearingAll}
               >
                 <i className="bi bi-x-lg" />
               </button>
             </div>
             <div className="modal-body" style={{ color: "var(--ink-soft)", fontSize: "0.875rem", lineHeight: 1.5 }}>
-<<<<<<< HEAD
               All your conversations and message history will be permanently deleted from the database. This action cannot be undone.
-=======
-              All your conversations and messages will be permanently cleared from this device and account.
->>>>>>> bd31a41 (Update CreditWise AI changes)
             </div>
             <div className="modal-footer" style={{ borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
               <button
@@ -3515,16 +3465,11 @@ export default function HomePage() {
                 className="btn btn-outline-secondary"
                 disabled={isClearingHistory}
                 onClick={() => setClearHistoryModalOpen(false)}
-                disabled={isClearingAll}
                 style={{
                   padding: "0.4rem 0.85rem",
                   fontSize: "0.8125rem",
                   borderRadius: "var(--radius-md)",
-<<<<<<< HEAD
                   cursor: isClearingHistory ? "not-allowed" : "pointer",
-=======
-                  cursor: isClearingAll ? "not-allowed" : "pointer",
->>>>>>> bd31a41 (Update CreditWise AI changes)
                 }}
               >
                 Cancel
@@ -3532,13 +3477,8 @@ export default function HomePage() {
               <button
                 type="button"
                 className="btn btn-danger"
-<<<<<<< HEAD
                 disabled={isClearingHistory}
                 onClick={confirmClearAllHistory}
-=======
-                onClick={handleClearAllHistory}
-                disabled={isClearingAll}
->>>>>>> bd31a41 (Update CreditWise AI changes)
                 style={{
                   padding: "0.4rem 0.85rem",
                   fontSize: "0.8125rem",
@@ -3546,7 +3486,6 @@ export default function HomePage() {
                   background: "var(--danger, #dc2626)",
                   color: "#ffffff",
                   border: "none",
-<<<<<<< HEAD
                   cursor: isClearingHistory ? "not-allowed" : "pointer",
                   display: "inline-flex",
                   alignItems: "center",
@@ -3562,23 +3501,6 @@ export default function HomePage() {
                   <>
                     <i className="bi bi-trash3-fill" />
                     <span>Clear All History</span>
-=======
-                  cursor: isClearingAll ? "not-allowed" : "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.35rem",
-                  opacity: isClearingAll ? 0.7 : 1,
-                }}
-              >
-                {isClearingAll ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm" role="status" style={{ width: "12px", height: "12px", borderWidth: "2px" }} />
-                    Clearing...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-trash3" /> Clear All
->>>>>>> bd31a41 (Update CreditWise AI changes)
                   </>
                 )}
               </button>
