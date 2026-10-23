@@ -26,6 +26,7 @@ import {
   Zap,
   Star,
   Network,
+  Pencil,
 } from "lucide-react";
 
 export type ModelProvider = "openai" | "anthropic" | "google" | "groq" | "ollama" | "custom";
@@ -99,6 +100,14 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
 
   // Modals state
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [showEditModal, setShowEditModal] = useState<boolean>(false);
+  const [editingModel, setEditingModel] = useState<RegisteredModel | null>(null);
+  const [editFormName, setEditFormName] = useState<string>("");
+  const [editFormModelId, setEditFormModelId] = useState<string>("");
+  const [editFormProvider, setEditFormProvider] = useState<ModelProvider>("custom");
+  const [editFormPurpose, setEditFormPurpose] = useState<ModelPurpose>("General Chat");
+  const [editFormIsDefault, setEditFormIsDefault] = useState<boolean>(false);
+  const [editFormRouteViaGateway, setEditFormRouteViaGateway] = useState<boolean>(true);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [modelToDelete, setModelToDelete] = useState<RegisteredModel | null>(null);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
@@ -247,6 +256,60 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
     }
   };
 
+  // Handle open edit modal
+  const handleOpenEdit = (model: RegisteredModel) => {
+    setEditingModel(model);
+    setEditFormName(model.name);
+    setEditFormModelId(model.model_id);
+    setEditFormProvider((model.provider as ModelProvider) || "custom");
+    setEditFormPurpose((model.purpose as ModelPurpose) || "General Chat");
+    setEditFormIsDefault(Boolean(model.is_assistant_default));
+    setEditFormRouteViaGateway(model.route_via_gateway !== false);
+    setShowEditModal(true);
+  };
+
+  // Handle edit model submit
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingModel) return;
+    if (!editFormName.trim() || !editFormModelId.trim()) {
+      onToast("Please provide both model name and model identifier string.", "warning");
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const payload = {
+        name: editFormName.trim(),
+        model_id: editFormModelId.trim(),
+        provider: editFormProvider,
+        purpose: editFormPurpose,
+        is_assistant_default: editFormIsDefault,
+        route_via_gateway: editFormRouteViaGateway,
+      };
+
+      const res = await fetch(`/api/admin/registered-models/${editingModel.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        onToast(`Model "${editFormName}" updated successfully!`, "success");
+        setShowEditModal(false);
+        setEditingModel(null);
+        fetchModels();
+      } else {
+        onToast(data.message || data.error || "Failed to update model", "warning");
+      }
+    } catch {
+      onToast("Error updating model. Please try again.", "warning");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Handle delete model
   const handleDeleteConfirm = async () => {
     if (!modelToDelete) return;
@@ -315,7 +378,10 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
         });
         onToast(`Connection verified (${data.latencyMs}ms)`, "success");
       } else {
-        const errMsg = data.error || data.details || "Connection test failed";
+        const isAuthErr = res.status === 401 || /user not found|unauthorized|invalid.*key/i.test(`${data.error || ""} ${data.details || ""}`);
+        const errMsg = isAuthErr
+          ? "The saved OpenRouter API key is invalid or revoked. Please update your API key in AI Agent Studio Settings."
+          : (data.error || data.details || "Connection test failed");
         setTestResult({
           success: false,
           message: errMsg,
@@ -816,7 +882,7 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
 
                         {/* Actions */}
                         <td className="px-5 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5">
                             {!model.is_assistant_default && (
                               <button
                                 onClick={() => handleSetDefault(model)}
@@ -826,6 +892,15 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                                 Set as Default
                               </button>
                             )}
+
+                            <button
+                              onClick={() => handleOpenEdit(model)}
+                              disabled={actionLoading}
+                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                              title="Edit model"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
 
                             <button
                               onClick={() => {
@@ -1187,6 +1262,167 @@ export default function ModelConfigurationView({ onToast }: ModelConfigurationVi
                     <>
                       <Plus className="w-4 h-4" />
                       <span>Register Model</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT REGISTERED MODEL */}
+      {showEditModal && editingModel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-lg">Edit Registered Model</h3>
+                  <p className="text-xs text-slate-500">Modify model parameters, provider, and assistant default</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingModel(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4 mt-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  Model Display Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Gemini 2.0 Flash (Free), Claude 3.5 Sonnet"
+                  value={editFormName}
+                  onChange={(e) => setEditFormName(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">
+                  Model Identifier (API Slug)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. google/gemini-2.0-flash-exp:free or deepseek/deepseek-v3"
+                  value={editFormModelId}
+                  onChange={(e) => setEditFormModelId(e.target.value)}
+                  className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  The exact model identifier string passed to the provider API.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Provider</label>
+                  <select
+                    value={editFormProvider}
+                    onChange={(e) => setEditFormProvider(e.target.value as ModelProvider)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                  >
+                    {PROVIDER_OPTIONS.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase mb-1">Specific Purpose</label>
+                  <select
+                    value={editFormPurpose}
+                    onChange={(e) => setEditFormPurpose(e.target.value as ModelPurpose)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                  >
+                    {PURPOSE_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={editFormRouteViaGateway}
+                    onChange={(e) => setEditFormRouteViaGateway(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                      Route via OpenRouter / Unified Gateway
+                    </span>
+                    <span className="text-xs text-slate-500 block">
+                      Inherits active OpenRouter credentials. No direct provider API key is required.
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={editFormIsDefault}
+                    onChange={(e) => setEditFormIsDefault(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
+                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                      Set as Primary Assistant Default
+                    </span>
+                    <span className="text-xs text-slate-500 block">
+                      Promotes this model to handle customer conversations in the central chat agent.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingModel(null);
+                  }}
+                  className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-xs transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                >
+                  {actionLoading ? (
+                    <>
+                      <RotateCw className="w-4 h-4 animate-spin" />
+                      <span>Saving Changes...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Save Changes</span>
                     </>
                   )}
                 </button>

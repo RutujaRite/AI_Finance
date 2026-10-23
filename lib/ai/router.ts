@@ -29,6 +29,7 @@ import {
   isGreetingOrPleasantry,
   resolveBankName,
   isKnownBankName,
+  ApplicantProfile,
   extractApplicantDetails,
   evaluateApplicantAgainstAllBanks,
   formatMultiBankEligibilityReport,
@@ -69,14 +70,24 @@ export interface ToolDispatchResult {
 
 /**
  * Checks which critical underwriting fields are still missing.
+ * Strictly follows the 6-phase sequence.
  */
 export function getMissingProfileFields(profile: UnderwritingProfile): string[] {
   const missing: string[] = [];
+  if (!profile.employmentType && !profile.companyName) {
+    missing.push("Employment Status");
+  } else if (
+    (profile.employmentType === "Salaried" || profile.employmentType === "Employed") &&
+    !profile.companyName
+  ) {
+    missing.push("Employer / Company Name");
+  }
   if (!profile.monthlySalary || profile.monthlySalary <= 0) missing.push("Monthly Net Salary");
-  if (profile.cibilScore === undefined || profile.cibilScore === null) missing.push("CIBIL Score");
   if (!profile.age || profile.age <= 0) missing.push("Age");
+  if (profile.cibilScore === undefined || profile.cibilScore === null) missing.push("CIBIL Score");
   if (profile.existingEmi === undefined || profile.existingEmi === null) missing.push("Existing Monthly EMI Obligations");
-  if (!profile.employmentType && !profile.companyName) missing.push("Employment Type or Employer Name");
+  if (!profile.loanAmount || profile.loanAmount <= 0) missing.push("Desired Loan Amount");
+  if (!profile.tenureMonths || profile.tenureMonths <= 0) missing.push("Repayment Tenure");
   return missing;
 }
 
@@ -92,8 +103,41 @@ export function classifyAgentIntent(
   // 1. Guardrail checks: Company Disavowal
   const disavowal = detectCompanyDisavowal(userMessage);
 
-  // 2. Extract entities and sanitize
-  const raw = extractApplicantDetails(userMessage);
+  // 2. Build existing applicant snapshot & missing context in exact 7-step sequence
+  const existingApplicant: ApplicantProfile = {
+    age: currentProfile.age,
+    cibil: currentProfile.cibilScore,
+    monthlyIncome: currentProfile.monthlySalary,
+    existingEmi: currentProfile.existingEmi,
+    loanAmount: currentProfile.loanAmount,
+    tenureMonths: currentProfile.tenureMonths,
+    companyName: currentProfile.companyName,
+    employmentType: currentProfile.employmentType,
+    location: currentProfile.city,
+    pincode: currentProfile.pincode,
+  };
+
+  const missingContext: string[] = [];
+  if (!currentProfile.employmentType && !currentProfile.companyName) {
+    missingContext.push("employmentType");
+  } else if (
+    (currentProfile.employmentType === "Salaried" || currentProfile.employmentType === "Employed") &&
+    !currentProfile.companyName
+  ) {
+    missingContext.push("companyName");
+  }
+  if (!currentProfile.monthlySalary || currentProfile.monthlySalary <= 0) missingContext.push("monthlyIncome");
+  if (!currentProfile.age || currentProfile.age <= 0) missingContext.push("age");
+  if (currentProfile.cibilScore === undefined || currentProfile.cibilScore === null) missingContext.push("cibil");
+  if (currentProfile.existingEmi === undefined || currentProfile.existingEmi === null) missingContext.push("existingEmi");
+  if (!currentProfile.loanAmount || currentProfile.loanAmount <= 0) {
+    missingContext.push("loanAmount");
+  } else if (!currentProfile.tenureMonths || currentProfile.tenureMonths <= 0) {
+    missingContext.push("tenureMonths");
+  }
+
+  // 2b. Extract entities with context
+  const raw = extractApplicantDetails(userMessage, existingApplicant, missingContext);
   const rawEntities: ExtractedEntities = {
     loanAmount: raw.loanAmount ? Number(raw.loanAmount) : undefined,
     tenureMonths: raw.tenureMonths ? Number(raw.tenureMonths) : undefined,
@@ -171,8 +215,8 @@ export function classifyAgentIntent(
   const isMultiBank = isMultiBankEligibilityQuery(norm);
 
   if (isMultiBank || (hasLoanIntent && !isKnownBankName(norm))) {
-    // If critical fields are missing and this is initial intake
-    if (isMissingProfileData && missingFields.length >= 3 && !updatedProfile.monthlySalary) {
+    // If critical fields are missing, collect one-by-one
+    if (isMissingProfileData) {
       return {
         state: "PROFILE_DATA_COLLECTION",
         sanitizedEntities,
@@ -204,13 +248,15 @@ export function classifyAgentIntent(
     };
   }
 
-  // 7. Ongoing Profile Data Collection (if user provided financial inputs like salary or CIBIL)
+  // 7. Ongoing Profile Data Collection (if user provided financial inputs like salary, loan amount, or CIBIL)
   if (
     sanitizedEntities.monthlySalary ||
+    sanitizedEntities.loanAmount ||
     sanitizedEntities.cibilScore !== undefined ||
     sanitizedEntities.age ||
     sanitizedEntities.companyName ||
-    sanitizedEntities.existingEmi !== undefined
+    sanitizedEntities.existingEmi !== undefined ||
+    sanitizedEntities.employmentType
   ) {
     if (isMissingProfileData) {
       return {
@@ -355,12 +401,34 @@ export async function dispatchToolForState(
     }
 
     case "PROFILE_DATA_COLLECTION": {
-      const missing = classification.missingFields;
-      const bulletList = missing.map((f) => `• **${f}**`).join("\n");
-      const reply =
-        `To evaluate your loan eligibility accurately across our **23 partner lenders**, please share the following details:\n\n` +
-        bulletList +
-        `\n\n*(You can reply in a single sentence, e.g., "Salary 65k, CIBIL 760, age 29, no EMI, working at Wipro")*`;
+      let reply = "";
+      if (!profile.employmentType && !profile.companyName) {
+        reply = "I'd be glad to help you evaluate your loan eligibility across our partner banks!\n\nTo begin, **are you currently Employed (Salaried), Self-Employed, or Unemployed?**";
+      } else if (
+        (profile.employmentType === "Salaried" || profile.employmentType === "Employed") &&
+        !profile.companyName
+      ) {
+        reply = "To determine your corporate category and maximum loan multiplier across partner banks, **what is the official name of your current employer/company?**";
+      } else if (profile.employmentType === "Unemployed") {
+        reply =
+          "We can explore alternative viable options:\n\n" +
+          "* **a) Alternative Income Verification:** Verifiable rental income, dividends, or pension.\n" +
+          "* **b) Secured / Collateralized Loans:** Gold Loans, Loans Against Fixed Deposits (LAFD), or Securities.\n" +
+          "* **c) Joint Application / Co-Applicant:** Adding an earning family member (spouse/parents) allows joint eligibility.\n\n" +
+          "Which option would you prefer to explore?";
+      } else if (!profile.monthlySalary || profile.monthlySalary <= 0) {
+        reply = "What is your **net monthly take-home salary (₹)**?";
+      } else if (!profile.age || profile.age <= 0) {
+        reply = "What is your **current age**?";
+      } else if (profile.cibilScore === undefined || profile.cibilScore === null) {
+        reply = "What is your estimated **CIBIL or credit score**? *(Reply 'not sure' if you haven't checked)*";
+      } else if (profile.existingEmi === undefined || profile.existingEmi === null) {
+        reply = "Do you have any **existing monthly loan EMIs / debt obligations**? *(Please specify the monthly amount in ₹, or reply '0' if none)*";
+      } else if (!profile.loanAmount || !profile.tenureMonths) {
+        reply = "How much **loan amount** would you like to borrow, and what is your preferred **repayment tenure**? *(e.g., ₹5 Lakhs for 3 years)*";
+      } else {
+        reply = "Thank you. Let me evaluate your loan eligibility across all partner lenders.";
+      }
 
       return {
         state: "PROFILE_DATA_COLLECTION",

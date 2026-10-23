@@ -263,7 +263,33 @@ export default function AdminHeader({
             )}
           </button>
 
+<<<<<<< HEAD
           {/* YouTube-style Circular Admin Profile Avatar on FAR RIGHT */}
+=======
+          {/* Notification Bell - 40x40px hit target with indicator dot */}
+          <div className="relative">
+            <button
+              type="button"
+              title="Notifications"
+              className="h-10 w-10 rounded-xl text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+            >
+              <Bell className="w-4 h-4" />
+            </button>
+            <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-blue-600 ring-2 ring-white" />
+          </div>
+
+          {/* Direct "Back to Home" / "Main App" Header Button */}
+          <Link
+            href="/home?section=assistant"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 bg-white hover:bg-slate-50 border border-slate-300 hover:border-blue-400 rounded-xl transition-all cursor-pointer shadow-2xs no-underline"
+            title="Exit Admin & Go to AI Assistant"
+          >
+            <Home className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden sm:inline">Back to Home</span>
+          </Link>
+
+          {/* Admin Profile Dropdown - 40px height hit target */}
+>>>>>>> bd31a41 (Update CreditWise AI changes)
           <div className="relative" ref={dropdownRef}>
             <button
               type="button"
@@ -294,13 +320,23 @@ export default function AdminHeader({
                 {/* Return directly to Dashboard */}
                 <div className="py-1 border-b border-slate-100 dark:border-slate-800 bg-blue-50/40 dark:bg-blue-950/20">
                   <Link
+<<<<<<< HEAD
                     href="/home"
+=======
+                    href="/home?section=assistant"
+>>>>>>> bd31a41 (Update CreditWise AI changes)
                     onClick={() => setProfileDropdownOpen(false)}
                     className="flex items-center gap-2.5 px-4 py-2.5 text-blue-700 dark:text-blue-300 hover:bg-blue-100/70 dark:hover:bg-blue-900/40 text-xs font-semibold no-underline transition-colors"
                   >
+<<<<<<< HEAD
                     <LayoutDashboard className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     <span>Dashboard Workspace</span>
                     <span className="ml-auto text-[10px] font-medium bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">Main App</span>
+=======
+                    <Home className="w-4 h-4 text-blue-600" />
+                    <span>Back to Home</span>
+                    <span className="ml-auto text-[10px] font-normal text-slate-400">AI Assistant</span>
+>>>>>>> bd31a41 (Update CreditWise AI changes)
                   </Link>
                 </div>
 

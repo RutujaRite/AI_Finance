@@ -196,11 +196,11 @@ export function extractSpecificBankPolicyParameter(
         `**Source:** \`Axis_Finance_Master_Policy.txt\``;
     }
     if (isSalary) {
-      const isCatA = /\b(?:cat(?:egory)?\s*a|super\s*cat\s*a)\b/i.test(q);
-      const catLine = isCatA ? `• **Category A (CAT A) Minimum Salary**: **₹25,000/month** (multiplier up to 30x of monthly income, loan up to ₹40 Lakhs).\n` : "";
       return `### 🏦 Axis Finance — Salary & Income Requirements\n\n` +
-        catLine +
-        `• **Minimum Net Monthly Salary (NTH)**: **₹25,000 to ₹40,000/month** depending on employer category.\n` +
+        `• **Regular / Super CAT A & NSP**: **₹1,07,874/month** minimum net take-home (NTH).\n` +
+        `• **Government Program**: **₹1,00,000/month**.\n` +
+        `• **Skilled Worker (Cat C/D/U)**: **₹30,000/month**.\n` +
+        `• **Bharat Program**: **₹1,00,000/month** (Cat A) / **₹20,000/month** (Cat D/NSP).\n` +
         `• **Payment Mode**: Mandatory direct online bank salary credit via banking channels (minimum 3–6 months verified).\n` +
         `• **FOIR Ratio**: Up to **75%** fixed obligation to income ratio allowed under high-multiplier programs.\n\n` +
         `**Source:** \`Axis_Finance_Master_Policy.txt\``;
@@ -557,7 +557,7 @@ export function formatComprehensiveBankPolicy(policyContent: string, bankName: s
 • **Employment Types**: Salaried individuals across approved corporate employer categories
 
 #### 2. Salary & Bank Requirements (NTH, Payment Mode)
-• **Net Take-Home (NTH) / Salary**: Minimum Net Monthly Income (NMI) **₹25,000 to ₹40,000+** basis employer category
+• **Net Take-Home (NTH) / Salary**: Regular / Super CAT A & NSP: ₹1,07,874; Govt Program: ₹1,00,000; Skilled Worker (Cat C/D/U): ₹30,000; Bharat Program: ₹1,00,000 (Cat A) / ₹20,000 (Cat D/NSP) basis verified Section 7 policy criteria
 • **Payment Mode**: Mandatory salary credit into active bank account via official banking channels
 • **Bank Account Requirements**: 3 to 6 months ePDF bank statement with regular salary credits required; NACH mandate
 
@@ -792,14 +792,14 @@ export function formatBankPolicyComparison(bankA: string, bankB: string): string
       `|---|---|---|---|\n` +
       `| **Institution Type** | Scheduled Commercial Bank | NBFC (Non-Banking Financial Company) | Different regulatory guidelines |\n` +
       `| **CIBIL / Bureau Score** | **700 to 740+** (tiered strictly by NMI slabs) | **720+** (720 to 750 across loan programs) | Axis Bank ties cutoff directly to income tier |\n` +
-      `| **Minimum Net Salary (NTH)** | **₹35,000 to ₹85,000+** basis category/program | **₹25,000 to ₹40,000** basis category | **Axis Finance** has a lower entry threshold (₹25k vs ₹35k) |\n` +
+      `| **Minimum Net Salary (NTH)** | **₹35,000 to ₹85,000+** basis category/program | **₹20,000 (Bharat) / ₹30,000 (Skilled) to ₹1,07,874** | Program-based NTH criteria |\n` +
       `| **Work Experience** | Min **1 year** continuous employment | Min **6 months to 1 year** vintage | Axis Finance is more flexible on employment tenure |\n` +
       `| **Max FOIR Allowed** | **50% to 65%** standard banking FOIR | Up to **75%** on high-multiplier programs | **Axis Finance** allows higher existing loan obligations |\n` +
       `| **Max Loan Amount** | Up to **₹40,00,000** | Up to **₹40,00,000** (multiplier up to 30x) | Similar maximum ticket size |\n` +
       `| **Repayment Tenure** | Up to **84 months** (standard 12–60) | Up to **84 months** (standard 12–60) | Both offer up to 7 years on select programs |\n` +
       `| **Bank Statements** | **6 months** ePDF bank statement | **3 to 6 months** bank statement | Axis Bank strictly mandates 6 months |\n\n` +
       `#### 💡 Key Takeaways:\n` +
-      `1. **Salary Eligibility**: If your monthly take-home is between **₹25,000 and ₹34,999**, you can qualify with **Axis Finance**, whereas **Axis Bank** requires a minimum of ₹35,000.\n` +
+      `1. **Salary Eligibility**: Axis Finance offers distinct program thresholds (from **₹20,000** for Bharat Program Cat D to **₹1,07,874** for Regular/Super CAT A), whereas **Axis Bank** tiers requirements from **₹35,000** upwards basis category/NMI.\n` +
       `2. **Existing Obligations**: If you already have existing EMIs consuming over 50% of your income, **Axis Finance** is more lenient (allowing FOIR up to 75%).\n` +
       `3. **CIBIL Score**: Axis Bank accepts CIBIL ≥ 700 for higher income slabs, whereas Axis Finance requires a solid 720+ baseline.`;
   }
@@ -833,7 +833,7 @@ export function formatCategorySalaryAcrossBanks(categoryLetter: string = "A"): s
     `| **HDFC Bank** | **₹25,000/month** (Metro) / ₹20,000 | Up to ₹40 Lakhs | Up to 84 months |\n` +
     `| **Bandhan Bank** | **₹25,000/month** (Super Cat A & Cat A) | Up to ₹25 Lakhs | Up to 60 months |\n` +
     `| **Kotak Mahindra Bank** | **₹25,000/month** (Elite / Cat A) | Up to ₹40 Lakhs | Up to 72 months |\n` +
-    `| **Axis Finance** | **₹25,000/month** | Up to ₹40 Lakhs | Up to 84 months |\n` +
+    `| **Axis Finance** | **₹1,00,000/month** (Bharat Cat A) / **₹1,07,874** (Super CAT A) | Up to ₹50 Lakhs | Up to 84 months |\n` +
     `| **Finnable Credit** | **₹20,000/month** (Tier 1) / ₹15,000 | Up to ₹10 Lakhs | Up to 48 months |\n` +
     `| **Utkarsh Small Finance Bank** | **₹25,000/month** | Up to ₹15 Lakhs | Up to 60 months |\n` +
     `| **Bajaj Finserv** | **₹25,000/month** | Up to ₹40 Lakhs | Up to 84 months |\n` +

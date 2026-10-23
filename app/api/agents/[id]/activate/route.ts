@@ -39,15 +39,17 @@ export async function POST(
       await setUserActiveAgent(userId, id);
     }
 
-    // Set status to active in PostgreSQL
+    // Set status to active and applied_to_assistant in PostgreSQL
     try {
-      await pool.query(`UPDATE agents SET status = 'active', updated_at = NOW() WHERE id = $1`, [id]);
-      await pool.query(`UPDATE agents SET status = 'draft', updated_at = NOW() WHERE id != $1`, [id]);
+      await pool.query(
+        `UPDATE agents SET status = 'active', applied_to_assistant = true, updated_at = NOW() WHERE id = $1`,
+        [id]
+      );
     } catch (e) {
       console.warn("[ACTIVATE_AGENT_DB_WARN]", e);
     }
 
-    const updated = updateAgent(id, { status: "active" });
+    const updated = updateAgent(id, { status: "active", appliedToAssistant: true } as any);
     if (updated) {
       await syncAgentToDb(updated, userId);
     }

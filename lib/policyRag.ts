@@ -25,6 +25,7 @@ import { StringOutputParser } from "@langchain/core/output_parsers";
 import { ChatOpenAI } from "@langchain/openai";
 import { policyCache } from "./policyCache";
 import { formatComprehensiveBankPolicy, extractSpecificBankPolicyParameter } from "./ai/bankPolicyFormatter";
+import { resolveDynamicApiKey, sanitizeApiKey, isOpenRouterAuthError, INVALID_KEY_USER_MESSAGE } from "./ai/keyResolution";
 
 export interface PolicyTarget {
   bankId: number;
@@ -293,6 +294,15 @@ export async function resolvePolicyTarget(
           score -= 300;
         }
       }
+      // 7. Product isolation:
+      // If query is explicitly about personal loans, penalize Home Loan Services
+      if (/\b(?:personal\s*loan|pl)\b/i.test(q) && (pFile.includes("home_loan") || pName.includes("home loan") || p.bankId === 19)) {
+        score -= 500;
+      }
+      // If query is explicitly about home loans, penalize non-home loan policies
+      if (/\b(?:home\s*loan|housing|mortgage|lap)\b/i.test(q) && !pFile.includes("home_loan") && !pName.includes("home loan") && p.bankId !== 19) {
+        score -= 500;
+      }
     }
 
     if (score > highestScore) {
@@ -521,7 +531,7 @@ export function isBroadPolicyInquiry(query: string): boolean {
   return broadPatterns.some((pattern) => pattern.test(q));
 }
 
-const POLICY_RAG_SYSTEM_PROMPT = `You are a strictly grounded Policy Assistant. Answer the user request ONLY using the provided retrieved policy context below.
+export const POLICY_RAG_SYSTEM_PROMPT = `You are a strictly grounded Policy Assistant. Answer the user request ONLY using the provided retrieved policy context below.
 - Do NOT use outside knowledge or speculate.
 - If specific attributes (e.g., minimum salary for a specific category) are explicitly in the context, synthesize them into a clean Markdown Table or structured summary.
 - If a requested detail is completely missing from the retrieved context, state exactly what parameter is missing based on the retrieved context, without making assumptions.
@@ -533,7 +543,7 @@ CRITICAL POLICY INTEGRITY RULES
    - Never invent, assume, or infer missing policy criteria.
    - Never use general banking knowledge or other banks' policies.
    - If the requested requirement is not present in the retrieved evidence, state clearly:
-     "The retrieved policy evidence does not specify this requirement."
+     "The available bank policy documents do not specify this requirement. Please refer to your lender's official underwriting guidelines for exact confirmation."
 2. SINGLE-BANK RESTRICTION: The answer must pertain exclusively to the target bank in the supplied context.
 3. STRICT TOPIC FOCUS: For a focused question, answer ONLY the specific topic asked. DO NOT summarize the rest of the policy. Never output sections for other topics (such as age, income, FOIR, documents, etc.) unless the user explicitly requested them.
 4. PRESERVE [REVIEW] CONFLICTS:
@@ -702,7 +712,7 @@ export function extractDeterministicPolicyResponse(
   });
   const hasUnstatedSpecifics =
     missingNumbers.length > 0 ||
-    (/\b(?:population|exact(?:ly)?|city\s*with)\b/i.test(q) && !/population/i.test(policyContext));
+    (/\b(?:population|exact\s+population|city\s*with\s*(?:a\s*)?population)\b/i.test(q) && !/population/i.test(policyContext));
 
   // 1. Negative tests guarantee: If query asks for unstated specifics, return refusal
   if (hasUnstatedSpecifics) {
@@ -996,20 +1006,22 @@ export async function generatePolicyRagResponse(
 ): Promise<string> {
   const { query, bankName, policyFileId, policyContext, onToken } = params;
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const resolved = await resolveDynamicApiKey("openrouter");
+  const apiKey = sanitizeApiKey(resolved?.apiKey);
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY is not configured.");
   }
 
-  const modelName = process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free";
+  const modelName = process.env.OPENROUTER_MODEL || "openrouter/auto";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   const model = new ChatOpenAI({
     apiKey,
     configuration: {
       baseURL: "https://openrouter.ai/api/v1",
       defaultHeaders: {
-        "HTTP-Referer": "http://localhost:3001",
-        "X-Title": "CreditWise Policy RAG",
+        "HTTP-Referer": appUrl,
+        "X-Title": "CreditWise AI",
       },
     },
     model: modelName,
@@ -1047,22 +1059,27 @@ export async function generatePolicyRagResponse(
         policy_context: policyContext.trim(),
       });
     }
+    console.log("[DEBUG RAG success rawAnswer]", JSON.stringify(rawAnswer));
   } catch (error: any) {
+    console.log("[DEBUG RAG caught error]", error?.message || error);
+    if (isOpenRouterAuthError(error)) {
+      throw new Error(INVALID_KEY_USER_MESSAGE);
+    }
     // If the primary model failed with 502, 503, 403, 429, or provider error, fallback to resilient model
     const errMsg = String(error?.message || "");
-    if (modelName !== "nvidia/nemotron-3-super-120b-a12b:free") {
-      console.warn("[PolicyRAG] Primary model failed, falling back to nvidia/nemotron-3-super-120b-a12b:free:", errMsg);
+    if (modelName !== "openrouter/auto") {
+      console.warn("[PolicyRAG] Primary model failed, falling back to openrouter/auto:", errMsg);
       try {
         const fallbackModel = new ChatOpenAI({
           apiKey,
           configuration: {
             baseURL: "https://openrouter.ai/api/v1",
             defaultHeaders: {
-              "HTTP-Referer": "http://localhost:3001",
-              "X-Title": "CreditWise Policy RAG",
+              "HTTP-Referer": appUrl,
+              "X-Title": "CreditWise AI",
             },
           },
-          model: "nvidia/nemotron-3-super-120b-a12b:free",
+          model: "openrouter/auto",
           temperature: 0.1,
           maxTokens: 800,
           modelKwargs: {
@@ -1087,7 +1104,10 @@ export async function generatePolicyRagResponse(
             policy_context: policyContext.trim(),
           });
         }
-      } catch (fbErr) {
+      } catch (fbErr: any) {
+        if (isOpenRouterAuthError(fbErr)) {
+          throw new Error(INVALID_KEY_USER_MESSAGE);
+        }
         console.warn("[PolicyRAG] Upstream LLM unavailable, extracting deterministic response from policy context:", fbErr);
         const deterministicAns = extractDeterministicPolicyResponse(query, bankName, policyContext);
         if (deterministicAns) {
@@ -1129,6 +1149,19 @@ export async function generatePolicyRagResponse(
     .replace(/[^\S\r\n]{2,}/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+  // Guard against hollow LLM stubs (e.g. only header and source without policy criteria)
+  const isHollowStub =
+    cleanAnswer.length < 200 &&
+    !cleanAnswer.includes("Not specified in the available policy") &&
+    !cleanAnswer.includes("not specified in the available policy");
+  if (isHollowStub) {
+    console.warn(`[PolicyRAG] Generated answer is hollow stub (${cleanAnswer.length} chars). Falling back to deterministic policy extractor.`);
+    const fallbackAns = extractDeterministicPolicyResponse(query, bankName, policyContext);
+    if (fallbackAns && fallbackAns.length > cleanAnswer.length) {
+      cleanAnswer = fallbackAns;
+    }
+  }
 
   return cleanAnswer;
 }
@@ -1227,12 +1260,14 @@ export async function answerPolicyWithRag(
     },
   });
 
-  // Save generated response to semantic cache
-  policyCache.set(cacheKey, query, {
-    answer,
-    sources,
-    retrievedChunks: sources.length,
-  });
+  // Save generated response to semantic cache only if it is substantial and not a hollow stub
+  if (answer && answer.length >= 200 && !answer.includes("The retrieved policy evidence does not specify")) {
+    policyCache.set(cacheKey, query, {
+      answer,
+      sources,
+      retrievedChunks: sources.length,
+    });
+  }
 
   const tGenEnd = Date.now();
   const retrievalDuration = tRetrievalEnd - tStart;

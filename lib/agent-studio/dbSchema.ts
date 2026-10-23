@@ -39,13 +39,21 @@ export async function initAgentStudioDb(): Promise<void> {
       ALTER TABLE agents ADD COLUMN IF NOT EXISTS guardrail_templates JSONB DEFAULT '[]';
       ALTER TABLE agents ADD COLUMN IF NOT EXISTS manual_guardrails TEXT;
       ALTER TABLE agents ADD COLUMN IF NOT EXISTS user_id INTEGER;
+      ALTER TABLE agents ADD COLUMN IF NOT EXISTS applied_to_assistant BOOLEAN DEFAULT false;
+      ALTER TABLE agents ADD COLUMN IF NOT EXISTS supported_topics JSONB DEFAULT '[]';
+      ALTER TABLE agents ADD COLUMN IF NOT EXISTS config_version INTEGER DEFAULT 1;
 
-      -- Per-user active agent configuration table
+      -- Per-user active / applied agent configuration table
       CREATE TABLE IF NOT EXISTS user_active_agents (
-        user_id INTEGER PRIMARY KEY,
+        user_id INTEGER,
         agent_id VARCHAR(100) REFERENCES agents(id) ON DELETE CASCADE,
-        updated_at TIMESTAMP DEFAULT NOW()
+        updated_at TIMESTAMP DEFAULT NOW(),
+        PRIMARY KEY (user_id, agent_id)
       );
+
+      CREATE INDEX IF NOT EXISTS idx_agents_status_applied ON agents(status, applied_to_assistant);
+      CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_agent_id ON knowledge_chunks(agent_id);
+      CREATE INDEX IF NOT EXISTS idx_knowledge_docs_agent_id ON knowledge_documents(agent_id);
     `);
 
     // 2. Knowledge Bases table

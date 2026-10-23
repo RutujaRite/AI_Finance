@@ -199,6 +199,7 @@ export async function DELETE(req: NextRequest) {
       `SELECT id FROM assistant_conversations WHERE user_id = $1`,
       [userId]
     );
+<<<<<<< HEAD
     const convIds = userConvs.rows.map((r: any) => Number(r.id)).filter(Number.isFinite);
 
     if (convIds.length > 0) {
@@ -213,6 +214,26 @@ export async function DELETE(req: NextRequest) {
       }
 
       await client.query(
+=======
+    const convIds = userConvs.rows.map((r: any) => Number(r.id));
+
+    if (convIds.length > 0) {
+      // Clear dynamic eligibility state memory
+      try {
+        const { clearEligibilityState } = await import("@/lib/dynamicEligibilityEngine");
+        for (const cid of convIds) {
+          await clearEligibilityState(String(cid));
+        }
+      } catch (cleanErr) {
+        console.warn("Could not clear eligibility states during clear all:", cleanErr);
+      }
+
+      await client.query(
+        `DELETE FROM assistant_conversation_states WHERE conversation_id = ANY($1::int[])`,
+        [convIds]
+      );
+      await client.query(
+>>>>>>> bd31a41 (Update CreditWise AI changes)
         `DELETE FROM assistant_messages WHERE conversation_id = ANY($1::int[])`,
         [convIds]
       );
@@ -220,6 +241,7 @@ export async function DELETE(req: NextRequest) {
         `DELETE FROM assistant_conversations WHERE user_id = $1`,
         [userId]
       );
+<<<<<<< HEAD
 
       try {
         const { clearEligibilityState } = await import("@/lib/dynamicEligibilityEngine");
@@ -237,6 +259,28 @@ export async function DELETE(req: NextRequest) {
   } catch (err: any) {
     console.error("Clear all conversations error:", err);
     return NextResponse.json({ success: false, error: "Failed to clear conversations" }, { status: 500 });
+=======
+    }
+
+    // Clean in-memory fallback store
+    for (const [id] of conversations.entries()) {
+      if (convIds.includes(Number(id))) {
+        conversations.delete(id);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "All conversations cleared successfully",
+      count: convIds.length,
+    });
+  } catch (err: any) {
+    console.error("Clear all conversations error:", err);
+    return NextResponse.json(
+      { success: false, error: "Failed to clear conversations" },
+      { status: 500 }
+    );
+>>>>>>> bd31a41 (Update CreditWise AI changes)
   } finally {
     client.release();
   }

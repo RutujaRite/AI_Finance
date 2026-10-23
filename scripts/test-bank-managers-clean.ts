@@ -57,7 +57,7 @@ async function verifyBankManagersClean() {
   );
 
   assert(
-    bankManagersPageSrc.includes("bi-download") && bankManagersPageSrc.includes("download={f.file_name}"),
+    (bankManagersPageSrc.includes("<Download") || bankManagersPageSrc.includes("bi-download")) && bankManagersPageSrc.includes("download={file.file_name}"),
     "Download action button is present in files table"
   );
 

@@ -15,25 +15,33 @@ async function extractTextFromBuffer(
 
   try {
     if (ext === "pdf") {
-      const pdfModule = require("pdf-parse");
-      if (typeof pdfModule === "function") {
-        const data = await pdfModule(buffer);
-        return data.text || "";
-      } else if (pdfModule?.PDFParse) {
-        const uint8 = new Uint8Array(buffer);
-        const parser = new pdfModule.PDFParse(uint8);
-        const res = await parser.getText();
-        return typeof res === "string" ? res : res?.text || "";
-      } else if (pdfModule?.default && typeof pdfModule.default === "function") {
-        const data = await pdfModule.default(buffer);
-        return data.text || "";
-      } else if (pdfModule?.default?.PDFParse) {
-        const uint8 = new Uint8Array(buffer);
-        const parser = new pdfModule.default.PDFParse(uint8);
-        const res = await parser.getText();
-        return typeof res === "string" ? res : res?.text || "";
+      try {
+        const pdfPkg = 'pdfjs-dist/legacy/build/pdf.mjs';
+        const imported = await import(/* webpackIgnore: true */ pdfPkg);
+        const pdfjsLib = imported.default || imported;
+        const pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+        let fullText = "";
+        for (let i = 1; i <= pdfDoc.numPages; i++) {
+          const page = await pdfDoc.getPage(i);
+          const content = await page.getTextContent();
+          const pageText = content.items
+            .map((it: any) => (typeof it.str === "string" ? it.str : ""))
+            .join(" ");
+          fullText += (i === 1 ? "" : "\n\n") + pageText;
+        }
+        if (fullText.trim()) return fullText.trim();
+      } catch (pdfJsErr) {
+        console.warn("[DOCUMENT_PROCESSOR] pdfjs-dist extraction fallback:", pdfJsErr);
       }
-      throw new Error("Unable to initialize PDF parser from pdf-parse module");
+
+      try {
+        const pdfModule = require("pdf-parse");
+        if (typeof pdfModule === "function") {
+          const data = await pdfModule(buffer);
+          if (data?.text) return data.text;
+        }
+      } catch {}
+      throw new Error("Unable to extract text from PDF document");
     }
 
     if (ext === "docx" || ext === "doc") {

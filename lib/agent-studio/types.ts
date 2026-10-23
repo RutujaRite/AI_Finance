@@ -171,6 +171,9 @@ export interface Agent {
   id: string;
   userId?: number;
   isActiveForUser?: boolean;
+  appliedToAssistant?: boolean;
+  supportedTopics?: string[];
+  configVersion?: number;
   name: string;
   description: string;
   status: AgentStatus;

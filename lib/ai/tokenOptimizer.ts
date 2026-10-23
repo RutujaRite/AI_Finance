@@ -19,7 +19,22 @@ export type CanonicalIntent =
   | "CONVERSATION_FOLLOW_UP"
   | "INFORMATION_CORRECTION"
   | "MULTI_INTENT"
-  | "AMBIGUOUS_INTENT";
+  | "AMBIGUOUS_INTENT"
+  // Master Architectural Phase 2 Supported Intents
+  | "GREETING_OR_SMALL_TALK"
+  | "ELIGIBILITY_START"
+  | "ELIGIBILITY_FIELD_ANSWER"
+  | "COMPANY_SEARCH"
+  | "COMPANY_INFORMATION"
+  | "COMPANY_CATEGORY"
+  | "BANK_POLICY"
+  | "BANK_MANAGER_LOOKUP"
+  | "ELIGIBILITY_RECALCULATION"
+  | "ELIGIBILITY_RESULT_EXPLANATION"
+  | "GENERAL_QUESTION"
+  | "TOPIC_INTERRUPTION"
+  | "TOPIC_RESUMPTION"
+  | "AMBIGUOUS_INPUT";
 
 export type SpecificSubCategory =
   | "GREETING"
@@ -54,6 +69,13 @@ export interface IntentBudgetConfig {
  */
 export const INTENT_BUDGETS: Record<CanonicalIntent | SpecificSubCategory, IntentBudgetConfig> = {
   GREETING: {
+    inputMinTokens: 500,
+    inputMaxTokens: 1000,
+    outputMinTokens: 30,
+    outputMaxTokens: 80,
+    retrieval: "None",
+  },
+  GREETING_OR_SMALL_TALK: {
     inputMinTokens: 500,
     inputMaxTokens: 1000,
     outputMinTokens: 30,
@@ -152,6 +174,97 @@ export const INTENT_BUDGETS: Record<CanonicalIntent | SpecificSubCategory, Inten
     retrieval: "Only required tools",
   },
   AMBIGUOUS_INTENT: {
+    inputMinTokens: 1000,
+    inputMaxTokens: 2000,
+    outputMinTokens: 100,
+    outputMaxTokens: 250,
+    retrieval: "None",
+  },
+  ELIGIBILITY_START: {
+    inputMinTokens: 2000,
+    inputMaxTokens: 5000,
+    outputMinTokens: 400,
+    outputMaxTokens: 900,
+    retrieval: "Existing calculation engine",
+  },
+  ELIGIBILITY_FIELD_ANSWER: {
+    inputMinTokens: 2000,
+    inputMaxTokens: 5000,
+    outputMinTokens: 400,
+    outputMaxTokens: 900,
+    retrieval: "Existing calculation engine",
+  },
+  COMPANY_SEARCH: {
+    inputMinTokens: 1500,
+    inputMaxTokens: 4000,
+    outputMinTokens: 150,
+    outputMaxTokens: 400,
+    retrieval: "Company database/API",
+  },
+  COMPANY_INFORMATION: {
+    inputMinTokens: 1500,
+    inputMaxTokens: 4000,
+    outputMinTokens: 150,
+    outputMaxTokens: 400,
+    retrieval: "Company database/API",
+  },
+  COMPANY_CATEGORY: {
+    inputMinTokens: 1500,
+    inputMaxTokens: 4000,
+    outputMinTokens: 150,
+    outputMaxTokens: 400,
+    retrieval: "Company database/API",
+  },
+  BANK_POLICY: {
+    inputMinTokens: 3000,
+    inputMaxTokens: 6000,
+    outputMinTokens: 250,
+    outputMaxTokens: 600,
+    retrieval: "Semantic RAG",
+  },
+  BANK_MANAGER_LOOKUP: {
+    inputMinTokens: 1000,
+    inputMaxTokens: 3000,
+    outputMinTokens: 150,
+    outputMaxTokens: 350,
+    retrieval: "PostgreSQL",
+  },
+  ELIGIBILITY_RECALCULATION: {
+    inputMinTokens: 2000,
+    inputMaxTokens: 5000,
+    outputMinTokens: 400,
+    outputMaxTokens: 900,
+    retrieval: "Existing calculation engine",
+  },
+  ELIGIBILITY_RESULT_EXPLANATION: {
+    inputMinTokens: 3000,
+    inputMaxTokens: 6000,
+    outputMinTokens: 700,
+    outputMaxTokens: 1200,
+    retrieval: "Calculation results and relevant policy evidence",
+  },
+  GENERAL_QUESTION: {
+    inputMinTokens: 1000,
+    inputMaxTokens: 2500,
+    outputMinTokens: 150,
+    outputMaxTokens: 400,
+    retrieval: "None",
+  },
+  TOPIC_INTERRUPTION: {
+    inputMinTokens: 1500,
+    inputMaxTokens: 3500,
+    outputMinTokens: 150,
+    outputMaxTokens: 400,
+    retrieval: "Context-dependent",
+  },
+  TOPIC_RESUMPTION: {
+    inputMinTokens: 1500,
+    inputMaxTokens: 3500,
+    outputMinTokens: 150,
+    outputMaxTokens: 400,
+    retrieval: "Context-dependent",
+  },
+  AMBIGUOUS_INPUT: {
     inputMinTokens: 1000,
     inputMaxTokens: 2000,
     outputMinTokens: 100,

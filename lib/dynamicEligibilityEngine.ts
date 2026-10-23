@@ -12,7 +12,9 @@ export interface ApplicantProfile {
   companyName?: string;
   companyCategory?: "Super CAT A" | "CAT A" | "CAT B" | "CAT C" | "Unlisted" | string;
   monthlyIncome?: number | string;
+  monthlySalary?: number | string;
   cibil?: number | string;
+  cibilScore?: number | string;
   loanAmount?: number | string;
   tenureMonths?: number | string;
   existingEmi?: number | string;
@@ -85,9 +87,14 @@ export type LocationStep =
 export type PostEligibilityStage =
   | "ELIGIBILITY_CONFIRMED"
   | "BANK_SELECTION"
+  | "BANK_SELECTED"
   | "BANK_MANAGER_DETAILS_INPUT"
   | "BRANCH_SELECTION"
-  | "BANK_MANAGER_RESULTS";
+  | "BANK_MANAGER_RESULTS"
+  | "ELIGIBILITY_COMPLETED"
+  | "AWAITING_BRANCH_LOCATION"
+  | "AWAITING_PIN_CODE"
+  | "MANAGER_RESULTS_SHOWN";
 
 export interface TaskStackItem {
   taskType: "LOAN_ELIGIBILITY" | "COMPANY_SEARCH" | "EMI_CALCULATOR" | "BANK_MANAGER_SEARCH" | "BANK_POLICY" | string;
@@ -120,8 +127,14 @@ export interface SessionState {
   lastUserAnsweredField?: string;
   lastAssistantQuestion?: string;
   activeFlow?: "LOAN_ELIGIBILITY" | "COMPANY_SEARCH" | "EMI_CALCULATOR" | "BANK_MANAGER_SEARCH" | "IDLE" | string;
+  activeIntent?: "COMPANY_CATEGORY_LOOKUP" | "LOAN_ELIGIBILITY" | string;
+  searchQuery?: string;
+  candidateCompanies?: Array<{ id: string; name: string; canonicalName?: string }>;
+  awaitingCompanyName?: boolean;
+  awaitingCompanySelection?: boolean;
   previousFlow?: string;
   in_eligibility_flow?: boolean;
+  awaitingEligibilityConsent?: boolean;
   eligible_banks?: string[];
   hasCompletedEvaluation?: boolean;
   evaluationCompleted?: boolean;
@@ -148,6 +161,7 @@ export interface SessionState {
   branchDirectoryAvailable?: boolean;
   branchSearchScope?: "city" | "bank";
   managerFound?: boolean;
+  managerResultsShown?: boolean;
   rejectedBanks?: string[];
   fieldAttempts?: Record<string, number>;
   lastBankManagerSearch?: BankManagerSearchEntities;
@@ -316,6 +330,7 @@ export async function saveEligibilityState(conversationId: string, state: Sessio
   if (!conversationId || conversationId === "undefined" || conversationId === "null" || conversationId.trim() === "" || conversationId === "0") {
     return;
   }
+  sanitizeEligibilityState(state);
   inMemorySessionStates.set(conversationId, state);
   const cleanId = String(conversationId).trim();
   if (pool && cleanId) {
@@ -1373,6 +1388,21 @@ export function detectCorrectionInMessage(
     }
   }
 
+  // I. Employment Type correction (e.g. "actually self-employed", "changing from unemployed to self-employed", "now self employed")
+  const empMatch = message.match(
+    /(?:actually|change\s+(?:to|my\s+status\s+to)?|update\s+(?:to|my\s+status\s+to)?|now|from\s+unemployed\s+to|switch\s+to)?\s*(self[\s-]*employed|salaried|business\s*owner|own\s*business|freelancer)/i
+  );
+  if (empMatch) {
+    const rawType = empMatch[1].toLowerCase();
+    const resolvedType = /self|business|freelanc/i.test(rawType) ? "Self-Employed" : "Salaried";
+    return {
+      isCorrection: true,
+      field: "employmentType",
+      value: resolvedType,
+      explanation: `Updated your employment type to **${resolvedType}**`,
+    };
+  }
+
   return { isCorrection: false };
 }
 
@@ -1402,7 +1432,7 @@ export function detectTargetedFieldInMessage(text: string, targetExpectedField?:
   if (
     targetExpectedField !== "tenureMonths" &&
     /\b\d{1,2}\s*(?:years?|yrs?|saal|sal|months?|m\b)\b/i.test(norm) &&
-    !/(?:salary|income|earn|take\s*home|in\s*hand|need|loan|cibil|age)/i.test(norm)
+    !/(?:salary|income|earn|take\s*home|in\s*hand|need|loan|cibil|age|lakh|lac|cr|crore|peti)/i.test(norm)
   ) {
     return "tenureMonths";
   }
@@ -1443,11 +1473,19 @@ export function detectTargetedFieldInMessage(text: string, targetExpectedField?:
     return "age";
   }
 
-  // If user says "working at TCS", "company is Infosys", "self employed", "freelance" while expectedField was something else:
+  // If user says "salaried", "self employed", "unemployed", etc. while expectedField was something else:
+  if (
+    targetExpectedField !== "employmentType" &&
+    /^(?:salaried|self[-\s]*employed|unemployed|student|homemaker|retired)\b/i.test(norm)
+  ) {
+    return "employmentType";
+  }
+
+  // If user says "working at TCS", "company is Infosys", etc. while expectedField was something else:
   if (
     targetExpectedField !== "companyName" &&
-    (/(?:(?:i\s+)?(?:work|working|employed)\s+(?:at|in|with|for)|(?:my\s+)?(?:company|employer)\s+is)\s+([A-Za-z0-9&'.-]+)/i.test(norm) ||
-      /\b(?:self\s*employed|business|freelance|consultant|own\s*business|shop\s*owner)\b/i.test(norm))
+    targetExpectedField !== "company" &&
+    (/(?:(?:i\s+)?(?:work|working|employed)\s+(?:at|in|with|for)|(?:my\s+)?(?:company|employer)\s+is)\s+([A-Za-z0-9&'.-]+)/i.test(norm))
   ) {
     return "companyName";
   }
@@ -1601,10 +1639,13 @@ export function resolveBankName(
   return null;
 }
 
-export function isSameBank(bankA: string | undefined | null, bankB: string | undefined | null): boolean {
+export function isSameBank(bankA: string | any | undefined | null, bankB: string | any | undefined | null): boolean {
   if (!bankA || !bankB) return false;
-  const cleanA = bankA.toLowerCase().replace(/bank|finance|fincorp|limited|ltd|\./gi, "").replace(/\s+/g, "").trim();
-  const cleanB = bankB.toLowerCase().replace(/bank|finance|fincorp|limited|ltd|\./gi, "").replace(/\s+/g, "").trim();
+  const strA = typeof bankA === "string" ? bankA : (bankA?.bankName || bankA?.bank_name || bankA?.name || String(bankA));
+  const strB = typeof bankB === "string" ? bankB : (bankB?.bankName || bankB?.bank_name || bankB?.name || String(bankB));
+  if (!strA || !strB) return false;
+  const cleanA = strA.toLowerCase().replace(/bank|finance|fincorp|limited|ltd|\./gi, "").replace(/\s+/g, "").trim();
+  const cleanB = strB.toLowerCase().replace(/bank|finance|fincorp|limited|ltd|\./gi, "").replace(/\s+/g, "").trim();
   if (!cleanA || !cleanB) return false;
   if (cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA)) return true;
   const abbrevs: Record<string, string[]> = {
@@ -2173,12 +2214,13 @@ export function extractBankBranchLocationParams(
 
   // 3. Extract explicit Branch keyword (e.g. "Camp branch", "branch Camp", "branch is Camp", "at Camp branch")
   if (!result.isDiscoveryRequest) {
-    const branchExplicitMatch = remaining.match(/\b([a-zA-Z0-9\s-]+?)\s+\bbranch\b/i) ||
-      remaining.match(/\b(?:branch\s*(?:is|:)?|at\s+branch)\b\s*([a-zA-Z0-9\s-]+)/i);
+    const branchCandidateText = remaining.replace(/\b(?:branch\s*managers?|bank\s*managers?|managers?|contacts?)\b/gi, " ");
+    const branchExplicitMatch = branchCandidateText.match(/\b([a-zA-Z0-9\s-]+?)\s+\bbranch\b/i) ||
+      branchCandidateText.match(/\b(?:branch\s*(?:is|:)?|at\s+branch)\b\s*([a-zA-Z0-9\s-]+)/i);
     if (branchExplicitMatch) {
       const cand = branchExplicitMatch[1].trim();
       const candLower = cand.toLowerCase();
-      if (cand.length >= 2 && !/^\d+$/.test(cand) && !isKnownBankName(cand) && !KNOWN_MAJOR_CITIES.includes(candLower) && !LOCATION_STOPWORDS.has(candLower)) {
+      if (cand.length >= 2 && !/^\d+$/.test(cand) && !isKnownBankName(cand) && !KNOWN_MAJOR_CITIES.includes(candLower) && !LOCATION_STOPWORDS.has(candLower) && !candLower.includes("manager") && !candLower.includes("contact")) {
         result.branch = cand;
         result.branchName = cand;
         remaining = remaining.replace(branchExplicitMatch[0], " ").trim();
@@ -2759,7 +2801,7 @@ export function stripGreetingPrefix(text: string): string {
   return clean || text.trim();
 }
 
-export const UNEMPLOYED_REGEX = /\b(?:un[\s-]*empl(?:oy(?:ed)?|ye[de]?|ye|yed)|jobless|without\s*(?:a\s*)?job|no\s*job|lost\s*(?:my\s*)?job|laid\s*off|not\s*working(?:\s*anywhere)?|have\s*no\s*employment|no\s*employment|no\s*income|zero\s*income)\b/i;
+export const UNEMPLOYED_REGEX = /\b(?:un[\s-]*empl(?:oy(?:ed|ment|ee)?|ye[de]?|ye|yed|yee|olyed)?|not\s*employed|jobless|without\s*(?:a\s*|any\s*)?job|no\s*job|(?:don['’]?t\s*have|do\s*not\s*have|have\s*no|not\s*having)\s*(?:a\s*|any\s*)?job|lost\s*(?:my\s*)?job|laid\s*off|not\s*working(?:\s*(?:anywhere|currently|right\s*now))?|currently\s*not\s*working|have\s*no\s*employment|no\s*employment|(?:don['’]?t\s*have|do\s*not\s*have|have\s*no|zero|no|0)\s*(?:income|salary|earnings?))\b/i;
 
 export function isPersonalNameOrIntroduction(text: string): boolean {
   if (!text) return false;
@@ -2785,7 +2827,7 @@ export function isPersonalNameOrIntroduction(text: string): boolean {
 
 /**
  * Validates whether a candidate string is NOT a valid company name.
- * Recognizes structural validation, numbers, and non-company status answers (jobless, unemployed, student, freelancer).
+ * Recognizes structural validation, numbers, conversational sentences, and non-company status answers.
  */
 export function isInvalidCompanyName(text: string): boolean {
   if (!text) return true;
@@ -2795,12 +2837,39 @@ export function isInvalidCompanyName(text: string): boolean {
   if (isPureGreeting(raw) || isGreetingOrPleasantry(raw) || isGeneralAssistanceQuery(raw)) return true;
   if (isPersonalNameOrIntroduction(raw)) return true;
   if (UNEMPLOYED_REGEX.test(raw)) return true;
+  if (isFinancialOrProfileInput(raw)) return true;
+  if (/^(?:rs\.?|inr|₹)?\s*\d+(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr|crores?|thousand|hazar|peti|khoka)?$/i.test(raw)) return true;
   const clean = raw.toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
   if (clean.length < 2) return true;
   if (/^\d+$/.test(clean)) return true;
   if (!/[a-zA-Z]/.test(clean)) return true;
   if (isPersonalNameOrIntroduction(clean)) return true;
   if (UNEMPLOYED_REGEX.test(clean)) return true;
+
+  // Conversational sentence prefixes and personal intros must NEVER be saved as company names
+  if (
+    /^(?:my\s*name\s*is|name\s*is|is\s*my\s*name|i\s*am\b|i['’]?m\b|myself\b|this\s*is\b|i\s*have\b|i\s*do\s*not\b|i\s*don['’]?t\b|i\s*need\b|i\s*want\b|we\s*are\b|currently\s+i\s+am\b|call\s*me\b)/i.test(
+      clean
+    )
+  ) {
+    return true;
+  }
+
+  // Punctuation indicating conversational sentences
+  if (/[.!?]$/.test(raw) || /[.!?]\s+[a-zA-Z]/.test(raw)) {
+    return true;
+  }
+
+  // Word count check: >= 5 words without corporate suffix is a conversational sentence
+  const words = clean.split(/\s+/);
+  if (
+    words.length >= 5 &&
+    !/(?:pvt|ltd|limited|llp|inc|corp|technologies|solutions|services|systems|industries|consultancy|consulting|enterprises|bank)\b/i.test(
+      clean
+    )
+  ) {
+    return true;
+  }
 
   // Known bank names must never enter company search
   if (isKnownBankName(clean)) return true;
@@ -2809,7 +2878,8 @@ export function isInvalidCompanyName(text: string): boolean {
   if (
     /^(?:a\s+home|home|open\s*market|unknown|not\s*(?:provided|specified|applicable|available|sure)|unlisted|standard\s*(?:corporate|salaried)|none|nil|na|n\/a|nothing|test|another|different|new|another\s+company|different\s+company|new\s+company|the\s+eligibility\s+using\s+another)$/i.test(clean) ||
     /^(?:the\s+)?eligibility(?:\s+using\s+another(?:\s+company)?)?$/i.test(clean) ||
-    /^(?:i\s*(?:need|want)\s*(?:a\s*)?loan|apply\s*for\s*(?:a\s*)?loan|check\s*(?:my|our|the\s*)?eligibility|personal\s*loan|home\s*loan|loan)$/i.test(clean) ||
+    /^(?:i\s*(?:need|want)\s*(?:a\s*)?loan|apply\s*for\s*(?:a\s*)?loan|check\s*(?:my|our|the\s*)?eligibility|evaluate\s*(?:my\s*)?loan|can\s*i\s*get\s*(?:a\s*)?loan|check\s*eligibility|eligibility\s*check|loan\s*eligibility|personal\s*loan|home\s*loan|loan)$/i.test(clean) ||
+    /^(?:check\s*(?:my|our|the)?\s*eligibility|evaluate\s*loan|can\s*i\s*get\s*(?:a\s*)?loan|check\s*eligibility|eligibility\s*check|loan\s*eligibility|loan\s*check)$/i.test(clean) ||
     /^(?:(?:a\s+)?(?:personal|home|car|gold|education|educational|business)?\s*loan(?:\s*for\s*(?:a\s*)?home)?|loan\s*for\s*(?:a\s*)?home)$/i.test(clean) ||
     /^(?:for\s+(?:a\s+)?home)$/i.test(clean) ||
     /\b(?:education(?:al)?\s*loan|home\s*loan|car\s*loan|auto\s*loan|vehicle\s*loan|business\s*loan|credit\s*card)\b/i.test(clean) ||
@@ -3109,6 +3179,272 @@ export function extractCompoundLoanCompanyIntent(text: string): { isCompound: bo
 }
 
 /**
+ * Strict validator for company / employer names.
+ * Ensures full sentences like "my name is...", "i am unemplye", personal introductions,
+ * or status tokens are NEVER accepted or persisted as an employer.
+ */
+export function isSentenceOrInvalidEmployer(name: any): boolean {
+  if (!name || typeof name !== "string") return true;
+  const raw = name.trim();
+  if (raw.length < 2 || raw.length > 80) return true;
+  if (/^\d+$/.test(raw)) return true;
+  if (!/[a-zA-Z]/.test(raw)) return true;
+
+  // Conversational sentence prefixes and personal introductions
+  if (
+    /^(?:my\s*name\s*is|name\s*is|is\s*my\s*name|i\s*am\b|i['’]?m\b|myself\b|this\s*is\b|i\s*have\b|i\s*do\s*not\b|i\s*don['’]?t\b|i\s*need\b|i\s*want\b|we\s*are\b|currently\s+i\s+am\b|call\s*me\b)/i.test(
+      raw
+    )
+  ) {
+    return true;
+  }
+
+  // Punctuation patterns indicating full sentences
+  if (/[.!?]$/.test(raw) || /[.!?]\s+[a-zA-Z]/.test(raw)) {
+    return true;
+  }
+
+  // Word count check: >= 5 words without corporate suffix
+  const words = raw.split(/\s+/);
+  if (
+    words.length >= 5 &&
+    !/(?:pvt|ltd|limited|llp|inc|corp|technologies|solutions|services|systems|industries|consultancy|consulting|enterprises|bank)\b/i.test(
+      raw
+    )
+  ) {
+    return true;
+  }
+
+  // Common conversational markers
+  if (/\b(?:hello|helo|hi|hey|how\s+are\s+you|please|kindly|thank\s+you|thanks)\b/i.test(raw)) {
+    return true;
+  }
+
+  // Unemployment, disavowal, or invalid company check
+  if (UNEMPLOYED_REGEX.test(raw)) return true;
+  if (isPersonalNameOrIntroduction(raw)) return true;
+  if (detectCompanyDisavowal(raw).isDisavowal) return true;
+  if (isInvalidCompanyName(raw)) return true;
+
+  return false;
+}
+
+/**
+ * Validates and sanitizes session variables against sensible business patterns
+ * before persisting to application or session state.
+ */
+export function sanitizeSessionVariables(vars: Record<string, any>): Record<string, any> {
+  if (!vars || typeof vars !== "object") return {};
+
+  const cleanVars = { ...vars };
+
+  // 1. Unemployment check across raw text, employment type, or variables
+  const isUnemployed =
+    cleanVars.employment_type === "Unemployed" ||
+    cleanVars.employmentType === "Unemployed" ||
+    (typeof cleanVars.employment_type === "string" && UNEMPLOYED_REGEX.test(cleanVars.employment_type)) ||
+    (typeof cleanVars.employmentType === "string" && UNEMPLOYED_REGEX.test(cleanVars.employmentType)) ||
+    (typeof cleanVars.employer === "string" && UNEMPLOYED_REGEX.test(cleanVars.employer)) ||
+    (typeof cleanVars.Employer_Name === "string" && UNEMPLOYED_REGEX.test(cleanVars.Employer_Name)) ||
+    (typeof cleanVars.employer_name === "string" && UNEMPLOYED_REGEX.test(cleanVars.employer_name));
+
+  if (isUnemployed) {
+    cleanVars.employment_type = "Unemployed";
+    cleanVars.employmentType = "Unemployed";
+    cleanVars.employer = null;
+    cleanVars.Employer_Name = null;
+    cleanVars.employer_name = null;
+    cleanVars.monthlyIncome = 0;
+    if ("monthly_income" in cleanVars) cleanVars.monthly_income = 0;
+    if ("salary" in cleanVars) cleanVars.salary = 0;
+    delete cleanVars.awaitingEmployerConfirmation;
+    delete cleanVars.employerConfirmationQuery;
+    delete cleanVars.employerConfirmationOptions;
+  } else {
+    // 2. Validate employer fields
+    const empFields = ["employer", "Employer_Name", "employer_name"];
+    for (const f of empFields) {
+      if (cleanVars[f] !== undefined && cleanVars[f] !== null) {
+        if (isSentenceOrInvalidEmployer(cleanVars[f])) {
+          cleanVars[f] = null;
+        } else {
+          cleanVars[f] = String(cleanVars[f]).trim();
+        }
+      }
+    }
+  }
+
+  // 3. Validate numeric fields against sensible patterns
+  // Monthly income: 0 to 50,000,000
+  if (cleanVars.monthlyIncome !== undefined && cleanVars.monthlyIncome !== null) {
+    const num = Number(cleanVars.monthlyIncome);
+    if (!Number.isFinite(num) || num < 0 || num > 50000000) {
+      cleanVars.monthlyIncome = 0;
+    } else {
+      cleanVars.monthlyIncome = Math.round(num);
+    }
+  }
+
+  // Requested loan amount: 10,000 to 100,000,000
+  if (cleanVars.requestedAmount !== undefined && cleanVars.requestedAmount !== null) {
+    const num = Number(cleanVars.requestedAmount);
+    if (!Number.isFinite(num) || num < 10000 || num > 100000000) {
+      delete cleanVars.requestedAmount;
+    } else {
+      cleanVars.requestedAmount = Math.round(num);
+    }
+  }
+  if (cleanVars.Requested_Loan_Amount !== undefined && cleanVars.Requested_Loan_Amount !== null) {
+    const num = Number(cleanVars.Requested_Loan_Amount);
+    if (!Number.isFinite(num) || num < 10000 || num > 100000000) {
+      delete cleanVars.Requested_Loan_Amount;
+    } else {
+      cleanVars.Requested_Loan_Amount = Math.round(num);
+    }
+  }
+
+  // Tenure months: 6 to 360
+  if (cleanVars.tenureMonths !== undefined && cleanVars.tenureMonths !== null) {
+    let num = Number(cleanVars.tenureMonths);
+    if (Number.isFinite(num)) {
+      if (num >= 1 && num <= 7) num = num * 12; // convert years to months
+      if (num >= 6 && num <= 360) {
+        cleanVars.tenureMonths = Math.round(num);
+      } else {
+        delete cleanVars.tenureMonths;
+      }
+    } else {
+      delete cleanVars.tenureMonths;
+    }
+  }
+
+  // CIBIL score: 300 to 900 or 0 or "NOT_SURE"
+  if (cleanVars.cibilScore !== undefined && cleanVars.cibilScore !== null) {
+    if (cleanVars.cibilScore === "NOT_SURE") {
+      // keep
+    } else {
+      const num = Number(cleanVars.cibilScore);
+      if (Number.isFinite(num) && ((num >= 300 && num <= 900) || num === 0)) {
+        cleanVars.cibilScore = Math.round(num);
+      } else {
+        delete cleanVars.cibilScore;
+      }
+    }
+  }
+
+  // Age: 18 to 85
+  if (cleanVars.age !== undefined && cleanVars.age !== null) {
+    const num = Number(cleanVars.age);
+    if (Number.isFinite(num) && num >= 18 && num <= 85) {
+      cleanVars.age = Math.round(num);
+    } else {
+      delete cleanVars.age;
+    }
+  }
+
+  // Existing EMI: 0 to 5,000,000
+  if (cleanVars.existingEmi !== undefined && cleanVars.existingEmi !== null) {
+    const num = Number(cleanVars.existingEmi);
+    if (Number.isFinite(num) && num >= 0 && num <= 5000000) {
+      cleanVars.existingEmi = Math.round(num);
+    } else {
+      cleanVars.existingEmi = 0;
+    }
+  }
+
+  return cleanVars;
+}
+
+/**
+ * Deeply validates and sanitizes complete SessionState prior to saving
+ * in-memory or persisting to PostgreSQL.
+ */
+export function sanitizeEligibilityState(state: SessionState): SessionState {
+  if (!state || typeof state !== "object") return state;
+
+  // 1. Sanitize applicant profile
+  if (state.applicant && typeof state.applicant === "object") {
+    const isApplicantUnemployed =
+      state.applicant.employmentType === "Unemployed" ||
+      state.applicant.employmentStatus === "unemployed" ||
+      (typeof state.applicant.companyName === "string" && UNEMPLOYED_REGEX.test(state.applicant.companyName)) ||
+      (typeof state.company === "string" && UNEMPLOYED_REGEX.test(state.company)) ||
+      (typeof state.selectedCompanyName === "string" && UNEMPLOYED_REGEX.test(state.selectedCompanyName));
+
+    if (isApplicantUnemployed) {
+      state.applicant.employmentType = "Unemployed";
+      state.applicant.employmentStatus = "unemployed";
+      state.applicant.companyName = undefined;
+      state.applicant.monthlyIncome = 0;
+      state.company = undefined;
+      state.selectedCompanyName = undefined;
+      state.selectedCompany = undefined;
+      if (state.companyFlow) {
+        state.companyFlow.selectedCompanyName = undefined;
+        state.companyFlow.selectedCompany = undefined;
+        state.companyFlow.normalizedCompany = undefined;
+      }
+    } else if (state.applicant.companyName) {
+      if (isSentenceOrInvalidEmployer(state.applicant.companyName)) {
+        state.applicant.companyName = undefined;
+      }
+    }
+
+    if (state.company && isSentenceOrInvalidEmployer(state.company)) {
+      state.company = undefined;
+    }
+    if (state.selectedCompanyName && isSentenceOrInvalidEmployer(state.selectedCompanyName)) {
+      state.selectedCompanyName = undefined;
+    }
+    if (state.selectedCompany && isSentenceOrInvalidEmployer(state.selectedCompany)) {
+      state.selectedCompany = undefined;
+    }
+    if (state.companyFlow?.selectedCompanyName && isSentenceOrInvalidEmployer(state.companyFlow.selectedCompanyName)) {
+      state.companyFlow.selectedCompanyName = undefined;
+    }
+
+    // Validate numeric fields in applicant
+    if (state.applicant.monthlyIncome !== undefined && state.applicant.monthlyIncome !== null) {
+      const num = Number(state.applicant.monthlyIncome);
+      state.applicant.monthlyIncome = Number.isFinite(num) && num >= 0 && num <= 50000000 ? Math.round(num) : 0;
+    }
+    if (state.applicant.loanAmount !== undefined && state.applicant.loanAmount !== null) {
+      const num = Number(state.applicant.loanAmount);
+      if (Number.isFinite(num) && num >= 10000 && num <= 100000000) {
+        state.applicant.loanAmount = Math.round(num);
+      }
+    }
+    if (state.applicant.cibil !== undefined && state.applicant.cibil !== null) {
+      const num = Number(state.applicant.cibil);
+      if (Number.isFinite(num) && ((num >= 300 && num <= 900) || num === 0)) {
+        state.applicant.cibil = Math.round(num);
+      }
+    }
+    if (state.applicant.age !== undefined && state.applicant.age !== null) {
+      const num = Number(state.applicant.age);
+      if (Number.isFinite(num) && num >= 18 && num <= 85) {
+        state.applicant.age = Math.round(num);
+      }
+    }
+    if (state.applicant.existingEmi !== undefined && state.applicant.existingEmi !== null) {
+      const num = Number(state.applicant.existingEmi);
+      if (Number.isFinite(num) && num >= 0 && num <= 5000000) {
+        state.applicant.existingEmi = Math.round(num);
+      } else {
+        state.applicant.existingEmi = 0;
+      }
+    }
+  }
+
+  // 2. Sanitize sessionVariables
+  if (state.sessionVariables && typeof state.sessionVariables === "object") {
+    state.sessionVariables = sanitizeSessionVariables(state.sessionVariables);
+  }
+
+  return state;
+}
+
+/**
  * Strips conversational query phrasing, actions, prepositions, and corporate suffixes
  * to isolate the clean target company/employer name.
  * e.g. "give me information of infosys company" -> "infosys"
@@ -3211,8 +3547,10 @@ export function extractCleanCompanyName(input: string): string {
 export function isCompanyInfoOrSearchIntent(text: string): boolean {
   if (!text) return false;
   const norm = text.toLowerCase().replace(/[.!?]+$/, "").replace(/\s+/g, " ").trim();
-  if (isPureGreeting(norm) || isFinancialOrProfileInput(norm) || detectCompanyDisavowal(norm).isDisavowal || detectCompanyDisavowal(text).isDisavowal) return false;
-  if (isKnownBankName(norm) || Boolean(resolveBankName(norm))) return false;
+  const isCategoryOrCompanyQuery =
+    /(?:category|tier|employer|company)\b/i.test(norm) ||
+    Boolean(extractCompoundLoanCompanyIntent(text).companyCandidate);
+  if (!isCategoryOrCompanyQuery && (isKnownBankName(norm) || Boolean(resolveBankName(norm)))) return false;
 
   // 1. Generic company search commands or typos (e.g. "company search", "company serach", "search company", "matching compies list", "matching companies list not displaying")
   if (
@@ -3238,7 +3576,7 @@ export function isCompanyInfoOrSearchIntent(text: string): boolean {
 
   // 2. Clear inquiry patterns (e.g. "give me information of ...", "give me details of ...", "tell me about ...", "what is category of ...", "what is infosys", "is ... listed")
   if (
-    /(?:give\s+(?:me\s+)?(?:the\s+)?(?:information|info|details|data|profile)\s+(?:of|about|on|for|regarding)|tell\s+me\s+about|what\s+is\s+(?:the\s+)?(?:category|tier|rating|status|details|info|information)\s+(?:of|for|on)|show\s+(?:me\s+)?(?:the\s+)?(?:information|info|details|data|profile)?\s*(?:of|about|on|for)?|info\s+(?:on|about)|details\s+(?:of|for|about))/i.test(norm)
+    /(?:give\s+(?:me\s+)?(?:the\s+)?(?:information|info|details|data|profile)\s+(?:of|about|on|for|regarding)|tell\s+me\s+about|what\s+is\s+(?:the\s+)?(?:category|tier|rating|status|details|info|information)\s+(?:of|for|on)|(?:what|which)\s+(?:category|tier)\s+(?:is|for|of)|show\s+(?:me\s+)?(?:the\s+)?(?:information|info|details|data|profile)?\s*(?:of|about|on|for)?|info\s+(?:on|about)|details\s+(?:of|for|about))/i.test(norm)
   ) {
     return true;
   }
@@ -3303,7 +3641,10 @@ export function isCompanyInfoOrSearchIntent(text: string): boolean {
 export function extractTargetCompanyFromMessage(text: string): string | undefined {
   if (!text) return undefined;
   const raw = text.trim();
-  if (isPureGreeting(raw) || isFinancialOrProfileInput(raw) || isKnownBankName(raw)) return undefined;
+  const isCategoryOrCompanyQuery =
+    /(?:category|tier|employer|company)\b/i.test(raw) ||
+    Boolean(extractCompoundLoanCompanyIntent(raw).companyCandidate);
+  if (isPureGreeting(raw) || isFinancialOrProfileInput(raw) || (!isCategoryOrCompanyQuery && isKnownBankName(raw))) return undefined;
 
   // 1. Compound loan + company check intent
   const compound = extractCompoundLoanCompanyIntent(raw);
@@ -3322,9 +3663,9 @@ export function extractTargetCompanyFromMessage(text: string): string | undefine
     }
   }
 
-  // 1c. Category or check query (e.g. "Check Infosys company category", "category of TCS")
+  // 1c. Category or check query (e.g. "Check Infosys company category", "category of TCS", "What category is TCS in HDFC Bank?")
   const categoryMatch = raw.match(
-    /(?:check(?:\s+for)?|verify|what\s+is(?:\s+the)?\s+(?:category|tier)\s+of)\s+([A-Za-z0-9\s&'-]+?)(?:\s+(?:company|employer)?\s*(?:category|tier|details)|$)/i
+    /(?:check(?:\s+for)?|verify|what\s+is(?:\s+the)?\s+(?:category|tier)\s+of|(?:what|which)\s+(?:category|tier)\s+(?:is|for|of))\s+([A-Za-z0-9\s&'-]+?)(?:\s+(?:in|at|for|with)\s+[A-Za-z0-9\s&'-]+|\s+(?:company|employer)?\s*(?:category|tier|details)|$)/i
   );
   if (categoryMatch) {
     const cand = categoryMatch[1].trim().replace(/[.,;!?]+$/, "").trim();
@@ -3371,6 +3712,7 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
   if (isKnownBankName(raw)) return undefined;
   if (isPureGreeting(raw) || isGreetingOrPleasantry(raw)) return undefined;
   if (detectCompanyDisavowal(raw).isDisavowal) return undefined;
+  if (isSentenceOrInvalidEmployer(raw) && !/(?:works?\s+at|employed\s+at|working\s+at)/i.test(raw)) return undefined;
   if (isPersonalNameOrIntroduction(raw)) return undefined;
   if (UNEMPLOYED_REGEX.test(raw) && !/(?:works?\s+at|employed\s+at|working\s+at)/i.test(raw)) return undefined;
   if (/(?:i\s*don'?t\s*have\s*(?:a\s*)?company|no\s*company|without\s*(?:a\s*)?company|don'?t\s*work\s*in\s*a\s*company|not\s*working\s*in\s*any\s*company|not\s*working\s*in\s*a\s*company)\b/i.test(raw)) return undefined;
@@ -3383,7 +3725,7 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
   if (explicitMatch) {
     let candidate = explicitMatch[1].trim().replace(/[.,;!?]+$/, "").trim();
     candidate = extractCleanCompanyName(candidate) || candidate;
-    if (candidate.length >= 2 && !isInvalidCompanyName(candidate) && !isFinancialOrProfileInput(candidate) && !isPersonalNameOrIntroduction(candidate) && !isLocationInput(candidate)) {
+    if (candidate.length >= 2 && !isSentenceOrInvalidEmployer(candidate) && !isFinancialOrProfileInput(candidate) && !isLocationInput(candidate)) {
       return candidate;
     }
   }
@@ -3394,9 +3736,8 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
     directClean &&
     directClean.length >= 2 &&
     directClean.toLowerCase() !== raw.toLowerCase() &&
-    !isInvalidCompanyName(directClean) &&
+    !isSentenceOrInvalidEmployer(directClean) &&
     !isFinancialOrProfileInput(directClean) &&
-    !isPersonalNameOrIntroduction(directClean) &&
     !isLocationInput(directClean) &&
     !isKnownBankName(directClean)
   ) {
@@ -3405,7 +3746,7 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
 
   // 2. Explicit company search query (e.g. "check mthree", "search TCS", "I want loan but first check mthree")
   const explicitTarget = extractTargetCompanyFromMessage(raw);
-  if (explicitTarget) {
+  if (explicitTarget && !isSentenceOrInvalidEmployer(explicitTarget)) {
     return explicitTarget;
   }
 
@@ -3418,9 +3759,8 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
       const cleanSeg = seg.replace(/^(?:at|in|with)\s+/i, "").trim();
       if (
         cleanSeg.length >= 2 &&
-        !isInvalidCompanyName(cleanSeg) &&
+        !isSentenceOrInvalidEmployer(cleanSeg) &&
         !isFinancialOrProfileInput(cleanSeg) &&
-        !isPersonalNameOrIntroduction(cleanSeg) &&
         !isLocationInput(cleanSeg) &&
         !/^(?:i\s+need|i\s+want|can\s+i|please|hello|hi|hey|personal\s+loan|loan)\b/i.test(cleanSeg) &&
         !/^(?:i\s*don'?t\s*know|don'?t\s*know|tell\s*me|explain|process|procedure|steps?)\b/i.test(cleanSeg) &&
@@ -3440,9 +3780,7 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
     expectedField !== "location" &&
     expectedField !== "area" &&
     !isFinancialOrProfileInput(raw) &&
-    !isInvalidCompanyName(raw) &&
-    !isPersonalNameOrIntroduction(raw) &&
-    !UNEMPLOYED_REGEX.test(raw) &&
+    !isSentenceOrInvalidEmployer(raw) &&
     !isLocationInput(raw) &&
     !/^(?:i\s+need|i\s+want|can\s+i|personal\s+loan|home\s*loan|loan|a\s+home)\b/i.test(raw)
   ) {
@@ -3460,7 +3798,7 @@ export function extractCompanyCandidateFromText(text: string, expectedField?: st
     if (!/^(?:at|in|with|for)\s+(?:a\s+)?(?:home|house|flat|property|plot|car|bike|personal|wedding|medical|travel|business|loan)\b/i.test(clean)) {
       clean = clean.replace(/^(?:at|in|with)\s+/i, "");
     }
-    if (!isFinancialOrProfileInput(clean) && !isInvalidCompanyName(clean) && !isPersonalNameOrIntroduction(clean) && !UNEMPLOYED_REGEX.test(clean) && !isLocationInput(clean) && clean.length >= 2) {
+    if (!isFinancialOrProfileInput(clean) && !isSentenceOrInvalidEmployer(clean) && !isLocationInput(clean) && clean.length >= 2) {
       return clean;
     }
   }
@@ -3480,7 +3818,12 @@ function mapAnswerToTargetField(
   llmExtracted?: any
 ): void {
   // A. Monthly Income / Salary
-  if (field === "monthlyIncome" || field === "salary") {
+  if (
+    field === "monthlyIncome" ||
+    field === "salary" ||
+    field === "monthly_income" ||
+    field === "Monthly Net Salary"
+  ) {
     if (typeof llmExtracted?.monthlyIncome === "number") {
       applicant.monthlyIncome = llmExtracted.monthlyIncome;
       return;
@@ -3507,40 +3850,62 @@ function mapAnswerToTargetField(
     }
   }
 
-  // B. Loan Amount Needed
-  if (field === "loanAmount" || field === "requestedAmount") {
+  // B. Loan Amount Needed & Preferred Tenure (Rule 2: Fuzzy Unit Parsing & Default Tenure)
+  if (
+    field === "loanAmount" ||
+    field === "requestedAmount" ||
+    field === "loan_amount_and_tenure" ||
+    field === "Desired Loan Amount & Tenure"
+  ) {
     const hasBorrowMarker = /\b(?:loan\s*(?:amount|of|need|require|want)?|need|want|borrow|require)\b/i.test(text);
     if (typeof llmExtracted?.loanAmount === "number" && llmExtracted.loanAmount >= 10000) {
       if (applicant.monthlyIncome && llmExtracted.loanAmount === applicant.monthlyIncome && !hasBorrowMarker) {
         // Skip salary contamination
       } else {
         applicant.loanAmount = llmExtracted.loanAmount;
-        return;
       }
-    }
-    const loanMatch =
-      text.match(/(?:loan\s*(?:amount|of|need|require|want)?|need|want|borrow)(?::|\s*is|\s*=)?\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?|peti|khoka)?/i) ||
-      text.match(/(?:rs\.?|₹)\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?|peti|khoka)\s*(?:loan)?/i) ||
-      text.match(/(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?|peti|khoka)?/i);
-    if (loanMatch) {
-      const parsed = parseFinancialAmount(loanMatch[1] + (loanMatch[2] || ""));
-      if (parsed && parsed >= 10000) {
-        if (applicant.monthlyIncome && parsed === applicant.monthlyIncome && !hasBorrowMarker) {
-          // Skip salary contamination
-        } else {
-          applicant.loanAmount = parsed;
-          return;
+    } else {
+      const loanMatch =
+        text.match(/(?:loan\s*(?:amount|of|need|require|want)?|need|want|borrow)(?::|\s*is|\s*=)?\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?|peti|khoka)?/i) ||
+        text.match(/(?:rs\.?|₹)\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?|peti|khoka)\s*(?:loan)?/i) ||
+        text.match(/(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?|peti|khoka)?/i);
+      if (loanMatch) {
+        const parsed = parseFinancialAmount(loanMatch[1] + (loanMatch[2] || ""));
+        if (parsed && parsed >= 10000) {
+          if (applicant.monthlyIncome && parsed === applicant.monthlyIncome && !hasBorrowMarker) {
+            // Skip salary contamination
+          } else {
+            applicant.loanAmount = parsed;
+          }
+        }
+      } else {
+        const amt = parseFinancialAmount(text);
+        if (amt && amt >= 10000) {
+          if (applicant.monthlyIncome && amt === applicant.monthlyIncome && !hasBorrowMarker) {
+            // Skip salary contamination
+          } else {
+            applicant.loanAmount = amt;
+          }
         }
       }
     }
-    const amt = parseFinancialAmount(text);
-    if (amt && amt >= 10000) {
-      if (applicant.monthlyIncome && amt === applicant.monthlyIncome && !hasBorrowMarker) {
-        // Skip salary contamination
-      } else {
-        applicant.loanAmount = amt;
-        return;
+
+    if (applicant.loanAmount) {
+      // Check if tenure was also provided in the text (e.g. "5 lakhs for 3 years" or "500000 36 months")
+      const yMatch = text.match(/(\d+)\s*(?:years?|yrs?|y\b|saal|sal)/i);
+      const mMatch = text.match(/(\d+)\s*(?:months?|m\b)/i);
+      if (yMatch) {
+        const y = parseInt(yMatch[1], 10);
+        if (y > 0 && y <= 30) {
+          applicant.tenureMonths = y * 12;
+        }
+      } else if (mMatch) {
+        const m = parseInt(mMatch[1], 10);
+        if (m > 0 && m <= 360) {
+          applicant.tenureMonths = m;
+        }
       }
+      return;
     }
   }
 
@@ -3581,7 +3946,12 @@ function mapAnswerToTargetField(
   }
 
   // D. CIBIL Score
-  if (field === "cibil" || field === "cibilScore") {
+  if (
+    field === "cibil" ||
+    field === "cibilScore" ||
+    field === "cibil_score" ||
+    field === "CIBIL Score"
+  ) {
     if (typeof llmExtracted?.cibil === "number" && llmExtracted.cibil >= 300 && llmExtracted.cibil <= 900) {
       applicant.cibil = llmExtracted.cibil;
       return;
@@ -3617,7 +3987,12 @@ function mapAnswerToTargetField(
   }
 
   // E. Existing EMI Obligations
-  if (field === "existingEmi" || field === "emi") {
+  if (
+    field === "existingEmi" ||
+    field === "emi" ||
+    field === "existing_emis" ||
+    field === "Existing Monthly EMI Obligations"
+  ) {
     if (typeof llmExtracted?.existingEmi === "number") {
       applicant.existingEmi = llmExtracted.existingEmi;
       return;
@@ -3644,7 +4019,7 @@ function mapAnswerToTargetField(
   }
 
   // F. Age
-  if (field === "age") {
+  if (field === "age" || field === "Age") {
     if (typeof llmExtracted?.age === "number" && llmExtracted.age >= 18 && llmExtracted.age <= 85) {
       applicant.age = llmExtracted.age;
       return;
@@ -3659,8 +4034,63 @@ function mapAnswerToTargetField(
     }
   }
 
-  // G. Company Name & Employment Status
-  if (field === "companyName") {
+  // G0. Employment Status / Employment Type (Step 1)
+  if (
+    field === "employmentStatus" ||
+    field === "employmentType" ||
+    field === "employment_status" ||
+    field === "Employment Status"
+  ) {
+    if (
+      llmExtracted?.employmentType === "Unemployed" ||
+      UNEMPLOYED_REGEX.test(lower) ||
+      UNEMPLOYED_REGEX.test(text)
+    ) {
+      applicant.employmentType = "Unemployed";
+      applicant.employmentStatus = "unemployed";
+      applicant.monthlyIncome = 0;
+      delete applicant.companyName;
+      return;
+    }
+    if (/self[t\s-]*employed|self[\s-]*employd|own\s*business|business\s*owner|freelanc|doctor|trader|consultant/i.test(lower)) {
+      applicant.employmentType = "Self-Employed";
+      applicant.employmentStatus = "self-employed";
+      delete applicant.companyName;
+      return;
+    }
+    if (/student|in\s*college|studying/i.test(lower)) {
+      applicant.employmentType = "Student";
+      applicant.employmentStatus = "student";
+      delete applicant.companyName;
+      applicant.monthlyIncome = 0;
+      return;
+    }
+    if (/\b(?:house[\s-]*wife|home[\s-]*maker)\b/i.test(lower)) {
+      applicant.employmentType = "Homemaker";
+      applicant.employmentStatus = "homemaker";
+      delete applicant.companyName;
+      applicant.monthlyIncome = 0;
+      return;
+    }
+    if (/\b(?:retired|pensioner|senior\s*citizen)\b/i.test(lower)) {
+      applicant.employmentType = "Retired";
+      applicant.employmentStatus = "retired";
+      delete applicant.companyName;
+      return;
+    }
+    if (/salaried|employed|working|job|employee|pvt\s*ltd|govt|corporate/i.test(lower)) {
+      applicant.employmentType = "Salaried";
+      applicant.employmentStatus = "salaried";
+      return;
+    }
+  }
+
+  // G. Company Name & Employment Status (Step 2 - Rule 3: Strict Slot Boundary Protection)
+  if (
+    field === "companyName" ||
+    field === "company_name" ||
+    field === "Employer / Company Name"
+  ) {
     // 1. Check if user is jobless / unemployed
     if (
       llmExtracted?.employmentType === "Unemployed" ||
@@ -3728,7 +4158,7 @@ function mapAnswerToTargetField(
             .replace(/^(?:(?:i\s*am|i'?m|i)\s+(?:working\s+)?(?:at|in|with|for)|(?:i\s+)?(?:work|works|working|employed)\s+(?:at|in|with|for|by)|(?:my\s+)?(?:employer|company)\s+is|employer\s*[:=-]|company\s*[:=-]|at|in|with|for)\s+/i, "")
             .trim()
         : undefined);
-    if (candidate && !isInvalidCompanyName(candidate) && !isFinancialOrProfileInput(candidate)) {
+    if (candidate && !isSentenceOrInvalidEmployer(candidate) && !isFinancialOrProfileInput(candidate) && !isInvalidCompanyName(candidate)) {
       applicant.companyName = normalizeCompanyName(candidate);
       if (!applicant.employmentType) {
         applicant.employmentType = "Salaried";
@@ -3754,13 +4184,19 @@ export function messageMentionsField(field: string, text: string): boolean {
       return (
         /(?:loan\s*(?:amount|ticket|size|of|need|require|want)?|borrow|ticket|need|require|want)/i.test(lower) &&
         /(?:rs\.?|₹|\d+\s*(?:k|lakhs?|lacs?|l\b|cr|crores?|peti|khoka))/i.test(lower)
-      ) || /(?:rs\.?|₹)\s*\d+/i.test(lower) || /\b\d+\s*(?:lakhs?|lacs?|l\b|cr|crores?|peti|khoka)\s+(?:loan|borrow)/i.test(lower);
+      ) ||
+      /(?:rs\.?|₹)\s*\d+/i.test(lower) ||
+      /\b\d+\s*(?:lakhs?|lacs?|l\b|cr|crores?|peti|khoka)\s+(?:loan|borrow)/i.test(lower) ||
+      /\b\d+(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr|crores?|peti|khoka)\b/i.test(lower) ||
+      /^(?:rs\.?|inr|₹)?\s*\d+(?:\.\d+)?\s*(?:k|lakhs?|lacs?|l\b|cr|crores?|peti|khoka)$/i.test(lower.trim()) ||
+      /^\d{5,8}$/.test(lower.trim());
 
     case "cibil":
       return (
         /(?:cibil|credit\s*score|score\b|bureau)/i.test(lower) ||
         (/\b[3-9]\d{2}\b/.test(lower) && /(?:cibil|score|credit|again|now|with|change|what\s+about|what\s+if)/i.test(lower)) ||
-        /^\s*(?:again\s+with|now\s+with|with)?\s*[3-9]\d{2}\s*[.?]?\s*$/i.test(lower)
+        /^\s*(?:again\s+with|now\s+with|with)?\s*[3-9]\d{2}\s*[.?]?\s*$/i.test(lower) ||
+        /^\s*(?:not\s*sure|don'?t\s*know|unknown|no\s*idea|never\s*checked|na|n\/a)\s*$/i.test(lower)
       );
 
     case "tenureMonths":
@@ -3779,14 +4215,16 @@ export function messageMentionsField(field: string, text: string): boolean {
         /(?:no|zero|nil|0)\s*(?:existing\s*|ongoing\s*|current\s*)?loans?/i.test(lower) ||
         /(?:no|zero|nil|0)\s*(?:obligations?|debt)/i.test(lower) ||
         /sab\s*clear/i.test(lower) ||
-        /paying\s*(?:rs\.?|₹)?\s*\d+\s*(?:as)?\s*emi/i.test(lower)
+        /paying\s*(?:rs\.?|₹)?\s*\d+\s*(?:as)?\s*emi/i.test(lower) ||
+        /^\s*(?:0|zero|none|nil|no|nope|clear|nothing)\s*$/i.test(lower)
       );
 
     case "age":
       return (
         /(?:age|aged)\b/i.test(lower) ||
         /\b(?:years?\s*old|yr\s*old)\b/i.test(lower) ||
-        /(?:i\s*am|i'?m)\s+\d{2}\b/i.test(lower)
+        /(?:i\s*am|i'?m)\s+\d{2}\b/i.test(lower) ||
+        /^\s*(?:1[8-9]|[2-8]\d)(?:\s*(?:years?|yrs?|saal|age))?\s*$/i.test(lower)
       );
 
     case "employmentType":
@@ -3815,19 +4253,18 @@ export function extractSecondaryParameters(
   targetExpectedField?: string,
   llmExtracted?: any
 ): void {
-  // 1. Monthly Income (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
+  // 1. Monthly Income (Allow updating when mentioned, or when previously zero/unset)
   if (
-    targetExpectedField !== "monthlyIncome" &&
-    applicant.monthlyIncome === undefined &&
+    (targetExpectedField !== "monthlyIncome" || applicant.monthlyIncome === undefined || applicant.monthlyIncome === 0) &&
     messageMentionsField("monthlyIncome", text)
   ) {
-    if (typeof llmExtracted?.monthlyIncome === "number") {
+    if (typeof llmExtracted?.monthlyIncome === "number" && llmExtracted.monthlyIncome > 0) {
       applicant.monthlyIncome = llmExtracted.monthlyIncome;
     } else if (/zero\s*income|0\s*salary|no\s*salary|no\s*income|0rs|rs\.?\s*0|nil\s*salary/i.test(lower)) {
       applicant.monthlyIncome = 0;
     } else {
       const salMatch =
-        text.match(/(?:monthly\s*salary|monthly\s*income|salary|income|take\s*home|in\s*hand|nmi|nth|earning|earns?|makes?)(?::|\s*is|\s*=)?\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|peti|hazar)?/i) ||
+        text.match(/(?:(?:net\s*)?(?:monthly\s*)?(?:salary|income)|take\s*home|in\s*hand|nmi|nth|earning|earns?|makes?)(?::|\s*is|\s*=)?\s*(?:\(?collected:\s*)?(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|peti|hazar)?/i) ||
         text.match(/(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|peti|hazar)?\s*(?:per\s*month|\/mo|monthly|take\s*home|in\s*hand|salary|income)/i);
       if (salMatch) {
         const amt = parseFinancialAmount(salMatch[1] + (salMatch[2] || ""));
@@ -3838,21 +4275,26 @@ export function extractSecondaryParameters(
     }
   }
 
-  // 2. Loan Amount (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
+  // 2. Loan Amount (Allow updating when mentioned, or when previously zero/unset)
   if (
-    targetExpectedField !== "loanAmount" &&
-    (applicant.loanAmount === undefined || (typeof applicant.loanAmount === "number" && applicant.loanAmount <= 0)) &&
+    (targetExpectedField !== "loanAmount" || applicant.loanAmount === undefined || (typeof applicant.loanAmount === "number" && applicant.loanAmount <= 0)) &&
     messageMentionsField("loanAmount", text)
   ) {
     if (typeof llmExtracted?.loanAmount === "number" && llmExtracted.loanAmount >= 10000) {
       applicant.loanAmount = llmExtracted.loanAmount;
     } else {
       const loanMatch =
-        text.match(/(?:loan\s*(?:amount|of|need|require|want)?|need|want|borrow|require)\s*(?:a\s*)?(?::|\s*is|\s*=)?\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?|peti|khoka)?/i) ||
+        text.match(/(?:(?:desired\s*)?loan\s*(?:amount|of|need|require|want)?|need|want|borrow|require)\s*(?:a\s*)?(?::|\s*is|\s*=)?\s*(?:\(?collected:\s*)?(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?|peti|khoka)?/i) ||
         text.match(/(?:rs\.?|₹)\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?|peti|khoka)\s*(?:personal\s*)?(?:loan)?/i) ||
-        text.match(/(\d+(?:,\d+)*(?:\.\d+)?)\s*(lakhs?|lacs?|l\b|cr|crores?|peti|khoka)\s+(?:personal\s*)?(?:loan|borrow)/i);
+        text.match(/(\d+(?:,\d+)*(?:\.\d+)?)\s*(lakhs?|lacs?|l\b|cr|crores?|peti|khoka)\s+(?:personal\s*)?(?:loan|borrow)/i) ||
+        text.match(/(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|lakhs?|lacs?|l\b|cr|crores?|peti|khoka)\b/i);
       if (loanMatch) {
         const amt = parseFinancialAmount(loanMatch[1] + (loanMatch[2] || ""));
+        if (amt && amt >= 10000) {
+          applicant.loanAmount = amt;
+        }
+      } else {
+        const amt = parseFinancialAmount(text);
         if (amt && amt >= 10000) {
           applicant.loanAmount = amt;
         }
@@ -3860,10 +4302,10 @@ export function extractSecondaryParameters(
     }
   }
 
-  // 3. CIBIL Score (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
+  // 3. CIBIL Score (Allow updating when mentioned, or when previously unset)
   if (
     targetExpectedField !== "cibil" &&
-    applicant.cibil === undefined &&
+    (applicant.cibil === undefined || messageMentionsField("cibil", text)) &&
     messageMentionsField("cibil", text)
   ) {
     if (typeof llmExtracted?.cibil === "number" && llmExtracted.cibil >= 300 && llmExtracted.cibil <= 900) {
@@ -3873,7 +4315,7 @@ export function extractSecondaryParameters(
       (applicant as any).cibilWasAssumed = true;
     } else {
       const cibilMatch =
-        text.match(/(?:cibil|credit\s*score|score)(?::|\s*is|\s*=)?\s*(?:of)?\s*(\d{3})\b/i) ||
+        text.match(/(?:cibil(?:\s*score)?|credit\s*score|score)(?::|\s*is|\s*=)?\s*(?:\(?collected:\s*)?(?:of)?\s*(\d{3})\b/i) ||
         text.match(/\b(\d{3})\b\s*(?:cibil|credit\s*score)/i);
       if (cibilMatch) {
         const val = parseInt(cibilMatch[1], 10);
@@ -3894,19 +4336,18 @@ export function extractSecondaryParameters(
     }
   }
 
-  // 4. Tenure Months (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
+  // 4. Tenure Months (Allow updating when mentioned, or when previously zero/unset)
   if (
-    targetExpectedField !== "tenureMonths" &&
-    (applicant.tenureMonths === undefined || (typeof applicant.tenureMonths === "number" && applicant.tenureMonths <= 0)) &&
+    (targetExpectedField !== "tenureMonths" || applicant.tenureMonths === undefined || (typeof applicant.tenureMonths === "number" && applicant.tenureMonths <= 0)) &&
     messageMentionsField("tenureMonths", text)
   ) {
     if (typeof llmExtracted?.tenureMonths === "number" && llmExtracted.tenureMonths > 0) {
       applicant.tenureMonths = llmExtracted.tenureMonths;
     } else {
       const tenureMatch =
-        text.match(/(?:tenure|duration|term|period|for)(?::|\s*is|\s*=)?\s*(\d{1,2})\s*(years?|yrs?|saal|sal|months?|m\b|y\b)\b/i) ||
+        text.match(/(?:(?:desired\s*)?tenure|duration|term|period|for)(?::|\s*is|\s*=)?\s*(?:\(?collected:\s*)?(\d{1,3})\s*(years?|yrs?|saal|sal|months?|m\b|y\b)\b/i) ||
         text.match(/\b([1-7])\s*(years?|yrs?|saal|sal)\b(?!\s*old)/i) ||
-        text.match(/\b(\d{2})\s*(months?)\b/i);
+        text.match(/\b(\d{1,3})\s*(months?)\b/i);
       if (tenureMatch) {
         const num = parseInt(tenureMatch[1], 10);
         const unit = (tenureMatch[2] || "").toLowerCase();
@@ -3919,17 +4360,17 @@ export function extractSecondaryParameters(
     }
   }
 
-  // 5. Existing EMI Obligations (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
+  // 5. Existing EMI Obligations (Allow updating when mentioned, or when previously unset)
   if (
     targetExpectedField !== "existingEmi" &&
-    applicant.existingEmi === undefined &&
+    (applicant.existingEmi === undefined || messageMentionsField("existingEmi", text)) &&
     messageMentionsField("existingEmi", text)
   ) {
     if (typeof llmExtracted?.existingEmi === "number" && llmExtracted.existingEmi >= 0) {
       applicant.existingEmi = llmExtracted.existingEmi;
     } else {
       const emiMatch =
-        text.match(/(?:existing|current|other|ongoing|monthly)?\s*emi(?:s)?(?::|\s*is|\s*are|\s*of|\s*around|\s*approx|\s*=)?\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k)?/i) ||
+        text.match(/(?:existing\s*(?:monthly\s*)?|current|other|ongoing|monthly)?\s*emi(?:s)?(?::|\s*is|\s*are|\s*of|\s*around|\s*approx|\s*=)?\s*(?:\(?collected:\s*)?(?:rs\.?|₹)?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k)?/i) ||
         text.match(/paying\s*(?:rs\.?|₹)?\s*(\d+(?:,\d+)*)\s*(?:as)?\s*emi/i);
       if (emiMatch) {
         const amt = parseFinancialAmount(emiMatch[1] + (emiMatch[2] || ""));
@@ -3940,17 +4381,16 @@ export function extractSecondaryParameters(
     }
   }
 
-  // 6. Applicant Age (ONLY if not targetExpectedField, not already set, AND explicitly mentioned)
+  // 6. Applicant Age (Allow updating when mentioned, or when previously zero/unset)
   if (
-    targetExpectedField !== "age" &&
-    (applicant.age === undefined || (typeof applicant.age === "number" && applicant.age <= 0)) &&
+    (targetExpectedField !== "age" || applicant.age === undefined || (typeof applicant.age === "number" && applicant.age <= 0)) &&
     messageMentionsField("age", text)
   ) {
     if (typeof llmExtracted?.age === "number" && llmExtracted.age >= 18 && llmExtracted.age <= 85) {
       applicant.age = llmExtracted.age;
     } else {
       const ageMatch =
-        text.match(/(?:age|aged|i'?m|i\s*am)(?::|\s*is|\s*are|\s*=)?\s*(\d{2})\b/i) ||
+        text.match(/(?:age|aged|i'?m|i\s*am)(?::|\s*is|\s*are|\s*=)?\s*(?:\(?collected:\s*)?(\d{2})\b/i) ||
         text.match(/\b(\d{2})\s*(?:years?\s*old|yr\s*old|years?)\b/i);
       if (ageMatch) {
         const ageVal = parseInt(ageMatch[1], 10);
@@ -3961,15 +4401,26 @@ export function extractSecondaryParameters(
     }
   }
 
-  // 7. Employment Type (ONLY if not already set AND explicitly mentioned or implied)
-  if (!applicant.employmentType) {
-    if (llmExtracted?.employmentType) {
+  // 7. Employment Type (Allow overriding Unemployed when user transitions to Self-Employed or Salaried)
+  const isNegatedOrTransitional =
+    /(?:not|no\s*longer|instead\s*of|was|previously|from)\s*(?:unemployed|jobless)/i.test(lower) ||
+    /(?:from\s+)?unemployed\s+to\s+(?:self[\s-]*employed|salaried|employed)/i.test(lower) ||
+    /(?:self[\s-]*employed|salaried|business|freelanc|working|job)\b/i.test(lower);
+
+  if (!applicant.employmentType || applicant.employmentType === "Unemployed" || messageMentionsField("employmentType", text) || isNegatedOrTransitional) {
+    if (llmExtracted?.employmentType && llmExtracted.employmentType !== "Unemployed") {
       applicant.employmentType = llmExtracted.employmentType;
-      if (applicant.employmentType === "Unemployed" && applicant.monthlyIncome === undefined) {
-        applicant.monthlyIncome = 0;
-      }
-    } else if (UNEMPLOYED_REGEX.test(lower) || UNEMPLOYED_REGEX.test(text)) {
+      applicant.employmentStatus = llmExtracted.employmentType.toLowerCase();
+    } else if (/self[t\s-]*employed|self[\s-]*employd|own\s*business|business\s*owner|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelanc|doctor|trader/i.test(lower)) {
+      applicant.employmentType = "Self-Employed";
+      applicant.employmentStatus = "self-employed";
+      delete applicant.companyName;
+    } else if (/salaried|govt|government|private|pvt\s*ltd|mnc|corporate|job|employee/i.test(lower)) {
+      applicant.employmentType = "Salaried";
+      applicant.employmentStatus = "salaried";
+    } else if (!isNegatedOrTransitional && (UNEMPLOYED_REGEX.test(lower) || UNEMPLOYED_REGEX.test(text))) {
       applicant.employmentType = "Unemployed";
+      applicant.employmentStatus = "unemployed";
       if (applicant.monthlyIncome === undefined) applicant.monthlyIncome = 0;
     } else if (/student|in\s*college|studying/i.test(lower)) {
       applicant.employmentType = "Student";
@@ -3979,10 +4430,6 @@ export function extractSecondaryParameters(
       if (applicant.monthlyIncome === undefined) applicant.monthlyIncome = 0;
     } else if (/\b(?:retired|pensioner|senior\s*citizen)\b/i.test(lower)) {
       applicant.employmentType = "Retired";
-    } else if (/salaried|govt|government|private|pvt\s*ltd|mnc|corporate|job|employee/i.test(lower)) {
-      applicant.employmentType = "Salaried";
-    } else if (/self[t\s-]*employed|self[\s-]*employd|own\s*business|business\s*owner|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|freelanc|doctor|trader/i.test(lower)) {
-      applicant.employmentType = "Self-Employed";
     }
   }
 
@@ -4094,17 +4541,27 @@ export function extractApplicantDetails(
   }
 
   // 0c. Detect unemployed status from user text or LLM extraction
+  const isNegatedOrTransitional =
+    /(?:not|no\s*longer|instead\s*of|was|previously|from)\s*(?:unemployed|jobless)/i.test(lower) ||
+    /(?:from\s+)?unemployed\s+to\s+(?:self[\s-]*employed|salaried|employed)/i.test(lower) ||
+    /(?:self[\s-]*employed|salaried|business|freelanc|working|job)\b/i.test(lower);
+
   const isUnemployedCheck =
-    llmExtracted?.employmentStatus === "unemployed" ||
-    llmExtracted?.employmentType === "Unemployed" ||
-    UNEMPLOYED_REGEX.test(lower) ||
-    UNEMPLOYED_REGEX.test(text);
+    !isNegatedOrTransitional &&
+    (llmExtracted?.employmentStatus === "unemployed" ||
+      llmExtracted?.employmentType === "Unemployed" ||
+      UNEMPLOYED_REGEX.test(lower) ||
+      UNEMPLOYED_REGEX.test(text));
 
   if (isUnemployedCheck) {
     applicant.employmentStatus = "unemployed";
     applicant.employmentType = "Unemployed";
     applicant.monthlyIncome = 0;
     applicant.companyName = undefined;
+  } else if (/self[t\s-]*employed|self[\s-]*employd|own\s*business|business\s*owner|freelanc/i.test(lower)) {
+    applicant.employmentStatus = "self-employed";
+    applicant.employmentType = "Self-Employed";
+    delete applicant.companyName;
   }
 
   // 0d. If LLM provided extracted entities, merge them safely
@@ -4160,7 +4617,7 @@ export function extractApplicantDetails(
 
     if (
       llmExtracted.companyName &&
-      !isInvalidCompanyName(llmExtracted.companyName) &&
+      !isSentenceOrInvalidEmployer(llmExtracted.companyName) &&
       !isFinancialOrProfileInput(llmExtracted.companyName) &&
       (!applicant.companyName || targetExpectedField === "companyName" || hasExplicitCompanyInText)
     ) {
@@ -4411,7 +4868,7 @@ export function consolidateApplicantProfileFromHistory(
 
       if (!isBlockedNonCorporate && !isPersonalNameOrIntroduction(msg) && !UNEMPLOYED_REGEX.test(msg)) {
         const compCandidate = extractCompanyCandidateFromText(msg);
-        if (compCandidate && !isInvalidCompanyName(compCandidate) && !isFinancialOrProfileInput(compCandidate) && !isFinancialOrProfileInput(msg) && !isPersonalNameOrIntroduction(compCandidate) && !UNEMPLOYED_REGEX.test(compCandidate)) {
+        if (compCandidate && !isSentenceOrInvalidEmployer(compCandidate) && !isFinancialOrProfileInput(compCandidate) && !isFinancialOrProfileInput(msg) && !isPersonalNameOrIntroduction(compCandidate) && !UNEMPLOYED_REGEX.test(compCandidate)) {
           if (applicant.employmentType === "Unemployed" && hasExplicitCompanyInTurn) {
             (applicant as any).candidateCompanyForConfirmation = compCandidate;
           } else {
@@ -4503,71 +4960,90 @@ export function getRequiredPolicyFields(
     return ["employmentStatus"];
   }
 
-  // 1. Employer / Company Name is strictly required first for salaried personal loans
-  if (
+  // 1. Missing fields evaluation in strict sequential order:
+  const missing: string[] = [];
+
+  // Step 1: Employment Type (Salaried, Self-Employed, Unemployed)
+  if (!applicant.employmentType && !applicant.employmentStatus) {
+    if (applicant.monthlyIncome || applicant.companyName) {
+      applicant.employmentType = "Salaried";
+      applicant.employmentStatus = "salaried";
+    } else {
+      missing.push("employmentType");
+    }
+  }
+
+  // Step 2: Company Name (strictly required for Salaried applicants)
+  const isNonCorporate =
     applicant.employmentType === "Student" ||
     applicant.employmentType === "Homemaker" ||
     applicant.employmentType === "Retired" ||
     applicant.employmentType === "Unemployed" ||
-    applicant.employmentType === "Self-Employed"
-  ) {
-    // Non-corporate applicants do not have corporate salaried employers
-  } else if (
-    !applicant.companyName ||
-    applicant.companyName.trim().length === 0 ||
-    isInvalidCompanyName(applicant.companyName) ||
-    isLocationInput(applicant.companyName) ||
-    /^(?:a\s+home|home|open\s*market|unknown|not\s*(?:provided|specified|applicable|available|sure)|unlisted|standard\s*(?:corporate|salaried)|none|nil|na|n\/a)$/i.test(applicant.companyName.trim())
-  ) {
-    return ["company", "monthlyIncome", "existingEmi", "cibilScore", "age"];
+    applicant.employmentType === "Self-Employed";
+
+  if (!isNonCorporate && (applicant.employmentType === "Salaried" || applicant.employmentStatus === "salaried" || (!applicant.employmentType && applicant.companyName))) {
+    if (
+      !applicant.companyName ||
+      applicant.companyName.trim().length === 0 ||
+      isInvalidCompanyName(applicant.companyName) ||
+      isLocationInput(applicant.companyName) ||
+      /^(?:a\s+home|home|open\s*market|unknown|not\s*(?:provided|specified|applicable|available|sure)|unlisted|standard\s*(?:corporate|salaried)|none|nil|na|n\/a)$/i.test(applicant.companyName.trim())
+    ) {
+      missing.push("companyName");
+    }
   }
 
-  // 2. Active bank policy rules evaluation:
-  // For loan eligibility evaluation, parameters strictly follow ELIGIBILITY_FIELD_SEQUENCE:
-  // monthlyIncome -> existingEmi -> cibilScore -> age
-  const requiredFields = [
-    "monthlyIncome",
-    "existingEmi",
-    "cibilScore",
-    "age",
-    "loanAmount",
-    "tenureMonths",
-  ];
+  // Step 3: Monthly Income
+  const rawInc = applicant.monthlyIncome ?? applicant.monthlySalary;
+  if (
+    rawInc === undefined ||
+    rawInc === null ||
+    (typeof rawInc === "number" && rawInc <= 0)
+  ) {
+    missing.push("monthlyIncome");
+  }
 
-  // Filter out any fields that the user has already provided in this chat
-  const missing: string[] = [];
-  for (const field of requiredFields) {
-    if (
-      field === "monthlyIncome" &&
-      (applicant.monthlyIncome === undefined || applicant.monthlyIncome === null)
-    ) {
-      missing.push("monthlyIncome");
-    } else if (
-      field === "existingEmi" &&
-      (applicant.existingEmi === undefined || applicant.existingEmi === null)
-    ) {
-      missing.push("existingEmi");
-    } else if (
-      (field === "cibilScore" || field === "cibil") &&
-      (applicant.cibil === undefined || applicant.cibil === null)
-    ) {
-      missing.push("cibilScore");
-    } else if (
-      field === "age" &&
-      (applicant.age === undefined || applicant.age === null || (typeof applicant.age === "number" && applicant.age <= 0))
-    ) {
-      missing.push("age");
-    } else if (
-      field === "loanAmount" &&
-      (applicant.loanAmount === undefined || applicant.loanAmount === null || (typeof applicant.loanAmount === "number" && applicant.loanAmount <= 0))
-    ) {
-      missing.push("loanAmount");
-    } else if (
-      field === "tenureMonths" &&
-      (applicant.tenureMonths === undefined || applicant.tenureMonths === null || (typeof applicant.tenureMonths === "number" && applicant.tenureMonths <= 0))
-    ) {
-      missing.push("tenureMonths");
-    }
+  // Step 4: Existing EMIs
+  if (
+    applicant.existingEmi === undefined ||
+    applicant.existingEmi === null
+  ) {
+    missing.push("existingEmi");
+  }
+
+  // Step 5: CIBIL Score
+  const hasCibil =
+    (applicant.cibil !== undefined && applicant.cibil !== null) ||
+    (applicant.cibilScore !== undefined && applicant.cibilScore !== null);
+  if (!hasCibil) {
+    missing.push("cibilScore");
+  }
+
+  // Step 6: Age
+  if (
+    applicant.age === undefined ||
+    applicant.age === null ||
+    (typeof applicant.age === "number" && applicant.age <= 0)
+  ) {
+    missing.push("age");
+  }
+
+  // Step 7: Desired Loan Amount
+  if (
+    applicant.loanAmount === undefined ||
+    applicant.loanAmount === null ||
+    (typeof applicant.loanAmount === "number" && applicant.loanAmount <= 0)
+  ) {
+    missing.push("loanAmount");
+  }
+
+  // Step 8: Repayment Tenure Months
+  if (
+    applicant.tenureMonths === undefined ||
+    applicant.tenureMonths === null ||
+    (typeof applicant.tenureMonths === "number" && applicant.tenureMonths <= 0)
+  ) {
+    missing.push("tenureMonths");
   }
 
   return missing;
@@ -5440,81 +5916,259 @@ export function isMultiBankEligibilityQuery(message: string): boolean {
 }
 
 /**
- * Builds the intake prompt when critical applicant information is missing for a multi-bank eligibility check.
- * Strictly adheres to Step 2: "If critical information is missing, ask only for the necessary information."
+ * State Completeness Checklist & Loop Prevention (Strict Parameter Checker)
+ * Tracks the 7 essential collected slots:
+ * - Income (e.g. ₹50,000)
+ * - Employment Type (e.g. Self-Employed)
+ * - CIBIL Score (e.g. 670)
+ * - Age (e.g. 23)
+ * - Existing Monthly EMIs (e.g. ₹0)
+ * - Desired Loan Amount (e.g. ₹7,000,000)
+ * - Desired Tenure (e.g. 36 months)
  */
-export function buildMultiBankIntakePrompt(applicant: Partial<ApplicantProfile>): string {
-  const missing: string[] = [];
-  const salaryVal = Number(applicant.monthlyIncome) || 0;
-  const cibilVal = Number(applicant.cibil) || 0;
-  const ageVal = Number(applicant.age) || 0;
+export interface SlotCheckResult {
+  isComplete: boolean;
+  missingSlots: string[];
+  collectedSlots: {
+    monthlyIncome?: number;
+    employmentType?: string;
+    cibilScore?: number;
+    age?: number;
+    existingEmi?: number;
+    loanAmount?: number;
+    tenureMonths?: number;
+  };
+  formattedChecklist: string;
+}
 
-  const isNonCorporate =
-    applicant.employmentType === "Self-Employed" ||
-    applicant.employmentType === "Student" ||
-    applicant.employmentType === "Homemaker" ||
-    applicant.employmentType === "Retired" ||
-    applicant.employmentType === "Unemployed";
+export function checkEligibilitySlotCompleteness(
+  applicant: Partial<ApplicantProfile> = {},
+  sessionVariables?: Record<string, any>
+): SlotCheckResult {
+  const vars = sessionVariables || {};
+  const missingSlots: string[] = [];
+  const checklistLines: string[] = [];
 
-  if (salaryVal <= 0 && applicant.employmentType !== "Student" && applicant.employmentType !== "Homemaker" && applicant.employmentType !== "Unemployed") {
-    missing.push(applicant.employmentType === "Self-Employed" ? "Net Monthly Business Income / Profit (e.g., ₹75,000)" : "Net Monthly Salary (e.g., ₹75,000)");
-  }
-  if (cibilVal < 300) missing.push("Approximate CIBIL Score (e.g., 750, or type 'not sure')");
-  if (!applicant.employmentType) missing.push("Employment Type (e.g., Salaried, Self-Employed)");
-  if (ageVal < 18) missing.push("Age");
-  if (applicant.existingEmi === undefined || applicant.existingEmi === null) missing.push("Existing Monthly EMI (or enter 0 if none)");
-
-  const collected: string[] = [];
-  const safeComp =
-    applicant.companyName &&
-    !isNonCorporate &&
-    !isInvalidCompanyName(applicant.companyName) &&
-    !isPersonalNameOrIntroduction(applicant.companyName) &&
-    !UNEMPLOYED_REGEX.test(applicant.companyName)
-      ? applicant.companyName
-      : undefined;
-  if (safeComp) collected.push(`employer as **${safeComp}**`);
-  if (salaryVal > 0) collected.push(`monthly income (**₹${salaryVal.toLocaleString("en-IN")}**)`);
-  if (cibilVal >= 300) collected.push(`CIBIL score (**${cibilVal}**)`);
-  if (applicant.employmentType) collected.push(`employment type (**${applicant.employmentType}**)`);
-  if (ageVal >= 18) collected.push(`age (**${ageVal} years**)`);
-  if (applicant.existingEmi !== undefined && applicant.existingEmi !== null) {
-    collected.push(`existing EMI (**₹${Number(applicant.existingEmi).toLocaleString("en-IN")}**)`);
-  }
-
-  // 1. Initial intake prompt when nothing has been shared yet
-  if (collected.length === 0) {
-    return (
-      `To check your eligibility across our **23+ partner lenders**, I need your **monthly salary**, **CIBIL score**, **employment type**, **age**, and **existing monthly EMI** (enter 0 if none).\n\n` +
-      `💡 *If you share your **employer/company name** as well, I will verify company-category rules (Super CAT A / CAT A / CAT B) to unlock the highest loan amounts and preferential interest rates!*`
-    );
+  // 1. Employment Type (e.g. Salaried, Self-Employed)
+  const rawEmpType =
+    applicant.employmentType ||
+    vars.employmentType ||
+    (applicant.employmentStatus === "salaried" ? "Salaried" : (applicant.employmentStatus === "self-employed" ? "Self-Employed" : undefined)) ||
+    (applicant.companyName || vars.employer ? "Salaried" : undefined);
+  const isValidEmpType =
+    typeof rawEmpType === "string" &&
+    rawEmpType.trim().length > 0 &&
+    !/^(unemployed|student|homemaker)$/i.test(rawEmpType.trim());
+  if (isValidEmpType) {
+    checklistLines.push(`* Employment Type: (Collected: ${rawEmpType})`);
+  } else {
+    checklistLines.push(`* Employment Type: (Missing)`);
+    missingSlots.push("Employment Type");
   }
 
-  // 2. Progressive intake acknowledging what has been collected
-  const collectedStr = `I have recorded your ${collected.join(" and ")}.`;
-  const missingItems = missing.map((m) => `• **${m}**`).join("\n");
+  // 1b. Employer / Company Name (strictly required for Salaried applicants)
+  if (rawEmpType === "Salaried" || rawEmpType === "Employed") {
+    const rawCompany =
+      applicant.companyName ||
+      vars.employer ||
+      vars.company ||
+      vars.Employer_Name;
+    const hasCompany =
+      typeof rawCompany === "string" &&
+      rawCompany.trim().length > 0 &&
+      !isInvalidCompanyName(rawCompany);
+    if (hasCompany) {
+      checklistLines.push(`* Employer / Company: (Collected: ${rawCompany})`);
+    } else {
+      checklistLines.push(`* Employer / Company: (Missing)`);
+      missingSlots.push("Employer / Company Name");
+    }
+  }
 
-  const companyNote = applicant.companyName || isNonCorporate
-    ? ""
-    : `\n\n*(Sharing your **employer/company name** is also recommended to apply preferential corporate category terms.)*`;
+  // 2. Income (e.g. ₹50,000)
+  const rawIncome =
+    typeof applicant.monthlyIncome === "number" && !isNaN(applicant.monthlyIncome) && applicant.monthlyIncome > 0
+      ? applicant.monthlyIncome
+      : (typeof applicant.monthlySalary === "number" && !isNaN(applicant.monthlySalary) && applicant.monthlySalary > 0
+          ? applicant.monthlySalary
+          : (typeof vars.monthlySalary === "number" && !isNaN(vars.monthlySalary) && vars.monthlySalary > 0
+              ? vars.monthlySalary
+              : (typeof vars.monthlyIncome === "number" && !isNaN(vars.monthlyIncome) && vars.monthlyIncome > 0
+                  ? vars.monthlyIncome
+                  : (applicant.monthlyIncome && !isNaN(Number(applicant.monthlyIncome)) && Number(applicant.monthlyIncome) > 0
+                      ? Number(applicant.monthlyIncome)
+                      : undefined))));
+  const hasIncome = rawIncome !== undefined && rawIncome > 0;
+  if (hasIncome) {
+    checklistLines.push(`* Income: (Collected: ₹${rawIncome.toLocaleString("en-IN")})`);
+  } else {
+    checklistLines.push(`* Income: (Missing)`);
+    missingSlots.push("Income");
+  }
 
-  return (
-    `Got it! ${collectedStr}\n\n` +
-    `To evaluate your loan eligibility across all partner banks, please share the remaining details:\n` +
-    `${missingItems}` +
-    companyNote
-  ).trim();
+  // 3. Existing Monthly EMIs (e.g. ₹0)
+  const rawEmi =
+    applicant.existingEmi !== undefined && applicant.existingEmi !== null
+      ? Number(applicant.existingEmi)
+      : (vars.existingEmi !== undefined && vars.existingEmi !== null
+          ? Number(vars.existingEmi)
+          : undefined);
+  const hasEmi = rawEmi !== undefined && !isNaN(rawEmi) && rawEmi >= 0;
+  if (hasEmi) {
+    checklistLines.push(`* Existing Monthly EMIs: (Collected: ₹${rawEmi.toLocaleString("en-IN")})`);
+  } else {
+    checklistLines.push(`* Existing Monthly EMIs: (Missing)`);
+    missingSlots.push("Existing Monthly EMIs");
+  }
+
+  // 4. CIBIL Score (e.g. 670)
+  const rawCibil =
+    typeof applicant.cibil === "number" && !isNaN(applicant.cibil)
+      ? applicant.cibil
+      : (typeof applicant.cibilScore === "number" && !isNaN(applicant.cibilScore)
+          ? applicant.cibilScore
+          : (typeof vars.cibilScore === "number" && !isNaN(vars.cibilScore)
+              ? vars.cibilScore
+              : (applicant.cibil && !isNaN(Number(applicant.cibil))
+                  ? Number(applicant.cibil)
+                  : undefined)));
+  const hasCibil = rawCibil !== undefined && rawCibil >= 300 && rawCibil <= 900;
+  if (hasCibil) {
+    checklistLines.push(`* CIBIL Score: (Collected: ${rawCibil})`);
+  } else {
+    checklistLines.push(`* CIBIL Score: (Missing)`);
+    missingSlots.push("CIBIL Score");
+  }
+
+  // 5. Age (e.g. 23)
+  const rawAge =
+    typeof applicant.age === "number" && !isNaN(applicant.age)
+      ? applicant.age
+      : (typeof vars.age === "number" && !isNaN(vars.age)
+          ? vars.age
+          : (applicant.age && !isNaN(Number(applicant.age))
+              ? Number(applicant.age)
+              : undefined));
+  const hasAge = rawAge !== undefined && rawAge >= 18 && rawAge <= 85;
+  if (hasAge) {
+    checklistLines.push(`* Age: (Collected: ${rawAge})`);
+  } else {
+    checklistLines.push(`* Age: (Missing)`);
+    missingSlots.push("Age");
+  }
+
+
+  // 6. Desired Loan Amount (e.g. ₹7,000,000)
+  const rawLoan =
+    typeof applicant.loanAmount === "number" && !isNaN(applicant.loanAmount)
+      ? applicant.loanAmount
+      : (typeof vars.loanAmount === "number" && !isNaN(vars.loanAmount)
+          ? vars.loanAmount
+          : (typeof vars.requestedAmount === "number" && !isNaN(vars.requestedAmount)
+              ? vars.requestedAmount
+              : (applicant.loanAmount && !isNaN(Number(applicant.loanAmount))
+                  ? Number(applicant.loanAmount)
+                  : undefined)));
+  const hasLoan = rawLoan !== undefined && rawLoan >= 10000;
+  if (hasLoan) {
+    checklistLines.push(`* Desired Loan Amount: (Collected: ₹${rawLoan.toLocaleString("en-IN")})`);
+  } else {
+    checklistLines.push(`* Desired Loan Amount: (Missing)`);
+    missingSlots.push("Desired Loan Amount");
+  }
+
+  // 7. Desired Tenure (e.g. 36 months)
+  const rawTenure =
+    typeof applicant.tenureMonths === "number" && !isNaN(applicant.tenureMonths)
+      ? applicant.tenureMonths
+      : (typeof vars.tenureMonths === "number" && !isNaN(vars.tenureMonths)
+          ? vars.tenureMonths
+          : (applicant.tenureMonths && !isNaN(Number(applicant.tenureMonths))
+              ? Number(applicant.tenureMonths)
+              : undefined));
+  const hasTenure = rawTenure !== undefined && rawTenure >= 6;
+  if (hasTenure) {
+    checklistLines.push(`* Desired Tenure: (Collected: ${rawTenure} months)`);
+  } else {
+    checklistLines.push(`* Desired Tenure: (Missing)`);
+    missingSlots.push("Desired Tenure");
+  }
+
+  const isComplete = missingSlots.length === 0;
+
+  return {
+    isComplete,
+    missingSlots,
+    collectedSlots: {
+      monthlyIncome: hasIncome ? rawIncome : undefined,
+      employmentType: isValidEmpType ? rawEmpType : undefined,
+      cibilScore: hasCibil ? rawCibil : undefined,
+      age: hasAge ? rawAge : undefined,
+      existingEmi: hasEmi ? rawEmi : undefined,
+      loanAmount: hasLoan ? rawLoan : undefined,
+      tenureMonths: hasTenure ? rawTenure : undefined,
+    },
+    formattedChecklist: checklistLines.join("\n"),
+  };
+}
+
+export function formatMissingSlotsPrompt(missingSlots: string[]): string {
+  if (!missingSlots || missingSlots.length === 0) return "";
+
+  // Strict priority order: Phase 1 (Employment Status / Company) -> Phase 2 (Salary) -> Phase 3 (Age) -> Phase 4 (CIBIL) -> Phase 5 (Existing EMI) -> Phase 6 (Loan & Tenure)
+  const normSlots = missingSlots.map((s) => s.toLowerCase());
+
+  if (normSlots.some((s) => s.includes("employment"))) {
+    return "Are you currently Salaried, Self-Employed, or Unemployed?";
+  }
+  if (normSlots.some((s) => s.includes("employer") || s.includes("company"))) {
+    return "Great! 😊 Which company do you currently work for?";
+  }
+  if (normSlots.some((s) => s.includes("salary") || s.includes("income"))) {
+    return "What is your monthly take-home salary?";
+  }
+  if (normSlots.some((s) => s.includes("emi"))) {
+    return "Do you currently pay any EMIs?";
+  }
+  if (normSlots.some((s) => s.includes("cibil") || s.includes("credit"))) {
+    return "What is your CIBIL score?";
+  }
+  if (normSlots.some((s) => s.includes("age"))) {
+    return "What is your current age?";
+  }
+  if (normSlots.some((s) => s.includes("loan") || s.includes("amount"))) {
+    return "How much loan amount would you like to borrow?";
+  }
+  if (normSlots.some((s) => s.includes("tenure"))) {
+    return "What is your preferred repayment tenure (e.g. 3 years or 36 months)?";
+  }
+
+  return `Please provide: ${missingSlots[0]}`;
+}
+
+/**
+ * Builds the intake prompt when applicant information is missing for an eligibility check.
+ * Strictly outputs dynamically only the missing slots in bullet points to prevent loops.
+ */
+export function buildMultiBankIntakePrompt(
+  applicant: Partial<ApplicantProfile>,
+  sessionVariables?: Record<string, any>
+): string {
+  const slotCheck = checkEligibilitySlotCompleteness(applicant, sessionVariables);
+  if (slotCheck.isComplete) {
+    return "";
+  }
+  return formatMissingSlotsPrompt(slotCheck.missingSlots);
 }
 
 /**
  * Formats a comprehensive multi-bank comparison report strictly adhering to
  * Section 9 and Section 10 of the CreditWise Multi-Bank Loan Eligibility Agent guidelines:
- * 1. Table: | Lender | Result | Key Reason |
+ * 1. Breakdown Table comparing eligibility, FOIR limit, estimated EMI, and interest rates across partner banks
  * 2. Categorized sections:
  *    - ### ✅ Potentially Eligible
  *    - ### 🟡 Requires Review
  *    - ### ❌ Not Eligible
- *    - ### ℹ️ More Information Required (if any)
  * 3. Section 19 safety note:
  *    > Final approval is subject to the lender's verification, credit assessment, and applicable internal processes.
  */
@@ -5533,24 +6187,32 @@ export function formatMultiBankEligibilityReport(
   const { eligibleBanks = [], reviewBanks = [], ineligibleBanks = [] } = evaluationOutput;
   const lines: string[] = [];
 
-  lines.push(`## 🏦 Loan Eligibility Across Partner Banks\n`);
-  lines.push(`Based on the stored lender policy and the information you provided:\n`);
+  lines.push(`## 🏦 Loan Eligibility & FOIR Comparison Across Partner Banks\n`);
+  lines.push(`Based on the stored lender policy and the verified parameters you provided:\n`);
 
-  // Comparison Table: | Lender | Result | Key Reason |
-  lines.push(`| Lender | Result | Key Reason |`);
-  lines.push(`| :--- | :--- | :--- |`);
+  // Point-by-point breakdown table comparing eligibility, FOIR limit, estimated EMI, and interest rates across partner banks
+  lines.push(`| Partner Bank | Eligibility | FOIR Limit | Estimated EMI | Interest Rate (ROI) | Key Assessment |`);
+  lines.push(`| :--- | :--- | :--- | :--- | :--- | :--- |`);
 
   // To present a clean, high-impact table, sort with Eligible first, then Review, then Not Eligible
   const allOrdered = [...eligibleBanks, ...reviewBanks, ...ineligibleBanks];
+
+  const loanAmount = typeof applicant.loanAmount === "number" && applicant.loanAmount > 0 ? applicant.loanAmount : 500000;
+  const tenureMonths = typeof applicant.tenureMonths === "number" && applicant.tenureMonths > 0 ? applicant.tenureMonths : 36;
 
   for (const b of allOrdered) {
     let resultLabel = "Eligible";
     let keyReason = "Meets stored salary and CIBIL criteria";
 
+    const foirCapStr = b.foirPercent ? `${b.foirPercent}%` : "60%";
+    const roiStr = b.roi ? `${b.roi}%` : "11.5%";
+    const emiVal = b.monthlyEmi || (b.roi ? calculateEmi(loanAmount, b.roi, tenureMonths) : 0);
+    const emiStr = emiVal > 0 ? `₹${emiVal.toLocaleString("en-IN")}` : "N/A";
+
     if (b.status === "ELIGIBLE") {
       resultLabel = "Eligible";
       const foirStr = b.calculatedFoir != null ? `FOIR ~${b.calculatedFoir}%` : "FOIR within limit";
-      keyReason = `Meets stored salary and CIBIL (${b.policyCibil || applicant.cibil || "700+"}) criteria; ${foirStr}`;
+      keyReason = `Meets stored criteria; ${foirStr} (cap: ${foirCapStr})`;
     } else if (b.status === "NEEDS_REVIEW" || b.reviewRequired) {
       resultLabel = "Review";
       keyReason = b.reviewReason || "Meets basic criteria; additional underwriting review applies";
@@ -5563,7 +6225,7 @@ export function formatMultiBankEligibilityReport(
       }
     }
 
-    lines.push(`| **${b.bankName}** | ${resultLabel} | ${keyReason} |`);
+    lines.push(`| **${b.bankName}** | ${resultLabel} | ${foirCapStr} | ${emiStr} | ${roiStr} | ${keyReason} |`);
   }
   lines.push("");
 
@@ -6566,7 +7228,11 @@ export async function processDynamicEligibility(
       missingFields: [],
       updatedAt: Date.now(),
       in_eligibility_flow: false,
+      hasCompletedEvaluation: true,
+      evaluationCompleted: true,
       eligible_banks: (evalResult.eligibleBanks || []).map((b) => b.bankName),
+      topBank: evalResult.recommendedBank?.bankName || (evalResult.eligibleBanks?.[0]?.bankName) || "",
+      postEligibilityStage: "ELIGIBILITY_CONFIRMED",
       ineligibleBanks: (evalResult.ineligibleBanks || []).map((b) => ({
         bankName: b.bankName,
         failureReasons: b.failureReasons,
@@ -6832,6 +7498,7 @@ export function runInvariantSanityChecks(
   // If NOT in active slot-filling eligibility flow, NEVER overwrite planned replies!
   if (
     !session.in_eligibility_flow ||
+    session.activeIntent === "COMPANY_CATEGORY_LOOKUP" ||
     isGeneralAssistanceQuery(userMessage) ||
     session.activeFlow === "MULTI_BANK_ELIGIBILITY_CHECK" ||
     session.activeFlow === "BANK_POLICY" ||
@@ -6932,14 +7599,14 @@ export function runInvariantSanityChecks(
   );
   const rawComp = session.company || applicant.companyName;
   const isCompPlaceholder = !rawComp || /^(?:a\s+home|home|open\s*market|unknown|not\s*(?:provided|specified|applicable|available|sure)|unlisted|standard\s*(?:corporate|salaried)|none|nil|na|n\/a)$/i.test(String(rawComp).trim()) || isInvalidCompanyName(String(rawComp)) || isLocationInput(String(rawComp));
-  if (session.in_eligibility_flow && isCompPlaceholder && !isAwaitingCompanySelection) {
+  if (session.in_eligibility_flow && applicant.employmentType === "Salaried" && isCompPlaceholder && !isAwaitingCompanySelection) {
     updatedSession.company = undefined;
     updatedSession.selectedCompanyName = undefined;
     if (updatedSession.applicant) updatedSession.applicant.companyName = undefined;
 
     // Only set expectedField to company if active step was already company or unassigned
     if (!session.expectedField || session.expectedField === "company" || session.expectedField === "companyName") {
-      updatedSession.expectedField = "company";
+      updatedSession.expectedField = "companyName";
     }
 
     // NEVER overwrite an already constructed meaningful reply (e.g. policy answer, educational answer, FAQ, loan intro, or manager search)

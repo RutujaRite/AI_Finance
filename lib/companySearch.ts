@@ -164,7 +164,8 @@ export function isInvalidCompanySearchQuery(text: string): boolean {
   // Placeholder defaults and loan request phrases must never enter company search:
   if (
     /^(?:a\s+home|home|open\s*market|unknown|not\s*(?:provided|specified|applicable|available|sure)|unlisted|standard\s*(?:corporate|salaried)|none|nil|na|n\/a|nothing|test)$/i.test(clean) ||
-    /^(?:i\s*(?:need|want)\s*(?:a\s*)?loan|apply\s*for\s*(?:a\s*)?loan|check\s*eligibility|personal\s*loan|home\s*loan|loan)$/i.test(clean) ||
+    /^(?:i\s*(?:need|want)\s*(?:a\s*)?loan|apply\s*for\s*(?:a\s*)?loan|check\s*(?:my|our|the\s*)?eligibility|evaluate\s*(?:my\s*)?loan|can\s*i\s*get\s*(?:a\s*)?loan|check\s*eligibility|eligibility\s*check|loan\s*eligibility|personal\s*loan|home\s*loan|loan)$/i.test(clean) ||
+    /^(?:check\s*(?:my|our|the)?\s*eligibility|evaluate\s*loan|can\s*i\s*get\s*(?:a\s*)?loan|check\s*eligibility|eligibility\s*check|loan\s*eligibility|loan\s*check)$/i.test(clean) ||
     /^(?:(?:a\s+)?(?:personal|home|car|gold|education|business)?\s*loan(?:\s*for\s*(?:a\s*)?home)?|loan\s*for\s*(?:a\s*)?home)$/i.test(clean) ||
     /^(?:for\s+(?:a\s+)?home)$/i.test(clean)
   ) {
@@ -241,7 +242,7 @@ export async function searchCompany(companyName: string, limit?: number): Promis
     normInput.length < 2 ||
     isInvalidCompanySearchQuery(companyName) ||
     isInvalidCompanySearchQuery(normInput) ||
-    /^(i want personal loan|i want loan|i need personal loan|i need loan|want personal loan|want loan|need loan|personal loan|loan eligibility|check eligibility|check loan eligibility|apply loan|apply for loan|salaried|self-employed|self employed|hello|hi|hey|reset|restart|cancel|help)$/i.test(normInput) ||
+    /^(i want personal loan|i want loan|i need personal loan|i need loan|want personal loan|want loan|need loan|personal loan|loan eligibility|check eligibility|check my eligibility|evaluate loan|can i get a loan|eligibility check|loan check|check loan eligibility|apply loan|apply for loan|salaried|self-employed|self employed|hello|hi|hey|reset|restart|cancel|help)$/i.test(normInput) ||
     /^(i want|i need|want|need|looking for|apply for)\s*(a|personal)?\s*loan$/i.test(normInput)
   ) {
     return { found: false, primaryName: normalizeCompanySearchInput(companyName) || companyName, overview: "", basicInfo: null, financialInfo: null, bankRecords: [], candidates: [], candidateOptions: [], needsDisambiguation: false };
@@ -828,3 +829,281 @@ export function formatCompanyCandidateList(candidates: string[], searchQuery: st
   lines.push("*(Click any company above or reply with 1, 2, etc. to continue)*");
   return lines.join("\n");
 }
+
+export interface CategoryCandidate {
+  id: string;
+  name: string;
+  canonicalName: string;
+}
+
+export interface CompanyCategoryRecord {
+  id: string;
+  company_name: string;
+  bank_name: string;
+  company_category: string;
+  other_info?: string;
+}
+
+/**
+ * Detects if the user query is asking for a Company Category Lookup.
+ * Examples:
+ * - "Can you check my company category?"
+ * - "What is my company category?"
+ * - "Check my employer category."
+ * - "Tell me my company's category."
+ */
+export function isCompanyCategoryLookupIntent(text: string): boolean {
+  if (!text) return false;
+  const raw = String(text || "").trim();
+  const lower = raw.toLowerCase().replace(/[?.,!]+$/, "").replace(/\s+/g, " ").trim();
+
+  // If message is purely loan intent without category mention, return false
+  if (
+    /^(?:i\s*(?:want|need)\s*(?:a\s*)?loan|apply\s*for\s*(?:a\s*)?loan|check\s*(?:my\s*)?eligibility|evaluate\s*loan|can\s*i\s*get\s*(?:a\s*)?loan)\b/i.test(lower) &&
+    !/\b(?:category|tier|rating)\b/i.test(lower)
+  ) {
+    return false;
+  }
+
+  // Check explicit category lookup patterns
+  if (
+    /\b(?:company|employer|corporate)\s*(?:'?s)?\s*(?:category|tier|rating|classification)\b/i.test(lower) ||
+    /\b(?:category|tier|rating|classification)\s+(?:of|for|in)\s+(?:my\s+|the\s+)?(?:company|employer)\b/i.test(lower) ||
+    /^(?:can\s+(?:you|we)\s+)?(?:check|find|lookup|tell\s+me|what\s+is|show)\s+(?:my\s+|the\s+)?(?:company|employer)\s+(?:category|tier|rating)\b/i.test(lower) ||
+    /^(?:what\s+is|tell\s+me)\s+(?:my\s+|the\s+)?(?:company|employer)\s*(?:'?s)?\s*(?:category|tier|rating)\b/i.test(lower) ||
+    /^(?:check\s+my\s+employer\s+category|tell\s+me\s+my\s+company'?s?\s+category)\b/i.test(lower) ||
+    /^(?:can\s+you\s+)?check\s+my\s+company\s+category\b/i.test(lower) ||
+    /^(?:my\s+)?(?:company|employer)\s+category\??$/i.test(lower) ||
+    /\bwhich\s+category\s+(?:is|does)\s+[a-z0-9\s&.-]+\s+(?:in|fall|belong|listed)\b/i.test(lower)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Extracts the explicit company name if provided in a company category lookup query.
+ * Returns undefined if no company name is supplied (e.g. "Can you check my company category?").
+ */
+export function extractCompanyNameFromCategoryQuery(text: string): string | undefined {
+  if (!text) return undefined;
+  let s = String(text || "").trim();
+  s = s.replace(/^(?:can\s+(?:you|we)\s+|could\s+you\s+|please\s+)?(?:check|find|lookup|tell\s+me|what\s+is|show|know|get|see)\s+/i, "");
+  s = s.replace(/\b(?:the\s+)?(?:company|employer|corporate)\s*(?:'?s)?\s*(?:category|tier|rating|classification)\b/gi, "");
+  s = s.replace(/\b(?:category|tier|rating|classification)\s+(?:of|for|in)\b/gi, "");
+  s = s.replace(/\b(?:for|of|in|about)\s+(?:my\s+|the\s+)?(?:company|employer)?\b/gi, "");
+  s = s.replace(/\b(?:my\s+|the\s+)?(?:company|employer)\s*(?:'?s)?\b/gi, "");
+  s = s.replace(/\b(?:category|tier|rating)\b/gi, "");
+  s = s.replace(/[?.,!]+$/g, "").trim();
+
+  if (
+    !s ||
+    s.length < 2 ||
+    /^(?:my|the|a|an|me|it|this|that|category|tier|rating|please|can|you|what|check|is|of|for)$/i.test(s) ||
+    isInvalidCompanySearchQuery(s)
+  ) {
+    return undefined;
+  }
+  return s;
+}
+
+/**
+ * Searches PostgreSQL bank_company_data for candidate matching companies.
+ * Preserves each record's unique database ID and canonical company name.
+ * Deduplicates results case-insensitively without merging genuinely different companies.
+ */
+export async function searchCategoryCandidates(query: string, limit = 10): Promise<CategoryCandidate[]> {
+  const clean = String(query || "").trim();
+  if (!clean || clean.length < 2 || isInvalidCompanySearchQuery(clean)) {
+    return [];
+  }
+
+  // Resolve alias (e.g. TCS -> TATA CONSULTANCY SERVICES LIMITED)
+  let aliasTarget: string | null = null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const aliasesMod = require("@/services/companyAliases");
+    if (typeof aliasesMod?.resolveCompanyAlias === "function") {
+      aliasTarget = aliasesMod.resolveCompanyAlias(clean);
+    }
+  } catch {}
+
+  const searchTarget = aliasTarget || clean;
+  const pattern = `%${searchTarget.toLowerCase()}%`;
+  const secondaryPattern = `%${clean.toLowerCase()}%`;
+
+  try {
+    const res = await pool.query(
+      `SELECT bcd.id, bcd.company_name
+       FROM bank_company_data bcd
+       WHERE LOWER(bcd.company_name) LIKE LOWER($1) OR LOWER(bcd.company_name) LIKE LOWER($2)
+       ORDER BY 
+         CASE 
+           WHEN LOWER(bcd.company_name) = LOWER($4) THEN 0
+           WHEN LOWER(bcd.company_name) = LOWER($3) THEN 1
+           WHEN LOWER(bcd.company_name) LIKE LOWER($4 || ' %') OR LOWER(bcd.company_name) LIKE LOWER($4 || ',%') THEN 2
+           WHEN LOWER(bcd.company_name) LIKE LOWER($3 || ' %') OR LOWER(bcd.company_name) LIKE LOWER($3 || ',%') THEN 3
+           WHEN LOWER(bcd.company_name) LIKE LOWER($4 || '%') THEN 4
+           WHEN LOWER(bcd.company_name) LIKE LOWER($3 || '%') THEN 5
+           ELSE 6
+         END,
+         LENGTH(bcd.company_name) ASC,
+         bcd.company_name ASC
+       LIMIT 200`,
+      [pattern, secondaryPattern, searchTarget, clean]
+    );
+
+    let rows = res.rows || [];
+
+    // Fallback: If 0 rows found, check typo suggestions
+    if (rows.length === 0 && clean.length >= 3) {
+      const suggestions = await findCompanySuggestions(clean, 3);
+      if (suggestions.length > 0 && suggestions[0]?.name) {
+        const topSuggestion = suggestions[0].name;
+        const suggRes = await pool.query(
+          `SELECT bcd.id, bcd.company_name
+           FROM bank_company_data bcd
+           WHERE LOWER(bcd.company_name) LIKE LOWER($1)
+           ORDER BY LENGTH(bcd.company_name) ASC
+           LIMIT 50`,
+          [`%${topSuggestion.toLowerCase()}%`]
+        );
+        if (suggRes.rows && suggRes.rows.length > 0) {
+          rows = suggRes.rows;
+        }
+      }
+    }
+
+    const seen = new Set<string>();
+    const candidates: CategoryCandidate[] = [];
+
+    for (const row of rows) {
+      const rawName = String(row.company_name || "").trim();
+      if (!rawName) continue;
+      const normKey = rawName.toLowerCase().replace(/[.,;!?]+$/, "").trim();
+      if (!seen.has(normKey)) {
+        seen.add(normKey);
+        candidates.push({
+          id: String(row.id),
+          name: rawName,
+          canonicalName: rawName,
+        });
+      }
+      if (candidates.length >= limit) break;
+    }
+
+    return candidates;
+  } catch (err: any) {
+    console.error("searchCategoryCandidates error:", err?.message || err);
+    return [];
+  }
+}
+
+/**
+ * Retrieves the actual company-category records from bank_company_data in PostgreSQL.
+ * If bankName is provided, filters for that specific bank.
+ */
+export async function getCompanyCategoryRecords(options: {
+  companyId?: string | number;
+  companyName: string;
+  bankName?: string;
+}): Promise<CompanyCategoryRecord[]> {
+  const { companyId, companyName, bankName } = options;
+  if (!companyName && !companyId) return [];
+
+  try {
+    let queryText = "";
+    let queryParams: any[] = [];
+
+    if (bankName) {
+      const bankPattern = `%${bankName.toLowerCase()}%`;
+      queryText = `
+        SELECT bcd.id, bcd.company_name, bcd.bank_name, bcd.company_category, bcd.other_info
+        FROM bank_company_data bcd
+        WHERE (LOWER(bcd.company_name) = LOWER($1) OR bcd.id = $2)
+          AND LOWER(bcd.bank_name) LIKE LOWER($3)
+        ORDER BY bcd.id ASC
+      `;
+      queryParams = [companyName, companyId ? Number(companyId) : -1, bankPattern];
+    } else {
+      queryText = `
+        SELECT bcd.id, bcd.company_name, bcd.bank_name, bcd.company_category, bcd.other_info
+        FROM bank_company_data bcd
+        WHERE LOWER(bcd.company_name) = LOWER($1) OR bcd.id = $2
+        ORDER BY bcd.bank_name ASC, bcd.id ASC
+      `;
+      queryParams = [companyName, companyId ? Number(companyId) : -1];
+    }
+
+    const res = await pool.query(queryText, queryParams);
+    return (res.rows || []).map((r: any) => ({
+      id: String(r.id),
+      company_name: r.company_name,
+      bank_name: r.bank_name,
+      company_category: r.company_category,
+      other_info: r.other_info,
+    }));
+  } catch (err: any) {
+    console.error("getCompanyCategoryRecords error:", err?.message || err);
+    return [];
+  }
+}
+
+/**
+ * Formats company category records into the required Markdown table format:
+ * | Company Name | Bank Name | Company Category |
+ */
+export function formatCompanyCategoryTable(records: CompanyCategoryRecord[]): string {
+  if (!records || records.length === 0) {
+    return "The category could not be found in our verified partner bank records.";
+  }
+
+  const lines: string[] = [
+    "| Company Name | Bank Name | Company Category |",
+    "|---|---|---|",
+  ];
+
+  for (const r of records) {
+    const compName = r.company_name ? r.company_name.trim() : "Unknown";
+    const bankName = r.bank_name ? r.bank_name.trim() : "Unknown Bank";
+    const cat = r.company_category && r.company_category.trim() !== "" && r.company_category.trim() !== "-"
+      ? r.company_category.trim()
+      : "Not available";
+    lines.push(`| ${compName} | ${bankName} | ${cat} |`);
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Formats candidate companies as selectable options for the user.
+ */
+export function formatCategoryCandidateOptions(
+  candidates: Array<{ id: string; name: string }>,
+  query: string
+): string {
+  const lines: string[] = [
+    `I found multiple matching companies. Please select your company:`,
+    "",
+    `<div class="disambiguation-candidates" style="display: flex; flex-direction: column; gap: 8px; margin: 12px 0;">`,
+  ];
+
+  candidates.forEach((c, idx) => {
+    const num = idx + 1;
+    const escaped = c.name.replace(/"/g, "&quot;");
+    lines.push(
+      `  <button class="disambiguation-candidate" data-candidate="${num}" data-company-id="${c.id}" style="cursor: pointer; text-align: left; padding: 10px 16px; background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 8px; color: #a5b4fc; font-weight: 500; font-size: 0.9rem; transition: all 0.2s ease; width: 100%;"><strong>${num}.</strong> ${escaped}</button>`
+    );
+  });
+
+  lines.push(`</div>`);
+  lines.push("");
+
+  candidates.forEach((c, idx) => {
+    lines.push(`${idx + 1}. ${c.name}`);
+  });
+
+  return lines.join("\n");
+}
+

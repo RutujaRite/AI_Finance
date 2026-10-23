@@ -21,7 +21,7 @@ import { getCreditWiseSystemPrompt } from "@/lib/ai/prompts";
 import pool from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
 import { getAgent, listAgents } from "@/lib/agent-studio/agentStore";
-import { listAgentDocuments, recordConversationExchange, getActiveAgentFromDb, getAgentFromDb, getUserActiveAgent, recordTokenUsage } from "@/lib/agent-studio/dbStore";
+import { listAgentDocuments, recordConversationExchange, getActiveAgentFromDb, getAgentFromDb, getUserActiveAgent, getAppliedAgentsFromDb, recordTokenUsage } from "@/lib/agent-studio/dbStore";
 import {
   selectRelevantDocuments,
   retrieveKnowledgeChunks,
@@ -29,6 +29,15 @@ import {
   buildConfiguredAgentPrompt,
   isKnowledgeBaseAgent,
 } from "@/lib/agent-studio/ragEngine";
+import { resolveActiveAgentForQuery, formatAgentGuidancePrompt } from "@/lib/agent-studio/agentRouter";
+import { classifyRetrievalIntent } from "@/lib/ai/intentRouting";
+import { performDualSourceRetrieval } from "@/lib/ai/dualSourceRag";
+import {
+  loadSessionVariables,
+  extractVariableUpdatesFromText,
+  persistUpdatedVariables,
+  formatActiveVariablesPrompt,
+} from "@/lib/ai/variableTracker";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,10 +66,22 @@ async function getUserIdFromReq(req: NextRequest): Promise<number> {
     const token = req.cookies.get("token")?.value;
     const payload: any = token ? verifyToken(token) : null;
     if (payload?.id && Number.isFinite(Number(payload.id))) {
-      return Number(payload.id);
+      const parsedId = Number(payload.id);
+      const userCheck = await pool.query("SELECT id FROM users WHERE id = $1", [parsedId]);
+      if (userCheck.rowCount && userCheck.rowCount > 0) {
+        return parsedId;
+      }
     }
   } catch {}
-  return 2;
+
+  try {
+    const fallbackRes = await pool.query("SELECT id FROM users ORDER BY id ASC LIMIT 1");
+    if (fallbackRes.rows.length > 0) {
+      return Number(fallbackRes.rows[0].id);
+    }
+  } catch {}
+
+  return 1;
 }
 
 /**
@@ -93,6 +114,20 @@ async function resolveOrCreateConversation(
       return numId;
     }
 
+    // If client provided a non-numeric string id, check if it was previously mapped in assistant_conversation_states
+    if (clientConvId && typeof clientConvId === "string") {
+      const stateCheck = await client.query(
+        `SELECT state FROM assistant_conversation_states WHERE conversation_id = $1`,
+        [clientConvId]
+      );
+      if (stateCheck.rowCount && stateCheck.rowCount > 0) {
+        const mappedId = Number(stateCheck.rows[0]?.state?.internal_conv_id);
+        if (Number.isFinite(mappedId) && mappedId > 0) {
+          return mappedId;
+        }
+      }
+    }
+
     // Create a new conversation row with sequence id
     const res = await client.query(
       `INSERT INTO assistant_conversations (user_id, title)
@@ -119,7 +154,13 @@ export async function POST(req: NextRequest) {
     const message = rawMessage.slice(0, 2000);
 
     const clientConvId =
-      String(body?.conversation_id || "").trim();
+      String(body?.conversation_id || body?.conversationId || "").trim();
+
+    // 0. Dynamic Key Resolution Pipeline:
+    // Check PostgreSQL database for active configured credentials saved via AI Agent Studio,
+    // then fall back to process.env.
+    const { resolveDynamicApiKey, isOpenRouterAuthError, INVALID_KEY_USER_MESSAGE } = await import("@/lib/ai/keyResolution");
+    await resolveDynamicApiKey();
 
     const activeLlm = await getActiveLlmModelName();
     const requestedModel =
@@ -172,7 +213,7 @@ export async function POST(req: NextRequest) {
       console.error("Error saving user message to DB:", msgErr);
     }
 
-    // Load recent conversation history (prior turns) to provide complete multi-turn context
+    // 1. FULL SESSION MEMORY: Pass the entire current session chat history so the LLM never forgets context
     let conversationHistory: Array<{ role: string; content: string }> = [];
     try {
       const historyRes = await pool.query(
@@ -184,9 +225,8 @@ export async function POST(req: NextRequest) {
       // Exclude the message we just inserted so conversationHistory represents PRIOR turns
       const allRows = historyRes.rows;
       const priorRows = allRows.slice(0, -1);
-      // Bound conversationHistory to the last 6 messages (3 turns) to minimize context and latency
-      const recentRows = priorRows.slice(-6);
-      conversationHistory = recentRows.map((r: any) => ({
+      // Always pass the entire current session chat history to the LLM
+      conversationHistory = priorRows.map((r: any) => ({
         role: r.role === "assistant" || r.role === "ai" ? "assistant" : "user",
         content: r.content,
       }));
@@ -194,11 +234,36 @@ export async function POST(req: NextRequest) {
       console.warn("Could not load conversation history from DB:", histErr);
     }
 
+    // 2. CONTEXT VARIABLE TRACKING: Automatically catch and update current values (salary, EMI, loan amount, CIBIL, etc.)
+    const currentVars = await loadSessionVariables(conversationIdStr);
+    const clientVars = (clientConvId && clientConvId !== conversationIdStr)
+      ? await loadSessionVariables(clientConvId)
+      : {};
+    const mergedCurrentVars = { ...clientVars, ...currentVars };
+
+    const varUpdates = extractVariableUpdatesFromText(message);
+    const activeVars = await persistUpdatedVariables(conversationIdStr, varUpdates, mergedCurrentVars);
+
+    // If client provided a custom string ID, also persist under clientConvId with mapped internal_conv_id
+    if (clientConvId && clientConvId !== conversationIdStr) {
+      await persistUpdatedVariables(clientConvId, varUpdates, mergedCurrentVars);
+      try {
+        await pool.query(
+          `UPDATE assistant_conversation_states
+           SET state = jsonb_set(COALESCE(state, '{}'::jsonb), '{internal_conv_id}', $1::jsonb)
+           WHERE conversation_id = $2`,
+          [JSON.stringify(convId), clientConvId]
+        );
+      } catch (_) {}
+    }
+
+    const activeVarsPrompt = formatActiveVariablesPrompt(activeVars);
+
     /* ---------------------------------------------------------------------- */
     /* Dynamic System Time (IST) & System Prompt Refactor                    */
     /* ---------------------------------------------------------------------- */
 
-    // 1. DYNAMIC SYSTEM TIME: Compute current Indian Standard Time (IST) dynamically on each request
+    // DYNAMIC SYSTEM TIME: Compute current Indian Standard Time (IST) dynamically on each request
     const currentTime = new Date().toLocaleString('en-US', {
       timeZone: 'Asia/Kolkata',
       hour: 'numeric',
@@ -212,17 +277,37 @@ export async function POST(req: NextRequest) {
 
     const shouldStream = body?.stream === true;
 
-    // Check if specific agent was requested or load active agent for this user from PostgreSQL
+    // Check if specific agent was requested or resolve relevant active applied agent for this query
     const requestedAgentId = body?.agent_id || body?.agentId;
     let activeAgent: any = null;
+    let isSpecializedRouted = false;
+
     if (requestedAgentId) {
       activeAgent = (await getAgentFromDb(requestedAgentId, userId)) || getAgent(requestedAgentId);
+      isSpecializedRouted = Boolean(activeAgent && activeAgent.status === "active");
     } else {
-      activeAgent = (await getUserActiveAgent(userId)) || (await getActiveAgentFromDb()) || listAgents().find((a) => a.status === "active") || null;
+      const appliedAgents = await getAppliedAgentsFromDb(userId);
+      const routingDecision = resolveActiveAgentForQuery({
+        userMessage: message,
+        appliedAgents,
+        conversationHistory,
+        requestedAgentId,
+      });
+      activeAgent = routingDecision.selectedAgent;
+      isSpecializedRouted = routingDecision.isSpecialized;
+      if (routingDecision.selectedAgent) {
+        console.log(
+          `[AGENT_ROUTING] Query="${message.slice(0, 45)}" -> Routed to Agent "${routingDecision.selectedAgent.name}" (${routingDecision.reason})`
+        );
+      } else {
+        console.log(
+          `[AGENT_ROUTING] Query="${message.slice(0, 45)}" -> Default CreditWise Assistant (${routingDecision.reason})`
+        );
+      }
     }
 
     // Only apply active agent configuration if status is explicitly active
-    const isAgentActive = activeAgent && activeAgent.status === "active";
+    const isAgentActive = Boolean(activeAgent && activeAgent.status === "active");
 
     if (isAgentActive && activeAgent.modes && activeAgent.modes.conversations === false) {
       const pausedReply = `Main AI Assistant Live Mode is currently paused for "${activeAgent.name}" in Agent Setup. To resume live conversations with this assistant, please enable 'Main AI Assistant Live' under Agent Modes in Setup.`;
@@ -277,7 +362,27 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 2. DYNAMIC KNOWLEDGE RETRIEVAL FOR CONFIGURED AGENT
+    // 3. INTENT CLASSIFICATION & ROUTING LAYER:
+    // Classify user query intent into POLICY, AGENT_KNOWLEDGE, or GENERAL before querying vector stores
+    const retrievalRouting = classifyRetrievalIntent(message, {
+      activeAgent,
+      conversationHistory,
+    });
+    console.log(
+      `[INTENT_ROUTING] Query="${message.slice(0, 45)}" | Mode=${retrievalRouting.intent} | Confidence=${retrievalRouting.confidence} | Reason="${retrievalRouting.reason}"`
+    );
+
+    // 4. DUAL-SOURCE POSTGRESQL VECTOR DB SEARCH:
+    // - If POLICY: HNSW cosine similarity search across bank_policy_embeddings (23 Bank Policies)
+    // - If AGENT_KNOWLEDGE: HNSW cosine similarity search across agent_knowledge_embeddings (strictly isolated by agentId)
+    // - If GENERAL: Bypass strict vector document filtering and pass context directly to LLM
+    const dualSourceResult = await performDualSourceRetrieval({
+      query: message,
+      routing: retrievalRouting,
+      agentId: activeAgent?.id,
+      topK: 4,
+    });
+
     let agentKnowledgeResult: any = undefined;
     let relevantDocs: any[] = [];
     if (isAgentActive && isKnowledgeBaseAgent(activeAgent)) {
@@ -285,17 +390,51 @@ export async function POST(req: NextRequest) {
         const agentDocuments = await listAgentDocuments(activeAgent.id);
         relevantDocs = selectRelevantDocuments(message, agentDocuments, activeAgent);
         if (relevantDocs.length > 0) {
-          agentKnowledgeResult = await retrieveKnowledgeChunks(message, relevantDocs);
+          agentKnowledgeResult = await retrieveKnowledgeChunks(message, relevantDocs, 4);
         }
       } catch (kErr) {
         console.warn("[AGENT_KNOWLEDGE_RETRIEVAL_WARN]", kErr);
       }
     }
 
-    // 3. SYSTEM PROMPT: Dynamic context, agent goal, mode, guardrails, and knowledge
-    const systemPrompt = isAgentActive
-      ? buildConfiguredAgentPrompt(activeAgent, currentTime, agentKnowledgeResult)
-      : getCreditWiseSystemPrompt(currentTime);
+    if (dualSourceResult.intent === "AGENT_KNOWLEDGE" && dualSourceResult.hasRelevantKnowledge) {
+      if (!agentKnowledgeResult) {
+        agentKnowledgeResult = {
+          hasRelevantKnowledge: true,
+          selectedDocuments: [],
+          allRetrievedChunkIds: dualSourceResult.agentChunks.map((c) => c.id),
+          groundingPrompt: dualSourceResult.groundingContext,
+        };
+      }
+    }
+
+    // 5. SYSTEM PROMPT & BEHAVIORAL GUIDANCE:
+    // Foundational CreditWise prompt preserves all validated calculations, slot-parsing state machine, and verified policies.
+    const foundationalSystemPrompt = getCreditWiseSystemPrompt(currentTime);
+
+    // Specialized Agent Guidance Layer: Guides assistant behavior without replacing foundational business rules.
+    const agentGuidanceContext = isAgentActive
+      ? formatAgentGuidancePrompt(activeAgent, agentKnowledgeResult?.groundingPrompt)
+      : "";
+
+    const contextAdditions: string[] = [];
+    if (activeVarsPrompt) {
+      contextAdditions.push(activeVarsPrompt);
+    }
+    if (agentGuidanceContext) {
+      contextAdditions.push(agentGuidanceContext);
+    }
+    if (
+      dualSourceResult.hasRelevantKnowledge &&
+      dualSourceResult.groundingContext &&
+      !agentGuidanceContext.includes(dualSourceResult.groundingContext)
+    ) {
+      contextAdditions.push(dualSourceResult.groundingContext);
+    }
+
+    const systemPrompt = contextAdditions.length > 0
+      ? `${foundationalSystemPrompt}\n\n${contextAdditions.join("\n\n")}`
+      : foundationalSystemPrompt;
 
     if (shouldStream) {
       console.log(`[STREAM] Request received: convId=${conversationIdStr} message="${message.slice(0, 50)}"`);
@@ -349,20 +488,22 @@ export async function POST(req: NextRequest) {
 
           console.log(`[STREAM] Stream completed: totalTokens=${tokenCount}`);
 
-          try {
-            const approxPromptTokens = Math.max(15, Math.ceil(((systemPrompt || "").length + message.length) / 4));
-            const completionTokens = Math.max(5, tokenCount || Math.ceil((agentResult?.reply || "").length / 4));
-            await recordTokenUsage({
-              agentId: isAgentActive ? activeAgent.id : "agent_loan_assistant",
-              agentName: isAgentActive ? activeAgent.name : "CreditWise Assistant",
-              modelName: requestedModel || process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free",
-              promptTokens: approxPromptTokens,
-              completionTokens: completionTokens,
-              totalTokens: approxPromptTokens + completionTokens,
-              source: "chat",
-            });
-          } catch (tErr) {
-            console.warn("[TOKEN_LOG_WARN]", tErr);
+          if (tokenCount > 0) {
+            try {
+              const approxPromptTokens = Math.max(15, Math.ceil(((systemPrompt || "").length + message.length) / 4));
+              const completionTokens = tokenCount;
+              await recordTokenUsage({
+                agentId: isAgentActive ? activeAgent.id : "agent_loan_assistant",
+                agentName: isAgentActive ? activeAgent.name : "CreditWise Assistant",
+                modelName: requestedModel || process.env.OPENROUTER_MODEL || "openrouter/auto",
+                promptTokens: approxPromptTokens,
+                completionTokens: completionTokens,
+                totalTokens: approxPromptTokens + completionTokens,
+                source: "chat",
+              });
+            } catch (tErr) {
+              console.warn("[TOKEN_LOG_WARN]", tErr);
+            }
           }
 
           let effectiveTitle = message.slice(0, 40) || "Loan Assistant";
@@ -425,19 +566,34 @@ export async function POST(req: NextRequest) {
           if (agentKnowledgeResult?.selectedDocuments?.length > 0) {
             aiMessage.used_knowledge_documents = agentKnowledgeResult.selectedDocuments.map((sd: any) => sd.document.name);
           }
+          if (dualSourceResult?.sources?.length > 0) {
+            aiMessage.used_knowledge_documents = Array.from(
+              new Set([
+                ...(aiMessage.used_knowledge_documents || []),
+                ...dualSourceResult.sources.map((s) => s.name),
+              ])
+            );
+          }
+          aiMessage.retrieval_intent = retrievalRouting.intent;
 
           await sendEvent({
             type: "done",
             success: true,
             conversation_id: conversationIdStr,
+            client_conversation_id: clientConvId || conversationIdStr,
             title: effectiveTitle,
             ai_message: aiMessage,
+            message: aiMessage,
+            retrieval_intent: retrievalRouting.intent,
           });
         } catch (streamErr: any) {
           console.error("Central Chat stream error:", streamErr);
+          const errorMsg = isOpenRouterAuthError(streamErr)
+            ? INVALID_KEY_USER_MESSAGE
+            : (streamErr?.message || "Streaming failed");
           await sendEvent({
             type: "error",
-            error: streamErr?.message || "Streaming failed",
+            error: errorMsg,
           });
         } finally {
           try {
@@ -505,6 +661,15 @@ export async function POST(req: NextRequest) {
     if (agentKnowledgeResult?.selectedDocuments?.length > 0) {
       aiMessage.used_knowledge_documents = agentKnowledgeResult.selectedDocuments.map((sd: any) => sd.document.name);
     }
+    if (dualSourceResult?.sources?.length > 0) {
+      aiMessage.used_knowledge_documents = Array.from(
+        new Set([
+          ...(aiMessage.used_knowledge_documents || []),
+          ...dualSourceResult.sources.map((s) => s.name),
+        ])
+      );
+    }
+    aiMessage.retrieval_intent = retrievalRouting.intent;
 
     /* ---------------------------------------------------------------------- */
     /* Persist AI message and update conversation metadata in PostgreSQL       */
@@ -559,9 +724,15 @@ export async function POST(req: NextRequest) {
 
       conversation_id: conversationIdStr,
 
+      client_conversation_id: clientConvId || conversationIdStr,
+
       title: effectiveTitle || "Loan Assistant",
 
       ai_message: aiMessage,
+
+      message: aiMessage,
+
+      retrieval_intent: retrievalRouting.intent,
 
       user_message: {
         id: uid(),
@@ -581,13 +752,19 @@ export async function POST(req: NextRequest) {
       error?.stack || ""
     );
 
+    const { isOpenRouterAuthError, INVALID_KEY_USER_MESSAGE } = await import("@/lib/ai/keyResolution");
+    const isAuthErr = isOpenRouterAuthError(error);
+    const errorMsg = isAuthErr
+      ? INVALID_KEY_USER_MESSAGE
+      : (error?.message || "Chat failed");
+
     return NextResponse.json(
       {
         success: false,
-        error: "Chat failed",
+        error: errorMsg,
       },
       {
-        status: 500,
+        status: isAuthErr ? 401 : 500,
       }
     );
   }

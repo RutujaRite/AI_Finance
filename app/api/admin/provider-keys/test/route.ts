@@ -30,21 +30,13 @@ export async function POST(req: NextRequest) {
     const { provider, api_key } = body;
 
     const cleanProvider = (provider || "custom").toLowerCase().trim();
-    let keyToTest = (api_key || "").trim();
+    const { sanitizeApiKey, resolveDynamicApiKey, getOpenRouterHeaders, isOpenRouterAuthError, INVALID_KEY_USER_MESSAGE } = await import("@/lib/ai/keyResolution");
+    let keyToTest = sanitizeApiKey(api_key);
 
-    // If key not passed in payload, look up from DB or environment
+    // If key not passed in payload, look up from DB or environment via fallback chain
     if (!keyToTest) {
-      const client = await pool.connect();
-      try {
-        const res = await client.query(`SELECT api_key FROM provider_api_keys WHERE provider = $1`, [cleanProvider]);
-        if (res.rowCount && res.rows[0].api_key) {
-          keyToTest = res.rows[0].api_key;
-        } else if (cleanProvider === "custom") {
-          keyToTest = process.env.OPENROUTER_API_KEY || "";
-        }
-      } finally {
-        client.release();
-      }
+      const resolved = await resolveDynamicApiKey(cleanProvider);
+      keyToTest = resolved.apiKey;
     }
 
     if (!keyToTest) {
@@ -57,30 +49,32 @@ export async function POST(req: NextRequest) {
     const tStart = Date.now();
 
     // Test ping based on provider
-    let endpoint = "https://openrouter.ai/api/v1/auth/key";
-    let headers: Record<string, string> = {
-      Authorization: `Bearer ${keyToTest}`,
-    };
+    const customUrl = (body.base_url || "").trim().replace(/\/+$/, "");
+    const isOpenRouterKey = keyToTest.startsWith("sk-or-") || customUrl.includes("openrouter");
 
-    if (cleanProvider === "openai") {
+    let endpoint = "https://openrouter.ai/api/v1/auth/key";
+    let headers: Record<string, string> = getOpenRouterHeaders(keyToTest);
+
+    if (isOpenRouterKey) {
+      endpoint = customUrl ? (customUrl.endsWith("/v1") ? `${customUrl}/auth/key` : `${customUrl}/v1/auth/key`) : "https://openrouter.ai/api/v1/auth/key";
+      headers = getOpenRouterHeaders(keyToTest);
+    } else if (cleanProvider === "openai") {
       endpoint = "https://api.openai.com/v1/models";
     } else if (cleanProvider === "anthropic") {
       endpoint = "https://api.anthropic.com/v1/models";
       headers["x-api-key"] = keyToTest;
       headers["anthropic-version"] = "2023-06-01";
       delete headers["Authorization"];
-    } else if (cleanProvider === "google") {
+    } else if (cleanProvider === "google" && !customUrl) {
       endpoint = `https://generativelanguage.googleapis.com/v1beta/models?key=${keyToTest}`;
       delete headers["Authorization"];
     } else if (cleanProvider === "groq") {
       endpoint = "https://api.groq.com/openai/v1/models";
     } else if (cleanProvider === "ollama") {
       endpoint = "http://localhost:11434/api/tags";
-    } else if (body.base_url || cleanProvider.startsWith("custom") || cleanProvider === "litellm" || cleanProvider === "vllm" || cleanProvider === "lmstudio") {
-      const customUrl = (body.base_url || "").trim().replace(/\/+$/, "");
-      if (customUrl) {
-        endpoint = customUrl.endsWith("/v1") ? `${customUrl}/models` : `${customUrl}/v1/models`;
-      }
+    } else if (customUrl) {
+      endpoint = customUrl.endsWith("/v1") ? `${customUrl}/models` : `${customUrl}/v1/models`;
+      headers["Authorization"] = `Bearer ${keyToTest}`;
     }
 
     const response = await fetch(endpoint, {
@@ -100,6 +94,14 @@ export async function POST(req: NextRequest) {
       });
     } else {
       const errText = await response.text().catch(() => "");
+      if (response.status === 401 || /user not found/i.test(errText)) {
+        return NextResponse.json({
+          success: false,
+          error: INVALID_KEY_USER_MESSAGE,
+          details: errText.slice(0, 300),
+          latencyMs,
+        }, { status: 401 });
+      }
       return NextResponse.json({
         success: false,
         error: `Provider returned status ${response.status}`,

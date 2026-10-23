@@ -343,6 +343,16 @@ export function deleteAgent(id: string): { success: boolean; error?: string } {
   return { success: true };
 }
 
+export function pruneStoreAgents(validIds: Set<string>): void {
+  const store = getStore();
+  for (const id of Array.from(store.agents.keys())) {
+    if (!validIds.has(id)) {
+      store.agents.delete(id);
+    }
+  }
+  store.subscription.agentsCount = store.agents.size;
+}
+
 export function getUserSubscription(): UserSubscriptionState {
   const store = getStore();
   const planConfig = getPlanConfig(store.subscription.plan);

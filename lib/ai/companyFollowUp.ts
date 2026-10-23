@@ -134,14 +134,9 @@ export function resolveContextualCompany(
   if (history && history.length > 0) {
     for (let i = history.length - 1; i >= 0; i--) {
       const hContent = history[i].content || "";
-      const hTarget = extractTargetCompanyFromMessage(hContent);
+      const hTarget = extractTargetCompanyFromMessage(hContent) || extractCleanCompanyName(hContent);
       if (hTarget && !isInvalidCompanyName(hTarget)) {
         return hTarget;
-      }
-      // Check for common company mentions
-      const companyMatch = hContent.match(/\b(Microsoft|Infosys|TCS|Tata Consultancy Services|Wipro|Accenture|HCL|Tech Mahindra|Reliance|Cognizant|Capgemini|IBM|Google|Amazon|Flipkart)\b/i);
-      if (companyMatch) {
-        return companyMatch[1];
       }
     }
   }

@@ -26,6 +26,7 @@
  */
 
 import pool from "./db";
+import { resolvePincodeToCity } from "./dynamicEligibilityEngine";
 
 /* =====================================================
  * TYPES
@@ -1005,4 +1006,328 @@ export function formatBankManagersTable(
   }
 
   return table.trim();
+}
+
+/* =====================================================
+ * POST-ELIGIBILITY BANK MANAGER LOOKUP & FORMATTING
+ * ===================================================== */
+
+export interface PostEligibilityManagerSearchResult {
+  matchLevel: "pincode" | "branch_area" | "city" | "city_branches" | "none";
+  managers: BankManagerRecord[];
+  branches?: string[];
+  bankName: string;
+}
+
+/**
+ * Searches PostgreSQL bank_managers strictly using the required 4-tier search priority:
+ * 1. Exact selected bank + exact PIN code.
+ * 2. Exact selected bank + matching branch or area.
+ * 3. Exact selected bank + city (shows branch options if multiple distinct branches exist).
+ * 4. Fallback if no match.
+ *
+ * Uses parameterized SQL queries and enforces exact bank matching to never return
+ * managers from a different bank.
+ */
+export async function lookupPostEligibilityBankManager(params: {
+  bankName: string;
+  pincode?: string;
+  area?: string;
+  city?: string;
+  branch?: string;
+}): Promise<PostEligibilityManagerSearchResult> {
+  const client = await pool.connect();
+  try {
+    const rawBank = normalizeValue(params.bankName);
+    const pincode = normalizeValue(params.pincode);
+    const area = normalizeValue(params.area);
+    const city = normalizeValue(params.city);
+    const branch = normalizeValue(params.branch);
+
+    if (!rawBank) {
+      return { matchLevel: "none", managers: [], bankName: "" };
+    }
+
+    // Resolve canonical bank name from banks master table if possible
+    let canonicalBank = rawBank;
+    const bankCheck = await client.query(
+      `SELECT name FROM banks WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) OR LOWER(TRIM(code)) = LOWER(TRIM($1)) LIMIT 1`,
+      [rawBank]
+    );
+    if (bankCheck.rows.length > 0) {
+      canonicalBank = bankCheck.rows[0].name;
+    }
+
+    const baseSelect = `
+      SELECT
+        bm.id,
+        COALESCE(bm.bank_name, $1) AS bank_name,
+        COALESCE(bm.name, 'Not available') AS name,
+        COALESCE(bm.phone, 'Not available') AS phone,
+        COALESCE(bm.email, 'Not available') AS email,
+        COALESCE(bm.location, 'Not available') AS location,
+        bm.city,
+        bm.district,
+        bm.state,
+        bm.branch,
+        NULL AS branch_code,
+        bm.role,
+        bm.employee_code,
+        bm.extra_info,
+        COALESCE(bm.status, 'active') AS status
+      FROM bank_managers bm
+    `;
+
+    // -------------------------------------------------------------------------
+    // TIER 1: Exact Selected Bank + Exact PIN code
+    // -------------------------------------------------------------------------
+    if (pincode && /^[1-9]\d{5}$/.test(pincode)) {
+      const tier1Query = `
+        ${baseSelect}
+        WHERE (
+          LOWER(TRIM(bm.bank_name)) = LOWER(TRIM($1))
+          OR bm.bank_name IN (SELECT name FROM banks WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)))
+        )
+        AND (
+          bm.location LIKE '%' || $2 || '%'
+          OR bm.city LIKE '%' || $2 || '%'
+          OR bm.branch LIKE '%' || $2 || '%'
+          OR (bm.extra_info::text) LIKE '%' || $2 || '%'
+        )
+        ORDER BY bm.id ASC
+        LIMIT 10
+      `;
+
+      const t1Res = await client.query<BankManagerRecord>(tier1Query, [canonicalBank, pincode]);
+      const t1Rows = t1Res.rows.filter((r) => {
+        const text = `${r.location || ""} ${r.city || ""} ${r.branch || ""}`.toLowerCase();
+        return !/all\s+maharashtra|all\s+india/i.test(text);
+      });
+      if (t1Rows.length > 0) {
+        return {
+          matchLevel: "pincode",
+          managers: t1Rows,
+          bankName: canonicalBank,
+        };
+      }
+
+      // If exact digits are not in database, resolve city from pincode
+      const pinCity = resolvePincodeToCity(pincode);
+      if (pinCity) {
+        const pinCityQuery = `
+          ${baseSelect}
+          WHERE (
+            LOWER(TRIM(bm.bank_name)) = LOWER(TRIM($1))
+            OR bm.bank_name IN (SELECT name FROM banks WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)))
+          )
+          AND (
+            LOWER(COALESCE(bm.city, '')) LIKE LOWER('%' || $2 || '%')
+            OR LOWER(COALESCE(bm.location, '')) LIKE LOWER('%' || $2 || '%')
+            OR LOWER(COALESCE(bm.district, '')) LIKE LOWER('%' || $2 || '%')
+          )
+          ORDER BY bm.id ASC
+          LIMIT 10
+        `;
+        const pinCityRes = await client.query<BankManagerRecord>(pinCityQuery, [canonicalBank, pinCity]);
+        let pinCityRows = pinCityRes.rows.filter((r) => {
+          const text = `${r.location || ""} ${r.city || ""} ${r.branch || ""}`.toLowerCase();
+          return !/all\s+maharashtra|all\s+india|rest\s+of\s+pune/i.test(text);
+        });
+        if (pinCity.toLowerCase() === "pune") {
+          const purePune = pinCityRows.filter((r) => !/\bmumbai\b|\bnagpur\b|\bnashik\b/i.test(`${r.location} ${r.city}`));
+          if (purePune.length > 0) pinCityRows = purePune;
+        }
+        if (pinCityRows.length > 0) {
+          return {
+            matchLevel: "pincode",
+            managers: pinCityRows,
+            bankName: canonicalBank,
+          };
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // TIER 2: Exact Selected Bank + Matching Branch or Area
+    // -------------------------------------------------------------------------
+    const targetBranchOrArea = branch || area;
+    if (targetBranchOrArea && targetBranchOrArea.length >= 2 && !/^\d+$/.test(targetBranchOrArea)) {
+      const tier2Query = `
+        ${baseSelect}
+        WHERE (
+          LOWER(TRIM(bm.bank_name)) = LOWER(TRIM($1))
+          OR bm.bank_name IN (SELECT name FROM banks WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)))
+        )
+        AND (
+          LOWER(COALESCE(bm.branch, '')) LIKE LOWER('%' || $2 || '%')
+          OR LOWER(COALESCE(bm.location, '')) LIKE LOWER('%' || $2 || '%')
+          OR LOWER(COALESCE(bm.city, '')) LIKE LOWER('%' || $2 || '%')
+          OR LOWER(COALESCE(bm.extra_info::text, '')) LIKE LOWER('%' || $2 || '%')
+        )
+        ORDER BY bm.id ASC
+        LIMIT 10
+      `;
+
+      const t2Res = await client.query<BankManagerRecord>(tier2Query, [canonicalBank, targetBranchOrArea]);
+      const t2Rows = t2Res.rows.filter((r) => {
+        const text = `${r.location || ""} ${r.city || ""} ${r.branch || ""}`.toLowerCase();
+        return !/all\s+maharashtra|all\s+india|rest\s+of\s+pune/i.test(text);
+      });
+      if (t2Rows.length > 0) {
+        return {
+          matchLevel: "branch_area",
+          managers: t2Rows,
+          bankName: canonicalBank,
+        };
+      } else {
+        // User requested a specific branch/area (e.g. Swarget) which has 0 database records.
+        // Do not silently fall back to other branches or broad regional records.
+        return {
+          matchLevel: "none",
+          managers: [],
+          bankName: canonicalBank,
+        };
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // TIER 3: Exact Selected Bank + City
+    // -------------------------------------------------------------------------
+    if (city && city.length >= 2 && !/^\d+$/.test(city)) {
+      // Check if multiple branches exist for this bank and city
+      const distinctBranches = await findBankBranches(canonicalBank, city);
+      const uniqueBranches = getUniqueBranches(distinctBranches);
+
+      // If user hasn't specified branch yet and branches exist, offer branch selection
+      if (!branch && uniqueBranches.length >= 1) {
+        return {
+          matchLevel: "city_branches",
+          managers: [],
+          branches: uniqueBranches,
+          bankName: canonicalBank,
+        };
+      }
+
+      const tier3Query = `
+        ${baseSelect}
+        WHERE (
+          LOWER(TRIM(bm.bank_name)) = LOWER(TRIM($1))
+          OR bm.bank_name IN (SELECT name FROM banks WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)))
+        )
+        AND (
+          LOWER(COALESCE(bm.city, '')) LIKE LOWER('%' || $2 || '%')
+          OR LOWER(COALESCE(bm.location, '')) LIKE LOWER('%' || $2 || '%')
+          OR LOWER(COALESCE(bm.district, '')) LIKE LOWER('%' || $2 || '%')
+        )
+        ORDER BY bm.id ASC
+        LIMIT 10
+      `;
+
+      const t3Res = await client.query<BankManagerRecord>(tier3Query, [canonicalBank, city]);
+      let t3Rows = t3Res.rows.filter((r) => {
+        const text = `${r.location || ""} ${r.city || ""} ${r.branch || ""}`.toLowerCase();
+        return !/all\s+maharashtra|all\s+india|rest\s+of\s+pune/i.test(text);
+      });
+      if (city.toLowerCase() === "pune") {
+        const purePuneRows = t3Rows.filter((r) => {
+          const text = `${r.location || ""} ${r.city || ""} ${r.branch || ""}`.toLowerCase();
+          return !/\bmumbai\b|\bnagpur\b|\bnashik\b|\bdelhi\b|\bbangalore\b/i.test(text);
+        });
+        if (purePuneRows.length > 0) {
+          t3Rows = purePuneRows;
+        }
+      }
+      if (t3Rows.length > 0) {
+        return {
+          matchLevel: "city",
+          managers: t3Rows,
+          bankName: canonicalBank,
+        };
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // TIER 4: No match found
+    // -------------------------------------------------------------------------
+    return {
+      matchLevel: "none",
+      managers: [],
+      bankName: canonicalBank,
+    };
+  } catch (error) {
+    console.error("[bankSearch] lookupPostEligibilityBankManager error:", error);
+    return { matchLevel: "none", managers: [], bankName: params.bankName };
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Format verified DB manager records according to the required Step 6 layout:
+ *
+ * HDFC Bank — Branch Contact Details
+ * - Branch: [actual database value]
+ * - Location: [actual database value]
+ * - Manager: [actual database value, if available]
+ * - Phone: [actual database value, if available]
+ * - Email: [actual database value, if available]
+ * - Address: [actual database value, if available]
+ *
+ * Includes the 6-column table for complete compatibility with test suites.
+ */
+export function formatPostEligibilityManagerDetails(
+  bankName: string,
+  managers: BankManagerRecord[],
+  options?: { userCity?: string; userBranch?: string; userPincode?: string }
+): string {
+  if (!managers || managers.length === 0) {
+    return `I couldn't find an exact or matching ${bankName} manager in our database for that location. Would you like to try another area or PIN code?`;
+  }
+
+  const uniqueMgrs = getUniqueManagerRecords(managers);
+  if (uniqueMgrs.length === 0) {
+    return `I couldn't find an exact or matching ${bankName} manager in our database for that location. Would you like to try another area or PIN code?`;
+  }
+
+  const cardSections: string[] = [];
+
+  for (const mgr of uniqueMgrs) {
+    const bName = mgr.bank_name && mgr.bank_name.trim().length > 0 ? mgr.bank_name.trim() : bankName;
+    const branchVal = (mgr.branch || options?.userBranch || mgr.location || "Not available").replace(/[\r\n]+/g, ", ").trim();
+    const locParts = [mgr.city || options?.userCity, mgr.state].filter(Boolean);
+    const locationVal = (locParts.length > 0 ? locParts.join(", ") : (mgr.location || "Not available")).replace(/[\r\n]+/g, ", ").trim();
+    const mgrVal = mgr.name && mgr.name.trim().length > 0 && mgr.name !== "Not available"
+      ? (mgr.role ? `${mgr.name.trim()} *(${mgr.role.trim()})*` : mgr.name.trim())
+      : "Not available";
+    const phoneVal = mgr.phone && mgr.phone !== "N/A" && mgr.phone !== "#ERROR!" && mgr.phone !== "—" && mgr.phone.trim().length > 0
+      ? `\`${mgr.phone.trim()}\``
+      : "Not available";
+    const emailVal = mgr.email && mgr.email !== "N/A" && !mgr.email.includes("example.com") && mgr.email.trim().length > 0
+      ? `\`${mgr.email.trim()}\``
+      : "Not available";
+    const addressVal = (mgr.location || [mgr.city || options?.userCity, mgr.state].filter(Boolean).join(", ") || "Not available").replace(/[\r\n]+/g, ", ").trim();
+
+    cardSections.push(
+      `### 📍 ${bName} — Branch Contact Details\n\n` +
+      `- **Branch**: ${branchVal}\n` +
+      `- **Location**: ${locationVal}\n` +
+      `- **Manager**: ${mgrVal}\n` +
+      `- **Phone**: ${phoneVal}\n` +
+      `- **Email**: ${emailVal}\n` +
+      `- **Address**: ${addressVal}`
+    );
+  }
+
+  const tablePart = formatBankManagersTable(uniqueMgrs, {
+    userCity: options?.userCity,
+    userBranch: options?.userBranch,
+    userPincode: options?.userPincode,
+  });
+
+  return (
+    cardSections.join("\n\n---\n\n") +
+    "\n\n" +
+    tablePart +
+    `\n\n---\n✅ **Application initiated with ${bankName}. You can contact the branch manager directly using the verified contact details above.**`
+  );
 }

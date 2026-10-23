@@ -28,16 +28,16 @@ export async function POST(
     const userId = getUserId(req);
 
     if (userId !== undefined) {
-      await clearUserActiveAgent(userId);
+      await clearUserActiveAgent(userId, id);
     }
 
     try {
-      await pool.query(`UPDATE agents SET status = 'draft', updated_at = NOW() WHERE id = $1`, [id]);
+      await pool.query(`UPDATE agents SET status = 'deactivated', applied_to_assistant = false, updated_at = NOW() WHERE id = $1`, [id]);
     } catch (e) {
       console.warn("[DEACTIVATE_AGENT_DB_WARN]", e);
     }
 
-    const updated = updateAgent(id, { status: "draft" });
+    const updated = updateAgent(id, { status: "deactivated", appliedToAssistant: false } as any);
     if (updated) {
       await syncAgentToDb(updated, userId);
     }

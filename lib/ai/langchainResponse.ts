@@ -16,12 +16,19 @@ import {
   HumanMessage,
   AIMessage,
 } from "@langchain/core/messages";
+import {
+  resolveDynamicApiKey,
+  sanitizeApiKey,
+  isOpenRouterAuthError,
+  INVALID_KEY_USER_MESSAGE,
+} from "./keyResolution";
 
-const DEFAULT_FALLBACK_MODEL = "nvidia/nemotron-3-super-120b-a12b:free";
+const DEFAULT_FALLBACK_MODEL = "openrouter/auto";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
 export interface LangChainChatOptions {
   model?: string;
+  apiKey?: string;
   temperature?: number;
   maxTokens?: number;
   timeoutMs?: number;
@@ -111,7 +118,8 @@ export function createLangChainChatModel(
   options?: LangChainChatOptions,
   modelOverride?: string
 ): ChatOpenAI {
-  const apiKey = process.env.OPENROUTER_API_KEY || "";
+  const rawKey = options?.apiKey || process.env.OPENROUTER_API_KEY || "";
+  const apiKey = sanitizeApiKey(rawKey);
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY is not configured.");
   }
@@ -125,7 +133,8 @@ export function createLangChainChatModel(
     configuration: {
       baseURL: OPENROUTER_BASE_URL,
       defaultHeaders: {
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
         "X-Title": "CreditWise AI",
       },
     },
@@ -143,6 +152,10 @@ export function createLangChainChatModel(
  */
 function isFallbackEligibleError(err: any): boolean {
   if (!err) return true;
+  // If authentication failed with 401 or user not found, never fallback to other models (it will fail with same key)
+  if (isOpenRouterAuthError(err)) {
+    return false;
+  }
   const msg = String(err?.message || "").toLowerCase();
   const status = err?.status || err?.code;
   // If the user deliberately aborted, do not fallback
@@ -162,23 +175,35 @@ export async function generateLangChainChatStream(
   onToken: (token: string) => void,
   options?: LangChainChatOptions
 ): Promise<string> {
+  let resolvedKey = sanitizeApiKey(options?.apiKey);
+  if (!resolvedKey) {
+    try {
+      const keyInfo = await resolveDynamicApiKey();
+      resolvedKey = keyInfo.apiKey;
+    } catch {}
+  }
+  const effectiveOptions: LangChainChatOptions = {
+    ...options,
+    apiKey: resolvedKey || sanitizeApiKey(process.env.OPENROUTER_API_KEY),
+  };
+
   const baseMessages = toLangChainMessages(messages);
   const effectiveModel = normalizeModelSlug(
-    options?.model || process.env.OPENROUTER_MODEL || DEFAULT_FALLBACK_MODEL
+    effectiveOptions?.model || process.env.OPENROUTER_MODEL || DEFAULT_FALLBACK_MODEL
   );
 
   const execute = async (targetModel: string): Promise<string> => {
-    const model = createLangChainChatModel(options, targetModel);
+    const model = createLangChainChatModel(effectiveOptions, targetModel);
     const parser = new StringOutputParser();
     const chain = model.pipe(parser);
 
     const stream = await chain.stream(baseMessages, {
-      signal: options?.signal,
+      signal: effectiveOptions?.signal,
     });
 
     let accumulated = "";
     for await (const chunk of stream) {
-      if (options?.signal?.aborted) break;
+      if (effectiveOptions?.signal?.aborted) break;
       if (chunk) {
         accumulated += chunk;
         try {
@@ -194,8 +219,15 @@ export async function generateLangChainChatStream(
   try {
     return await execute(effectiveModel);
   } catch (err: any) {
-    if (options?.signal?.aborted) {
+    if (effectiveOptions?.signal?.aborted) {
       return "";
+    }
+    if (isOpenRouterAuthError(err)) {
+      const authErr: any = new Error(INVALID_KEY_USER_MESSAGE);
+      authErr.status = 401;
+      authErr.statusCode = 401;
+      authErr.isAuthError = true;
+      throw authErr;
     }
     if (effectiveModel !== DEFAULT_FALLBACK_MODEL && isFallbackEligibleError(err)) {
       console.warn(
@@ -204,6 +236,13 @@ export async function generateLangChainChatStream(
       try {
         return await execute(DEFAULT_FALLBACK_MODEL);
       } catch (retryErr) {
+        if (isOpenRouterAuthError(retryErr)) {
+          const authErr: any = new Error(INVALID_KEY_USER_MESSAGE);
+          authErr.status = 401;
+          authErr.statusCode = 401;
+          authErr.isAuthError = true;
+          throw authErr;
+        }
         console.error(
           `[LangChainChatStream] Fallback retry with ${DEFAULT_FALLBACK_MODEL} failed:`,
           retryErr
@@ -214,35 +253,89 @@ export async function generateLangChainChatStream(
   }
 }
 
+export interface LangChainChatResponseWithMetadata {
+  content: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  model?: string;
+}
+
 /**
- * Executes a non-streaming single-call response using LangChain LCEL (ChatOpenAI.pipe(StringOutputParser)).
- * Returns the parsed, cleaned string reply.
+ * Executes a non-streaming single-call response using LangChain ChatOpenAI.
+ * Returns the parsed, cleaned string reply along with real provider token usage metadata.
  */
-export async function generateLangChainChatResponse(
+export async function generateLangChainChatResponseWithMetadata(
   messages: Array<ChatMessageInput | BaseMessage>,
   options?: LangChainChatOptions
-): Promise<string> {
+): Promise<LangChainChatResponseWithMetadata> {
+  let resolvedKey = sanitizeApiKey(options?.apiKey);
+  if (!resolvedKey) {
+    try {
+      const keyInfo = await resolveDynamicApiKey();
+      resolvedKey = keyInfo.apiKey;
+    } catch {}
+  }
+  const effectiveOptions: LangChainChatOptions = {
+    ...options,
+    apiKey: resolvedKey || sanitizeApiKey(process.env.OPENROUTER_API_KEY),
+  };
+
   const baseMessages = toLangChainMessages(messages);
   const effectiveModel = normalizeModelSlug(
-    options?.model || process.env.OPENROUTER_MODEL || DEFAULT_FALLBACK_MODEL
+    effectiveOptions?.model || process.env.OPENROUTER_MODEL || DEFAULT_FALLBACK_MODEL
   );
 
-  const execute = async (targetModel: string): Promise<string> => {
-    const model = createLangChainChatModel(options, targetModel);
-    const parser = new StringOutputParser();
-    const chain = model.pipe(parser);
+  const execute = async (targetModel: string): Promise<LangChainChatResponseWithMetadata> => {
+    const model = createLangChainChatModel(effectiveOptions, targetModel);
 
-    const response = await chain.invoke(baseMessages, {
-      signal: options?.signal,
+    const aiMessage = await model.invoke(baseMessages, {
+      signal: effectiveOptions?.signal,
     });
-    return stripReasoningPreamble(response || "");
+
+    const rawContent =
+      typeof aiMessage.content === "string"
+        ? aiMessage.content
+        : Array.isArray(aiMessage.content)
+        ? aiMessage.content.map((c) => (typeof c === "string" ? c : (c as any).text || "")).join("")
+        : "";
+
+    const content = stripReasoningPreamble(rawContent || "");
+
+    const usageMeta = aiMessage.usage_metadata;
+    const respMeta = (aiMessage.response_metadata || {}) as Record<string, any>;
+    const promptTokens = Number(usageMeta?.input_tokens ?? respMeta?.tokenUsage?.promptTokens ?? 0);
+    const completionTokens = Number(usageMeta?.output_tokens ?? respMeta?.tokenUsage?.completionTokens ?? 0);
+    const totalTokens = Number(usageMeta?.total_tokens ?? respMeta?.tokenUsage?.totalTokens ?? (promptTokens + completionTokens));
+
+    return {
+      content,
+      usage:
+        totalTokens > 0
+          ? {
+              prompt_tokens: promptTokens,
+              completion_tokens: completionTokens,
+              total_tokens: totalTokens,
+            }
+          : undefined,
+      model: targetModel,
+    };
   };
 
   try {
     return await execute(effectiveModel);
   } catch (err: any) {
-    if (options?.signal?.aborted) {
-      return "";
+    if (effectiveOptions?.signal?.aborted) {
+      return { content: "" };
+    }
+    if (isOpenRouterAuthError(err)) {
+      const authErr: any = new Error(INVALID_KEY_USER_MESSAGE);
+      authErr.status = 401;
+      authErr.statusCode = 401;
+      authErr.isAuthError = true;
+      throw authErr;
     }
     if (effectiveModel !== DEFAULT_FALLBACK_MODEL && isFallbackEligibleError(err)) {
       console.warn(
@@ -251,6 +344,13 @@ export async function generateLangChainChatResponse(
       try {
         return await execute(DEFAULT_FALLBACK_MODEL);
       } catch (retryErr) {
+        if (isOpenRouterAuthError(retryErr)) {
+          const authErr: any = new Error(INVALID_KEY_USER_MESSAGE);
+          authErr.status = 401;
+          authErr.statusCode = 401;
+          authErr.isAuthError = true;
+          throw authErr;
+        }
         console.error(
           `[LangChainChatResponse] Fallback retry with ${DEFAULT_FALLBACK_MODEL} failed:`,
           retryErr
@@ -259,4 +359,16 @@ export async function generateLangChainChatResponse(
     }
     throw err;
   }
+}
+
+/**
+ * Executes a non-streaming single-call response using LangChain LCEL.
+ * Returns the parsed, cleaned string reply.
+ */
+export async function generateLangChainChatResponse(
+  messages: Array<ChatMessageInput | BaseMessage>,
+  options?: LangChainChatOptions
+): Promise<string> {
+  const result = await generateLangChainChatResponseWithMetadata(messages, options);
+  return result.content;
 }

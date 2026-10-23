@@ -3,6 +3,7 @@ import {
   extractCompanyCandidateFromText,
   extractCleanCompanyName,
   isPureGreeting,
+  isGreetingOrPleasantry,
   hasGreetingPrefix,
   stripGreetingPrefix,
   isCompanyInfoOrSearchIntent,
@@ -16,12 +17,19 @@ import {
   UNEMPLOYED_REGEX,
 } from "@/lib/dynamicEligibilityEngine";
 
-const getApiKey = () => process.env.OPENROUTER_API_KEY || "";
+import {
+  isCompanyCategoryLookupIntent,
+  extractCompanyNameFromCategoryQuery,
+} from "@/lib/companySearch";
+
+const getApiKey = () => String(process.env.OPENROUTER_API_KEY || "").trim().replace(/^["']+|["']+$/g, "").trim();
 const getModel = () => (process.env.OPENROUTER_MODEL || "openrouter/free").replace(/^["']|["']$/g, "").trim();
 const LLM_TIMEOUT_MS = 12000;
 
 import { CanonicalIntent } from "./tokenOptimizer";
 export type { CanonicalIntent };
+import { isConstraintOnlyFollowUp } from "./conversationIntelligence";
+import { isGeneralFinancialQuery, isGeneralLoanAssistanceQuery } from "@/lib/ai/generalFinancialQueries";
 
 export type UserIntentType =
   | CanonicalIntent
@@ -691,7 +699,7 @@ export function extractEntitiesFromText(
 
   // 1. CIBIL score
   const cibilScoreMatch =
-    text.match(/\b(?:cibil|credit\s*score|score)?\s*(?:is|to|=|:)?\s*([3-9]\d{2})\b/i) ||
+    text.match(/\b(?:cibil(?:\s*score)?|credit\s*score|score)?\s*(?:is|to|=|:)?\s*(?:\(?collected:\s*)?([3-9]\d{2})\b/i) ||
     text.match(/\b([3-9]\d{2})\b/);
   if (cibilScoreMatch && (context?.expectedField === "cibil" || context?.expectedField === "cibilScore" || /(?:cibil|score|credit)/i.test(norm))) {
     const s = parseInt(cibilScoreMatch[1], 10);
@@ -707,7 +715,7 @@ export function extractEntitiesFromText(
   // 2. Monthly Income
   const salMatch =
     text.match(
-      /(?:monthly\s*salary|monthly\s*income|salary|income|take\s*home|in\s*hand|net\s*pay|earn(?:s|ing)?)\s*(?:is|to|=|:)?\s*(?:rs\.?|₹)?\s*([\d,]+(?:\.\d+)?(?:\s*(?:k|lakhs?|lacs?|l\b|cr|peti|hazar))?)\b/i
+      /(?:(?:net\s*)?monthly\s*salary|(?:net\s*)?monthly\s*income|salary|income|take\s*home|in\s*hand|net\s*pay|earn(?:s|ing)?)\s*(?:is|to|=|:)?\s*(?:\(?collected:\s*)?(?:rs\.?|₹)?\s*([\d,]+(?:\.\d+)?(?:\s*(?:k|lakhs?|lacs?|l\b|cr|peti|hazar))?)\b/i
     ) ||
     text.match(
       /([\d,]+(?:\.\d+)?(?:\s*(?:k|lakhs?|lacs?|l\b|cr|peti|hazar))?)\s*(?:per\s*month|\/month|\/mo|monthly|take\s*home|in\s*hand|salary|income)\b/i
@@ -727,9 +735,9 @@ export function extractEntitiesFromText(
   // 3. Loan Amount
   const loanMatch =
     text.match(
-      /(?:personal\s*loan|loan\s*(?:amount|ticket|size)?)\s*(?:is|to|=|:)?\s*(?:rs\.?|₹)?\s*([\d,]+(?:\.\d+)?(?:\s*(?:k|lakhs?|lacs?|l\b|cr|peti|khoka))?)\b/i
+      /(?:(?:desired\s*)?personal\s*loan|(?:desired\s*)?loan\s*(?:amount|ticket|size)?)\s*(?:is|to|=|:)?\s*(?:\(?collected:\s*)?(?:rs\.?|₹)?\s*([\d,]+(?:\.\d+)?(?:\s*(?:k|lakhs?|lacs?|l\b|cr|peti|khoka))?)\b/i
     ) ||
-    (!salMatch && text.match(/(?:borrow|need|want|require)\s*(?:a\s*(?:personal\s*)?loan\s*(?:of)?)?\s*(?:rs\.?|₹)?\s*([\d,]+(?:\.\d+)?(?:\s*(?:k|lakhs?|lacs?|l\b|cr|peti|khoka))?)\b/i)) ||
+    (!salMatch && text.match(/(?:borrow|need|want|require)\s*(?:a\s*(?:personal\s*)?loan\s*(?:of)?)?\s*(?:\(?collected:\s*)?(?:rs\.?|₹)?\s*([\d,]+(?:\.\d+)?(?:\s*(?:k|lakhs?|lacs?|l\b|cr|peti|khoka))?)\b/i)) ||
     text.match(/(?:rs\.?|₹)\s*([\d,]+(?:\.\d+)?(?:\s*(?:k|lakhs?|lacs?|l\b|cr|peti|khoka))?)\s*(?:loan)\b/i) ||
     text.match(/(\d+(?:,\d+)*(?:\.\d+)?)\s*(lakhs?|lacs?|l\b|cr|crores?|peti|khoka)\s+(?:loan|borrow)/i);
   if (loanMatch) {
@@ -741,11 +749,11 @@ export function extractEntitiesFromText(
   }
 
   // 4. Tenure
-  const yrMatch = text.match(/\b(\d{1,2})\s*(?:years?|yrs?|yr|y\b|saal|sal)(?!\s*old)\b/i);
+  const yrMatch = text.match(/(?:desired\s*)?(?:tenure(?:\s*(?:is|to|=|:))?\s*)?\b(\d{1,2})\s*(?:years?|yrs?|yr|y\b|saal|sal)(?!\s*old)\b/i);
   if (yrMatch) {
     extracted.tenureMonths = parseInt(yrMatch[1], 10) * 12;
   } else {
-    const moMatch = text.match(/\b(\d{1,3})\s*(?:months?|m\b)\b/i);
+    const moMatch = text.match(/(?:desired\s*)?(?:tenure(?:\s*(?:is|to|=|:))?\s*)?\b(\d{1,3})\s*(?:months?|m\b)\b/i);
     if (moMatch) {
       extracted.tenureMonths = parseInt(moMatch[1], 10);
     } else if (context?.expectedField === "tenureMonths") {
@@ -765,7 +773,7 @@ export function extractEntitiesFromText(
     extracted.existingEmi = 0;
   } else {
     const emiMatch = text.match(
-      /(?:existing\s*emi|ongoing\s*emi|current\s*emi|monthly\s*emi|other\s*emi|emi)\s*(?:is|are|to|=|:|of|around|approx)?\s*(?:rs\.?|₹)?\s*([\d,]+(?:\.\d+)?(?:\s*k)?)\b/i
+      /(?:existing\s*(?:monthly\s*)?emi|ongoing\s*emi|current\s*emi|monthly\s*emi|other\s*emi|emi)\s*(?:is|are|to|=|:|of|around|approx)?\s*(?:\(?collected:\s*)?(?:rs\.?|₹)?\s*([\d,]+(?:\.\d+)?(?:\s*k)?)\b/i
     );
     if (emiMatch) {
       const amt = parseFinancialAmount(emiMatch[1]);
@@ -778,8 +786,9 @@ export function extractEntitiesFromText(
 
   // 6. Age
   const ageMatch =
-    text.match(/\b(?:i\s*am|age\s*(?:is|are|to|=|:)?)\s*(\d{1,2})\s*(?:years?\s*old|yrs?\s*old|years?)\b/i) ||
-    text.match(/\b(\d{1,2})\s*(?:years?\s*old|yrs?\s*old|years?)\b/i);
+    text.match(/\b(?:i\s*am|age\s*(?:is|are|to|=|:)?)\s*(?:\(?collected:\s*)?(\d{1,2})\b(?:\s*(?:years?\s*old|yrs?\s*old|years?))?/i) ||
+    text.match(/\b(\d{1,2})\s*(?:years?\s*old|yrs?\s*old|years?)\b/i) ||
+    text.match(/\bage\s*(\d{1,2})\b/i);
   if (ageMatch) {
     const a = parseInt(ageMatch[1], 10);
     if (a >= 18 && a <= 85) extracted.age = a;
@@ -789,7 +798,17 @@ export function extractEntitiesFromText(
   }
 
   // 7. Employment Type & Status
-  if (UNEMPLOYED_REGEX.test(norm)) {
+  const isNegatedOrTransitional =
+    /(?:not|no\s*longer|instead\s*of|was|previously|from)\s*(?:unemployed|jobless)/i.test(norm) ||
+    /(?:from\s+)?unemployed\s+to\s+(?:self[\s-]*employed|salaried|employed)/i.test(norm) ||
+    /(?:self[\s-]*employed|salaried|business|freelanc|working|job)\b/i.test(norm);
+
+  if (/(?:self[t\s-]*employed|self[\s-]*employd|own\s*business|business\s*owner|freelanc|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|doctor|trader)\b/i.test(norm)) {
+    extracted.employmentType = "Self-Employed";
+    delete extracted.companyName;
+  } else if (/salaried|govt|government|private|pvt\s*ltd|mnc|corporate|job|employee/i.test(norm) && !/no\s*job|without\s*a\s*job/i.test(norm)) {
+    extracted.employmentType = "Salaried";
+  } else if (!isNegatedOrTransitional && UNEMPLOYED_REGEX.test(norm)) {
     extracted.employmentType = "Unemployed";
     extracted.monthlyIncome = 0;
     delete extracted.companyName;
@@ -804,8 +823,6 @@ export function extractEntitiesFromText(
   } else if (/\b(?:retired|pensioner|senior\s*citizen)\b/i.test(norm)) {
     extracted.employmentType = "Retired";
     delete extracted.companyName;
-  } else if (/(?:self[t\s-]*employed|self[\s-]*employd|own\s*business|business\s*owner|freelanc|business(?!\s*loans?)|proprietor|partnership|partner(?!\s*(?:banks?|lenders?|financial|corporate))|doctor|trader)\b/i.test(norm)) {
-    extracted.employmentType = "Self-Employed";
   }
 
   // 8. Company Name (strictly avoid assigning search intents, personal names, general assistance, employment status, locations, disavowals, or zero answers as company)
@@ -932,14 +949,16 @@ export function fallbackMultidimensionalNluParser(
   }
   if (
     !detectCompanyDisavowal(text).isDisavowal &&
-    (isCompanyInfoOrSearchIntent(text) || /(?:forget\s*(?:the\s*)?loan|leave\s*loan|switch\s*to|show\s*(?:me\s*)?(?:the\s*)?company|company\s*details)/i.test(norm))
+    (isCompanyCategoryLookupIntent(text) || isCompanyInfoOrSearchIntent(text) || /(?:forget\s*(?:the\s*)?loan|leave\s*loan|switch\s*to|show\s*(?:me\s*)?(?:the\s*)?company|company\s*details)/i.test(norm))
   ) {
-    const candidate = extractTargetCompanyFromMessage(text) || extractCompanyCandidateFromText(text);
+    const candidate = isCompanyCategoryLookupIntent(text)
+      ? extractCompanyNameFromCategoryQuery(text)
+      : (extractTargetCompanyFromMessage(text) || extractCompanyCandidateFromText(text));
     const cleanedCandidate = candidate ? candidate.replace(/^(?:show|details\s+for|info\s+on)\s+/i, "").replace(/\s+details\.?$/i, "").trim() : undefined;
-    const compMatch = cleanedCandidate && !isCompanyInfoOrSearchIntent(cleanedCandidate) && !isInvalidCompanyName(cleanedCandidate) ? cleanedCandidate : undefined;
+    const compMatch = cleanedCandidate && !isCompanyCategoryLookupIntent(cleanedCandidate) && !isCompanyInfoOrSearchIntent(cleanedCandidate) && !isInvalidCompanyName(cleanedCandidate) ? cleanedCandidate : undefined;
     const isExplicitAbandon = /(?:forget\s*(?:the\s*)?loan|leave\s*loan|cancel\s*loan|stop\s*loan|abandon)/i.test(norm);
     return {
-      messageType: "COMMAND",
+      messageType: isCompanyCategoryLookupIntent(text) ? "QUESTION" : "COMMAND",
       primaryIntent: "COMPANY_SEARCH",
       secondaryIntents: ["COMPANY_SEARCH"],
       conversationAction: isExplicitAbandon ? "TOPIC_SWITCH" : (context?.isFlowActive ? "TEMPORARY_INTERRUPT" : "NEW_TASK"),
@@ -1219,7 +1238,10 @@ export function fallbackMultidimensionalNluParser(
     let qTopic: string | undefined = undefined;
     let targetBank: string | undefined = undefined;
 
-    if (/(?:document|docs?|paperwork|kyc)/i.test(norm)) {
+    if (isConstraintOnlyFollowUp(text)) {
+      qIntent = "BANK_POLICY";
+      qTopic = "BANK_POLICY";
+    } else if (/(?:document|docs?|paperwork|kyc)/i.test(norm)) {
       qIntent = "BANK_DOCUMENT_REQUIREMENTS";
       qTopic = "BANK_DOCUMENT_REQUIREMENTS";
     } else if (/(?:category|rating|listing|tier)\s+(?:of|for)\b/i.test(norm) || /(?:what\s+is\s+(?:the\s+)?category)/i.test(norm)) {
@@ -1429,10 +1451,14 @@ export async function classifyIntelligentIntent(
   const targetLocation = pinMatch ? pinMatch[1] : (cityMatch ? cityMatch[1] : undefined);
 
   // Check for company mentions
-  let targetCompany: string | undefined = !detectCompanyDisavowal(rawMsg).isDisavowal
-    ? (extractTargetCompanyFromMessage(rawMsg) || extractCleanCompanyName(rawMsg))
-    : undefined;
-  if (targetCompany && (isInvalidCompanyName(targetCompany) || detectCompanyDisavowal(targetCompany).isDisavowal)) {
+  let targetCompany: string | undefined = undefined;
+  if (isCompanyCategoryLookupIntent(rawMsg)) {
+    targetCompany = extractCompanyNameFromCategoryQuery(rawMsg);
+  }
+  if (!targetCompany && !detectCompanyDisavowal(rawMsg).isDisavowal) {
+    targetCompany = extractTargetCompanyFromMessage(rawMsg) || extractCleanCompanyName(rawMsg);
+  }
+  if (targetCompany && (isInvalidCompanyName(targetCompany) || isCompanyCategoryLookupIntent(targetCompany) || detectCompanyDisavowal(targetCompany).isDisavowal)) {
     targetCompany = undefined;
   }
   if (targetCompany && !extracted.companyName) {
@@ -1444,16 +1470,22 @@ export async function classifyIntelligentIntent(
 
   // 2. Identify MULTI_INTENT first
   // e.g. Policy query + Manager search ("What is HDFC personal loan eligibility and find an HDFC manager in Pune")
+  const isGenericLoanAssistance = isGeneralLoanAssistanceQuery(rawMsg);
+  const isGeneralFinQuery = isGeneralFinancialQuery(rawMsg);
+
   const isPolicyAsk =
-    /\b(?:policy|criteria|eligibility\s*rules?|minimum\s*(?:cibil|salary|income)|cutoff|foreclosure|prepayment|required\s*documents?|documents?\s*required|interest\s*rates?|roi)\b/i.test(lowerMsg) ||
-    (Boolean(targetBank) && /\b(?:eligibility|cibil|salary|documents?)\b/i.test(lowerMsg));
+    !isGeneralFinQuery &&
+    !isGenericLoanAssistance.isMatch &&
+    (/\b(?:policy|criteria|eligibility\s*rules?|minimum\s*(?:cibil|salary|income)|cutoff|foreclosure|prepayment|required\s*documents?|documents?\s*required|interest\s*rates?|roi)\b/i.test(lowerMsg) ||
+    (Boolean(targetBank) && /\b(?:eligibility|cibil|salary|documents?)\b/i.test(lowerMsg)));
 
   const isManagerAsk =
     /\b(?:bank\s*manager|branch\s*manager|branch\s*head|\basm\b|\brsm\b|manager|branch\s*near|branches\s*near|contact\s*details?\s*of.*manager)\b/i.test(lowerMsg);
 
   const isCompanyAsk =
     !detectCompanyDisavowal(rawMsg).isDisavowal &&
-    (isCompanyInfoOrSearchIntent(rawMsg) ||
+    (isCompanyCategoryLookupIntent(rawMsg) ||
+    isCompanyInfoOrSearchIntent(rawMsg) ||
     /\b(?:company\s*category|category\s*of|employer\s*category|verify\s*employer|check\s*my\s*employer|search\s*for\s*(?:company|employer)?)\b/i.test(lowerMsg));
 
   const isRecalcAsk =
@@ -1578,6 +1610,20 @@ export async function classifyIntelligentIntent(
   const isActuallyCorrection = /\b(?:actually|correction|it\s+is\s+actually|my\s+correct)\b/i.test(lowerMsg);
   const isCompanyDisavowalMsg = detectCompanyDisavowal(rawMsg).isDisavowal;
 
+  const isBankCorrection =
+    Boolean(targetBank) &&
+    /^(?:sorry|actually|no|wait|oops)?[,\s]*(?:i\s*meant|meant|switch\s+to|change\s+to|rather|instead\s+of\s+.*|not\s+.*,\s*(?:but\s+)?(?:i\s*meant\s+)?)\s*(?:the\s+)?([a-z0-9\s&'.-]+)/i.test(lowerMsg);
+
+  if (isBankCorrection) {
+    return {
+      intent: "BANK_POLICY_QUERY",
+      confidence: 0.98,
+      extractedEntities: extracted,
+      targetBank,
+      reasoning: "User corrected target bank/lender.",
+    };
+  }
+
   if (isCompanyDisavowalMsg) {
     const disResult = detectCompanyDisavowal(rawMsg);
     return {
@@ -1616,7 +1662,7 @@ export async function classifyIntelligentIntent(
 
   // 7. GENERAL_QUERY check (greetings, identity, educational/tech queries, conceptual financial definitions)
   // Evaluated before company lookup and active flow so questions like "Who are you?", "What is an API?" or "Explain LLM and RAG" are never hijacked!
-  const isGreeting = isPureGreeting(rawMsg);
+  const isGreeting = isGreetingOrPleasantry(rawMsg);
   const isIdentityAsk =
     isGeneralAssistanceQuery(rawMsg) ||
     /^(?:who\s+(?:are|r)\s+(?:you|u)|who\s+are\s+ya|what\s+(?:are|r)\s+(?:you|u)|tell\s+me\s+about\s+(?:yourself|urself)|introduce\s+(?:yourself|urself)|what\s+is\s+(?:creditwise|this(?:\s+app|\s+platform|\s+website)?)|what\s+(?:can|could)\s+(?:you|u)\s+do|what\s+do\s+(?:you|u)\s+do|what\s+are\s+(?:your|ur)\s+capabilities|what\s+is\s+your\s+role|what\s+can\s+i\s+do\s+here)\b/i.test(lowerMsg);
@@ -1631,18 +1677,21 @@ export async function classifyIntelligentIntent(
       !/loan|bank|policy|cibil|emi|salary|credit/i.test(lowerMsg));
 
   const isGeneralFinancialEdu =
-    /\b(?:compound\s*interest|simple\s*interest|what\s+is\s+(?:a\s+)?credit\s*score|what\s+is\s+foir|define\s+foir|how\s+is\s+interest\s+calculated)\b/i.test(lowerMsg) &&
-    !targetBank;
+    isGeneralFinQuery ||
+    (/\b(?:compound\s*interest|simple\s*interest|what\s+is\s+(?:a\s+)?credit\s*score|what\s+is\s+foir|define\s+foir|how\s+is\s+interest\s+calculated)\b/i.test(lowerMsg) &&
+    !targetBank);
 
-  if (isGreeting || isIdentityAsk || isGeneralTechOrEdu || isGeneralFinancialEdu) {
+  if (isGreeting || isIdentityAsk || isGeneralTechOrEdu || isGeneralFinancialEdu || isGenericLoanAssistance.isMatch) {
     return {
-      intent: "GENERAL_QUERY",
+      intent: isGreeting ? "GREETING_OR_SMALL_TALK" : "GENERAL_QUERY",
       confidence: 0.95,
       extractedEntities: extracted,
       reasoning: isGreeting
         ? "Greeting or conversational pleasantry."
         : isIdentityAsk
         ? "Assistant identity or capability inquiry."
+        : isGenericLoanAssistance.isMatch
+        ? `General loan assistance inquiry (${isGenericLoanAssistance.type}).`
         : "General educational or conceptual question handled directly by the LLM without RAG or DB.",
     };
   }
@@ -1676,11 +1725,15 @@ export async function classifyIntelligentIntent(
     !isManagerAsk));
 
   if (isExplicitCompanyQuery && (targetCompany || isCompanyAsk)) {
+    const finalComp = isCompanyCategoryLookupIntent(rawMsg)
+      ? (extractCompanyNameFromCategoryQuery(rawMsg) || targetCompany)
+      : (targetCompany || extractCleanCompanyName(rawMsg) || extractTargetCompanyFromMessage(rawMsg));
+    const safeComp = finalComp && !isCompanyCategoryLookupIntent(finalComp) ? finalComp : undefined;
     return {
       intent: "COMPANY_SEARCH_OR_VERIFICATION",
       confidence: 0.95,
       extractedEntities: extracted,
-      targetCompany: targetCompany || extractCleanCompanyName(rawMsg) || extractTargetCompanyFromMessage(rawMsg),
+      targetCompany: safeComp,
       reasoning: "User is querying company category, verification, or overview from PostgreSQL company tables.",
     };
   }
@@ -1750,8 +1803,10 @@ export async function classifyIntelligentIntent(
     extracted.existingEmi,
   ].filter((v) => v !== undefined && v !== null);
 
+  const isLoanIntroOnly = isGenericLoanAssistance.isMatch && isGenericLoanAssistance.type === "LOAN_INTRO";
+
   const isNaturalLoanIntent =
-    !targetBank && (
+    !targetBank && !isLoanIntroOnly && (
       /(?:i\s*(?:need|want|require|wish|am\s*looking\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(lowerMsg) ||
       /(?:apply\s*(?:for)?\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(lowerMsg) ||
       /(?:can\s*i\s*(?:get|have|avail|take|apply\s*for)\s*(?:a\s*)?(?:personal\s*)?loan)/i.test(lowerMsg) ||

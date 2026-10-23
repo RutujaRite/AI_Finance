@@ -143,31 +143,19 @@ export async function POST(req: NextRequest) {
     const cleanBaseUrl = base_url ? base_url.trim() : null;
     const cleanName = name ? name.trim() : null;
 
-    const client = await pool.connect();
-    try {
-      await client.query(`
-        ALTER TABLE provider_api_keys ADD COLUMN IF NOT EXISTS name TEXT;
-      `);
+    const { saveAndSyncCredential } = await import("@/lib/ai/keyResolution");
+    const result = await saveAndSyncCredential({
+      provider: cleanProvider,
+      apiKey: cleanKey,
+      baseUrl: cleanBaseUrl,
+      name: cleanName,
+    });
 
-      await client.query(
-        `INSERT INTO provider_api_keys (provider, api_key, base_url, name, updated_at)
-         VALUES ($1, $2, $3, $4, NOW())
-         ON CONFLICT (provider) DO UPDATE SET
-           api_key = EXCLUDED.api_key,
-           base_url = COALESCE(EXCLUDED.base_url, provider_api_keys.base_url),
-           name = COALESCE(EXCLUDED.name, provider_api_keys.name),
-           updated_at = NOW()`,
-        [cleanProvider, cleanKey, cleanBaseUrl, cleanName]
-      );
-
-      return NextResponse.json({
-        success: true,
-        message: `API credentials for ${(cleanName || cleanProvider).toUpperCase()} updated successfully.`,
-        maskedKey: maskKey(cleanKey),
-      });
-    } finally {
-      client.release();
-    }
+    return NextResponse.json({
+      success: true,
+      message: `API credentials for ${(cleanName || cleanProvider).toUpperCase()} updated successfully.`,
+      maskedKey: result.maskedKey,
+    });
   } catch (error: any) {
     console.error("[API_PROVIDER_KEYS_POST]", error);
     return NextResponse.json(

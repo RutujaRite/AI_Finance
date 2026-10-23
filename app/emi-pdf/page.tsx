@@ -81,9 +81,9 @@ export default function EmiPdfPage() {
       <nav className="pdf-toolbar no-print">
         <div className="toolbar-container">
           <div className="tb-left">
-            <Link href="/" className="tb-btn tb-btn-back">
+            <Link href="/home?section=assistant" className="tb-btn tb-btn-back">
               <ArrowLeft size={16} />
-              <span>Back to App</span>
+              <span>Back to AI Assistant</span>
             </Link>
 
             <div className="doc-badge">

@@ -37,7 +37,11 @@ export default function HomePage() {
   const [deleteModalConv, setDeleteModalConv] = useState<any | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [clearHistoryModalOpen, setClearHistoryModalOpen] = useState(false)
+<<<<<<< HEAD
   const [isClearingHistory, setIsClearingHistory] = useState(false)
+=======
+  const [isClearingAll, setIsClearingAll] = useState(false)
+>>>>>>> bd31a41 (Update CreditWise AI changes)
   const [messageActions, setMessageActions] = useState<Record<string, { liked: boolean; disliked: boolean }>>({})
   const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -381,15 +385,26 @@ export default function HomePage() {
         credentials: "include",
       })
       if (!res.ok) {
+        let errData: any = null
+        try {
+          errData = await res.json()
+        } catch {}
+        if (errData?.error && (errData.error.includes("OpenRouter") || errData.error.includes("API key") || errData.error.includes("AI Agent Studio"))) {
+          throw new Error(errData.error)
+        }
         if (res.status === 401) {
           router.replace("/?auth=login")
           return
         }
+<<<<<<< HEAD
         let errMsg = `Request failed with status ${res.status}`
         try {
           const errData = await res.json()
           if (errData?.error) errMsg = errData.error
         } catch { }
+=======
+        let errMsg = errData?.error || `Request failed with status ${res.status}`
+>>>>>>> bd31a41 (Update CreditWise AI changes)
         throw new Error(errMsg)
       }
 
@@ -509,7 +524,7 @@ export default function HomePage() {
                   setLoading(false)
                   const interruptedContent =
                     (accumulatedText ? `${accumulatedText}\n\n` : "") +
-                    "⚠️ Response interrupted. Please try again."
+                    (event.error ? `⚠️ ${event.error}` : "⚠️ Response interrupted. Please try again.")
                   if (placeholderCreated) {
                     setMessages((prev) =>
                       prev.map((m) =>
@@ -672,10 +687,14 @@ export default function HomePage() {
         return
       }
       console.error("Send message error:", error)
+      const errorText = error instanceof Error ? error.message : "Please try again."
+      const cleanContent = errorText.includes("OpenRouter API key") || errorText.includes("AI Agent Studio")
+        ? errorText
+        : "Error: " + errorText
       const errorMessage = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
         role: "ai" as const,
-        content: "Error: " + (error instanceof Error ? error.message : "Please try again."),
+        content: cleanContent,
         retry_content: resolvedText,
         timestamp: new Date().toISOString(),
       }
@@ -813,9 +832,15 @@ export default function HomePage() {
     }
   }
 
+<<<<<<< HEAD
   async function confirmClearAllHistory() {
     if (isClearingHistory) return
     setIsClearingHistory(true)
+=======
+  async function handleClearAllHistory() {
+    if (isClearingAll) return
+    setIsClearingAll(true)
+>>>>>>> bd31a41 (Update CreditWise AI changes)
 
     try {
       const res = await fetch("/api/conversations", {
@@ -823,6 +848,7 @@ export default function HomePage() {
         credentials: "include",
       })
       if (!res.ok) {
+<<<<<<< HEAD
         console.error("Failed to delete conversations from server:", res.status)
       }
     } catch (e) {
@@ -838,6 +864,25 @@ export default function HomePage() {
       } catch {}
       setIsClearingHistory(false)
       setClearHistoryModalOpen(false)
+=======
+        console.warn("Server clear all failed, proceeding with local clean")
+      }
+    } catch (e) {
+      console.error("Error clearing all conversations:", e)
+    } finally {
+      setIsClearingAll(false)
+      setClearHistoryModalOpen(false)
+      setConversations([])
+      setMessages([])
+      setActiveConversationId(null)
+      activeConvIdRef.current = null
+      messagesByConvRef.current = {}
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem(STORAGE_KEY)
+        } catch {}
+      }
+>>>>>>> bd31a41 (Update CreditWise AI changes)
       await newConversation()
     }
   }
@@ -2132,7 +2177,10 @@ export default function HomePage() {
                   </div>
                   <div class="top-bank-cta-row">
                     <button type="button" class="btn-select-bank" data-bank-name="${escapeHtml(topBankName)}">
-                      Proceed with ${escapeHtml(topBankName)} <i class="bi bi-arrow-right"></i>
+                      Proceed With This Bank <i class="bi bi-arrow-right"></i>
+                    </button>
+                    <button type="button" class="btn-select-another-bank" data-bank-name="${escapeHtml(topBankName)}">
+                      Select Another Bank
                     </button>
                   </div>
                 </div>
@@ -2173,7 +2221,10 @@ export default function HomePage() {
                         <td class="col-tenure">${escapeHtml(r.tenure)}</td>
                         <td class="col-emi">${escapeHtml(r.emi)}</td>
                         <td class="col-action">
-                          <button type="button" class="btn-table-select-bank" data-bank-name="${escapeHtml(r.bank)}">Select</button>
+                          <div class="table-bank-actions">
+                            <button type="button" class="btn-table-select-bank" data-bank-name="${escapeHtml(r.bank)}">Proceed With This Bank</button>
+                            <button type="button" class="btn-select-another-bank" data-bank-name="${escapeHtml(r.bank)}">Select Another Bank</button>
+                          </div>
                         </td>
                       </tr>
                     `).join("")}
@@ -2854,12 +2905,43 @@ export default function HomePage() {
                 No conversations yet
               </div>
             ) : (
-              groupConversationsBySection(filteredConversations()).map((section) => (
-                <div key={section.key} className="chat-history-section">
-                  <div className="chat-history-section-header">
-                    <span className="chat-history-section-title">{section.title}</span>
-                    <span className="badge">{section.items.length}</span>
+              <>
+                <div className="chat-history-global-header">
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span className="chat-history-global-title">Chat History</span>
+                    <span className="badge">{filteredConversations().length}</span>
                   </div>
+                  <button
+                    type="button"
+                    className="chat-history-clear-all-btn"
+                    id="chatHistorySectionClearAllBtn"
+                    onClick={() => setClearHistoryModalOpen(true)}
+                    title="Clear all chat history"
+                  >
+                    <i className="bi bi-trash3" />
+                    <span>Clear All</span>
+                  </button>
+                </div>
+                {groupConversationsBySection(filteredConversations()).map((section) => (
+                  <div key={section.key} className="chat-history-section">
+                    <div className="chat-history-section-header">
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="chat-history-section-title">{section.title}</span>
+                        <span className="badge">{section.items.length}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="chat-history-clear-all-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setClearHistoryModalOpen(true)
+                        }}
+                        title="Clear all chat history"
+                      >
+                        <i className="bi bi-trash3" />
+                        <span>Clear All</span>
+                      </button>
+                    </div>
                   {section.items.map((conversation) => {
                     const convIdStr = String(conversation.id)
                     const isEditing = editingConvId === convIdStr
@@ -3006,7 +3088,8 @@ export default function HomePage() {
                     )
                   })}
                 </div>
-              ))
+              ))}
+              </>
             )}
           </div>
           <div className="chat-sidebar-footer">
@@ -3071,6 +3154,10 @@ export default function HomePage() {
                 if (bankName) {
                   sendMessage(`I would like to proceed with ${bankName} for my loan application. What are the next steps?`)
                 }
+              }
+              const anotherBankBtn = target.closest(".btn-select-another-bank") as HTMLElement | null
+              if (anotherBankBtn) {
+                sendMessage(`I want to select another bank`)
               }
               const recalcBtn = target.closest(".btn-recalculate-chip") as HTMLElement | null
               if (recalcBtn) {
@@ -3381,9 +3468,13 @@ export default function HomePage() {
         <div
           className="modal-backdrop"
           style={{ zIndex: 9999 }}
+<<<<<<< HEAD
           onClick={() => {
             if (!isClearingHistory) setClearHistoryModalOpen(false)
           }}
+=======
+          onClick={() => !isClearingAll && setClearHistoryModalOpen(false)}
+>>>>>>> bd31a41 (Update CreditWise AI changes)
         >
           <div
             className="modal-content"
@@ -3397,16 +3488,26 @@ export default function HomePage() {
               </h5>
               <button
                 type="button"
+<<<<<<< HEAD
                 disabled={isClearingHistory}
                 onClick={() => setClearHistoryModalOpen(false)}
                 style={{ background: "none", border: "none", cursor: isClearingHistory ? "not-allowed" : "pointer", color: "var(--ink-muted)", fontSize: "1.1rem", padding: 0 }}
+=======
+                onClick={() => !isClearingAll && setClearHistoryModalOpen(false)}
+                style={{ background: "none", border: "none", cursor: isClearingAll ? "not-allowed" : "pointer", color: "var(--ink-muted)", fontSize: "1.1rem", padding: 0 }}
+>>>>>>> bd31a41 (Update CreditWise AI changes)
                 aria-label="Close"
+                disabled={isClearingAll}
               >
                 <i className="bi bi-x-lg" />
               </button>
             </div>
             <div className="modal-body" style={{ color: "var(--ink-soft)", fontSize: "0.875rem", lineHeight: 1.5 }}>
+<<<<<<< HEAD
               All your conversations and message history will be permanently deleted from the database. This action cannot be undone.
+=======
+              All your conversations and messages will be permanently cleared from this device and account.
+>>>>>>> bd31a41 (Update CreditWise AI changes)
             </div>
             <div className="modal-footer" style={{ borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
               <button
@@ -3414,11 +3515,16 @@ export default function HomePage() {
                 className="btn btn-outline-secondary"
                 disabled={isClearingHistory}
                 onClick={() => setClearHistoryModalOpen(false)}
+                disabled={isClearingAll}
                 style={{
                   padding: "0.4rem 0.85rem",
                   fontSize: "0.8125rem",
                   borderRadius: "var(--radius-md)",
+<<<<<<< HEAD
                   cursor: isClearingHistory ? "not-allowed" : "pointer",
+=======
+                  cursor: isClearingAll ? "not-allowed" : "pointer",
+>>>>>>> bd31a41 (Update CreditWise AI changes)
                 }}
               >
                 Cancel
@@ -3426,8 +3532,13 @@ export default function HomePage() {
               <button
                 type="button"
                 className="btn btn-danger"
+<<<<<<< HEAD
                 disabled={isClearingHistory}
                 onClick={confirmClearAllHistory}
+=======
+                onClick={handleClearAllHistory}
+                disabled={isClearingAll}
+>>>>>>> bd31a41 (Update CreditWise AI changes)
                 style={{
                   padding: "0.4rem 0.85rem",
                   fontSize: "0.8125rem",
@@ -3435,6 +3546,7 @@ export default function HomePage() {
                   background: "var(--danger, #dc2626)",
                   color: "#ffffff",
                   border: "none",
+<<<<<<< HEAD
                   cursor: isClearingHistory ? "not-allowed" : "pointer",
                   display: "inline-flex",
                   alignItems: "center",
@@ -3450,6 +3562,23 @@ export default function HomePage() {
                   <>
                     <i className="bi bi-trash3-fill" />
                     <span>Clear All History</span>
+=======
+                  cursor: isClearingAll ? "not-allowed" : "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                  opacity: isClearingAll ? 0.7 : 1,
+                }}
+              >
+                {isClearingAll ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm" role="status" style={{ width: "12px", height: "12px", borderWidth: "2px" }} />
+                    Clearing...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-trash3" /> Clear All
+>>>>>>> bd31a41 (Update CreditWise AI changes)
                   </>
                 )}
               </button>

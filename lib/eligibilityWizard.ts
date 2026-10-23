@@ -359,7 +359,9 @@ export async function processEligibilityFlow(
           [
             numConvId,
             {
-              in_eligibility_flow: true,
+              in_eligibility_flow: false,
+              hasCompletedEvaluation: true,
+              evaluationCompleted: true,
               expected_field: "chosenBank",
               eligible_banks: eligibleBankNames,
               applicant: dynamicOutput.applicant,
@@ -375,7 +377,9 @@ export async function processEligibilityFlow(
       applicant: dynamicOutput.applicant,
       expectedField: "chosenBank",
       updatedAt: Date.now(),
-      in_eligibility_flow: true,
+      in_eligibility_flow: false,
+      hasCompletedEvaluation: true,
+      evaluationCompleted: true,
       eligible_banks: eligibleBankNames,
     } as any);
 

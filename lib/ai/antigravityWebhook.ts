@@ -1,9 +1,24 @@
-import { evaluateApplicantAgainstAllBanks, BankEvaluationResult, isInvalidCompanyName, isLocationInput, detectFieldPromptedInAssistantMessage, isPersonalNameOrIntroduction, UNEMPLOYED_REGEX, detectCompanyDisavowal } from "@/lib/dynamicEligibilityEngine";
+import {
+  evaluateApplicantAgainstAllBanks,
+  BankEvaluationResult,
+  ApplicantProfile,
+  isInvalidCompanyName,
+  isSentenceOrInvalidEmployer,
+  sanitizeSessionVariables,
+  isLocationInput,
+  detectFieldPromptedInAssistantMessage,
+  isPersonalNameOrIntroduction,
+  UNEMPLOYED_REGEX,
+  detectCompanyDisavowal,
+} from "@/lib/dynamicEligibilityEngine";
 import pool from "@/lib/db";
 
 export interface SessionVariables {
-  employer?: string;
-  Employer_Name?: string;
+  employer?: string | null;
+  Employer_Name?: string | null;
+  employer_name?: string | null;
+  employment_type?: string;
+  employmentType?: string;
   requestedAmount?: number;
   Requested_Loan_Amount?: number;
   tenureMonths?: number;
@@ -274,6 +289,7 @@ export function normalizeAge(input: any): number | undefined {
 export function normalizeEmployer(input: any): string | undefined {
   if (!input || typeof input !== "string") return undefined;
   let str = input.trim();
+  if (isSentenceOrInvalidEmployer(str)) return undefined;
   // Strip conversational prefix e.g. "I work at Infosys", "My working company is TCS"
   str = str.replace(
     /^(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*)|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for))|(?:(?:my\s+)?(?:company|employer)\s+is)|(?:(?:i\s*am|i'?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by))|(?:employer\s*[:=-]|company\s*[:=-]|at\s+|in\s+))\s*/i,
@@ -285,6 +301,7 @@ export function normalizeEmployer(input: any): string | undefined {
   str = str.replace(/[."']+$/g, "").trim();
   if (
     str.length >= 2 &&
+    !isSentenceOrInvalidEmployer(str) &&
     !/^(?:yes|no|hi|hello|hey|loan|ok|okay)$/i.test(str) &&
     !/^(?:what|how|why|when|where|who|explain|tell|can\s*you|meaning|definition)\b/i.test(str) &&
     !/\?$/.test(str)
@@ -304,7 +321,15 @@ export function extractEntitiesFromRawText(text: string, lastPromptedSlot?: stri
 
   const cleanTrimmed = text.trim();
 
-  // Dedicated check for Zero EMI declarations
+  // If user explicitly mentions being unemployed or having no job:
+  if (UNEMPLOYED_REGEX.test(cleanTrimmed)) {
+    entities.employment_type = "Unemployed";
+    entities.employmentType = "Unemployed";
+    entities.monthlyIncome = 0;
+    entities.employer = null as any;
+    entities.employer_name = null as any;
+    delete entities.Employer_Name;
+  }
   if (
     /^(?:0\s*(?:rs|inr|₹)?|rs\.?\s*0|zero|none|nil|nothing|nope|na|n\/a|no)\b/i.test(cleanTrimmed) ||
     /(?:no|zero|nil|0)\s*(?:existing\s*)?(?:monthly\s*)?(?:loan\s*)?emi/i.test(cleanTrimmed) ||
@@ -432,29 +457,24 @@ export function extractEntitiesFromRawText(text: string, lastPromptedSlot?: stri
   }
 
   // 7. Employer
-  const empMatch = text.match(/(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*)|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for))|(?:(?:my\s+)?(?:company|employer)\s+is)|(?:(?:i\s*am|i'?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)))\s+([A-Za-z0-9&'.-]+(?:\s+[A-Za-z0-9&'.-]+)*)/i);
-  if (empMatch) {
-    const emp = normalizeEmployer(empMatch[1]);
-    if (emp && !isInvalidCompanyName(emp)) entities.employer = emp;
-  } else if (
-    !entities.requestedAmount &&
-    !entities.tenureMonths &&
-    !entities.cibilScore &&
-    !entities.age &&
-    !entities.monthlyIncome &&
-    !entities.existingEmi
-  ) {
-    const clean = text.trim();
-    if (
-      clean.length >= 2 &&
-      clean.length <= 80 &&
-      !isInvalidCompanyName(clean) &&
-      !/^\d+$/.test(clean) &&
-      !/^(?:what|how|why|when|where|who|explain|tell|can\s*you|meaning|definition)\b/i.test(clean) &&
-      !/\?$/.test(clean)
-    ) {
-      const emp = normalizeEmployer(clean);
-      if (emp && !isInvalidCompanyName(emp)) entities.employer = emp;
+  if (!UNEMPLOYED_REGEX.test(cleanTrimmed) && !isPersonalNameOrIntroduction(cleanTrimmed)) {
+    const empMatch = text.match(/(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:my\s+)?(?:company|employer|organization|org)(?:\s*name)?\s*[:=-]\s*)|(?:work\s+(?:at|in|with|for)|works\s+(?:at|in|with|for)|working\s+(?:at|in|with|for)|employed\s+(?:at|by|in|with|for))|(?:(?:my\s+)?(?:company|employer)\s+is)|(?:(?:i\s*am|i'?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)))\s+([A-Za-z0-9&'.-]+(?:\s+[A-Za-z0-9&'.-]+)*)/i);
+    if (empMatch) {
+      const emp = normalizeEmployer(empMatch[1]);
+      if (emp && !isSentenceOrInvalidEmployer(emp)) entities.employer = emp;
+    } else if (lastPromptedSlot === "employer" || lastPromptedSlot === "company") {
+      const clean = text.trim();
+      if (
+        clean.length >= 2 &&
+        clean.length <= 80 &&
+        !isSentenceOrInvalidEmployer(clean) &&
+        !/^\d+$/.test(clean) &&
+        !/^(?:what|how|why|when|where|who|explain|tell|can\s*you|meaning|definition)\b/i.test(clean) &&
+        !/\?$/.test(clean)
+      ) {
+        const emp = normalizeEmployer(clean);
+        if (emp && !isSentenceOrInvalidEmployer(emp)) entities.employer = emp;
+      }
     }
   }
 
@@ -486,8 +506,11 @@ export function extractParametersFromConversationHistory(
         delete result.Employer_Name;
       }
       if (UNEMPLOYED_REGEX.test(text)) {
-        delete result.employer;
-        delete result.Employer_Name;
+        result.employment_type = "Unemployed";
+        result.employmentType = "Unemployed";
+        result.employer = null as any;
+        result.Employer_Name = null as any;
+        result.employer_name = null as any;
         result.monthlyIncome = 0;
       }
       const promptedField = lastAssistantMsg ? detectFieldPromptedInAssistantMessage(lastAssistantMsg) : undefined;
@@ -602,10 +625,8 @@ export function extractParametersFromConversationHistory(
           const emp = normalizeEmployer(empMatch[1]);
           if (
             emp &&
-            !isInvalidCompanyName(emp) &&
+            !isSentenceOrInvalidEmployer(emp) &&
             !isLocationInput(emp) &&
-            !isPersonalNameOrIntroduction(emp) &&
-            !UNEMPLOYED_REGEX.test(emp) &&
             !/^(?:a\s+home|home|open\s*market|unknown|not\s*provided|unlisted)$/i.test(emp.trim())
           ) {
             result.employer = emp;
@@ -899,6 +920,17 @@ export async function processAntigravityWebhook(
   let rawEntities: ExtractedEntities = {};
   // If raw user text was provided, freshly extracted entities take priority
   if (payload.userMessage) {
+    if (UNEMPLOYED_REGEX.test(payload.userMessage)) {
+      currentSession.employment_type = "Unemployed";
+      currentSession.employmentType = "Unemployed";
+      currentSession.monthlyIncome = 0;
+      currentSession.employer = null as any;
+      currentSession.Employer_Name = null as any;
+      currentSession.employer_name = null as any;
+      delete currentSession.awaitingEmployerConfirmation;
+      delete currentSession.employerConfirmationQuery;
+      delete currentSession.employerConfirmationOptions;
+    }
     rawEntities = extractEntitiesFromRawText(payload.userMessage, currentSession.lastPromptedSlot);
     for (const [k, v] of Object.entries(rawEntities)) {
       if (v !== undefined) {
@@ -906,6 +938,9 @@ export async function processAntigravityWebhook(
       }
     }
   }
+
+  // Pre-sanitize session variables
+  Object.assign(currentSession, sanitizeSessionVariables(currentSession));
 
   // =========================================================================
   // COMPANY LOOKUP & CATEGORIZATION INTERRUPT (STRICT PROTOCOL)
@@ -1144,8 +1179,8 @@ export async function processAntigravityWebhook(
     /\b(?:salary|income|take\s*home|in\s*hand|net\s*pay|cibil|tenure|age|emi|years?\s*old|lakhs?|lacs?|thousand|crores?)\b/i.test(userText) ||
     /^(?:rs\.?|inr|₹)?\s*[0-9]+(?:\.[0-9]+)?\s*(?:k|lakhs?|lacs?|lac|l|crores?|cr|thousand|hazar)?$/i.test(userText);
   const isReplyingToEmployerSlot =
-    currentSession.lastPromptedSlot === "employer" &&
-    !isInvalidCompanyName(userText) &&
+    (currentSession.lastPromptedSlot === "employer" || currentSession.lastPromptedSlot === "company") &&
+    !isSentenceOrInvalidEmployer(userText) &&
     !hasFinancialOrProfileKeywords &&
     !/^\s*(?:0|none|nil|no|yes|hi|hello|hey|ok|okay)\s*$/i.test(userText) &&
     !/^\s*[0-9,.\s₹rs]+\s*$/i.test(userText);
@@ -1165,7 +1200,7 @@ export async function processAntigravityWebhook(
       userText.replace(explicitCompanyRegex, "").trim();
     empQuery = empQuery.replace(/^[,"':\s]+|[,"':\s]+$/g, "").trim();
 
-    if (empQuery && !isInvalidCompanyName(empQuery)) {
+    if (empQuery && !isSentenceOrInvalidEmployer(empQuery)) {
       const options = await searchEmployerMatchingOptions(empQuery);
       const form = renderMatchingOptionsForm(empQuery, options);
 
@@ -1396,15 +1431,15 @@ export async function processAntigravityWebhook(
     (monthlyRate * Math.pow(1 + monthlyRate, tenureMonths))
   );
 
-  const applicant = {
-    companyName: currentSession.employer,
+  const applicant: ApplicantProfile = {
+    companyName: currentSession.employer || undefined,
     loanAmount: actualRequestedAmount,
     tenureMonths: currentSession.tenureMonths,
     cibil: effectiveCibil,
     age: currentSession.age || 30,
     monthlyIncome: actualMonthlyIncome,
     loanType: "Personal Loan",
-    employmentType: "Salaried",
+    employmentType: currentSession.employmentType || currentSession.employment_type || "Salaried",
   };
 
   const evalOutput = await evaluateApplicantAgainstAllBanks(applicant, "Personal Loan");

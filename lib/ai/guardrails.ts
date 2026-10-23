@@ -214,7 +214,15 @@ export function getSpecialProfileGuidance(employmentType: string): string {
       return `### 🏡 Homemaker Profile Notice\n\nPartner bank personal loan policies require independent proof of verifiable monthly income (salary credits or business ITR).\n\n**Recommended Alternatives:**\n1. **Co-Applicant**: Apply jointly with an earning spouse or family member.\n2. **Secured Credit**: Inquire about Gold Loans or Loans Against Property (LAP) which offer flexible income criteria.`;
 
     case "Unemployed":
-      return `### 💼 Employment Requirement Notice\n\nAll 23 partner lenders require a regular monthly income (typically minimum ₹15,000/month) for personal loan approval.\n\nOnce you secure new employment and receive your first salary credit, our underwriting engine will be delighted to evaluate your eligibility across all partner banks.`;
+      return `### 💼 Unemployed / Alternate Income Pathways
+
+While standard unsecured personal loans require verifiable monthly salary credits, we can explore alternate lending pathways tailored for you:
+
+* **a) Alternative Income Verification:** Check if you receive verifiable rental income, dividends, or regular pension credits.
+* **b) Secured / Collateralized Loans:** **Gold Loans**, **Loans Against Fixed Deposits (LAFD)**, or **Loans Against Securities** do not require corporate employment slips.
+* **c) Joint Application / Co-Applicant:** Applying jointly with an earning family member (spouse/parents) allows joint approval.
+
+Which option would you prefer to explore?`;
 
     case "Retired":
       return `### 🪙 Retired / Pensioner Profile Notice\n\nRetired applicants are evaluated basis regular monthly pension credits and maximum age limits (typically up to 65–70 years at loan maturity).\n\nBanks such as SBI, PNB, and select partner lenders offer dedicated Pensioner Personal Loan programs.`;

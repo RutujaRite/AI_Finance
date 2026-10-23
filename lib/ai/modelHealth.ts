@@ -66,6 +66,8 @@ export async function testOpenRouterKey(
     const authRes = await fetch("https://openrouter.ai/api/v1/auth/key", {
       headers: {
         Authorization: `Bearer ${cleanKey}`,
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        "X-Title": "CreditWise AI",
       },
     });
 
@@ -74,10 +76,10 @@ export async function testOpenRouterKey(
         model_name: modelName,
         provider: "OpenRouter",
         is_operational: false,
-        status: "expired",
+        status: "invalid_key",
         http_status: 401,
-        message: "OpenRouter API Key has expired or is invalid (HTTP 401: Unauthorized).",
-        remedy: "Generate a new API key at https://openrouter.ai/keys and update it in your configuration.",
+        message: "The saved OpenRouter API key is invalid or revoked. Please update your API key in AI Agent Studio Settings.",
+        remedy: "Please update your API key in AI Agent Studio Settings.",
         checked_at: new Date().toISOString(),
       };
     }
@@ -118,8 +120,8 @@ export async function testOpenRouterKey(
       headers: {
         Authorization: `Bearer ${cleanKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001",
-        "X-Title": "CreditWise Health Check",
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        "X-Title": "CreditWise AI",
       },
       body: JSON.stringify({
         model: modelName,

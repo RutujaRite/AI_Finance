@@ -13,6 +13,7 @@
 import {
   generateLangChainChatStream,
   generateLangChainChatResponse,
+  generateLangChainChatResponseWithMetadata,
   normalizeModelSlug,
   stripReasoningPreamble,
   createLangChainChatModel,
@@ -23,12 +24,13 @@ import {
 export {
   generateLangChainChatStream,
   generateLangChainChatResponse,
+  generateLangChainChatResponseWithMetadata,
   normalizeModelSlug,
   stripReasoningPreamble,
   createLangChainChatModel,
 };
 
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free";
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openrouter/auto";
 
 export interface OpenRouterMessage {
   role: "system" | "user" | "assistant" | "tool";
@@ -48,7 +50,7 @@ export interface OpenRouterTool {
 }
 
 /**
- * Executes chat completion via LangChain LCEL, returning an OpenAI-compatible choices response.
+ * Executes chat completion via LangChain LCEL, returning an OpenAI-compatible choices response with usage.
  */
 export async function openRouterChat(
   messages: OpenRouterMessage[],
@@ -56,7 +58,7 @@ export async function openRouterChat(
   model?: string,
   options?: { signal?: AbortSignal; timeoutMs?: number; max_tokens?: number }
 ): Promise<any> {
-  const content = await generateLangChainChatResponse(
+  const result = await generateLangChainChatResponseWithMetadata(
     messages as ChatMessageInput[],
     {
       model,
@@ -73,11 +75,12 @@ export async function openRouterChat(
       {
         message: {
           role: "assistant",
-          content,
+          content: result.content,
         },
         finish_reason: "stop",
       },
     ],
+    usage: result.usage,
   };
 }
 

@@ -309,6 +309,15 @@ export async function PATCH(req: NextRequest) {
 
     // Update process environment runtime
     process.env.OPENROUTER_MODEL = model_identifier;
+    if (custom_api_key && custom_api_key.trim().length > 0) {
+      const { saveAndSyncCredential } = await import("@/lib/ai/keyResolution");
+      await saveAndSyncCredential({
+        provider: "openrouter",
+        apiKey: custom_api_key,
+        baseUrl: "https://openrouter.ai/api/v1",
+        name: "OpenRouter",
+      });
+    }
     invalidateModelCache();
 
     return NextResponse.json({

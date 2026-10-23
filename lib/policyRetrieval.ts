@@ -11,6 +11,7 @@ import * as path from "path";
 import { BaseRetriever, type BaseRetrieverInput } from "@langchain/core/retrievers";
 import { Document } from "@langchain/core/documents";
 import type { CallbackManagerForRetrieverRun } from "@langchain/core/callbacks/manager";
+import { resolvePolicyTarget } from "./policyRag";
 
 // Ensure environment variables are loaded
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
@@ -20,6 +21,7 @@ export interface SearchPolicyEmbeddingsOptions {
   query: string;
   policyFileId?: number;
   bankId?: number;
+  loanCategory?: "PERSONAL_LOAN" | "HOME_LOAN" | "ALL";
   topK?: number;
 }
 
@@ -35,10 +37,19 @@ export interface PolicySearchResult {
   metadata: Record<string, any>;
 }
 
+// In-memory cache for query embeddings to deduplicate identical calls within the same turn/session (60s TTL)
+const queryEmbeddingCache = new Map<string, { embedding: number[]; expiresAt: number }>();
+
 /**
- * Generate 1536-dimensional query embedding via OpenRouter API with retry support.
+ * Generate 1536-dimensional query embedding via OpenRouter API with retry support and in-memory deduplication.
  */
 export async function generateQueryEmbedding(query: string): Promise<number[]> {
+  const normalizedQuery = (query || "").trim().toLowerCase();
+  const cached = queryEmbeddingCache.get(normalizedQuery);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.embedding;
+  }
+
   const apiKey = process.env.OPENROUTER_API_KEY;
   const model = process.env.EMBEDDING_MODEL || "google/gemini-embedding-2";
   const dimensions = Number(process.env.EMBEDDING_DIMENSIONS) || 1536;
@@ -95,6 +106,12 @@ export async function generateQueryEmbedding(query: string): Promise<number[]> {
           `Dimension mismatch: expected ${dimensions}, but received ${vector.length}`
         );
       }
+
+      // Cache for 60 seconds (deduplicates parallel/consecutive calls in same turn)
+      queryEmbeddingCache.set(normalizedQuery, {
+        embedding: vector,
+        expiresAt: Date.now() + 60000,
+      });
 
       return vector;
     } catch (err: any) {
@@ -178,6 +195,13 @@ export function rewritePolicyQuery(rawQuery: string): QueryRewriteResult {
     targetDomain = targetDomain ? "Multi_Domain" : "FOIR_Obligations";
   }
 
+  // Broad / Overview Policy Queries: If no specific single domain was matched, expand with core policy taxonomy
+  if (additions.length === 0) {
+    additions.push("Eligibility Criteria Minimum CIBIL Score Net Take Home Salary NTH Age Limits FOIR Norms Loan Parameters Mandatory Documents Rejection Rules");
+    highSignalTerms.push("eligibility", "criteria", "cibil", "salary", "nth", "age", "foir", "documents");
+    targetDomain = "General_Policy";
+  }
+
   // Extract residual high-signal tokens
   const extractedWords = q
     .replace(/[^a-z0-9\s]/g, " ")
@@ -209,11 +233,20 @@ export function rewritePolicyQuery(rawQuery: string): QueryRewriteResult {
 async function searchPolicyEmbeddingsInternal(
   options: SearchPolicyEmbeddingsOptions
 ): Promise<PolicySearchResult[]> {
-  const { query, policyFileId, bankId, topK = 5 } = options;
+  let { query, policyFileId, bankId, topK = 5 } = options;
   const targetK = Math.max(topK ?? 5, 4);
 
   if (!query || typeof query !== "string" || !query.trim()) {
     throw new Error("A non-empty query string is required for semantic search");
+  }
+
+  // Strict SQL Parameterized Filtering: Resolve lender target from query if not explicitly passed
+  if (!policyFileId && !bankId) {
+    const target = await resolvePolicyTarget(query);
+    if (target) {
+      policyFileId = target.policyFileId;
+      bankId = target.bankId;
+    }
   }
 
   // 1. Lightweight Query Rewriting
@@ -264,6 +297,18 @@ async function searchPolicyEmbeddingsInternal(
         params.push(bankId);
         conditions.push(`bank_id = $${params.length}`);
       }
+
+      // Strict Loan Product Isolation
+      if (options.loanCategory === "HOME_LOAN") {
+        conditions.push("(file_name ILIKE '%home_loan%' OR bank_id = 19 OR loan_category = 'HOME_LOAN')");
+      } else if (options.loanCategory === "PERSONAL_LOAN" || !options.loanCategory) {
+        if (bankId !== 19) {
+          conditions.push("(file_name NOT ILIKE '%home_loan%' AND bank_id != 19 AND (loan_category = 'PERSONAL_LOAN' OR loan_category IS NULL))");
+        }
+      }
+
+      // Strict Demo Document Exclusion
+      conditions.push("(file_name NOT ILIKE '%demo%' AND file_name NOT ILIKE '%sample%')");
 
       params.push(25); // Dense candidate pool (increased for higher recall and similarity)
       const limitParamIndex = params.length;
@@ -319,6 +364,18 @@ async function searchPolicyEmbeddingsInternal(
         kParams.push(bankId);
         kConditions.push(`bank_id = $${kParams.length}`);
       }
+
+      // Strict Loan Product Isolation in sparse search
+      if (options.loanCategory === "HOME_LOAN") {
+        kConditions.push("(file_name ILIKE '%home_loan%' OR bank_id = 19 OR loan_category = 'HOME_LOAN')");
+      } else if (options.loanCategory === "PERSONAL_LOAN" || !options.loanCategory) {
+        if (bankId !== 19) {
+          kConditions.push("(file_name NOT ILIKE '%home_loan%' AND bank_id != 19 AND (loan_category = 'PERSONAL_LOAN' OR loan_category IS NULL))");
+        }
+      }
+
+      // Strict Demo Document Exclusion
+      kConditions.push("(file_name NOT ILIKE '%demo%' AND file_name NOT ILIKE '%sample%')");
 
       const orClauses = rewrite.highSignalTerms.map((t) => {
         kParams.push(`%${t}%`);
@@ -453,6 +510,7 @@ export interface PolicyRetrieverInput extends BaseRetrieverInput {
   bankName?: string;
   bankCode?: string;
   fileName?: string;
+  loanCategory?: "PERSONAL_LOAN" | "HOME_LOAN" | "ALL";
   topK?: number;
 }
 
@@ -467,6 +525,7 @@ export class PolicyPgVectorRetriever extends BaseRetriever {
   bankName?: string;
   bankCode?: string;
   fileName?: string;
+  loanCategory?: "PERSONAL_LOAN" | "HOME_LOAN" | "ALL";
   topK: number;
 
   constructor(fields?: PolicyRetrieverInput) {
@@ -476,6 +535,7 @@ export class PolicyPgVectorRetriever extends BaseRetriever {
     this.bankName = fields?.bankName;
     this.bankCode = fields?.bankCode;
     this.fileName = fields?.fileName;
+    this.loanCategory = fields?.loanCategory;
     this.topK = Math.max(fields?.topK ?? 6, 6);
   }
 
@@ -483,18 +543,26 @@ export class PolicyPgVectorRetriever extends BaseRetriever {
     query: string,
     _runManager?: CallbackManagerForRetrieverRun
   ): Promise<Document[]> {
-    // Constraint check: Refuse unconstrained retrieval across all banks
     if (!this.policyFileId && !this.bankId) {
-      console.warn(
-        "[PolicyPgVectorRetriever] Invoked without policyFileId or bankId constraint. Refusing unconstrained retrieval."
-      );
-      return [];
+      const target = this.bankName ? await resolvePolicyTarget(this.bankName) : await resolvePolicyTarget(query);
+      if (target) {
+        this.bankId = target.bankId;
+        this.policyFileId = target.policyFileId;
+        this.bankName = target.bankName;
+        this.fileName = target.fileName;
+      } else {
+        console.warn(
+          "[PolicyPgVectorRetriever] Invoked without policyFileId or bankId constraint. Refusing unconstrained retrieval."
+        );
+        return [];
+      }
     }
 
     const results = await searchPolicyEmbeddingsInternal({
       query,
       policyFileId: this.policyFileId,
       bankId: this.bankId,
+      loanCategory: this.loanCategory,
       topK: this.topK,
     });
 

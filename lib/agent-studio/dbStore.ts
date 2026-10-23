@@ -31,14 +31,21 @@ export async function syncAgentToDb(agent: Agent, userId?: number): Promise<void
   const client = await pool.connect();
   try {
     const effectiveUserId = agent.userId !== undefined ? agent.userId : (userId !== undefined ? userId : null);
+    const appliedToAssistant = agent.appliedToAssistant !== undefined
+      ? agent.appliedToAssistant
+      : (agent.status === "active" && agent.modes?.conversations !== false);
+    const supportedTopicsJson = JSON.stringify(agent.supportedTopics || []);
+    const configVer = agent.configVersion || 1;
+
     await client.query(
       `INSERT INTO agents (
         id, name, description, status, response_style, modes,
         operational_mode, goal, guardrail_templates, manual_guardrails,
         general_instructions, allow_general_knowledge, global_guardrails,
-        welcome_message, capabilities, qualification, usage, user_id, updated_at
+        welcome_message, capabilities, qualification, usage, user_id,
+        applied_to_assistant, supported_topics, config_version, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, NOW())
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
         description = EXCLUDED.description,
@@ -57,6 +64,9 @@ export async function syncAgentToDb(agent: Agent, userId?: number): Promise<void
         qualification = EXCLUDED.qualification,
         usage = EXCLUDED.usage,
         user_id = COALESCE(EXCLUDED.user_id, agents.user_id),
+        applied_to_assistant = EXCLUDED.applied_to_assistant,
+        supported_topics = EXCLUDED.supported_topics,
+        config_version = COALESCE(agents.config_version, 1) + 1,
         updated_at = NOW()`,
       [
         agent.id,
@@ -101,6 +111,9 @@ export async function syncAgentToDb(agent: Agent, userId?: number): Promise<void
         JSON.stringify(agent.qualification || {}),
         JSON.stringify(agent.usage || {}),
         effectiveUserId,
+        appliedToAssistant,
+        supportedTopicsJson,
+        configVer,
       ]
     );
   } catch (err) {
@@ -122,10 +135,18 @@ function mapRowToAgent(row: any): Agent {
     generalInst.customRules ||
     "For bank-specific values (minimum salary, cut-off CIBIL scores, LTV ratios, interest rates), rely strictly on verified knowledge base files. For general financial definitions or industry acronyms (e.g., FOIR, LTV, CIBIL, EMI), provide clear standard financial definitions while noting that exact percentage thresholds depend on individual lender policy.";
 
+  const isApplied = row.applied_to_assistant === true || (row.status === "active" && (typeof row.modes === "object" ? row.modes?.conversations : JSON.parse(row.modes || "{}")?.conversations) !== false);
+  const topics = Array.isArray(row.supported_topics)
+    ? row.supported_topics
+    : (typeof row.supported_topics === "string" ? JSON.parse(row.supported_topics) : []);
+
   return {
     id: row.id,
     userId: row.user_id !== null && row.user_id !== undefined ? Number(row.user_id) : undefined,
     isActiveForUser: row.is_active_for_user === true || row.status === "active",
+    appliedToAssistant: isApplied,
+    supportedTopics: topics,
+    configVersion: row.config_version ? Number(row.config_version) : 1,
     name: row.name,
     description: row.description || "",
     status: (row.status === "active" ? "active" : "draft") as any,
@@ -165,6 +186,7 @@ function mapRowToAgent(row: any): Agent {
     qualification: typeof row.qualification === "string" ? JSON.parse(row.qualification) : (row.qualification || { leadFields: [], documentCollection: [], dataCollectionNotes: "" }),
     knowledge: [],
     capabilities: typeof row.capabilities === "string" ? JSON.parse(row.capabilities) : (row.capabilities || { answer_questions: true, search_knowledge: true, calculate_emi: true, check_eligibility: true, create_lead: true }),
+    type: (row.operational_mode === "rag_focused" || (row.capabilities && (typeof row.capabilities === "object" ? row.capabilities.search_knowledge : (typeof row.capabilities === "string" ? JSON.parse(row.capabilities)?.search_knowledge : false)))) ? "knowledge" : undefined,
     usage: typeof row.usage === "string" ? JSON.parse(row.usage) : (row.usage || { messagesUsed: 0, maxMessages: 50, knowledgeTokens: 0 }),
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
     updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
@@ -315,7 +337,44 @@ export async function getUserActiveAgent(userId?: number): Promise<Agent | null>
 }
 
 /**
- * Sets an agent as active specifically for an authenticated user.
+ * Loads all active and applied agents for a user (or shared system agents).
+ * An agent is applied when status = 'active' and (applied_to_assistant = true or modes.conversations = true).
+ */
+export async function getAppliedAgentsFromDb(userId?: number): Promise<Agent[]> {
+  await ensureDb();
+  const client = await pool.connect();
+  try {
+    let query = `
+      SELECT DISTINCT a.*,
+        COALESCE((SELECT COUNT(*) FROM knowledge_documents WHERE agent_id = a.id), 0) as doc_count,
+        true as is_active_for_user
+      FROM agents a
+      LEFT JOIN user_active_agents uaa ON uaa.agent_id = a.id
+      WHERE a.status = 'active'
+        AND (a.applied_to_assistant = true OR (a.modes->>'conversations')::boolean = true)
+    `;
+    let params: any[] = [];
+    if (userId !== undefined && userId !== null) {
+      query += ` AND (a.user_id = $1 OR a.user_id IS NULL OR uaa.user_id = $1)`;
+      params.push(userId);
+    }
+    query += ` ORDER BY a.updated_at DESC`;
+    const res = await client.query(query, params);
+    return res.rows.map((row: any) => {
+      const agent = mapRowToAgent(row);
+      agent.documentCount = Number(row.doc_count || 0);
+      return agent;
+    });
+  } catch (err) {
+    console.error("[GET_APPLIED_AGENTS_ERROR]", err);
+    return [];
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Sets an agent as active and applied specifically for an authenticated user.
  */
 export async function setUserActiveAgent(userId: number, agentId: string): Promise<boolean> {
   await ensureDb();
@@ -324,8 +383,12 @@ export async function setUserActiveAgent(userId: number, agentId: string): Promi
     await client.query(
       `INSERT INTO user_active_agents (user_id, agent_id, updated_at)
        VALUES ($1, $2, NOW())
-       ON CONFLICT (user_id) DO UPDATE SET agent_id = EXCLUDED.agent_id, updated_at = NOW()`,
+       ON CONFLICT (user_id, agent_id) DO UPDATE SET updated_at = NOW()`,
       [userId, agentId]
+    );
+    await client.query(
+      `UPDATE agents SET status = 'active', applied_to_assistant = true, updated_at = NOW() WHERE id = $1`,
+      [agentId]
     );
     return true;
   } catch (err) {
@@ -337,13 +400,21 @@ export async function setUserActiveAgent(userId: number, agentId: string): Promi
 }
 
 /**
- * Clears active agent preference for a user (reverts to default assistant).
+ * Clears active agent preference for a user (reverts to default assistant or deactivates specific agent).
  */
-export async function clearUserActiveAgent(userId: number): Promise<boolean> {
+export async function clearUserActiveAgent(userId: number, agentId?: string): Promise<boolean> {
   await ensureDb();
   const client = await pool.connect();
   try {
-    await client.query(`DELETE FROM user_active_agents WHERE user_id = $1`, [userId]);
+    if (agentId) {
+      await client.query(`DELETE FROM user_active_agents WHERE user_id = $1 AND agent_id = $2`, [userId, agentId]);
+      await client.query(
+        `UPDATE agents SET status = 'deactivated', applied_to_assistant = false, updated_at = NOW() WHERE id = $1`,
+        [agentId]
+      );
+    } else {
+      await client.query(`DELETE FROM user_active_agents WHERE user_id = $1`, [userId]);
+    }
     return true;
   } catch (err) {
     console.error("[CLEAR_USER_ACTIVE_AGENT_ERROR]", err);
@@ -945,7 +1016,7 @@ export async function recordTokenUsage(params: {
       [
         params.agentId || "agent_loan_assistant",
         resolvedAgentName,
-        params.modelName || process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free",
+        params.modelName || process.env.OPENROUTER_MODEL || "openrouter/auto",
         prompt,
         completion,
         total,

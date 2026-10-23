@@ -85,57 +85,82 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { is_assistant_default, name, purpose, provider } = body;
+    const { is_assistant_default, name, purpose, provider, model_id, route_via_gateway } = body;
 
     const client = await pool.connect();
     try {
-      if (is_assistant_default) {
+      // Check existing model
+      const existingRes = await client.query(`SELECT * FROM registered_models WHERE id = $1`, [id]);
+      if (!existingRes.rowCount || existingRes.rowCount === 0) {
+        return NextResponse.json({ success: false, error: "Model not found" }, { status: 404 });
+      }
+      const existingModel = existingRes.rows[0];
+
+      let shouldBeDefault = is_assistant_default !== undefined ? Boolean(is_assistant_default) : existingModel.is_assistant_default;
+
+      if (is_assistant_default === true) {
         await client.query(`UPDATE registered_models SET is_assistant_default = false`);
-        const res = await client.query(
-          `UPDATE registered_models
-           SET is_assistant_default = true
-           WHERE id = $1
-           RETURNING *`,
-          [id]
-        );
-
-        if (res.rowCount && res.rowCount > 0) {
-          const model = res.rows[0];
-          try {
-            await client.query(
-              `UPDATE ai_models SET is_active = false, is_default = false WHERE category = 'LLM'`
-            );
-            await client.query(
-              `INSERT INTO ai_models (category, model_name, provider, is_active, is_default, display_name, updated_at)
-               VALUES ('LLM', $1, $2, true, true, $3, NOW())
-               ON CONFLICT (id) DO NOTHING`,
-              [model.model_id, model.provider, model.name]
-            );
-          } catch {}
-        }
-
-        return NextResponse.json({
-          success: true,
-          message: "Default model updated successfully.",
-          model: res.rows[0],
-        });
       }
 
-      // Update regular fields if passed
+      // Update registered model with all provided fields
       const updateRes = await client.query(
         `UPDATE registered_models
          SET name = COALESCE($1, name),
-             purpose = COALESCE($2, purpose),
-             provider = COALESCE($3, provider)
-         WHERE id = $4
+             model_id = COALESCE($2, model_id),
+             provider = COALESCE($3, provider),
+             purpose = COALESCE($4, purpose),
+             is_assistant_default = COALESCE($5, is_assistant_default),
+             route_via_gateway = COALESCE($6, route_via_gateway)
+         WHERE id = $7
          RETURNING *`,
-        [name, purpose, provider, id]
+        [
+          name !== undefined ? String(name).trim() : null,
+          model_id !== undefined ? String(model_id).trim() : null,
+          provider !== undefined ? String(provider).trim() : null,
+          purpose !== undefined ? String(purpose).trim() : null,
+          is_assistant_default !== undefined ? shouldBeDefault : null,
+          route_via_gateway !== undefined ? Boolean(route_via_gateway) : null,
+          id,
+        ]
       );
+
+      const updatedModel = updateRes.rows[0];
+
+      // Synchronize with ai_models if this model is default / active
+      if (updatedModel.is_assistant_default) {
+        try {
+          await client.query(
+            `UPDATE ai_models SET is_active = false, is_default = false WHERE category = 'LLM'`
+          );
+          const aiModelCheck = await client.query(
+            `SELECT id FROM ai_models WHERE category = 'LLM' AND model_name = $1 LIMIT 1`,
+            [updatedModel.model_id]
+          );
+          if (aiModelCheck.rowCount && aiModelCheck.rowCount > 0) {
+            await client.query(
+              `UPDATE ai_models
+               SET is_active = true, is_default = true, display_name = $1, provider = $2, updated_at = NOW()
+               WHERE id = $3`,
+              [updatedModel.name, updatedModel.provider, aiModelCheck.rows[0].id]
+            );
+          } else {
+            await client.query(
+              `INSERT INTO ai_models (category, model_name, provider, is_active, is_default, display_name, updated_at)
+               VALUES ('LLM', $1, $2, true, true, $3, NOW())`,
+              [updatedModel.model_id, updatedModel.provider, updatedModel.name]
+            );
+          }
+          const { invalidateModelCache } = await import("@/lib/ai/modelRouter");
+          invalidateModelCache();
+        } catch (syncErr) {
+          console.warn("[API_REGISTERED_MODELS_PATCH] ai_models sync warning:", syncErr);
+        }
+      }
 
       return NextResponse.json({
         success: true,
-        message: "Model updated successfully.",
-        model: updateRes.rows[0],
+        message: `Model "${updatedModel.name}" updated successfully.`,
+        model: updatedModel,
       });
     } finally {
       client.release();

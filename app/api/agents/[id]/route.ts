@@ -67,19 +67,21 @@ export async function PATCH(
     const userId = getUserId(req);
     const body = await req.json();
 
-    if (body.status === "active") {
+    if (body.status === "active" || body.applied_to_assistant === true || body.appliedToAssistant === true) {
       if (userId !== undefined) {
         await setUserActiveAgent(userId, id);
       }
-      try {
-        await pool.query(`UPDATE agents SET status = 'draft' WHERE id != $1`, [id]);
-      } catch (statusErr) {
-        console.warn("[DEACTIVATE_OTHER_AGENTS_WARN]", statusErr);
-      }
-    } else if (body.status === "draft" || body.status === "deactivated") {
+    } else if (body.status === "draft" || body.status === "deactivated" || body.applied_to_assistant === false || body.appliedToAssistant === false) {
       if (userId !== undefined) {
-        await clearUserActiveAgent(userId);
+        await clearUserActiveAgent(userId, id);
       }
+    }
+
+    if (body.supported_topics && !body.supportedTopics) {
+      body.supportedTopics = body.supported_topics;
+    }
+    if (body.applied_to_assistant !== undefined && body.appliedToAssistant === undefined) {
+      body.appliedToAssistant = body.applied_to_assistant;
     }
 
     const updated = updateAgent(id, body);

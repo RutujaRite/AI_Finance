@@ -55,7 +55,7 @@ export function isGeneralFinancialQuery(message: string): boolean {
 
   const hasFinancialTopic =
     /\b(?:processing\s*fees?|proc(?:essing)?\s*fee|\bpf\b|admin\s*fee|file\s*charge)/i.test(text) ||
-    /\b(?:how\s*(?:is\s*)?interest\s*calculated|interest\s*calculat\w*|reducing\s*(?:balance|rate)|diminishing\s*(?:balance|rate)|flat\s*(?:rate|interest)|flat\s*vs\s*reducing|interest\s*formula)\b/i.test(text) ||
+    /\b(?:how\s*(?:is\s*)?interest\s*calculated|interest\s*calculat\w*|reducing\s*(?:balance|rate|interest(?:\s*rate)?)|diminishing\s*(?:balance|rate|interest(?:\s*rate)?)|flat\s*(?:rate|interest)|flat\s*vs\s*reducing|interest\s*formula)\b/i.test(text) ||
     /\b(?:foir|fixed\s*obligation|debt\s*to\s*income|\bdti\b|obligation\s*ratio)\b/i.test(text) ||
     /\b(?:what\s*is\s*(?:a\s*)?cibil\w*|cibil\w*|credit\s*score|bureau\s*score|experian|cibil\s*range|good\s*cibil)\b/i.test(text) ||
     /\b(?:foreclosure|pre-?closure|pre-?payment|part-?payment|prepaying|lock-?in\s*period|prepayment\s*penalty|foreclosure\s*charges?)\b/i.test(text) ||
@@ -272,7 +272,7 @@ export async function answerGeneralFinancialQuery(
     return FINANCIAL_KNOWLEDGE_BASE.PROCESSING_FEE;
   }
 
-  if (/\b(?:interest\s*calculat\w*|how\s*(?:is\s*)?interest\s*calculated|reducing\s*(?:balance|rate)|diminishing\s*(?:balance|rate)|flat\s*(?:rate|interest)|flat\s*vs\s*reducing|interest\s*formula)\b/i.test(norm)) {
+  if (/\b(?:interest\s*calculat\w*|how\s*(?:is\s*)?interest\s*calculated|reducing\s*(?:balance|rate|interest(?:\s*rate)?)|diminishing\s*(?:balance|rate|interest(?:\s*rate)?)|flat\s*(?:rate|interest)|flat\s*vs\s*reducing|interest\s*formula)\b/i.test(norm)) {
     return FINANCIAL_KNOWLEDGE_BASE.INTEREST_CALCULATION;
   }
 
@@ -433,7 +433,16 @@ export function isGeneralLoanAssistanceQuery(message: string): GeneralLoanAssist
   }
 
   // 5. Different Loan Types ("I need a home loan", "Can I get a car loan", "business loan", "education loan", "educational loan", "credit card")
+  // Must NOT intercept specific questions (definitions, interest rates, collateral, CIBIL, documents, bank inquiries, or verification questions)
+  const isSpecificQuestion =
+    /^(?:what\s+is|what\s+are|explain|how\s+much|which|tell\s+me\s+(?:the\s+)?(?:interest|rate|cibil|document|collateral|repayment)|is\s+|can\s+you\s+verify)/i.test(cleanText) ||
+    /\b(?:interest\s*rates?|roi|cibil|cutoff|documents?|collateral|security|repayment|moratorium|tenure|\b4%\b|\b\d+%\b)\b/i.test(cleanText) ||
+    /\b(?:sbi|state\s*bank|hdfc|icici|axis|moon\s*bank)\b/i.test(cleanText) ||
+    /\b(?:right\?|true\?|correct\?)\b/i.test(cleanText);
+
   if (
+    !isSpecificQuestion &&
+    !isSpecificPolicyAsk &&
     /(?:home\s*loan|house\s*loan|mortgage\s*loan|car\s*loan|auto\s*loan|vehicle\s*loan|business\s*loan|msme\s*loan|education(?:al)?\s*loan|student\s*loan|credit\s*card)/i.test(text) &&
     !/personal\s*loan/i.test(text)
   ) {
@@ -473,7 +482,7 @@ export function getGeneralLoanAssistanceReply(
         `• **Check Eligibility**: Instantly calculate your borrowing capacity and estimated EMI based on your employer category and salary.\n` +
         `• **Explore Bank Policies**: Compare interest rates (starting ~10.25% p.a.), CIBIL cutoffs, and tenure options.\n` +
         `• **Branch Manager Assistance**: Connect directly with bank managers in your city for quick application processing.\n\n` +
-        `Would you like to explore loan options or check your eligibility?`
+        `To get started with checking your eligibility across partner banks, **what is the exact name of your employer or company**?`
       );
 
     case "DIFFERENT_LOAN_TYPE": {

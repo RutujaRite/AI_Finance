@@ -4,6 +4,7 @@ import { generateQueryEmbedding } from "@/lib/policyRetrieval";
 import { openRouterChat } from "@/lib/openrouter";
 import { KnowledgeDocumentRecord, Agent, GUARDRAIL_TEMPLATES, isKnowledgeBaseAgent } from "./types";
 export { GUARDRAIL_TEMPLATES, isKnowledgeBaseAgent };
+export type { KnowledgeDocumentRecord, Agent };
 
 export interface RetrievedKnowledgeContext {
   document: KnowledgeDocumentRecord;
@@ -37,7 +38,21 @@ export function selectRelevantDocuments(
     return [];
   }
 
-  const activeDocs = documents.filter((d) => d.isActive !== false && d.status !== "FAILED");
+  const isExplicitDemoRequest = /\b(?:demo|test\s*data|sample\s*data|fictional)\b/i.test(query);
+
+  const activeDocs = documents.filter((d) => {
+    if (d.isActive === false || d.status === "FAILED") return false;
+    // Strict Demo Isolation: Never include demo docs unless explicitly requested
+    const isDemoDoc =
+      d.name.toLowerCase().includes("demo") ||
+      d.name.toLowerCase().includes("sample") ||
+      (d as any).is_demo === true ||
+      (d.metadata as any)?.is_demo === true;
+    if (isDemoDoc && !isExplicitDemoRequest) {
+      return false;
+    }
+    return true;
+  });
   if (activeDocs.length === 0) return [];
 
   const lowerQuery = query.toLowerCase();
@@ -89,7 +104,7 @@ export function selectRelevantDocuments(
 
   // Fallback: If query relates to loans, policies, eligibility, or banking rules, return active docs
   const isLoanOrPolicyTopic =
-    /(?:loan|policy|bank|interest|rate|emi|tenure|cibil|credit|salary|income|document|kyc|eligib|borrow|lender|criteria|underwriting)\b/i.test(query);
+    /\b(?:loans?|polic(?:y|ies)|banks?|interest|rates?|emi|tenures?|cibil|credit|salary|salaries|income|documents?|paperwork|kyc|eligib\w*|borrow|lenders?|criteria|underwriting|collateral|security|guarantee|repayment|moratorium|sbi|hdfc)\b/i.test(query);
 
   if (isLoanOrPolicyTopic) {
     return activeDocs;
@@ -107,7 +122,18 @@ export async function retrieveKnowledgeChunks(
   selectedDocs: KnowledgeDocumentRecord[],
   topK = 4
 ): Promise<RagRetrievalResult> {
-  if (selectedDocs.length === 0) {
+  const isExplicitDemoRequest = /\b(?:demo|test\s*data|sample\s*data|fictional)\b/i.test(query);
+  const safeDocs = selectedDocs.filter((d) => {
+    if (isExplicitDemoRequest) return true;
+    const isDemoDoc =
+      d.name.toLowerCase().includes("demo") ||
+      d.name.toLowerCase().includes("sample") ||
+      (d as any).is_demo === true ||
+      (d.metadata as any)?.is_demo === true;
+    return !isDemoDoc;
+  });
+
+  if (safeDocs.length === 0) {
     return {
       hasRelevantKnowledge: false,
       selectedDocuments: [],
@@ -116,7 +142,7 @@ export async function retrieveKnowledgeChunks(
     };
   }
 
-  const docIds = selectedDocs.map((d) => d.id);
+  const docIds = safeDocs.map((d) => d.id);
   const client = await pool.connect();
   const selectedContexts: RetrievedKnowledgeContext[] = [];
   const allChunkIds: string[] = [];
@@ -130,45 +156,52 @@ export async function retrieveKnowledgeChunks(
       console.log("[RAG_ENGINE] Using high-accuracy lexical/keyword search for document retrieval.");
     }
 
-    for (const doc of selectedDocs) {
+    for (const doc of safeDocs) {
+      const agentId = doc.agentId || (doc as any).agent_id;
       let chunkRows: any[] = [];
 
       if (queryEmbedding && Array.isArray(queryEmbedding)) {
-        // Vector semantic search using pgvector
+        // Vector semantic search using pgvector strictly scoped by document_id and agent_id
         try {
-          const res = await client.query(
-            `SELECT
-              id, content, chunk_index,
-              (1 - (embedding <=> $1::vector)) AS similarity
-             FROM knowledge_chunks
-             WHERE document_id = $2 AND embedding IS NOT NULL
-             ORDER BY embedding <=> $1::vector ASC
-             LIMIT $3`,
-            [`[${queryEmbedding.join(",")}]`, doc.id, topK]
-          );
+          const sql = agentId
+            ? `SELECT id, content, chunk_index, (1 - (embedding <=> $1::vector)) AS similarity
+               FROM knowledge_chunks
+               WHERE document_id = $2 AND agent_id = $3 AND embedding IS NOT NULL
+               ORDER BY embedding <=> $1::vector ASC
+               LIMIT $4`
+            : `SELECT id, content, chunk_index, (1 - (embedding <=> $1::vector)) AS similarity
+               FROM knowledge_chunks
+               WHERE document_id = $2 AND embedding IS NOT NULL
+               ORDER BY embedding <=> $1::vector ASC
+               LIMIT $3`;
+          const params = agentId
+            ? [`[${queryEmbedding.join(",")}]`, doc.id, agentId, topK]
+            : [`[${queryEmbedding.join(",")}]`, doc.id, topK];
+          const res = await client.query(sql, params);
           chunkRows = res.rows;
         } catch (vErr) {
           console.warn("[VECTOR_QUERY_FALLBACK] Lexical search for doc:", doc.id, vErr);
         }
       }
 
-      // If no vector results, perform lexical / keyword search
+      // If no vector results, perform lexical / keyword search strictly scoped by agent_id
       if (chunkRows.length === 0) {
         // First check total chunks for this document
         const countRes = await client.query(
-          `SELECT COUNT(*) as total FROM knowledge_chunks WHERE document_id = $1`,
-          [doc.id]
+          agentId
+            ? `SELECT COUNT(*) as total FROM knowledge_chunks WHERE document_id = $1 AND agent_id = $2`
+            : `SELECT COUNT(*) as total FROM knowledge_chunks WHERE document_id = $1`,
+          agentId ? [doc.id, agentId] : [doc.id]
         );
         const totalDocChunks = parseInt(countRes.rows[0]?.total || "0", 10);
 
         // If document is concise (<= 10 chunks), load all chunks for complete knowledge grounding
         if (totalDocChunks > 0 && totalDocChunks <= 10) {
           const allChunksRes = await client.query(
-            `SELECT id, content, chunk_index
-             FROM knowledge_chunks
-             WHERE document_id = $1
-             ORDER BY chunk_index ASC`,
-            [doc.id]
+            agentId
+              ? `SELECT id, content, chunk_index FROM knowledge_chunks WHERE document_id = $1 AND agent_id = $2 ORDER BY chunk_index ASC`
+              : `SELECT id, content, chunk_index FROM knowledge_chunks WHERE document_id = $1 ORDER BY chunk_index ASC`,
+            agentId ? [doc.id, agentId] : [doc.id]
           );
           chunkRows = allChunksRes.rows;
         } else {
@@ -179,14 +212,12 @@ export async function retrieveKnowledgeChunks(
             .slice(0, 8);
 
           if (words.length > 0) {
-            const conditions = words.map((_, i) => `content ILIKE $${i + 2}`).join(" OR ");
-            const params: any[] = [doc.id, ...words.map((w) => `%${w}%`)];
+            const conditions = words.map((_, i) => `content ILIKE $${i + (agentId ? 3 : 2)}`).join(" OR ");
+            const params: any[] = agentId ? [doc.id, agentId, ...words.map((w) => `%${w}%`)] : [doc.id, ...words.map((w) => `%${w}%`)];
             const searchRes = await client.query(
-              `SELECT id, content, chunk_index
-               FROM knowledge_chunks
-               WHERE document_id = $1 AND (${conditions})
-               ORDER BY chunk_index ASC
-               LIMIT ${topK}`,
+              agentId
+                ? `SELECT id, content, chunk_index FROM knowledge_chunks WHERE document_id = $1 AND agent_id = $2 AND (${conditions}) ORDER BY chunk_index ASC LIMIT ${topK}`
+                : `SELECT id, content, chunk_index FROM knowledge_chunks WHERE document_id = $1 AND (${conditions}) ORDER BY chunk_index ASC LIMIT ${topK}`,
               params
             );
             chunkRows = searchRes.rows;
@@ -195,12 +226,10 @@ export async function retrieveKnowledgeChunks(
           // Fallback if still empty
           if (chunkRows.length === 0) {
             const fallbackRes = await client.query(
-              `SELECT id, content, chunk_index
-               FROM knowledge_chunks
-               WHERE document_id = $1
-               ORDER BY chunk_index ASC
-               LIMIT $2`,
-              [doc.id, topK]
+              agentId
+                ? `SELECT id, content, chunk_index FROM knowledge_chunks WHERE document_id = $1 AND agent_id = $2 ORDER BY chunk_index ASC LIMIT $3`
+                : `SELECT id, content, chunk_index FROM knowledge_chunks WHERE document_id = $1 ORDER BY chunk_index ASC LIMIT $2`,
+              agentId ? [doc.id, agentId, topK] : [doc.id, topK]
             );
             chunkRows = fallbackRes.rows;
           }
@@ -439,8 +468,15 @@ export function buildConfiguredAgentPrompt(
     `### ELIGIBILITY RESULTS TABLE SPECIFICATION:\n` +
     `For eligibility results, always show eligible banks in a neat table with exactly:\n` +
     `| Bank | Status | CIBIL | Tenure | Est. EMI |\n\n` +
+    `### DYNAMIC KNOWLEDGE BASE & SINGLE SOURCE OF TRUTH:\n` +
+    `- Prioritize the 23 Partner Bank Policy embeddings table (\`bank_policy_embeddings\`) over any default demo DOCX document when processing bank policy or loan eligibility queries.\n` +
+    `- Do NOT disclaim real vs fictional data unless specifically in test/sandbox mode. Treat the 23 bank policy database entries as the primary single source of truth for evaluation.\n\n` +
     `### BANK POLICY & CITATION GUIDELINES:\n` +
     `- For bank-specific values (minimum salary, cut-off CIBIL scores, LTV ratios, interest rates), rely strictly on verified knowledge base files.\n` +
+    `- Answer policy questions point-by-point in clean, readable Markdown lists with bold parameter labels.\n` +
+    `- Stream responses seamlessly (ReadableStream / streaming text output) without syntax breaks.\n` +
+    `- Maintain a patient, helpful, and polite tone at all times without frustrating the user.\n` +
+    `- Fall back smoothly to general guidance when a query falls outside exact policy rulebooks rather than refusing to answer.\n` +
     `- For general financial definitions or industry acronyms (e.g., FOIR, LTV, CIBIL, EMI), provide clear standard financial definitions while noting that exact percentage thresholds depend on individual lender policy.\n` +
     `- When answering from uploaded knowledge base documents or partner bank policies, cite the document name or lender clearly.\n` +
     `- Never guess missing values; explicitly state "Not specified in the available policy." if a field is not documented.`

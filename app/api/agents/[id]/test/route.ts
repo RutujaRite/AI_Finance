@@ -306,10 +306,18 @@ export async function POST(
         }
 
         if (!reply) {
-          if (isRateLimit) {
+          const errMsg = llmErr?.message || "LLM request failed";
+          const isAuthErr =
+            llmErr?.status === 401 ||
+            /user not found/i.test(errMsg) ||
+            /invalid or revoked/i.test(errMsg) ||
+            /OpenRouter API key/i.test(errMsg);
+
+          if (isAuthErr) {
+            reply = "The saved OpenRouter API key is invalid or revoked. Please update your API key in AI Agent Studio Settings.";
+          } else if (isRateLimit) {
             reply = "The OpenRouter daily free-tier limit (50 requests/day) has been reached for the configured API key. Please add credits to your OpenRouter account or configure an active model key under AI Model settings.";
           } else {
-            const errMsg = llmErr?.message || "LLM request failed";
             reply = `[Error: Unable to generate response from configured AI model - ${errMsg}]. Please verify your API key and model configuration.`;
           }
         }

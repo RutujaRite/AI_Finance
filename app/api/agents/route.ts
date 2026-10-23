@@ -4,9 +4,11 @@ import {
   listAgents,
   createAgent,
   getUserSubscription,
+  pruneStoreAgents,
 } from "@/lib/agent-studio/agentStore";
 import { syncAgentToDb, loadAgentsFromDb } from "@/lib/agent-studio/dbStore";
 import { verifyToken } from "@/lib/auth";
+import pool from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -87,6 +89,13 @@ export async function POST(req: NextRequest) {
     const model = body.model || "gpt-4o-mini";
     const role = body.agentRole || body.role || body.instructions?.agentRole || `${name} Specialist`;
 
+    // Prune stale in-memory entries against PostgreSQL to avoid false limit exhaustion
+    try {
+      const dbAgentsRes = await pool.query("SELECT id FROM agents");
+      const validDbIds = new Set(dbAgentsRes.rows.map((r: any) => r.id));
+      pruneStoreAgents(validDbIds);
+    } catch {}
+
     const result = createAgent({
       name,
       description,
@@ -111,9 +120,23 @@ export async function POST(req: NextRequest) {
       result.agent.status = isActive ? "active" : "draft";
       result.agent.isActiveForUser = isActive;
       result.agent.responseStyle = mappedResponseStyle;
-      result.agent.operationalMode = body.operationalMode || "standard";
+      result.agent.operationalMode = body.operationalMode || (body.operational_mode || "standard");
+      if (body.type) {
+        (result.agent as any).type = body.type;
+      }
+      if (body.capabilities) {
+        result.agent.capabilities = {
+          ...result.agent.capabilities,
+          ...body.capabilities,
+        };
+      }
       result.agent.goal = systemPrompt;
       result.agent.model = model;
+      result.agent.appliedToAssistant = body.applied_to_assistant === true || body.appliedToAssistant === true;
+      result.agent.supportedTopics = Array.isArray(body.supported_topics || body.supportedTopics)
+        ? (body.supported_topics || body.supportedTopics)
+        : [];
+      result.agent.configVersion = body.config_version || 1;
       (result.agent as any).system_prompt = systemPrompt;
       (result.agent as any).tone = tone;
       (result.agent as any).response_style = responseStyleRaw;
