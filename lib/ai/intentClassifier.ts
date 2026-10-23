@@ -1756,10 +1756,19 @@ export async function classifyIntelligentIntent(
   const isExplicitCompanyQuery =
     !detectCompanyDisavowal(rawMsg).isDisavowal &&
     (isCompanyAsk ||
-    (/^(?:search\s+for\s+|find\s+|check\s+|lookup\s+)([A-Za-z0-9\s&.-]+)$/i.test(rawMsg.trim()) &&
+    (/^(?:search(?:\s+for)?\s+|find\s+|check(?:\s+for)?\s+|lookup\s+)([A-Za-z0-9\s&.-]+)$/i.test(rawMsg.trim()) &&
     !isPolicyAsk &&
     !targetBank &&
-    !isManagerAsk));
+    !isManagerAsk) ||
+    (Boolean(targetCompany) &&
+      !isPolicyAsk &&
+      !targetBank &&
+      !isManagerAsk &&
+      !isLocationInput(rawMsg) &&
+      !pinMatch &&
+      !cityMatch &&
+      !/^(?:yes|no|ok|sure|cancel|restart|reset|help|hi|hello)\b/i.test(lowerMsg) &&
+      rawMsg.trim().split(/\s+/).length <= 6));
 
   if (isExplicitCompanyQuery && (targetCompany || isCompanyAsk)) {
     const finalComp = isCompanyCategoryLookupIntent(rawMsg)

@@ -19,7 +19,11 @@ import {
   applyProfileUpdateAndRecalculate,
   saveEligibilityState,
   SessionState,
+  extractCleanCompanyName,
+  isInvalidCompanyName,
+  isCompanyInfoOrSearchIntent,
 } from "@/lib/dynamicEligibilityEngine";
+import { searchCompany } from "@/lib/companySearch";
 import { AgentResult } from "@/lib/ai/agent";
 
 export interface PostEligibilityHandlerParams {
@@ -577,9 +581,49 @@ export async function handlePostEligibilityWorkflow({
   }
 
   // =========================================================================
-  // STEP 4 & 5: LOCATION INPUT (PIN CODE, AREA, OR CITY)
+  // INTERRUPTIONS & OFF-TOPIC INTENT GUARDRAILS
+  // If the user asks a company query, bank policy question, general finance
+  // definition, or asks to restart/reset, DO NOT hijack or force into location lookup.
+  // Yield back (return null) to central intelligent routing.
   // =========================================================================
   const isPin = /^[1-9]\d{5}$/.test(trimmedMsg);
+  const isLocInput = isLocationInput(trimmedMsg);
+
+  const isCompanyInterruption = Boolean(
+    isCompanyInfoOrSearchIntent(trimmedMsg) ||
+    /\b(?:company|compsany|employer|corporate|cat|category)\b/i.test(trimmedMsg) ||
+    (!isPin && !isLocInput && /^(?:search(?:\s+for)?|find|check(?:\s+for)?|lookup)\s+/i.test(trimmedMsg))
+  );
+
+  const isPolicyInterruption = Boolean(
+    /\b(?:policy|roi|interest\s*rates?|cibil\s*cutoff|foir|multiplier|eligibility\s*criteria|required\s*documents?|documents?\s*required|processing\s*fees?)\b/i.test(trimmedMsg) ||
+    (/\b(?:what\s+is|what\s+are|how\s+much|tell\s+me\s+about)\b/i.test(trimmedMsg) && /\b(?:cibil|roi|interest|rate|fee|document|criteria|rule)\b/i.test(trimmedMsg))
+  );
+
+  const isGeneralInterruption = Boolean(
+    /\b(?:what\s+is|what\s+are|how\s+to|why\s+is|difference\s+between|who\s+are\s+you)\b/i.test(trimmedMsg) &&
+    !/\b(?:pincode|pin|branch|location|city)\b/i.test(trimmedMsg)
+  );
+
+  const isResetInterruption = Boolean(
+    /^(?:reset|restart|start\s*over|new\s*application|clear)\b/i.test(trimmedMsg)
+  );
+
+  if (isCompanyInterruption || isPolicyInterruption || isGeneralInterruption || isResetInterruption) {
+    return null;
+  }
+
+  // Also check if standalone message is an existing company in database
+  if (!isPin && !isLocInput && trimmedMsg.split(/\s+/).length <= 5 && !isPureGreeting(trimmedMsg)) {
+    const companyLookup = await searchCompany(trimmedMsg);
+    if (companyLookup && companyLookup.found) {
+      return null;
+    }
+  }
+
+  // =========================================================================
+  // STEP 4 & 5: LOCATION INPUT (PIN CODE, AREA, OR CITY)
+  // =========================================================================
   const targetBank =
     eligibilitySession?.selectedBank ||
     eligibilitySession?.chosenBank ||
@@ -589,7 +633,7 @@ export async function handlePostEligibilityWorkflow({
   // Check if turn is a location input
   const isLocationTurn =
     isPin ||
-    isLocationInput(trimmedMsg) ||
+    isLocInput ||
     eligibilitySession?.expectedField === "city" ||
     eligibilitySession?.expectedField === "cityOrPincode" ||
     eligibilitySession?.expectedField === "pincode" ||

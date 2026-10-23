@@ -7458,9 +7458,14 @@ async function runCentralAgentInternal(opts: {
     });
     const resolvedCompany = compResult.companyData?.company_name || compResult.companyData?.primaryName || compName;
     const resolvedCategory = compResult.companyData?.category || compResult.companyData?.tier;
+    let companyReply = validated.validatedResponse || compResult.reply;
+    const activeSelectedBank = eligibilitySession?.selectedBank || eligibilitySession?.chosenBank;
+    if (activeSelectedBank && (eligibilitySession?.postEligibilityStage === "AWAITING_BRANCH_LOCATION" || eligibilitySession?.postEligibilityStage === "BRANCH_SELECTION")) {
+      companyReply += `\n\n*Note: Your selected lender **${activeSelectedBank}** is still active. Whenever you're ready, share your preferred city or 6-digit PIN code to connect with your local branch manager.*`;
+    }
     return await finalizeAndReturn({
       ...compResult,
-      reply: validated.validatedResponse || compResult.reply,
+      reply: companyReply,
     }, {
       company: resolvedCompany,
       selectedCompanyName: resolvedCompany,

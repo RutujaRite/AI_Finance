@@ -3540,7 +3540,7 @@ export function extractCleanCompanyName(input: string): string {
 
   // If the raw input is a question (ends with ? or starts with question words)
   // or a comparison expression, and does NOT contain explicit corporate keywords, it is NEVER a company name!
-  const hasCorporateKeyword = /\b(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|pvt\.?|private|limited|ltd\.?|technologies|solutions|services|enterprises|industries|llp|holdings|corp|corporation)\b/i.test(rawInput);
+  const hasCorporateKeyword = /\b(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|pvt\.?|private|limited|ltd\.?|technologies|solutions|services|enterprises|industries|llp|holdings|corp|corporation)\b/i.test(rawInput);
   const isQuestionOrComparison =
     /\?$/.test(rawInput) ||
     /^(?:is|are|can|could|would|should|will|do|did|does|why|how|what|when|where|who|which)\b/i.test(rawInput) ||
@@ -3557,22 +3557,22 @@ export function extractCleanCompanyName(input: string): string {
 
   // 1. Remove leading conversational, action, and matching list prefixes
   str = str.replace(
-    /^(?:can\s+(?:you|we)\s+|could\s+you\s+|please\s+|i\s+(?:want|need|wish|would\s+like)\s+(?:to\s+)?(?:check|see|know|search|find|get)?\s*)/i,
+    /^(?:can\s+(?:you|we)\s+|could\s+you\s+|please\s+|i\s+(?:want|need|wish|would\s+like)\s+(?:to\s+)?(?:check|see|know|search|serach|find|get)?\s*)/i,
     ""
   );
   str = str.replace(
-    /^(?:show\s+(?:me\s+)?(?:the\s+)?|display\s+(?:the\s+)?|list\s+(?:the\s+)?|get\s+(?:the\s+)?|where\s+(?:is|are)\s+(?:the\s+)?)?(?:matching\s+)?comp(?:any|anies|ny|nay|o|a|ies)?(?:\s+list)?\s+(?:of|for|in|about)\s+/i,
+    /^(?:show\s+(?:me\s+)?(?:the\s+)?|display\s+(?:the\s+)?|list\s+(?:the\s+)?|get\s+(?:the\s+)?|where\s+(?:is|are)\s+(?:the\s+)?)?(?:matching\s+)?comp(?:any|anies|sany|ny|nay|o|a|ies)?(?:\s+list)?\s+(?:of|for|in|about)\s+/i,
     ""
   );
   str = str.replace(/[?.,!]+$/, "").trim();
   str = str.replace(
-    /^(?:give\s+(?:me\s+)?(?:the\s+)?(?:information|info|details|data|profile)\s+(?:of|about|on|for|regarding)|show\s+(?:me\s+)?(?:the\s+)?(?:information|info|details|data|profile)?\s*(?:of|about|on|for)?|tell\s+me\s+about|provide\s+(?:me\s+)?(?:details|info|information)\s+(?:of|about|on|for)?|what\s+is\s+(?:the\s+)?(?:company\s+)?(?:category\s*rating|category|tier|rating|status|details|info|information)?\s*(?:of|for|on|about)?|what\s+is|who\s+is|how\s+is|check\s+(?:for\s+)?|search\s+(?:for\s+)?|verify|look\s*up|find|info\s+on|details\s+(?:of|for|about)|is|are)\s+/i,
+    /^(?:give\s+(?:me\s+)?(?:the\s+)?(?:information|info|details|data|profile)\s+(?:of|about|on|for|regarding)|show\s+(?:me\s+)?(?:the\s+)?(?:information|info|details|data|profile)?\s*(?:of|about|on|for)?|tell\s+me\s+about|provide\s+(?:me\s+)?(?:details|info|information)\s+(?:of|about|on|for)?|what\s+is\s+(?:the\s+)?(?:company\s+)?(?:category\s*rating|category|tier|rating|status|details|info|information)?\s*(?:of|for|on|about)?|what\s+is|who\s+is|how\s+is|check(?:\s+for)?|search(?:\s+for)?|serach(?:\s+for)?|verify|look\s*up|find|info\s+on|details\s+(?:of|for|about)|is|are)\s+/i,
     ""
   );
 
   // 1b. Remove employment prefix if present (never strip 'for' if followed by 'a home' or loan phrase)
   str = str.replace(
-    /^(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+)|(?:(?:i\s+)?(?:currently\s+|presently\s+)?(?:work|works|working|employed)\s+(?:at|in|with|for|by)\s+)|(?:(?:my\s+)?(?:employer|company)\s+is\s+)|(?:employer\s*[:=-]|company\s*[:=-]))\s*/i,
+    /^(?:(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)\s+)|(?:(?:my|our|the)\s+(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)(?:\s*name)?\s*(?:is|are|called|named|[:=-])\s*)|(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+)|(?:(?:i\s+)?(?:currently\s+|presently\s+)?(?:work|works|working|employed)\s+(?:at|in|with|for|by)\s+)|(?:(?:my\s+)?(?:employer|company)\s+is\s+)|(?:employer\s*[:=-]|company\s*[:=-]))\s*/i,
     ""
   );
   if (!/^(?:at|in|with|for)\s+(?:a\s+)?(?:home|house|flat|property|plot|car|bike|personal|wedding|medical|travel|business|loan)\b/i.test(str)) {
@@ -3581,17 +3581,17 @@ export function extractCleanCompanyName(input: string): string {
 
   // 2. Strip 'company search', 'company serach', 'search company', 'check company' prefixes/suffixes
   str = str.replace(
-    /^(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)\s+(?:search|serach|lookup|check|find|details|info|information)\s+(?:of|for|about|on)?\s*/i,
+    /^(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)\s+(?:search|serach|lookup|check|find|details|info|information)\s+(?:of|for|about|on)?\s*/i,
     ""
   );
   str = str.replace(
-    /^(?:search|serach|check|find|lookup)\s+(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)\s+(?:of|for|about|on)?\s*/i,
+    /^(?:search|serach|check|find|lookup)\s+(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)\s+(?:of|for|about|on)?\s*/i,
     ""
   );
 
   // 3. Remove leading 'company' / 'employer' or 'working company is' remnants if still at start
-  str = str.replace(/^(?:the\s+)?(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer)\s*(?:is|are|called|named)?\s*)/i, "");
-  str = str.replace(/^(?:the\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer)\s+/i, "");
+  str = str.replace(/^(?:the\s+)?(?:(?:working\s+|current\s+|present\s+)?(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer)\s*(?:is|are|called|named)?\s*)/i, "");
+  str = str.replace(/^(?:the\s+)?(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer)\s+/i, "");
 
   // 3b. Strip trailing inquiry clauses e.g. ". Give me information about that company"
   str = str.replace(/(?:\s*[.,;!?]|\s+(?:and|with|so|now))\s*(?:(?:please\s+)?(?:give|show|tell|provide|check|display|find|get)\s+.*|what\s+.*|can\s+you\s+.*)$/i, "");
@@ -3599,10 +3599,10 @@ export function extractCleanCompanyName(input: string): string {
 
   // 4. Remove trailing query phrases like 'company', 'company details', 'listing', 'category rating', 'is listed'
   str = str.replace(/\s+(?:is\s+)?(?:listed|categorized|approved)\s*(?:in\s+banks?|across\s+banks?)?$/i, "");
-  str = str.replace(/\s+(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)\s+(?:details|information|info|rating|tier|category|status|listing|list)$/i, "");
+  str = str.replace(/\s+(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)\s+(?:details|information|info|rating|tier|category|status|listing|list)$/i, "");
   str = str.replace(/\s+(?:details|information|info|rating|tier|category|status|listing|profile|list)$/i, "");
   str = str.replace(/\s+(?:not\s+(?:displaying|showing))$/i, "");
-  str = str.replace(/\s+(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)$/i, "");
+  str = str.replace(/\s+(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)$/i, "");
 
   // 5. Clean punctuation
   str = str.replace(/^[?.,!:\s]+|[?.,!:\s]+$/g, "").trim();
@@ -3610,7 +3610,7 @@ export function extractCleanCompanyName(input: string): string {
   // If the result is placeholder defaults, generic pronouns, loan requests, invalid, or location, return empty
   if (
     /^(?:my|our|your|the|this|that|an?|his|her|their|its|where\s+i\s+work|about\s+my|about\s+the|about\s+our)$/i.test(str) ||
-    /^(?:a\s+home|home|open\s*market|unknown|not\s*(?:provided|specified|applicable|available|sure)|unlisted|standard\s*(?:corporate|salaried)|none|nil|na|n\/a|search|serach|company|compny|comapny|compies|employer|details|info|information|check|find|lookup|status|category|tier|rating|matching|list|matching\s+companies|matching\s+compies)$/i.test(str) ||
+    /^(?:a\s+home|home|open\s*market|unknown|not\s*(?:provided|specified|applicable|available|sure)|unlisted|standard\s*(?:corporate|salaried)|none|nil|na|n\/a|search|serach|company|compny|compsany|comapny|compies|employer|details|info|information|check|find|lookup|status|category|tier|rating|matching|list|matching\s+companies|matching\s+compies)$/i.test(str) ||
     isInvalidCompanyName(str) ||
     isLocationInput(str)
   ) {
@@ -3623,30 +3623,38 @@ export function extractCleanCompanyName(input: string): string {
 /**
  * Detects if user wants to check company information, search a company,
  * or switch the conversation from loan eligibility to company search.
- * Extremely typo-tolerant (compny, comapny, cmpny, employer, serach, etc.).
+ * Extremely typo-tolerant (compny, comapny, compsany, cmpny, employer, serach, etc.).
  */
 export function isCompanyInfoOrSearchIntent(text: string): boolean {
   if (!text) return false;
   if (isLoanEligibilityIntent(text)) return false;
   const norm = text.toLowerCase().replace(/[.!?]+$/, "").replace(/\s+/g, " ").trim();
   const isCategoryOrCompanyQuery =
-    /(?:category|tier|employer|company)\b/i.test(norm) ||
+    /(?:category|tier|employer|company|compsany)\b/i.test(norm) ||
     Boolean(extractCompoundLoanCompanyIntent(text).companyCandidate);
   if (!isCategoryOrCompanyQuery && (isKnownBankName(norm) || Boolean(resolveBankName(norm)))) return false;
 
+  // Direct "search <company> [company]" or "check <company> [company]" pattern
+  if (/^(?:search|serach|check|find|lookup)\s+([a-zA-Z0-9\s&'.-]+?)(?:\s+(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny))?$/i.test(norm)) {
+    const rawTarget = norm.replace(/^(?:search|serach|check|find|lookup)\s+/i, "").replace(/\s+(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)$/i, "").trim();
+    if (rawTarget.length >= 2 && !isKnownBankName(rawTarget) && !isLoanEligibilityIntent(rawTarget)) {
+      return true;
+    }
+  }
+
   // 1. Generic company search commands or typos (e.g. "company search", "company serach", "search company", "matching compies list", "matching companies list not displaying")
   if (
-    /^(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)\s+(?:search|serach|lookup|check|find|details|info|information|list)$/i.test(norm) ||
-    /^(?:search|serach|check|find|lookup|show|display|list)\s+(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)$/i.test(norm) ||
-    /^(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)\s+(?:search|serach)\b/i.test(norm) ||
-    /^(?:search|serach)\s+(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)\b/i.test(norm) ||
-    /\b(?:matching\s+comp(?:any|anies|ny|nay|o|a|ies)?|comp(?:any|anies|ny|nay|o|a|ies)?\s+list(?:\s+not\s+(?:displaying|showing))?|show\s+matching|display\s+matching|list\s+matching)\b/i.test(norm)
+    /^(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)\s+(?:search|serach|lookup|check|find|details|info|information|list)$/i.test(norm) ||
+    /^(?:search|serach|check|find|lookup|show|display|list)\s+(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)$/i.test(norm) ||
+    /^(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)\s+(?:search|serach)\b/i.test(norm) ||
+    /^(?:search|serach)\s+(?:comp(?:any|anies|sany|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny)\b/i.test(norm) ||
+    /\b(?:matching\s+comp(?:any|anies|sany|ny|nay|o|a|ies)?|comp(?:any|anies|sany|ny|nay|o|a|ies)?\s+list(?:\s+not\s+(?:displaying|showing))?|show\s+matching|display\s+matching|list\s+matching)\b/i.test(norm)
   ) {
     return true;
   }
 
   // Employment statements like "I work at TCS", "my working company is tech mahindra", "i am working in company TCS" without an inquiry are intake inputs, not search requests
-  const hasInfoQuery = /(?:give(?:\s+me)?|show(?:\s+me)?|tell(?:\s+me)?|what\s+is|check|find|search|serach|details|info|information|rating|tier|category|listing|profile|about\s+(?:that|the|my|this)?\s*(?:company|employer))/i.test(norm);
+  const hasInfoQuery = /(?:give(?:\s+me)?|show(?:\s+me)?|tell(?:\s+me)?|what\s+is|check|find|search|serach|details|info|information|rating|tier|category|listing|profile|about\s+(?:that|the|my|this)?\s*(?:company|compsany|employer))/i.test(norm);
   if (
     !hasInfoQuery &&
     /^(?:(?:i\s*am|i['"]?m|i)\s+(?:currently\s+|presently\s+)?(?:working\s+|employed\s+)?(?:at|in|with|for|by)\s+(?:(?:the|my|our)\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?)?|(?:(?:my|our|the)\s+)?(?:currently\s+|presently\s+)?(?:working\s+|current\s+|present\s+|existing\s+|previous\s+)?(?:comp(?:any|anies|ny|nay|o|a|ies)?|comapn(?:y|ies)?|cmpny|employer|firm|org(?:anization|anisation)?|workplace)(?:\s*name)?\s*(?:is|are|called|named|[:=-])|(?:work|working|employed)\s+(?:at|in|by|with|for))\s*[a-zA-Z0-9]/i.test(

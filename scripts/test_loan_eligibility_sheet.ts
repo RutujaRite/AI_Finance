@@ -108,7 +108,7 @@ async function runAllTests() {
       topBank: recBank?.bankName || "HDFC Bank",
       postEligibilityStage: "BANK_SELECTION",
       currentStep: "BANK_SELECTION",
-    });
+    } as any);
 
     const eligibleBankToSelect = eligibleEvals[0].bankName;
     const selectEligibleResult = await handlePostEligibilityWorkflow({
@@ -123,7 +123,7 @@ async function runAllTests() {
       finalizeAndReturn: async (res, customState) => {
         if (customState) {
           const current = (await getEligibilityState(testConvId)) || {};
-          await saveEligibilityState(testConvId, { ...current, ...customState });
+          await saveEligibilityState(testConvId, { ...current, ...customState } as any);
         }
         return res;
       },
@@ -208,7 +208,7 @@ async function runAllTests() {
     assert(recalcRes.reply.includes("Updated Assessment Sheet") || recalcRes.reply.includes("Recommended Bank") || recalcRes.reply.includes("Eligibility"), "Recalculation returned fresh assessment");
 
     const stateAfterRecalc = await getEligibilityState(testConvId);
-    const savedApp = stateAfterRecalc?.applicant || stateAfterRecalc?.applicantProfile;
+    const savedApp: any = stateAfterRecalc?.applicant;
     assert(savedApp?.salary === 15000 || savedApp?.monthlyIncome === 15000, "Preserved updated salary as 15000");
     assert(savedApp?.age === 29, "Preserved unchanged age as 29");
     assert(savedApp?.cibil === 760 || savedApp?.cibilScore === 760, "Preserved unchanged CIBIL as 760");
